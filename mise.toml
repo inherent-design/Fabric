@@ -1,0 +1,61 @@
+[tools]
+cmake = "latest"
+ninja = "latest"
+
+#
+# Build
+#
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "sh tasks/clean.sh"
+
+[tasks.build]
+alias = "b"
+description = "Configure and build (Debug)"
+run = "sh tasks/build.sh"
+
+[tasks."build:release"]
+alias = "br"
+description = "Configure and build (Release)"
+run = "BUILD_TYPE=Release sh tasks/build.sh"
+
+#
+# Lint
+#
+
+[tasks.lint]
+description = "Run clang-tidy on source files"
+run = "sh tasks/lint.sh"
+
+[tasks."lint:fix"]
+alias = "fix"
+description = "Run clang-tidy with auto-fix"
+run = "LINT_FIX=1 sh tasks/lint.sh"
+
+#
+# Test
+#
+
+[tasks.test]
+alias = "t"
+description = "Run unit tests"
+depends = ["build"]
+run = "sh tasks/test.sh"
+
+[tasks."test:e2e"]
+description = "Run E2E tests (slow)"
+depends = ["build"]
+run = "TEST_SUITE=e2e sh tasks/test.sh"
+
+[tasks."test:all"]
+description = "Run unit + E2E tests"
+depends = ["build"]
+run = "TEST_SUITE=all sh tasks/test.sh"
+
+[tasks."test:filter"]
+alias = "tf"
+description = "Run unit tests with gtest filter"
+depends = ["build"]
+usage = 'arg "filter" help="gtest --gtest_filter value"'
+run = "TEST_FILTER=\"{{arg(name='filter')}}\" sh tasks/test.sh"

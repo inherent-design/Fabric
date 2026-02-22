@@ -1,0 +1,66 @@
+{
+    // -- C/C++ Extension --
+    "C_Cpp.default.cppStandard": "c++20",
+    "C_Cpp.default.cStandard": "c17",
+    "C_Cpp.default.compilerPath": "/opt/homebrew/opt/llvm/bin/clang++",
+    "C_Cpp.default.intelliSenseMode": "macos-clang-arm64",
+    "C_Cpp.errorSquiggles": "enabled",
+    "C_Cpp.autocompleteAddParentheses": true,
+    // When compile_commands.json exists, prefer it over manual include paths.
+    // If cmake-tools is active, it can also act as the configuration provider.
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+
+    // -- CMake Tools --
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.generator": "Ninja",
+    "cmake.configureSettings": {
+        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
+        "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_BUILD_TYPE": "Debug"
+    },
+    "cmake.configureOnOpen": true,
+    "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
+    "cmake.parallelJobs": 0,
+
+    // -- File Associations --
+    "files.associations": {
+        "*.hh": "cpp",
+        "*.cc": "cpp",
+        "*.g.hh": "cpp",
+        "*.g.hh.in": "cmake",
+        "CMakeLists.txt": "cmake"
+    },
+
+    // -- Editor (C++ files) --
+    "[cpp]": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": false,
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "[cmake]": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true
+    },
+
+    // -- Search / File Watcher Exclusions --
+    "files.exclude": {
+        "**/build": true,
+        "**/.DS_Store": true
+    },
+    "files.watcherExclude": {
+        "**/build/**": true
+    },
+    "search.exclude": {
+        "**/build": true,
+        "**/build/_deps": true
+    },
+
+    // -- Terminal --
+    // mise shims on PATH ensure cmake/ninja resolve correctly in the integrated terminal.
+    // If tools are not found, run: mise install
+    "terminal.integrated.env.osx": {
+        "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
+    }
+}

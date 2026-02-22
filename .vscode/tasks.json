@@ -1,0 +1,121 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "mise",
+            "args": [
+                "run",
+                "build"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Configure and build (Debug)"
+        },
+        {
+            "label": "build:release",
+            "type": "shell",
+            "command": "mise",
+            "args": [
+                "run",
+                "build:release"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Configure and build (Release)"
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "mise",
+            "args": [
+                "run",
+                "clean"
+            ],
+            "problemMatcher": [],
+            "detail": "Remove build artifacts"
+        },
+        {
+            "label": "test",
+            "type": "shell",
+            "command": "mise",
+            "args": [
+                "run",
+                "test"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Build and run unit tests"
+        },
+        {
+            "label": "test:all",
+            "type": "shell",
+            "command": "mise",
+            "args": [
+                "run",
+                "test:all"
+            ],
+            "group": "test",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Build and run all tests"
+        },
+        {
+            "label": "lint",
+            "type": "shell",
+            "command": "mise",
+            "args": [
+                "run",
+                "lint"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Run clang-tidy on source files"
+        },
+        {
+            "label": "lint:fix",
+            "type": "shell",
+            "command": "mise",
+            "args": [
+                "run",
+                "lint:fix"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "Run clang-tidy with auto-fix"
+        },
+        {
+            "label": "cmake-configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-G",
+                "Ninja",
+                "-B",
+                "build",
+                "-DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++",
+                "-DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang",
+                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": [],
+            "detail": "Run CMake configure step (generates compile_commands.json)"
+        }
+    ]
+}

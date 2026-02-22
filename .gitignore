@@ -1,8 +1,6 @@
 .DS_Store
 Thumbs.db
 
-.vscode
-
 # Build directories
 build
 debug
@@ -27,8 +25,17 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 compile_commands.json
+CMakeUserPresets.json
 
 # IDE specific files
 .idea/
 *.swp
 *~
+
+# VSCode: ignore cache/state, track shared config
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/c_cpp_properties.json

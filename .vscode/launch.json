@@ -1,0 +1,60 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Fabric",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/Fabric",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build",
+            "env": {},
+            "sourceMap": {},
+            "initCommands": []
+        },
+        {
+            "name": "Debug UnitTests",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/UnitTests",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build",
+            "env": {},
+            "initCommands": []
+        },
+        {
+            "name": "Debug UnitTests (filtered)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/UnitTests",
+            "args": [
+                "--gtest_filter=${input:testFilter}"
+            ],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build",
+            "env": {},
+            "initCommands": []
+        },
+        {
+            "name": "Debug E2ETests",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/E2ETests",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "build",
+            "env": {},
+            "initCommands": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testFilter",
+            "type": "promptString",
+            "description": "gtest filter (e.g. ComponentTest.*, *Lifecycle*)",
+            "default": "*"
+        }
+    ]
+}
