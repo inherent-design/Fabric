@@ -8,7 +8,11 @@
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/Temporal.hh"
 #include "fabric/parser/ArgumentParser.hh"
+#include "fabric/ui/BgfxRenderInterface.hh"
+#include "fabric/ui/BgfxSystemInterface.hh"
 #include "fabric/utils/Profiler.hh"
+
+#include <RmlUi/Core.h>
 
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
@@ -130,6 +134,21 @@ int main(int argc, char* argv[]) {
         FABRIC_LOG_INFO("bgfx renderer: {}",
             bgfx::getRendererName(bgfx::getRendererType()));
 
+        // RmlUi backend interfaces
+        fabric::BgfxSystemInterface rmlSystem;
+        fabric::BgfxRenderInterface rmlRenderer;
+        rmlRenderer.init();
+
+        Rml::SetSystemInterface(&rmlSystem);
+        Rml::SetRenderInterface(&rmlRenderer);
+        Rml::Initialise();
+
+        Rml::Context* rmlContext = Rml::CreateContext(
+            "main",
+            Rml::Vector2i(pw, ph));
+
+        FABRIC_LOG_INFO("RmlUi context created ({}x{})", pw, ph);
+
         fabric::async::init();
 
         // Interactive subsystem setup
@@ -231,6 +250,8 @@ int main(int argc, char* argv[]) {
                         static_cast<uint16_t>(w), static_cast<uint16_t>(h));
                     float newAspect = static_cast<float>(w) / static_cast<float>(h);
                     camera.setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogeneousNdc);
+                    rmlContext->SetDimensions(Rml::Vector2i(
+                        static_cast<int>(w), static_cast<int>(h)));
                 }
             }
 
@@ -283,6 +304,15 @@ int main(int argc, char* argv[]) {
             {
                 FABRIC_ZONE_SCOPED_N("render_submit");
                 sceneView.render();
+
+                // RmlUi overlay on view 255 (after 3D scene, before frame flip)
+                int curW, curH;
+                SDL_GetWindowSizeInPixels(window, &curW, &curH);
+                rmlRenderer.beginFrame(
+                    static_cast<uint16_t>(curW), static_cast<uint16_t>(curH));
+                rmlContext->Update();
+                rmlContext->Render();
+
                 bgfx::frame();
             }
 
@@ -290,6 +320,9 @@ int main(int argc, char* argv[]) {
         }
 
         FABRIC_LOG_INFO("Shutting down");
+
+        Rml::Shutdown();
+        rmlRenderer.shutdown();
 
         bgfx::shutdown();
         SDL_DestroyWindow(window);

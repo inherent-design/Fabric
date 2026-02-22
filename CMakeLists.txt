@@ -168,6 +168,8 @@ set(FABRIC_CODEC_SOURCE_FILES
 # UI library components
 set(FABRIC_UI_SOURCE_FILES
     src/ui/WebView.cc
+    src/ui/BgfxRenderInterface.cc
+    src/ui/BgfxSystemInterface.cc
 )
 
 # Create internal static library (compile sources once, link into all targets)
@@ -184,6 +186,8 @@ target_include_directories(FabricLib
     PUBLIC
         ${CMAKE_CURRENT_BINARY_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE
+        ${FABRIC_RMLUI_SHADER_OUT}
 )
 
 target_link_libraries(FabricLib
@@ -215,6 +219,9 @@ target_compile_definitions(FabricLib
 
 # Tracy profiling (no-op when FABRIC_ENABLE_PROFILING is OFF)
 fabric_link_tracy(FabricLib)
+
+# Shader compilation must finish before FabricLib sources compile
+add_dependencies(FabricLib FabricRmlUiShaders)
 
 # Per-target compile options (replaces global CMAKE_CXX_FLAGS_* variables)
 target_compile_options(FabricLib PRIVATE
