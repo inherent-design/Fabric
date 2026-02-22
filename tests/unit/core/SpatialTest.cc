@@ -422,6 +422,69 @@ TEST_F(SpatialTest, SceneNodeHierarchy) {
     EXPECT_EQ(root.getChildren().size(), 1);
 }
 
+TEST_F(SpatialTest, QuaternionSlerp) {
+    // Slerp with identical quaternions returns the same quaternion
+    Quaternion<float> q1;
+    auto result = Quaternion<float>::slerp(q1, q1, 0.5f);
+    EXPECT_TRUE(almostEqual(result.x, q1.x));
+    EXPECT_TRUE(almostEqual(result.y, q1.y));
+    EXPECT_TRUE(almostEqual(result.z, q1.z));
+    EXPECT_TRUE(almostEqual(result.w, q1.w));
+
+    // Endpoints: t=0 returns a, t=1 returns b
+    Vector3<float, Space::World> axis(0.0f, 0.0f, 1.0f);
+    Quaternion<float> a = Quaternion<float>::fromAxisAngle(axis, 0.0f);
+    Quaternion<float> b = Quaternion<float>::fromAxisAngle(axis, static_cast<float>(M_PI) / 2.0f);
+
+    auto at0 = Quaternion<float>::slerp(a, b, 0.0f);
+    EXPECT_TRUE(almostEqual(at0.x, a.x));
+    EXPECT_TRUE(almostEqual(at0.y, a.y));
+    EXPECT_TRUE(almostEqual(at0.z, a.z));
+    EXPECT_TRUE(almostEqual(at0.w, a.w));
+
+    auto at1 = Quaternion<float>::slerp(a, b, 1.0f);
+    EXPECT_TRUE(almostEqual(at1.x, b.x));
+    EXPECT_TRUE(almostEqual(at1.y, b.y));
+    EXPECT_TRUE(almostEqual(at1.z, b.z));
+    EXPECT_TRUE(almostEqual(at1.w, b.w));
+
+    // Midpoint: t=0.5 for 90-degree rotation should give 45-degree rotation
+    auto mid = Quaternion<float>::slerp(a, b, 0.5f);
+    Quaternion<float> expected45 = Quaternion<float>::fromAxisAngle(axis, static_cast<float>(M_PI) / 4.0f);
+    EXPECT_TRUE(almostEqual(mid.x, expected45.x));
+    EXPECT_TRUE(almostEqual(mid.y, expected45.y));
+    EXPECT_TRUE(almostEqual(mid.z, expected45.z));
+    EXPECT_TRUE(almostEqual(mid.w, expected45.w));
+}
+
+TEST_F(SpatialTest, Vector3Lerp) {
+    Vector3<float, Space::World> a(0.0f, 0.0f, 0.0f);
+    Vector3<float, Space::World> b(10.0f, 20.0f, 30.0f);
+
+    // Identity: lerp(a, a, t) == a
+    auto same = Vector3<float, Space::World>::lerp(a, a, 0.5f);
+    EXPECT_FLOAT_EQ(same.x, 0.0f);
+    EXPECT_FLOAT_EQ(same.y, 0.0f);
+    EXPECT_FLOAT_EQ(same.z, 0.0f);
+
+    // Endpoints
+    auto at0 = Vector3<float, Space::World>::lerp(a, b, 0.0f);
+    EXPECT_FLOAT_EQ(at0.x, 0.0f);
+    EXPECT_FLOAT_EQ(at0.y, 0.0f);
+    EXPECT_FLOAT_EQ(at0.z, 0.0f);
+
+    auto at1 = Vector3<float, Space::World>::lerp(a, b, 1.0f);
+    EXPECT_FLOAT_EQ(at1.x, 10.0f);
+    EXPECT_FLOAT_EQ(at1.y, 20.0f);
+    EXPECT_FLOAT_EQ(at1.z, 30.0f);
+
+    // Midpoint
+    auto mid = Vector3<float, Space::World>::lerp(a, b, 0.5f);
+    EXPECT_FLOAT_EQ(mid.x, 5.0f);
+    EXPECT_FLOAT_EQ(mid.y, 10.0f);
+    EXPECT_FLOAT_EQ(mid.z, 15.0f);
+}
+
 TEST_F(SpatialTest, SceneBasics) {
     Scene scene;
     

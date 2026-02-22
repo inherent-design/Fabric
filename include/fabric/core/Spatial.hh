@@ -184,6 +184,15 @@ public:
     z /= len;
   }
   
+  // Linear interpolation
+  static Vector3<T, SpaceTag> lerp(const Vector3<T, SpaceTag>& a, const Vector3<T, SpaceTag>& b, T t) {
+    return Vector3<T, SpaceTag>(
+      a.x + t * (b.x - a.x),
+      a.y + t * (b.y - a.y),
+      a.z + t * (b.z - a.z)
+    );
+  }
+
   // Space conversion function
   template <typename TargetSpace>
   Vector3<T, TargetSpace> as() const {
@@ -363,6 +372,40 @@ public:
     return Quaternion<T>(-x * invLenSq, -y * invLenSq, -z * invLenSq, w * invLenSq);
   }
   
+  // Spherical linear interpolation
+  static Quaternion<T> slerp(const Quaternion<T>& a, const Quaternion<T>& b, T t) {
+    T dot = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+
+    // Negate one quaternion to take shorter path
+    Quaternion<T> b2 = b;
+    if (dot < T(0)) {
+      dot = -dot;
+      b2 = Quaternion<T>(-b.x, -b.y, -b.z, -b.w);
+    }
+
+    // Fall back to normalized lerp when quaternions are very close
+    if (dot > T(0.9995)) {
+      return Quaternion<T>(
+        a.x + t * (b2.x - a.x),
+        a.y + t * (b2.y - a.y),
+        a.z + t * (b2.z - a.z),
+        a.w + t * (b2.w - a.w)
+      ).normalized();
+    }
+
+    T theta = std::acos(dot);
+    T sinTheta = std::sin(theta);
+    T wa = std::sin((T(1) - t) * theta) / sinTheta;
+    T wb = std::sin(t * theta) / sinTheta;
+
+    return Quaternion<T>(
+      wa * a.x + wb * b2.x,
+      wa * a.y + wb * b2.y,
+      wa * a.z + wb * b2.z,
+      wa * a.w + wb * b2.w
+    );
+  }
+
   // Rotate a vector by this quaternion
   template <typename SpaceTag>
   Vector3<T, SpaceTag> rotateVector(const Vector3<T, SpaceTag>& v) const {
