@@ -6,6 +6,7 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/SceneView.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/core/Temporal.hh"
 #include "fabric/parser/ArgumentParser.hh"
 #include "fabric/utils/Profiler.hh"
 
@@ -143,6 +144,37 @@ int main(int argc, char* argv[]) {
         inputManager.bindKey("move_up", SDLK_SPACE);
         inputManager.bindKey("move_down", SDLK_LSHIFT);
 
+        // Time control bindings
+        inputManager.bindKey("time_pause", SDLK_P);
+        inputManager.bindKey("time_faster", SDLK_EQUALS);
+        inputManager.bindKey("time_slower", SDLK_MINUS);
+
+        auto& timeline = fabric::Timeline::instance();
+
+        dispatcher.addEventListener("time_pause", [&timeline](fabric::Event&) {
+            if (timeline.isPaused()) {
+                timeline.resume();
+                FABRIC_LOG_INFO("Timeline resumed");
+            } else {
+                timeline.pause();
+                FABRIC_LOG_INFO("Timeline paused");
+            }
+        });
+
+        dispatcher.addEventListener("time_faster", [&timeline](fabric::Event&) {
+            double scale = timeline.getGlobalTimeScale() + 0.25;
+            if (scale > 4.0) scale = 4.0;
+            timeline.setGlobalTimeScale(scale);
+            FABRIC_LOG_INFO("Time scale: {:.2f}", timeline.getGlobalTimeScale());
+        });
+
+        dispatcher.addEventListener("time_slower", [&timeline](fabric::Event&) {
+            double scale = timeline.getGlobalTimeScale() - 0.25;
+            if (scale < 0.25) scale = 0.25;
+            timeline.setGlobalTimeScale(scale);
+            FABRIC_LOG_INFO("Time scale: {:.2f}", timeline.getGlobalTimeScale());
+        });
+
         // Camera setup
         fabric::Camera camera;
         bool homogeneousNdc = bgfx::getCaps()->homogeneousDepth;
@@ -227,6 +259,7 @@ int main(int argc, char* argv[]) {
 
             while (accumulator >= kFixedDt) {
                 fabric::async::poll();
+                timeline.update(kFixedDt);
 
                 // Movement relative to camera orientation
                 float step = kMoveSpeed * static_cast<float>(kFixedDt);
@@ -246,10 +279,14 @@ int main(int argc, char* argv[]) {
             camera.updateView(cameraTransform);
 
             inputManager.beginFrame();
-            sceneView.render();
+
+            {
+                FABRIC_ZONE_SCOPED_N("render_submit");
+                sceneView.render();
+                bgfx::frame();
+            }
 
             FABRIC_FRAME_MARK;
-            bgfx::frame();
         }
 
         FABRIC_LOG_INFO("Shutting down");

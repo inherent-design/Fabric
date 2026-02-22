@@ -1,4 +1,5 @@
 #include "fabric/core/Rendering.hh"
+#include "fabric/utils/Profiler.hh"
 #include <cmath>
 
 namespace fabric {
@@ -129,6 +130,7 @@ void RenderList::addDrawCall(const DrawCall& call) {
 }
 
 void RenderList::sortByKey() {
+    FABRIC_ZONE_SCOPED_N("RenderList::sortByKey");
     std::sort(drawCalls_.begin(), drawCalls_.end(),
         [](const DrawCall& a, const DrawCall& b) {
             return a.sortKey < b.sortKey;
@@ -178,6 +180,8 @@ std::vector<SceneNode*> FrustumCuller::cull(
     const float* viewProjection,
     SceneNode& root
 ) {
+    FABRIC_ZONE_SCOPED_N("FrustumCuller::cull");
+
     Frustum frustum;
     frustum.extractFromVP(viewProjection);
 

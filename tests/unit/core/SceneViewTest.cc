@@ -238,3 +238,82 @@ TEST(SceneNodeAABBTest, SetAndGetAABB) {
     EXPECT_FLOAT_EQ(result->min.x, -1.0f);
     EXPECT_FLOAT_EQ(result->max.x, 1.0f);
 }
+
+TEST_F(FrustumCullerTest, CameraMovementChangesVisibleSet) {
+    Camera camera;
+    camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
+
+    SceneNode root("root");
+    auto* leftNode = root.createChild("left");
+    leftNode->setAABB(AABB(Vec3f(-50.0f, -1.0f, 5.0f), Vec3f(-40.0f, 1.0f, 10.0f)));
+
+    auto* rightNode = root.createChild("right");
+    rightNode->setAABB(AABB(Vec3f(40.0f, -1.0f, 5.0f), Vec3f(50.0f, 1.0f, 10.0f)));
+
+    // Camera at origin: neither far-left nor far-right should be visible
+    Transform<float> camTransform;
+    camera.updateView(camTransform);
+
+    float vp[16];
+    camera.getViewProjection(vp);
+    auto visible1 = FrustumCuller::cull(vp, root);
+
+    std::unordered_set<std::string> names1;
+    for (SceneNode* n : visible1) names1.insert(n->getName());
+    EXPECT_FALSE(names1.count("left"));
+    EXPECT_FALSE(names1.count("right"));
+
+    // Move camera far to the left: left node should now be visible
+    camTransform.setPosition(Vec3f(-45.0f, 0.0f, 0.0f));
+    camera.updateView(camTransform);
+    camera.getViewProjection(vp);
+    auto visible2 = FrustumCuller::cull(vp, root);
+
+    std::unordered_set<std::string> names2;
+    for (SceneNode* n : visible2) names2.insert(n->getName());
+    EXPECT_TRUE(names2.count("left"));
+    EXPECT_FALSE(names2.count("right"));
+}
+
+TEST_F(FrustumCullerTest, MultipleCamerasOnDifferentViews) {
+    // Two cameras with different positions see different subsets of the scene
+    Camera cameraA;
+    cameraA.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
+
+    Camera cameraB;
+    cameraB.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
+
+    SceneNode root("root");
+    auto* nearCenter = root.createChild("near_center");
+    nearCenter->setAABB(AABB(Vec3f(-1.0f, -1.0f, 5.0f), Vec3f(1.0f, 1.0f, 10.0f)));
+
+    auto* farRight = root.createChild("far_right");
+    farRight->setAABB(AABB(Vec3f(80.0f, -1.0f, 5.0f), Vec3f(90.0f, 1.0f, 10.0f)));
+
+    // Camera A at origin: sees near_center, not far_right
+    Transform<float> transformA;
+    cameraA.updateView(transformA);
+
+    float vpA[16];
+    cameraA.getViewProjection(vpA);
+    auto visibleA = FrustumCuller::cull(vpA, root);
+
+    std::unordered_set<std::string> namesA;
+    for (SceneNode* n : visibleA) namesA.insert(n->getName());
+    EXPECT_TRUE(namesA.count("near_center"));
+    EXPECT_FALSE(namesA.count("far_right"));
+
+    // Camera B offset to the right: sees far_right, not near_center
+    Transform<float> transformB;
+    transformB.setPosition(Vec3f(85.0f, 0.0f, 0.0f));
+    cameraB.updateView(transformB);
+
+    float vpB[16];
+    cameraB.getViewProjection(vpB);
+    auto visibleB = FrustumCuller::cull(vpB, root);
+
+    std::unordered_set<std::string> namesB;
+    for (SceneNode* n : visibleB) namesB.insert(n->getName());
+    EXPECT_FALSE(namesB.count("near_center"));
+    EXPECT_TRUE(namesB.count("far_right"));
+}

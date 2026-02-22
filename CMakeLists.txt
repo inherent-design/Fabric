@@ -78,6 +78,9 @@ include(FabricAsio)
 # bgfx rendering backend (bx + bimg + bgfx via bgfx.cmake)
 include(FabricBgfx)
 
+# RmlUi - HTML/CSS UI (scaffold only, full integration is Sprint 3)
+include(FabricRmlUi)
+
 # SDL3 Configuration
 FetchContent_Declare(
     SDL3
@@ -191,6 +194,7 @@ target_link_libraries(FabricLib
         quill::quill
         nlohmann_json::nlohmann_json
         asio::asio
+        rmlui_core
 )
 
 target_compile_definitions(FabricLib
