@@ -169,7 +169,7 @@ int main(int argc, char* argv[]) {
         inputManager.bindKey("time_faster", SDLK_EQUALS);
         inputManager.bindKey("time_slower", SDLK_MINUS);
 
-        auto& timeline = fabric::Timeline::instance();
+        fabric::Timeline timeline;
 
         dispatcher.addEventListener("time_pause", [&timeline](fabric::Event&) {
             if (timeline.isPaused()) {
