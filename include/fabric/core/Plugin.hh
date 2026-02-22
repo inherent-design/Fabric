@@ -86,14 +86,7 @@ using PluginFactory = std::function<std::shared_ptr<Plugin>()>;
  */
 class PluginManager {
 public:
-  /**
-   * @brief Get the singleton instance
-   * 
-   * This is thread-safe in C++11 and later.
-   * 
-   * @return PluginManager singleton
-   */
-  static PluginManager& getInstance();
+  PluginManager() = default;
 
   /**
    * @brief Register a plugin factory
@@ -151,22 +144,10 @@ public:
    */
   void shutdownAll();
 
-private:
-  /**
-   * @brief Private constructor (singleton)
-   */
-  PluginManager() = default;
-
-  /**
-   * @brief Private copy constructor (singleton)
-   */
   PluginManager(const PluginManager&) = delete;
-
-  /**
-   * @brief Private assignment operator (singleton)
-   */
   PluginManager& operator=(const PluginManager&) = delete;
 
+private:
   mutable std::mutex pluginMutex;
   std::unordered_map<std::string, PluginFactory> pluginFactories;
   std::unordered_map<std::string, std::shared_ptr<Plugin>> loadedPlugins;
@@ -174,25 +155,18 @@ private:
 
 /**
  * @brief Helper macro for plugin registration
- * 
- * This macro creates a static object whose constructor registers
- * the plugin with the PluginManager.
- * 
+ *
+ * Registers a plugin factory with a PluginManager instance.
+ *
+ * @param manager PluginManager reference
  * @param PluginClass Plugin class name
  */
-#define FABRIC_REGISTER_PLUGIN(PluginClass) \
-  namespace { \
-    struct PluginRegistrar_##PluginClass { \
-      PluginRegistrar_##PluginClass() { \
-        fabric::PluginManager::getInstance().registerPlugin( \
-          #PluginClass, \
-          []() -> std::shared_ptr<fabric::Plugin> { \
-            return std::make_shared<PluginClass>(); \
-          } \
-        ); \
-      } \
-    }; \
-    static PluginRegistrar_##PluginClass registrar_##PluginClass; \
-  }
+#define FABRIC_REGISTER_PLUGIN(manager, PluginClass) \
+  (manager).registerPlugin( \
+    #PluginClass, \
+    []() -> std::shared_ptr<fabric::Plugin> { \
+      return std::make_shared<PluginClass>(); \
+    } \
+  )
 
 } // namespace fabric

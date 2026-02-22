@@ -180,32 +180,23 @@ public:
     /** Create a prediction of future state */
     TimeState predictFutureState(double secondsAhead) const;
 
-    /** Get singleton instance */
-    static Timeline& instance();
-
-    /** Reset the singleton instance */
-    static void reset();
-
 private:
     /** Restore snapshot without acquiring mutex. Caller must hold mutex_. */
     void restoreSnapshotLocked(const TimeState& state);
     double currentTime_;
     double globalTimeScale_;
     bool isPaused_;
-    
+
     // Snapshots
     bool automaticSnapshots_;
     double snapshotInterval_;
     double snapshotCounter_;
     std::deque<TimeState> history_;
-    
+
     // Regions
     std::vector<std::unique_ptr<TimeRegion>> regions_;
-    
+
     std::mutex mutex_;
-    
-    // Singleton
-    static std::unique_ptr<Timeline> instance_;
 };
 
 /**

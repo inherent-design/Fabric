@@ -52,14 +52,6 @@ private:
 
 class TemporalTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        Timeline::reset();
-    }
-
-    void TearDown() override {
-        Timeline::reset();
-    }
-
     double testValue = 0.0;
 };
 
@@ -185,7 +177,7 @@ TEST_F(TemporalTest, TimeRegionSnapshot) {
 }
 
 TEST_F(TemporalTest, TimelineBasics) {
-    Timeline& timeline = Timeline::instance();
+    Timeline timeline;
     
     // Test initial state
     EXPECT_DOUBLE_EQ(timeline.getCurrentTime(), 0.0);
@@ -219,7 +211,7 @@ TEST_F(TemporalTest, TimelineBasics) {
 }
 
 TEST_F(TemporalTest, TimelineRegions) {
-    Timeline& timeline = Timeline::instance();
+    Timeline timeline;
     
     // Create a time region
     TimeRegion* region = timeline.createRegion(0.5); // 0.5x time scale
@@ -246,7 +238,7 @@ TEST_F(TemporalTest, TimelineRegions) {
 }
 
 TEST_F(TemporalTest, TimelineSnapshots) {
-    Timeline& timeline = Timeline::instance();
+    Timeline timeline;
     
     // Create a snapshot
     TimeState snapshot = timeline.createSnapshot();
@@ -262,7 +254,7 @@ TEST_F(TemporalTest, TimelineSnapshots) {
 }
 
 TEST_F(TemporalTest, TimelineAutomaticSnapshots) {
-    Timeline& timeline = Timeline::instance();
+    Timeline timeline;
     
     // Enable automatic snapshots every 1.0 time units
     timeline.setAutomaticSnapshots(true, 1.0);
@@ -335,7 +327,7 @@ TEST_F(TemporalTest, InterpolatorBasics) {
 }
 
 TEST_F(TemporalTest, TimelinePrediction) {
-    Timeline& timeline = Timeline::instance();
+    Timeline timeline;
     
     // Set current time
     timeline.update(10.0);

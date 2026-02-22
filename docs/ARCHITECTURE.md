@@ -161,5 +161,5 @@ GoogleTest 1.17.0 for all tests. Two test executables: UnitTests (per-component,
 ## Known Issues
 
 1. **Temporal dead scaffolding**: approximately 70% of Temporal.hh is unused scaffolding. Core timeline and snapshot functionality works; the rest needs cleanup.
-2. **Singletons**: Timeline, ResourceHub, and PluginManager are singletons. Planned migration to pass-by-reference through an application context object.
+2. **Remaining singleton**: ResourceHub is still a singleton. Timeline and PluginManager have been converted to regular classes passed by reference. ResourceHub de-singleton is a follow-up task.
 3. **mimalloc macOS zone interposition**: mimalloc's malloc zone replacement on macOS can conflict with AddressSanitizer and some debugging tools. The override is excluded from test targets to avoid interference.

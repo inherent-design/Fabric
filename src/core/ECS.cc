@@ -1,4 +1,5 @@
 #include "fabric/core/ECS.hh"
+#include "fabric/utils/Profiler.hh"
 
 #include <utility>
 
@@ -32,6 +33,7 @@ const flecs::world& World::get() const {
 }
 
 bool World::progress(float deltaTime) {
+    FABRIC_ZONE_SCOPED_N("ECS::progress");
     return world_->progress(deltaTime);
 }
 

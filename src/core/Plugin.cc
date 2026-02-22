@@ -6,11 +6,6 @@
 
 namespace fabric {
 
-PluginManager& PluginManager::getInstance() {
-  static PluginManager instance;
-  return instance;
-}
-
 void PluginManager::registerPlugin(const std::string& name, const PluginFactory& factory) {
   std::lock_guard<std::mutex> lock(pluginMutex);
   

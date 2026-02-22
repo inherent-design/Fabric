@@ -4,9 +4,6 @@
 
 namespace fabric {
 
-// Initialize static members
-std::unique_ptr<Timeline> Timeline::instance_ = nullptr;
-
 // TimeState implementation
 TimeState::TimeState() : timestamp_(0.0) {}
 
@@ -221,17 +218,6 @@ bool Timeline::jumpToSnapshot(size_t index) {
 
 TimeState Timeline::predictFutureState(double secondsAhead) const {
     return TimeState(currentTime_ + secondsAhead);
-}
-
-Timeline& Timeline::instance() {
-    if (!instance_) {
-        instance_ = std::make_unique<Timeline>();
-    }
-    return *instance_;
-}
-
-void Timeline::reset() {
-    instance_.reset();
 }
 
 } // namespace fabric
