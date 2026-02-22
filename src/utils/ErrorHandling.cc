@@ -1,4 +1,5 @@
 #include "fabric/utils/ErrorHandling.hh"
+#include "fabric/core/Log.hh"
 
 namespace fabric {
 
@@ -7,7 +8,10 @@ FabricException::FabricException(const std::string &message)
 
 const char *FabricException::what() const noexcept { return message.c_str(); }
 
-void throwError(const std::string &message) { throw FabricException(message); }
+void throwError(const std::string &message) {
+  FABRIC_LOG_ERROR("FabricException: {}", message);
+  throw FabricException(message);
+}
 
 std::string_view errorCodeToString(ErrorCode code) {
   switch (code) {

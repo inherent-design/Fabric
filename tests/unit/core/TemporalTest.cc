@@ -50,32 +50,17 @@ private:
     int updateCount_;
 };
 
-// Mock entity for testing
-class MockEntity {
-public:
-    MockEntity() : value_(0.0) {}
-    
-    double getValue() const { return value_; }
-    void setValue(double value) { value_ = value; }
-    
-private:
-    double value_;
-};
-
 class TemporalTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Reset the singleton for each test
         Timeline::reset();
     }
-    
+
     void TearDown() override {
-        // Clean up the singleton after each test
         Timeline::reset();
     }
-    
+
     double testValue = 0.0;
-    MockEntity mockEntity;
 };
 
 TEST_F(TemporalTest, TimeStateBasics) {
@@ -185,40 +170,18 @@ TEST_F(TemporalTest, TimeRegionBasics) {
     // to verify the time scale is applied correctly
 }
 
-TEST_F(TemporalTest, TimeRegionEntityManagement) {
-    TimeRegion region;
-    
-    // Add entities
-    Entity* entity1 = reinterpret_cast<Entity*>(&mockEntity); // Cast for testing
-    region.addEntity(entity1);
-    
-    // Check entities
-    EXPECT_EQ(region.getEntities().size(), 1);
-    EXPECT_EQ(region.getEntities()[0], entity1);
-    
-    // Add same entity again (should not duplicate)
-    region.addEntity(entity1);
-    EXPECT_EQ(region.getEntities().size(), 1);
-    
-    // Remove entity
-    region.removeEntity(entity1);
-    EXPECT_TRUE(region.getEntities().empty());
-}
-
 TEST_F(TemporalTest, TimeRegionSnapshot) {
     TimeRegion region;
-    
-    // Create a time state from the region
+
     TimeState state = region.createSnapshot();
-    
-    // Without any entities, this is mostly a placeholder test
-    EXPECT_EQ(state.getTimestamp(), 0.0); // Initial local time
-    
-    // Test restoring from a snapshot
+    EXPECT_EQ(state.getTimestamp(), 0.0);
+
     TimeState newState(10.0);
     region.restoreSnapshot(newState);
-    
-    // Again, without entities, this is mostly a placeholder
+
+    // After restore, local time should match the snapshot
+    TimeState restored = region.createSnapshot();
+    EXPECT_DOUBLE_EQ(restored.getTimestamp(), 10.0);
 }
 
 TEST_F(TemporalTest, TimelineBasics) {

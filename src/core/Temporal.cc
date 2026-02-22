@@ -1,6 +1,6 @@
 #include "fabric/core/Temporal.hh"
+#include "fabric/core/Log.hh"
 #include <algorithm>
-#include <stdexcept>
 
 namespace fabric {
 
@@ -48,20 +48,17 @@ std::unique_ptr<TimeState> TimeState::clone() const {
 }
 
 // TimeRegion implementation
-TimeRegion::TimeRegion() : timeScale_(1.0), localTime_(0.0) {}
+TimeRegion::TimeRegion() : timeScale_(1.0), localTime_(0.0) {
+    FABRIC_LOG_DEBUG("TimeRegion created with default scale 1.0");
+}
 
-TimeRegion::TimeRegion(double timeScale) : timeScale_(timeScale), localTime_(0.0) {}
+TimeRegion::TimeRegion(double timeScale) : timeScale_(timeScale), localTime_(0.0) {
+    FABRIC_LOG_DEBUG("TimeRegion created with scale {}", timeScale);
+}
 
 void TimeRegion::update(double worldDeltaTime) {
-    // Apply time scale to the delta time
     double scaledDelta = worldDeltaTime * timeScale_;
     localTime_ += scaledDelta;
-    
-    // Update all entities in this region
-    for (auto entity : entities_) {
-        // For now, just a placeholder as we don't have the Entity class defined
-        // entity->update(scaledDelta);
-    }
 }
 
 double TimeRegion::getTimeScale() const {
@@ -69,39 +66,16 @@ double TimeRegion::getTimeScale() const {
 }
 
 void TimeRegion::setTimeScale(double scale) {
+    FABRIC_LOG_DEBUG("TimeRegion scale changed from {} to {}", timeScale_, scale);
     timeScale_ = scale;
 }
 
-void TimeRegion::addEntity(Entity* entity) {
-    // Check if entity is already in this region
-    if (std::find(entities_.begin(), entities_.end(), entity) == entities_.end()) {
-        entities_.push_back(entity);
-    }
-}
-
-void TimeRegion::removeEntity(Entity* entity) {
-    auto it = std::find(entities_.begin(), entities_.end(), entity);
-    if (it != entities_.end()) {
-        entities_.erase(it);
-    }
-}
-
-const std::vector<Entity*>& TimeRegion::getEntities() const {
-    return entities_;
-}
-
 TimeState TimeRegion::createSnapshot() const {
-    TimeState state(localTime_);
-    
-    // For each entity, capture its state
-    // This is a placeholder since we don't have the Entity class defined
-    
-    return state;
+    return TimeState(localTime_);
 }
 
 void TimeRegion::restoreSnapshot(const TimeState& state) {
-    // For each entity, restore its state from the snapshot
-    // This is a placeholder since we don't have the Entity class defined
+    localTime_ = state.getTimestamp();
 }
 
 // Timeline implementation
@@ -112,6 +86,7 @@ Timeline::Timeline() :
     automaticSnapshots_(false),
     snapshotInterval_(1.0),
     snapshotCounter_(0.0) {
+    FABRIC_LOG_DEBUG("Timeline initialized");
 }
 
 void Timeline::update(double deltaTime) {
@@ -125,7 +100,8 @@ void Timeline::update(double deltaTime) {
     double scaledDelta = deltaTime * globalTimeScale_;
     currentTime_ += scaledDelta;
     
-    // Create automatic snapshots for each elapsed interval
+    // Accumulate real time and emit a snapshot for each elapsed interval.
+    // Ring buffer caps at 100 entries to bound memory.
     if (automaticSnapshots_) {
         snapshotCounter_ += deltaTime;
         while (snapshotCounter_ >= snapshotInterval_) {
@@ -133,6 +109,7 @@ void Timeline::update(double deltaTime) {
             snapshotCounter_ -= snapshotInterval_;
 
             if (history_.size() > 100) {
+                FABRIC_LOG_WARN("Snapshot history full, discarding oldest entry");
                 history_.pop_front();
             }
         }
@@ -149,6 +126,7 @@ TimeRegion* Timeline::createRegion(double timeScale) {
     auto region = std::make_unique<TimeRegion>(timeScale);
     TimeRegion* result = region.get();
     regions_.push_back(std::move(region));
+    FABRIC_LOG_DEBUG("Timeline: created region (scale={}, total={})", timeScale, regions_.size());
     return result;
 }
 
@@ -158,24 +136,15 @@ void Timeline::removeRegion(TimeRegion* region) {
                          [region](const std::unique_ptr<TimeRegion>& r) {
                              return r.get() == region;
                          });
-    
+
     if (it != regions_.end()) {
         regions_.erase(it);
+        FABRIC_LOG_DEBUG("Timeline: removed region (remaining={})", regions_.size());
     }
 }
 
 TimeState Timeline::createSnapshot() const {
-    TimeState state(currentTime_);
-    
-    // Combine snapshots from all regions
-    for (const auto& region : regions_) {
-        TimeState regionState = region->createSnapshot();
-        
-        // Merge region state into the global state
-        // This is a placeholder since we need specifics of the merging process
-    }
-    
-    return state;
+    return TimeState(currentTime_);
 }
 
 void Timeline::restoreSnapshot(const TimeState& state) {
@@ -197,6 +166,7 @@ double Timeline::getCurrentTime() const {
 
 void Timeline::setGlobalTimeScale(double scale) {
     std::lock_guard<std::mutex> lock(mutex_);
+    FABRIC_LOG_DEBUG("Timeline: global time scale {} -> {}", globalTimeScale_, scale);
     globalTimeScale_ = scale;
 }
 
@@ -207,11 +177,13 @@ double Timeline::getGlobalTimeScale() const {
 void Timeline::pause() {
     std::lock_guard<std::mutex> lock(mutex_);
     isPaused_ = true;
+    FABRIC_LOG_DEBUG("Timeline paused at t={}", currentTime_);
 }
 
 void Timeline::resume() {
     std::lock_guard<std::mutex> lock(mutex_);
     isPaused_ = false;
+    FABRIC_LOG_DEBUG("Timeline resumed at t={}", currentTime_);
 }
 
 bool Timeline::isPaused() const {
@@ -238,24 +210,17 @@ bool Timeline::jumpToSnapshot(size_t index) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (index >= history_.size()) {
+        FABRIC_LOG_WARN("jumpToSnapshot: index {} out of range (history size={})", index, history_.size());
         return false;
     }
 
+    FABRIC_LOG_DEBUG("Timeline: jumping to snapshot {} (t={})", index, history_[index].getTimestamp());
     restoreSnapshotLocked(history_[index]);
     return true;
 }
 
 TimeState Timeline::predictFutureState(double secondsAhead) const {
-    // Simple prediction by cloning the current state
-    // In a real implementation, this would use physics and motion information
-    // to predict future positions and states
-    
-    TimeState futureState(currentTime_ + secondsAhead);
-    
-    // This is a placeholder for actual prediction logic
-    // which would involve extrapolating motion, animation, etc.
-    
-    return futureState;
+    return TimeState(currentTime_ + secondsAhead);
 }
 
 Timeline& Timeline::instance() {

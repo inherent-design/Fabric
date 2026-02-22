@@ -1,4 +1,5 @@
 #include "fabric/core/Lifecycle.hh"
+#include "fabric/core/Log.hh"
 
 #include <set>
 
@@ -50,7 +51,9 @@ LifecycleManager::LifecycleManager()
 }
 
 void LifecycleManager::setState(LifecycleState state) {
+  auto previous = sm_.getState();
   sm_.setState(state);
+  FABRIC_LOG_DEBUG("Lifecycle: transition {} -> {}", lifecycleStateToString(previous), lifecycleStateToString(state));
 }
 
 LifecycleState LifecycleManager::getState() const {

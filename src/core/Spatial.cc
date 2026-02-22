@@ -1,4 +1,5 @@
 #include "fabric/core/Spatial.hh"
+#include "fabric/core/Log.hh"
 #include <cmath>
 #include <algorithm>
 
@@ -21,13 +22,15 @@ void SceneNode::update(float deltaTime) {
 
 SceneNode* SceneNode::addChild(std::unique_ptr<SceneNode> child) {
     if (child->parent_) {
-        // If the child already has a parent, detach it first
+        FABRIC_LOG_DEBUG("SceneGraph: reparenting '{}' from '{}' to '{}'",
+                         child->getName(), child->parent_->getName(), name_);
         child->parent_->detachChild(child.get());
     }
-    
+
     SceneNode* childPtr = child.get();
     child->parent_ = this;
     children_.push_back(std::move(child));
+    FABRIC_LOG_DEBUG("SceneGraph: added child '{}' to '{}'", childPtr->getName(), name_);
     return childPtr;
 }
 
@@ -39,6 +42,7 @@ SceneNode* SceneNode::createChild(const std::string& name) {
 std::unique_ptr<SceneNode> SceneNode::detachChild(SceneNode* child) {
     for (auto it = children_.begin(); it != children_.end(); ++it) {
         if (it->get() == child) {
+            FABRIC_LOG_DEBUG("SceneGraph: detached '{}' from '{}'", child->getName(), name_);
             std::unique_ptr<SceneNode> result = std::move(*it);
             children_.erase(it);
             result->parent_ = nullptr;

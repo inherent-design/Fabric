@@ -127,7 +127,7 @@ void ResourceHub::shutdown() {
         threadCopySucceeded = true;
       }
     } catch (...) {
-      // Ignore errors, just continue
+      FABRIC_LOG_WARN("ResourceHub: failed to copy worker threads during shutdown");
       if (threadControlMutex_.try_lock()) {
         threadControlMutex_.unlock();
       }
@@ -208,6 +208,7 @@ void ResourceHub::shutdown() {
             clear();
             clearCompleted = true;
           } catch (...) {
+            FABRIC_LOG_ERROR("ResourceHub: unknown exception during clear() in shutdown");
             clearCompleted = true;
           }
         });
@@ -245,7 +246,8 @@ bool ResourceHub::addDependency(const std::string &dependentId,
   try {
     return resourceGraph_.addEdge(dependentId, dependencyId);
   } catch (const CycleDetectedException &e) {
-    // Log the cycle detection
+    FABRIC_LOG_WARN("ResourceHub: cycle detected adding dependency {} -> {}: {}",
+                    dependentId, dependencyId, e.what());
     return false;
   }
 }
@@ -614,7 +616,7 @@ size_t ResourceHub::enforceMemoryBudget() {
         hasSingleRef = resource.use_count() == 1;
       }
     } catch (const std::exception& e) {
-      // Skip on any error
+      FABRIC_LOG_DEBUG("ResourceHub: skipping candidate '{}': {}", id, e.what());
     }
     
     // Release lock immediately
@@ -715,7 +717,9 @@ size_t ResourceHub::enforceMemoryBudget() {
         if (nodeLock->isLocked()) {
           nodeLock->release();
         }
-      } catch (...) { }
+      } catch (...) {
+        FABRIC_LOG_WARN("ResourceHub: failed to release lock for '{}'", candidate.id);
+      }
       
       FABRIC_LOG_ERROR("Error evicting resource {}: {}", candidate.id, e.what());
       continue;
@@ -1178,7 +1182,7 @@ ResourceHub::ResourceHub()
       }
     }
   } catch (...) {
-    // If anything goes wrong, assume we're in a test environment to be safe
+    FABRIC_LOG_DEBUG("ResourceHub: exception during test environment detection, defaulting to test mode");
     inTestEnvironment = true;
   }
   

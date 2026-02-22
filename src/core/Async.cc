@@ -1,4 +1,5 @@
 #include "fabric/core/Async.hh"
+#include "fabric/core/Log.hh"
 
 #include <optional>
 
@@ -13,9 +14,11 @@ asio::io_context& context() {
 
 void init() {
   work_guard.emplace(asio::make_work_guard(io_ctx));
+  FABRIC_LOG_INFO("Async: subsystem initialized");
 }
 
 void shutdown() {
+  FABRIC_LOG_INFO("Async: subsystem shutting down");
   work_guard.reset();
   io_ctx.run();
 }
