@@ -1,4 +1,5 @@
 #include "fabric/core/Spatial.hh"
+#include "fabric/core/Rendering.hh"
 #include "fabric/core/Log.hh"
 #include <cmath>
 #include <algorithm>
@@ -6,6 +7,20 @@
 namespace fabric {
 
 // SceneNode implementation
+
+SceneNode::SceneNode(std::string name)
+    : name_(std::move(name)), parent_(nullptr) {}
+
+SceneNode::~SceneNode() = default;
+
+void SceneNode::setAABB(const AABB& aabb) {
+    aabb_ = std::make_unique<AABB>(aabb);
+}
+
+const AABB* SceneNode::getAABB() const {
+    return aabb_.get();
+}
+
 void SceneNode::updateSelf(float deltaTime) {
     // Base implementation does nothing
 }

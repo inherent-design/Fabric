@@ -136,6 +136,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/Rendering.cc
     src/core/Camera.cc
     src/core/InputManager.cc
+    src/core/SceneView.cc
 )
 
 # Utils library components

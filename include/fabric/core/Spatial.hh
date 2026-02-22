@@ -21,6 +21,7 @@ template <typename T, typename SpaceTag> class Vector4;
 template <typename T> class Matrix4x4;
 template <typename T> class Quaternion;
 template <typename T> class Transform;
+struct AABB;
 
 /**
  * @brief Type tags for different coordinate spaces
@@ -868,13 +869,12 @@ public:
    * 
    * @param name Name of the node
    */
-  explicit SceneNode(std::string name = "node")
-    : name_(std::move(name)), parent_(nullptr) {}
+  explicit SceneNode(std::string name = "node");
   
   /**
    * @brief Virtual destructor
    */
-  virtual ~SceneNode() = default;
+  virtual ~SceneNode();
   
   /**
    * @brief Get the node name
@@ -1038,16 +1038,20 @@ public:
   Quat getRotation() const {
     return localTransform_.getRotation();
   }
-  
+
   /**
    * @brief Get the local scale
-   * 
+   *
    * @return Local scale
    */
   Vec3 getScale() const {
     return localTransform_.getScale();
   }
-  
+
+  // Optional bounding box for frustum culling
+  void setAABB(const AABB& aabb);
+  const AABB* getAABB() const;
+
 protected:
   /**
    * @brief Update this node (without children)
@@ -1063,6 +1067,7 @@ private:
   TransformType localTransform_;
   SceneNode* parent_;
   std::vector<std::unique_ptr<SceneNode>> children_;
+  std::unique_ptr<AABB> aabb_;
 };
 
 /**
