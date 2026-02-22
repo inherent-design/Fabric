@@ -1,6 +1,11 @@
 #include "fabric/core/Async.hh"
+#include "fabric/core/Camera.hh"
 #include "fabric/core/Constants.g.hh"
+#include "fabric/core/Event.hh"
+#include "fabric/core/InputManager.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/core/SceneView.hh"
+#include "fabric/core/Spatial.hh"
 #include "fabric/parser/ArgumentParser.hh"
 #include "fabric/utils/Profiler.hh"
 
@@ -10,6 +15,7 @@
 #include <SDL3/SDL_properties.h>
 
 #include <chrono>
+#include <cmath>
 #include <iostream>
 
 namespace {
@@ -125,6 +131,40 @@ int main(int argc, char* argv[]) {
 
         fabric::async::init();
 
+        // Interactive subsystem setup
+        fabric::EventDispatcher dispatcher;
+        fabric::InputManager inputManager(dispatcher);
+
+        // WASD + space/shift movement bindings
+        inputManager.bindKey("move_forward", SDLK_W);
+        inputManager.bindKey("move_backward", SDLK_S);
+        inputManager.bindKey("move_left", SDLK_A);
+        inputManager.bindKey("move_right", SDLK_D);
+        inputManager.bindKey("move_up", SDLK_SPACE);
+        inputManager.bindKey("move_down", SDLK_LSHIFT);
+
+        // Camera setup
+        fabric::Camera camera;
+        bool homogeneousNdc = bgfx::getCaps()->homogeneousDepth;
+        float aspect = static_cast<float>(pw) / static_cast<float>(ph);
+        camera.setPerspective(60.0f, aspect, 0.1f, 1000.0f, homogeneousNdc);
+
+        fabric::Transform<float> cameraTransform;
+        cameraTransform.setPosition(fabric::Vector3<float, fabric::Space::World>(0.0f, 0.0f, -5.0f));
+        camera.updateView(cameraTransform);
+
+        // Scene setup
+        fabric::Scene scene;
+        fabric::SceneView sceneView(0, camera, *scene.getRoot());
+
+        // Camera control state
+        constexpr float kMoveSpeed = 5.0f;
+        constexpr float kMouseSensitivity = 0.002f;
+        float cameraYaw = 0.0f;
+        float cameraPitch = 0.0f;
+
+        FABRIC_LOG_INFO("Interactive systems initialized");
+
         // Fixed-timestep main loop
         constexpr double kFixedDt = 1.0 / 60.0;
         double accumulator = 0.0;
@@ -146,6 +186,8 @@ int main(int argc, char* argv[]) {
 
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
+                inputManager.processEvent(event);
+
                 if (event.type == SDL_EVENT_QUIT)
                     running = false;
 
@@ -155,15 +197,56 @@ int main(int argc, char* argv[]) {
                     bgfx::reset(w, h, BGFX_RESET_VSYNC);
                     bgfx::setViewRect(0, 0, 0,
                         static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                    float newAspect = static_cast<float>(w) / static_cast<float>(h);
+                    camera.setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogeneousNdc);
                 }
             }
 
+            // Mouse look: apply once per frame (not per fixed step)
+            cameraYaw += inputManager.mouseDeltaX() * kMouseSensitivity;
+            cameraPitch += inputManager.mouseDeltaY() * kMouseSensitivity;
+
+            constexpr float kMaxPitch = 1.5f; // ~86 degrees
+            if (cameraPitch > kMaxPitch) cameraPitch = kMaxPitch;
+            if (cameraPitch < -kMaxPitch) cameraPitch = -kMaxPitch;
+
+            // Build camera rotation from yaw (Y axis) then pitch (X axis)
+            auto yawQ = fabric::Quaternion<float>::fromAxisAngle(
+                fabric::Vector3<float, fabric::Space::World>(0.0f, 1.0f, 0.0f), cameraYaw);
+            auto pitchQ = fabric::Quaternion<float>::fromAxisAngle(
+                fabric::Vector3<float, fabric::Space::World>(1.0f, 0.0f, 0.0f), cameraPitch);
+            auto rotation = yawQ * pitchQ;
+            cameraTransform.setRotation(rotation);
+
+            // Derive direction vectors from current rotation
+            auto fwd = rotation.rotateVector(
+                fabric::Vector3<float, fabric::Space::World>(0.0f, 0.0f, 1.0f));
+            auto right = rotation.rotateVector(
+                fabric::Vector3<float, fabric::Space::World>(1.0f, 0.0f, 0.0f));
+            auto up = fabric::Vector3<float, fabric::Space::World>(0.0f, 1.0f, 0.0f);
+
             while (accumulator >= kFixedDt) {
                 fabric::async::poll();
+
+                // Movement relative to camera orientation
+                float step = kMoveSpeed * static_cast<float>(kFixedDt);
+                auto pos = cameraTransform.getPosition();
+
+                if (inputManager.isActionActive("move_forward"))  pos = pos + fwd * step;
+                if (inputManager.isActionActive("move_backward")) pos = pos - fwd * step;
+                if (inputManager.isActionActive("move_right"))    pos = pos + right * step;
+                if (inputManager.isActionActive("move_left"))     pos = pos - right * step;
+                if (inputManager.isActionActive("move_up"))       pos = pos + up * step;
+                if (inputManager.isActionActive("move_down"))     pos = pos - up * step;
+
+                cameraTransform.setPosition(pos);
                 accumulator -= kFixedDt;
             }
 
-            bgfx::touch(0);
+            camera.updateView(cameraTransform);
+
+            inputManager.beginFrame();
+            sceneView.render();
 
             FABRIC_FRAME_MARK;
             bgfx::frame();

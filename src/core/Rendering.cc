@@ -172,4 +172,44 @@ Transform<float> TransformInterpolator::interpolate(
     return result;
 }
 
+// FrustumCuller
+
+std::vector<SceneNode*> FrustumCuller::cull(
+    const float* viewProjection,
+    SceneNode& root
+) {
+    Frustum frustum;
+    frustum.extractFromVP(viewProjection);
+
+    std::vector<SceneNode*> visible;
+
+    // Depth-first walk using an explicit stack
+    std::vector<SceneNode*> stack;
+    stack.push_back(&root);
+
+    while (!stack.empty()) {
+        SceneNode* node = stack.back();
+        stack.pop_back();
+
+        const AABB* aabb = node->getAABB();
+        if (aabb) {
+            CullResult result = frustum.testAABB(*aabb);
+            if (result == CullResult::Outside) {
+                continue; // Skip this node and its entire subtree
+            }
+        }
+
+        // Node is visible (either no AABB or Inside/Intersect)
+        visible.push_back(node);
+
+        // Push children in reverse order so left children are processed first
+        const auto& children = node->getChildren();
+        for (auto it = children.rbegin(); it != children.rend(); ++it) {
+            stack.push_back(it->get());
+        }
+    }
+
+    return visible;
+}
+
 } // namespace fabric

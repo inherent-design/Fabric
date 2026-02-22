@@ -87,4 +87,15 @@ struct TransformInterpolator {
     );
 };
 
+// Frustum-cull a scene tree against a view-projection matrix.
+// Returns pointers to visible SceneNode instances.
+// Nodes without an AABB are always considered visible.
+class FrustumCuller {
+public:
+    static std::vector<SceneNode*> cull(
+        const float* viewProjection,
+        SceneNode& root
+    );
+};
+
 } // namespace fabric
