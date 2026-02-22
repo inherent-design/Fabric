@@ -18,8 +18,8 @@ set(RMLUI_SAMPLES OFF CACHE BOOL "" FORCE)
 set(RMLUI_TESTS OFF CACHE BOOL "" FORCE)
 set(RMLUI_THIRDPARTY_CONTAINERS ON CACHE BOOL "" FORCE)
 
-# Use built-in font engine to avoid FreeType dependency for now
-set(RMLUI_FONT_ENGINE "none" CACHE STRING "" FORCE)
+# FreeType font engine for text rendering (requires system FreeType)
+set(RMLUI_FONT_ENGINE "freetype" CACHE STRING "" FORCE)
 
 # Preserve BUILD_SHARED_LIBS state: RmlUi may flip it to ON
 set(_FABRIC_SAVED_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
