@@ -8,8 +8,11 @@
 #include <vector>
 #include <unordered_map>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 namespace fabric {
-namespace core {
 
 // Forward declarations
 template <typename T, typename SpaceTag> class Vector2;
@@ -583,15 +586,31 @@ public:
     return result;
   }
   
-  // Matrix inverse
   Matrix4x4<T> inverse() const {
-    // Implementation of matrix inverse calculation...
-    // This would be a full 4x4 matrix inverse function, which is quite lengthy
-    // For brevity, a placeholder implementation is shown here
-    
-    Matrix4x4<T> result;
-    // Placeholder for a proper inverse calculation
-    return result;
+    static_assert(std::is_same_v<T, float> || std::is_same_v<T, double>,
+        "Matrix4x4::inverse() only supported for float and double");
+
+    if constexpr (std::is_same_v<T, float>) {
+      glm::mat4 glmMat = glm::make_mat4(elements.data());
+      float det = glm::determinant(glmMat);
+      if (std::abs(det) < 1e-8f) {
+        return Matrix4x4<T>();
+      }
+      glm::mat4 glmInv = glm::inverse(glmMat);
+      Matrix4x4<T> result;
+      std::copy(glm::value_ptr(glmInv), glm::value_ptr(glmInv) + 16, result.elements.begin());
+      return result;
+    } else {
+      glm::dmat4 glmMat = glm::make_mat4(elements.data());
+      double det = glm::determinant(glmMat);
+      if (std::abs(det) < 1e-15) {
+        return Matrix4x4<T>();
+      }
+      glm::dmat4 glmInv = glm::inverse(glmMat);
+      Matrix4x4<T> result;
+      std::copy(glm::value_ptr(glmInv), glm::value_ptr(glmInv) + 16, result.elements.begin());
+      return result;
+    }
   }
   
   // Matrix transpose
@@ -688,8 +707,59 @@ public:
     Transform<T> result;
     result.matrix_ = getMatrix() * other.getMatrix();
     result.dirty_ = false;
-    // Extract components from the combined matrix
-    // This is a placeholder for a proper decomposition
+
+    // Extract position from column 3 of the combined matrix
+    const auto& m = result.matrix_;
+    result.position_ = Vec3(m(0, 3), m(1, 3), m(2, 3));
+
+    // Extract scale as column vector lengths
+    T sx = std::sqrt(m(0,0)*m(0,0) + m(1,0)*m(1,0) + m(2,0)*m(2,0));
+    T sy = std::sqrt(m(0,1)*m(0,1) + m(1,1)*m(1,1) + m(2,1)*m(2,1));
+    T sz = std::sqrt(m(0,2)*m(0,2) + m(1,2)*m(1,2) + m(2,2)*m(2,2));
+    result.scale_ = Vec3(sx, sy, sz);
+
+    // Extract rotation: divide upper-left 3x3 by scale, then convert to quaternion
+    if (sx > 0 && sy > 0 && sz > 0) {
+      T r00 = m(0,0)/sx, r01 = m(0,1)/sy, r02 = m(0,2)/sz;
+      T r10 = m(1,0)/sx, r11 = m(1,1)/sy, r12 = m(1,2)/sz;
+      T r20 = m(2,0)/sx, r21 = m(2,1)/sy, r22 = m(2,2)/sz;
+
+      T trace = r00 + r11 + r22;
+      if (trace > 0) {
+        T s = T(0.5) / std::sqrt(trace + T(1));
+        result.rotation_ = Quat(
+          (r21 - r12) * s,
+          (r02 - r20) * s,
+          (r10 - r01) * s,
+          T(0.25) / s
+        );
+      } else if (r00 > r11 && r00 > r22) {
+        T s = T(2) * std::sqrt(T(1) + r00 - r11 - r22);
+        result.rotation_ = Quat(
+          T(0.25) * s,
+          (r01 + r10) / s,
+          (r02 + r20) / s,
+          (r21 - r12) / s
+        );
+      } else if (r11 > r22) {
+        T s = T(2) * std::sqrt(T(1) + r11 - r00 - r22);
+        result.rotation_ = Quat(
+          (r01 + r10) / s,
+          T(0.25) * s,
+          (r12 + r21) / s,
+          (r02 - r20) / s
+        );
+      } else {
+        T s = T(2) * std::sqrt(T(1) + r22 - r00 - r11);
+        result.rotation_ = Quat(
+          (r02 + r20) / s,
+          (r12 + r21) / s,
+          T(0.25) * s,
+          (r10 - r01) / s
+        );
+      }
+    }
+
     return result;
   }
   
@@ -991,5 +1061,4 @@ private:
   std::unique_ptr<SceneNode> root_;
 };
 
-} // namespace core
 } // namespace fabric

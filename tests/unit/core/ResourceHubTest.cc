@@ -6,11 +6,11 @@
 #include <string>
 #include <atomic>
 
-namespace Fabric {
+namespace fabric {
 namespace Test {
 
-using namespace Fabric;
-using namespace Fabric::Testing;
+using namespace fabric;
+using namespace fabric::Testing;
 using ::testing::_;
 using ::testing::Return;
 
@@ -247,7 +247,7 @@ TEST_F(ResourceHubMinimalTest, ResourceHubLoad) {
   ASSERT_NE(typedResource, nullptr) << "Resource should be of expected type";
   
   // Use ResourceHandle directly without going through ResourceHub
-  ResourceHandle<MinimalTestResource> handle(typedResource, nullptr);
+  ResourceHandle<MinimalTestResource> handle(typedResource);
   ASSERT_TRUE(handle) << "Handle should be valid";
   ASSERT_NE(handle.get(), nullptr) << "Handle should contain non-null resource";
   ASSERT_EQ(handle->getId(), "test1") << "Handle should provide access to resource";
@@ -274,7 +274,7 @@ TEST_F(ResourceHubMinimalTest, BasicResourceHubLoadComplete) {
   ASSERT_EQ(resource->getState(), ResourceState::Loaded) << "Resource should be loaded";
   
   // Create handle manually
-  ResourceHandle<MinimalTestResource> handle(resource, nullptr);
+  ResourceHandle<MinimalTestResource> handle(resource);
   
   // Verify handle works
   ASSERT_TRUE(handle) << "Handle should be valid";
@@ -311,8 +311,8 @@ TEST_F(ResourceHubMinimalTest, BasicDependency) {
   ASSERT_TRUE(resource2->load()) << "Second resource should load";
   
   // Use manual handles
-  ResourceHandle<MinimalTestResource> handle1(resource1, nullptr);
-  ResourceHandle<MinimalTestResource> handle2(resource2, nullptr);
+  ResourceHandle<MinimalTestResource> handle1(resource1);
+  ResourceHandle<MinimalTestResource> handle2(resource2);
   
   // Validate handles
   ASSERT_TRUE(handle1) << "First handle should be valid";
@@ -357,4 +357,4 @@ TEST_F(ResourceHubMinimalTest, ComprehensiveResourceWorkflow) {
 }
 
 } // namespace Test
-} // namespace Fabric
+} // namespace fabric

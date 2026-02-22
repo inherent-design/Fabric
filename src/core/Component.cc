@@ -1,9 +1,9 @@
 #include "fabric/core/Component.hh"
 #include "fabric/utils/ErrorHandling.hh"
-#include "fabric/utils/Logging.hh"
+#include "fabric/core/Log.hh"
 #include <type_traits>
 
-namespace Fabric {
+namespace fabric {
 
 Component::Component(const std::string& id) : id(id) {
   if (id.empty()) {
@@ -40,7 +40,7 @@ void Component::addChild(std::shared_ptr<Component> child) {
   }
   
   children.push_back(child);
-  Logger::logDebug("Added child '" + child->getId() + "' to component '" + id + "'");
+  FABRIC_LOG_DEBUG("Added child '{}' to component '{}'", child->getId(), id);
 }
 
 bool Component::removeChild(const std::string& childId) {
@@ -51,7 +51,7 @@ bool Component::removeChild(const std::string& childId) {
   
   if (it != children.end()) {
     children.erase(it);
-    Logger::logDebug("Removed child '" + childId + "' from component '" + id + "'");
+    FABRIC_LOG_DEBUG("Removed child '{}' from component '{}'", childId, id);
     return true;
   }
   
@@ -71,9 +71,8 @@ std::shared_ptr<Component> Component::getChild(const std::string& childId) const
   return nullptr;
 }
 
-const std::vector<std::shared_ptr<Component>>& Component::getChildren() const {
-  // Note: This is returning a reference to protected data without a lock
-  // Callers must be careful about thread safety
+std::vector<std::shared_ptr<Component>> Component::getChildren() const {
+  std::lock_guard<std::mutex> lock(childrenMutex);
   return children;
 }
 
@@ -136,4 +135,4 @@ template bool Component::getProperty<bool>(const std::string&) const;
 template std::string Component::getProperty<std::string>(const std::string&) const;
 template std::shared_ptr<Component> Component::getProperty<std::shared_ptr<Component>>(const std::string&) const;
 
-} // namespace Fabric
+} // namespace fabric

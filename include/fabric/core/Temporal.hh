@@ -13,7 +13,6 @@
 #include <cstring> // For memcpy
 
 namespace fabric {
-namespace core {
 
 class Entity;  // Forward declaration for Entity
 
@@ -189,17 +188,19 @@ public:
     
     /** Jump to a specific point in the snapshot history */
     bool jumpToSnapshot(size_t index);
-    
+
     /** Create a prediction of future state */
     TimeState predictFutureState(double secondsAhead) const;
-    
+
     /** Get singleton instance */
     static Timeline& instance();
-    
+
     /** Reset the singleton instance */
     static void reset();
-    
+
 private:
+    /** Restore snapshot without acquiring mutex. Caller must hold mutex_. */
+    void restoreSnapshotLocked(const TimeState& state);
     double currentTime_;
     double globalTimeScale_;
     bool isPaused_;
@@ -284,7 +285,6 @@ std::unique_ptr<TimeBehavior> makeTimeBehavior(
     return std::make_unique<LambdaTimeBehavior>(updateFunc, getStateFunc, setStateFunc);
 };
 
-} // namespace core
 } // namespace fabric
 
 #endif // FABRIC_CORE_TEMPORAL_HH

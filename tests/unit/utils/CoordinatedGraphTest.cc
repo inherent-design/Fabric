@@ -12,7 +12,7 @@
 #include <random>
 #include <queue>
 
-namespace Fabric {
+namespace fabric {
 namespace Test {
 
 // Comprehensive test fixture for CoordinatedGraph that includes both basic and advanced DAG functionality
@@ -862,4 +862,4 @@ TEST_F(CoordinatedGraphTest, DeadlockDetectionTest) {
 }
 
 } // namespace Test
-} // namespace Fabric
+} // namespace fabric

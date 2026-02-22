@@ -43,7 +43,7 @@
  * - Always restart worker threads when done with restartWorkerThreadsAfterTesting()
  */
 
-using namespace Fabric;
+using namespace fabric;
 using ::testing::_;
 using ::testing::Return;
 using ::testing::Invoke;
@@ -143,7 +143,7 @@ protected:
         EnsureTestResourceFactoryRegistered();
         
         // Simple setup - get a clean ResourceHub instance
-        auto& hub = Fabric::ResourceHub::instance();
+        auto& hub = fabric::ResourceHub::instance();
         
         // Reset it directly - this disables threads and clears resources
         hub.reset();
@@ -151,7 +151,7 @@ protected:
     
     void TearDown() override {
         // Simple cleanup - reset ResourceHub to clean state
-        auto& hub = Fabric::ResourceHub::instance();
+        auto& hub = fabric::ResourceHub::instance();
         hub.reset();
     }
 };
@@ -179,7 +179,7 @@ protected:
         EnsureTestResourceFactoryRegistered();
         
         // Simple setup - get a clean ResourceHub instance
-        auto& hub = Fabric::ResourceHub::instance();
+        auto& hub = fabric::ResourceHub::instance();
         
         // Just reset it directly - this should disable threads and clear resources
         hub.reset();
@@ -190,7 +190,7 @@ protected:
     
     void TearDown() override {
         // Simple cleanup - reset ResourceHub to clean state
-        auto& hub = Fabric::ResourceHub::instance();
+        auto& hub = fabric::ResourceHub::instance();
         hub.reset();
     }
 };
@@ -222,7 +222,7 @@ TEST_F(ResourceTest, ResourceHandleBasics) {
     auto rawResource = std::make_shared<TestResource>("test123");
     
     // Create a handle and check access
-    ResourceHandle<TestResource> handle(rawResource, &ResourceHub::instance());
+    ResourceHandle<TestResource> handle(rawResource);
     EXPECT_EQ(handle->getId(), "test123");
     EXPECT_EQ(handle.get()->getId(), "test123");
     
@@ -238,7 +238,7 @@ TEST_F(ResourceTest, ResourceHandleLifetime) {
         weakResource = rawResource;
         
         // Create a handle that should keep the resource alive
-        ResourceHandle<TestResource> handle(rawResource, &ResourceHub::instance());
+        ResourceHandle<TestResource> handle(rawResource);
         EXPECT_FALSE(weakResource.expired());
     }
     
@@ -254,11 +254,11 @@ TEST_F(ResourceTest, ResourceHandleLifetime) {
  */
 TEST_F(ResourceTest, ResourceHubGetResource) {
     // Get a clean ResourceHub
-    auto& hub = Fabric::ResourceHub::instance();
+    auto& hub = fabric::ResourceHub::instance();
     
     // Create and register our own factory directly
-    if (!Fabric::ResourceFactory::isTypeRegistered("test")) {
-        Fabric::ResourceFactory::registerType<TestResource>(
+    if (!fabric::ResourceFactory::isTypeRegistered("test")) {
+        fabric::ResourceFactory::registerType<TestResource>(
             "test",
             [](const std::string& id) {
                 return std::make_shared<TestResource>(id);
@@ -267,12 +267,12 @@ TEST_F(ResourceTest, ResourceHubGetResource) {
     }
     
     // Load a resource directly using the hub
-    Fabric::ResourceHandle<TestResource> handle = hub.load<TestResource>("test", "test:resource1");
+    fabric::ResourceHandle<TestResource> handle = hub.load<TestResource>("test", "test:resource1");
     
     // Verify the handle and resource
     ASSERT_TRUE(handle) << "Resource handle should be valid";
     EXPECT_EQ(handle->getId(), "test:resource1") << "Resource ID should match";
-    EXPECT_EQ(handle->getState(), Fabric::ResourceState::Loaded) << "Resource should be loaded";
+    EXPECT_EQ(handle->getState(), fabric::ResourceState::Loaded) << "Resource should be loaded";
     
     // Release the handle to clean up
     handle.reset();
@@ -293,8 +293,8 @@ TEST_F(ResourceTest, ResourceHubCaching) {
     ASSERT_EQ(resource->loadCount, 1);
     
     // Create two handles to the same resource
-    ResourceHandle<TestResource> handle1(resource, nullptr);
-    ResourceHandle<TestResource> handle2(resource, nullptr);
+    ResourceHandle<TestResource> handle1(resource);
+    ResourceHandle<TestResource> handle2(resource);
     
     // Both handles should point to the same resource
     EXPECT_TRUE(handle1);
@@ -333,7 +333,7 @@ TEST_F(ResourceTest, ResourceHubUnload) {
     ASSERT_EQ(resource->loadCount, 2); // Loaded twice now
     
     // Create a handle to the resource
-    ResourceHandle<TestResource> handle(resource, nullptr);
+    ResourceHandle<TestResource> handle(resource);
     
     // Handle should work
     EXPECT_TRUE(handle);
@@ -500,9 +500,9 @@ TEST_F(ResourceTest, ResourceHubPreloading) {
     EXPECT_EQ(resource1->getState(), ResourceState::Loaded);
     
     // Create handles
-    ResourceHandle<TestResource> handle1(resource1, nullptr);
-    ResourceHandle<TestResource> handle2(resource2, nullptr);
-    
+    ResourceHandle<TestResource> handle1(resource1);
+    ResourceHandle<TestResource> handle2(resource2);
+
     // Verify the preloaded resource is already loaded
     EXPECT_TRUE(handle1);
     EXPECT_EQ(handle1->getState(), ResourceState::Loaded);
@@ -532,7 +532,7 @@ TEST_F(ResourceTest, ResourceHubAsyncLoading) {
     EXPECT_EQ(resource->loadCount, 1);
     
     // Create a handle to access it
-    ResourceHandle<TestResource> handle(resource, nullptr);
+    ResourceHandle<TestResource> handle(resource);
     
     // Verify handle works
     EXPECT_TRUE(handle);
@@ -580,7 +580,7 @@ TEST_F(ResourceTest, ResourceLoadFailure) {
     EXPECT_EQ(resource->getState(), ResourceState::LoadingFailed);
     
     // Create a handle to it
-    ResourceHandle<MockResource> handle(resource, nullptr);
+    ResourceHandle<MockResource> handle(resource);
     
     // Handle should still be valid, but resource state should be LoadingFailed
     EXPECT_TRUE(handle);
@@ -591,7 +591,7 @@ TEST_F(ResourceTest, ResourceHandleMoveSemantics) {
     auto resource = std::make_shared<TestResource>("test123");
     
     // Create a handle
-    ResourceHandle<TestResource> handle1(resource, &ResourceHub::instance());
+    ResourceHandle<TestResource> handle1(resource);
     
     // Move construct a new handle
     ResourceHandle<TestResource> handle2(std::move(handle1));
@@ -634,8 +634,8 @@ TEST_F(ResourceTest, ResourceDependencies) {
     EXPECT_EQ(dependent->getState(), ResourceState::Loaded);
     
     // Create handles
-    ResourceHandle<TestResource> depHandle(dependency, nullptr);
-    ResourceHandle<TestResource> depHandle2(dependent, nullptr);
+    ResourceHandle<TestResource> depHandle(dependency);
+    ResourceHandle<TestResource> depHandle2(dependent);
     
     // Verify handles work
     EXPECT_TRUE(depHandle);

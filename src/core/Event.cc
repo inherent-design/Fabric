@@ -1,10 +1,11 @@
 #include "fabric/core/Event.hh"
 #include "fabric/utils/ErrorHandling.hh"
-#include "fabric/utils/Logging.hh"
+#include "fabric/core/Log.hh"
 #include "fabric/utils/Utils.hh"
+#include <algorithm>
 #include <type_traits>
 
-namespace Fabric {
+namespace fabric {
 
 Event::Event(const std::string& type, const std::string& source)
     : type(type), source(source) {
@@ -33,10 +34,11 @@ void Event::setData(const std::string& key, const T& value) {
     std::is_same_v<T, int> ||
     std::is_same_v<T, float> ||
     std::is_same_v<T, double> ||
-    std::is_same_v<T, std::string>,
+    std::is_same_v<T, std::string> ||
+    std::is_same_v<T, std::vector<uint8_t>>,
     "Data type not supported. Must be one of the types in DataValue."
   );
-  
+
   std::lock_guard<std::mutex> lock(dataMutex);
   data[key] = value;
 }
@@ -48,24 +50,29 @@ T Event::getData(const std::string& key) const {
     std::is_same_v<T, int> ||
     std::is_same_v<T, float> ||
     std::is_same_v<T, double> ||
-    std::is_same_v<T, std::string>,
+    std::is_same_v<T, std::string> ||
+    std::is_same_v<T, std::vector<uint8_t>>,
     "Data type not supported. Must be one of the types in DataValue."
   );
-  
+
   std::lock_guard<std::mutex> lock(dataMutex);
-  
+
   auto it = data.find(key);
   if (it == data.end()) {
     throwError("Event data key '" + key + "' not found");
   }
-  
+
   try {
     return std::get<T>(it->second);
   } catch (const std::bad_variant_access&) {
     throwError("Event data key '" + key + "' has incorrect type");
-    // This is never reached but needed for compilation
     return T();
   }
+}
+
+bool Event::hasAnyData(const std::string& key) const {
+  std::lock_guard<std::mutex> lock(dataMutex);
+  return anyData.find(key) != anyData.end();
 }
 
 bool Event::isHandled() const {
@@ -76,103 +83,114 @@ void Event::setHandled(bool handled) {
   this->handled = handled;
 }
 
-bool Event::shouldPropagate() const {
-  return propagate;
+bool Event::isCancelled() const {
+  return cancelled;
 }
 
-void Event::setPropagate(bool propagate) {
-  this->propagate = propagate;
+void Event::setCancelled(bool cancelled) {
+  this->cancelled = cancelled;
 }
 
-// Explicit template instantiations for common types
+// Explicit template instantiations
 template void Event::setData<int>(const std::string&, const int&);
 template void Event::setData<float>(const std::string&, const float&);
 template void Event::setData<double>(const std::string&, const double&);
 template void Event::setData<bool>(const std::string&, const bool&);
 template void Event::setData<std::string>(const std::string&, const std::string&);
+template void Event::setData<std::vector<uint8_t>>(const std::string&, const std::vector<uint8_t>&);
 
 template int Event::getData<int>(const std::string&) const;
 template float Event::getData<float>(const std::string&) const;
 template double Event::getData<double>(const std::string&) const;
 template bool Event::getData<bool>(const std::string&) const;
 template std::string Event::getData<std::string>(const std::string&) const;
+template std::vector<uint8_t> Event::getData<std::vector<uint8_t>>(const std::string&) const;
 
-std::string EventDispatcher::addEventListener(const std::string& eventType, const EventHandler& handler) {
+std::string EventDispatcher::addEventListener(const std::string& eventType,
+                                              const EventHandler& handler,
+                                              int32_t priority) {
   if (eventType.empty()) {
     throwError("Event type cannot be empty");
   }
-  
+
   if (!handler) {
     throwError("Event handler cannot be null");
   }
-  
+
   std::lock_guard<std::mutex> lock(listenersMutex);
-  
+
   HandlerEntry entry;
   entry.id = Utils::generateUniqueId("h_");
   entry.handler = handler;
-  
-  listeners[eventType].push_back(entry);
-  Logger::logDebug("Added event listener for type '" + eventType + "' with ID '" + entry.id + "'");
-  
+  entry.priority = priority;
+
+  // Insert in priority-sorted order (lower priority first).
+  // upper_bound preserves insertion order for equal priorities.
+  auto& vec = listeners[eventType];
+  auto pos = std::upper_bound(vec.begin(), vec.end(), entry,
+    [](const HandlerEntry& a, const HandlerEntry& b) {
+      return a.priority < b.priority;
+    });
+  vec.insert(pos, entry);
+
+  FABRIC_LOG_DEBUG("Added event listener for type '{}' with ID '{}' (priority {})",
+                   eventType, entry.id, priority);
+
   return entry.id;
 }
 
 bool EventDispatcher::removeEventListener(const std::string& eventType, const std::string& handlerId) {
   std::lock_guard<std::mutex> lock(listenersMutex);
-  
+
   auto it = listeners.find(eventType);
   if (it == listeners.end()) {
     return false;
   }
-  
+
   auto& handlers = it->second;
   auto handlerIt = std::find_if(handlers.begin(), handlers.end(),
                                [&handlerId](const HandlerEntry& entry) { return entry.id == handlerId; });
-  
+
   if (handlerIt != handlers.end()) {
     handlers.erase(handlerIt);
-    Logger::logDebug("Removed event listener for type '" + eventType + "' with ID '" + handlerId + "'");
+    FABRIC_LOG_DEBUG("Removed event listener for type '{}' with ID '{}'", eventType, handlerId);
     return true;
   }
-  
+
   return false;
 }
 
-bool EventDispatcher::dispatchEvent(const Event& event) {
-  // We need to make a copy of the handlers to avoid holding the lock during handler execution
+bool EventDispatcher::dispatchEvent(Event& event) {
   std::vector<HandlerEntry> handlersToInvoke;
-  
+
   {
     std::lock_guard<std::mutex> lock(listenersMutex);
-    
+
     auto it = listeners.find(event.getType());
     if (it == listeners.end()) {
-      // No listeners for this event type
       return false;
     }
-    
-    // Make a copy of the handlers to invoke
+
     handlersToInvoke = it->second;
   }
-  
+
   bool handled = false;
-  
+
   for (const auto& entry : handlersToInvoke) {
     try {
       entry.handler(event);
-      if (event.isHandled()) {
+      if (event.isCancelled() || event.isHandled()) {
         handled = true;
         break;
       }
     } catch (const std::exception& e) {
-      Logger::logError("Exception in event handler: " + std::string(e.what()));
+      FABRIC_LOG_ERROR("Exception in event handler: {}", e.what());
     } catch (...) {
-      Logger::logError("Unknown exception in event handler");
+      FABRIC_LOG_ERROR("Unknown exception in event handler");
     }
   }
-  
+
   return handled;
 }
 
-} // namespace Fabric
+} // namespace fabric

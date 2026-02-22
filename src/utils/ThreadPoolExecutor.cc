@@ -1,9 +1,9 @@
 #include "fabric/utils/ThreadPoolExecutor.hh"
-#include "fabric/utils/Logging.hh"
+#include "fabric/core/Log.hh"
 #include <algorithm>
 #include <iostream>
 
-namespace Fabric {
+namespace fabric {
 namespace Utils {
 
 ThreadPoolExecutor::ThreadPoolExecutor(size_t threadCount)
@@ -14,7 +14,7 @@ ThreadPoolExecutor::ThreadPoolExecutor(size_t threadCount)
         workerThreads_.emplace_back(&ThreadPoolExecutor::workerThread, this);
     }
     
-    Logger::logDebug("ThreadPoolExecutor created with " + std::to_string(threadCount_) + " threads");
+    FABRIC_LOG_DEBUG("ThreadPoolExecutor created with {} threads", threadCount_.load());
 }
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {
@@ -25,64 +25,15 @@ ThreadPoolExecutor::~ThreadPoolExecutor() {
             shutdown(std::chrono::milliseconds(200));
         } catch (const std::exception& e) {
             // Log the error but continue destruction
-            Logger::logError("Error during ThreadPoolExecutor shutdown: " + std::string(e.what()));
+            FABRIC_LOG_ERROR("Error during ThreadPoolExecutor shutdown: {}", e.what());
         } catch (...) {
-            Logger::logError("Unknown error during ThreadPoolExecutor shutdown");
+            FABRIC_LOG_ERROR("Unknown error during ThreadPoolExecutor shutdown");
         }
     }
 }
 
-ThreadPoolExecutor::ThreadPoolExecutor(ThreadPoolExecutor&& other) noexcept
-    : threadCount_(other.threadCount_),
-      shutdown_(other.shutdown_.load()),
-      pausedForTesting_(other.pausedForTesting_.load()) {
-    
-    // Move the task queue
-    {
-        std::lock_guard<std::mutex> lock(other.queueMutex_);
-        taskQueue_ = std::move(other.taskQueue_);
-    }
-    
-    // Move the threads
-    workerThreads_ = std::move(other.workerThreads_);
-    
-    // Reset the other thread pool
-    other.threadCount_ = 0;
-    other.shutdown_ = true;
-}
-
-ThreadPoolExecutor& ThreadPoolExecutor::operator=(ThreadPoolExecutor&& other) noexcept {
-    if (this != &other) {
-        // Shutdown this thread pool
-        if (!shutdown_) {
-            try {
-                shutdown(std::chrono::milliseconds(100));
-            } catch (...) {
-                // Ignore exceptions in move assignment
-            }
-        }
-        
-        // Move from the other thread pool
-        threadCount_ = other.threadCount_;
-        shutdown_ = other.shutdown_.load();
-        pausedForTesting_ = other.pausedForTesting_.load();
-        
-        // Move the task queue
-        {
-            std::lock_guard<std::mutex> lock(other.queueMutex_);
-            taskQueue_ = std::move(other.taskQueue_);
-        }
-        
-        // Move the threads
-        workerThreads_ = std::move(other.workerThreads_);
-        
-        // Reset the other thread pool
-        other.threadCount_ = 0;
-        other.shutdown_ = true;
-    }
-    
-    return *this;
-}
+// Move constructor and assignment deleted (see header).
+// Worker threads capture `this`; moving would create dangling pointers.
 
 void ThreadPoolExecutor::setThreadCount(size_t count) {
     if (count == 0) {
@@ -114,8 +65,8 @@ void ThreadPoolExecutor::setThreadCount(size_t count) {
         }
     }
     
-    Logger::logDebug("ThreadPoolExecutor thread count changed from " + 
-                    std::to_string(oldCount) + " to " + std::to_string(count));
+    FABRIC_LOG_DEBUG("ThreadPoolExecutor thread count changed from {} to {}",
+                     oldCount, count);
 }
 
 size_t ThreadPoolExecutor::getThreadCount() const {
@@ -123,66 +74,60 @@ size_t ThreadPoolExecutor::getThreadCount() const {
 }
 
 bool ThreadPoolExecutor::shutdown(std::chrono::milliseconds timeout) {
-    // Set the shutdown flag
     shutdown_ = true;
-    
-    // Notify all worker threads
+
+    // Wake all workers so they see the shutdown flag
     {
         std::lock_guard<std::mutex> lock(queueMutex_);
         queueCondition_.notify_all();
     }
-    
-    // Join all worker threads with timeout
+
+    // Workers are cooperative: they check shutdown_ each iteration and exit.
+    // join() should return fast. Timeout is a safety net for stuck tasks.
     auto startTime = std::chrono::steady_clock::now();
     bool allJoined = true;
-    
+
+    for (auto& thread : workerThreads_) {
+        if (!thread.joinable()) {
+            continue;
+        }
+
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - startTime);
+
+        if (elapsed >= timeout) {
+            // Time budget exhausted — detach remaining threads
+            allJoined = false;
+            break;
+        }
+
+        // Workers exit within one condition_variable cycle (~5ms).
+        // join() will return quickly for cooperative threads.
+        thread.join();
+    }
+
+    // Detach any threads we couldn't join in time
     for (auto& thread : workerThreads_) {
         if (thread.joinable()) {
-            // Calculate remaining timeout
-            auto elapsed = std::chrono::steady_clock::now() - startTime;
-            auto remainingTime = timeout - std::chrono::duration_cast<std::chrono::milliseconds>(elapsed);
-            
-            if (remainingTime <= std::chrono::milliseconds::zero()) {
-                // Timeout reached, don't wait for remaining threads
-                allJoined = false;
-                break;
-            }
-            
-            // Create a future to join the thread with timeout
-            bool threadJoined = false;
-            auto joinFuture = std::async(std::launch::async, [&thread, &threadJoined]() {
-                thread.join();
-                threadJoined = true;
-            });
-            
-            // Wait for the join future with timeout
-            if (joinFuture.wait_for(remainingTime) == std::future_status::timeout) {
-                // Thread join timed out
-                allJoined = false;
-                // Log a warning about the stuck thread
-                Logger::logWarning("Thread join timed out during ThreadPoolExecutor shutdown");
-                // Continue with other threads
-                continue;
-            }
+            thread.detach();
+            allJoined = false;
         }
     }
-    
-    // Clear the worker threads vector
     workerThreads_.clear();
-    
-    // Clear the task queue
+
+    // Drain the task queue
     {
         std::lock_guard<std::mutex> lock(queueMutex_);
         std::queue<Task> emptyQueue;
         std::swap(taskQueue_, emptyQueue);
     }
-    
+
     if (!allJoined) {
-        Logger::logWarning("ThreadPoolExecutor shutdown timed out, some threads may not have joined");
+        FABRIC_LOG_WARN("ThreadPoolExecutor shutdown: some threads detached after timeout");
     } else {
-        Logger::logDebug("ThreadPoolExecutor shut down successfully");
+        FABRIC_LOG_DEBUG("ThreadPoolExecutor shut down successfully");
     }
-    
+
     return allJoined;
 }
 
@@ -191,34 +136,36 @@ bool ThreadPoolExecutor::isShutdown() const {
 }
 
 void ThreadPoolExecutor::pauseForTesting() {
-    // If we're already paused, do nothing
     if (pausedForTesting_) {
         return;
     }
-    
-    // Store the current thread count
-    std::lock_guard<std::mutex> lock(queueMutex_);
-    pausedForTesting_ = true;
-    
-    // Process any queued tasks immediately
-    while (!taskQueue_.empty()) {
-        Task task = std::move(taskQueue_.front());
-        taskQueue_.pop();
-        
-        // Unlock the mutex before running the task
-        // to prevent deadlocks
-        queueMutex_.unlock();
+
+    // Drain queued tasks under lock, then execute outside lock.
+    // Using unique_lock for manual lock control instead of lock_guard
+    // to avoid double-unlock UB.
+    std::vector<Task> pendingTasks;
+    {
+        std::unique_lock<std::mutex> lock(queueMutex_);
+        pausedForTesting_ = true;
+
+        while (!taskQueue_.empty()) {
+            pendingTasks.push_back(std::move(taskQueue_.front()));
+            taskQueue_.pop();
+        }
+    }
+
+    // Execute drained tasks without holding the mutex
+    for (auto& task : pendingTasks) {
         try {
             task();
         } catch (const std::exception& e) {
-            Logger::logError("Exception in task during pauseForTesting: " + std::string(e.what()));
+            FABRIC_LOG_ERROR("Exception in task during pauseForTesting: {}", e.what());
         } catch (...) {
-            Logger::logError("Unknown exception in task during pauseForTesting");
+            FABRIC_LOG_ERROR("Unknown exception in task during pauseForTesting");
         }
-        queueMutex_.lock();
     }
-    
-    Logger::logDebug("ThreadPoolExecutor paused for testing");
+
+    FABRIC_LOG_DEBUG("ThreadPoolExecutor paused for testing");
 }
 
 void ThreadPoolExecutor::resumeAfterTesting() {
@@ -238,7 +185,7 @@ void ThreadPoolExecutor::resumeAfterTesting() {
         }
     }
     
-    Logger::logDebug("ThreadPoolExecutor resumed after testing");
+    FABRIC_LOG_DEBUG("ThreadPoolExecutor resumed after testing");
 }
 
 bool ThreadPoolExecutor::isPausedForTesting() const {
@@ -297,13 +244,13 @@ void ThreadPoolExecutor::workerThread() {
                 task();
             } catch (const std::exception& e) {
                 // Log but don't terminate the worker thread
-                Logger::logError("Exception in worker thread task: " + std::string(e.what()));
+                FABRIC_LOG_ERROR("Exception in worker thread task: {}", e.what());
             } catch (...) {
-                Logger::logError("Unknown exception in worker thread task");
+                FABRIC_LOG_ERROR("Unknown exception in worker thread task");
             }
         }
     }
 }
 
 } // namespace Utils
-} // namespace Fabric
+} // namespace fabric

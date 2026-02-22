@@ -7,7 +7,7 @@
 #include <stack>
 #include <type_traits>
 
-namespace Fabric {
+namespace fabric {
 
 /**
  * @brief Base class for all commands in the Fabric Engine
@@ -131,19 +131,10 @@ public:
   
   /**
    * @brief Undo the command, reverting to the previous state
-   * 
-   * This method restores the state to what it was before the execute() call.
-   * The executeFunc is called with the previous state to ensure all side-effects
-   * are correctly applied.
    */
   void undo() override {
     if (isReversible()) {
-      // Restore the state to what it was before execution
       afterState = beforeState;
-      
-      // Apply the function with the restored state
-      // This ensures any side effects of the function are properly applied
-      executeFunc(afterState);
     }
   }
   
@@ -546,4 +537,4 @@ std::unique_ptr<Command> makeCommand(
     execFunc, std::move(initialState), std::move(descFunc), isReversible);
 }
 
-} // namespace Fabric
+} // namespace fabric

@@ -1,22 +1,19 @@
 #include "fabric/ui/WebView.hh"
-#include "fabric/utils/Logging.hh"
+#include "fabric/core/Log.hh"
 #include <memory>
 
-// The FABRIC_USE_WEBVIEW macro is now defined by CMake in the compilation flags
-// when the FABRIC_USE_WEBVIEW option is enabled
+#if defined(FABRIC_USE_WEBVIEW)
 
-namespace Fabric {
+namespace fabric {
 
 WebView::WebView(const std::string &title, int width, int height, bool debug,
                  bool createWindow, void *window)
     : title(title), width(width), height(height), debug(debug), html("") {
-  // Only create the actual webview if requested (not for testing)
   if (createWindow) {
     webview_ = std::make_unique<webview::webview>(debug, window);
     webview_->set_title(title.c_str());
     webview_->set_size(width, height, WEBVIEW_HINT_NONE);
-    Logger::logInfo("WebView created: " + title + " (" + std::to_string(width) +
-                    "x" + std::to_string(height) + ")");
+    FABRIC_LOG_INFO("WebView created: {} ({}x{})", title, width, height);
   }
 }
 
@@ -38,7 +35,7 @@ void WebView::setSize(int width, int height, webview_hint_t hint) {
 void WebView::navigate(const std::string &url) {
   if (webview_) {
     webview_->navigate(url.c_str());
-    Logger::logInfo("WebView navigating to: " + url);
+    FABRIC_LOG_INFO("WebView navigating to: {}", url);
   }
 }
 
@@ -46,22 +43,22 @@ void WebView::setHTML(const std::string &html) {
   this->html = html;
   if (webview_) {
     webview_->set_html(html.c_str());
-    Logger::logDebug("WebView HTML content set");
+    FABRIC_LOG_DEBUG("WebView HTML content set");
   }
 }
 
 void WebView::run() {
   if (webview_) {
-    Logger::logInfo("Starting WebView main loop");
+    FABRIC_LOG_INFO("Starting WebView main loop");
     webview_->run();
   } else {
-    Logger::logWarning("Attempting to run a WebView that was not created");
+    FABRIC_LOG_WARN("Attempting to run a WebView that was not created");
   }
 }
 
 void WebView::terminate() {
   if (webview_) {
-    Logger::logInfo("Terminating WebView");
+    FABRIC_LOG_INFO("Terminating WebView");
     webview_->terminate();
   }
 }
@@ -78,8 +75,10 @@ void WebView::bind(const std::string &name,
     webview_->bind(name.c_str(), [fn](const std::string &req) -> std::string {
       return fn(req);
     });
-    Logger::logDebug("Bound JavaScript function: " + name);
+    FABRIC_LOG_DEBUG("Bound JavaScript function: {}", name);
   }
 }
 
-} // namespace Fabric
+} // namespace fabric
+
+#endif // FABRIC_USE_WEBVIEW

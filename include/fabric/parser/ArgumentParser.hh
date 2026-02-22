@@ -5,7 +5,7 @@
 #include <map>
 #include <optional>
 
-namespace Fabric {
+namespace fabric {
 // ArgumentParser
 class ArgumentParser {
 public:
@@ -57,4 +57,4 @@ public:
 private:
   TokenTypeOptionsMap options;
 };
-} // namespace Fabric
+} // namespace fabric

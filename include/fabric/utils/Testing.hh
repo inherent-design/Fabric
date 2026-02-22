@@ -14,7 +14,7 @@
 #include <stdexcept>
 #include <random>
 
-namespace Fabric {
+namespace fabric {
 namespace Testing {
 
 /**
@@ -24,10 +24,10 @@ class MockComponent : public Component {
 public:
   explicit MockComponent(const std::string& id) : Component(id) {}
 
-  void initialize() override {}
-  std::string render() override { return "<mock-component id=\"" + getId() + "\"></mock-component>"; }
-  void update(float deltaTime) override {}
-  void cleanup() override {}
+  void initialize() override { initialize_impl(); }
+  std::string render() override { render_impl(); return "<mock-component id=\"" + getId() + "\"></mock-component>"; }
+  void update(float deltaTime) override { update_impl(deltaTime); }
+  void cleanup() override { cleanup_impl(); }
 
   // Test helpers
   int initializeCallCount = 0;
@@ -247,4 +247,4 @@ inline int RandomInt(int min, int max) {
 }
 
 } // namespace Testing
-} // namespace Fabric
+} // namespace fabric

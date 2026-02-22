@@ -3,7 +3,6 @@
 #include <stdexcept>
 
 namespace fabric {
-namespace core {
 
 // Initialize static members
 std::unique_ptr<Timeline> Timeline::instance_ = nullptr;
@@ -126,15 +125,14 @@ void Timeline::update(double deltaTime) {
     double scaledDelta = deltaTime * globalTimeScale_;
     currentTime_ += scaledDelta;
     
-    // Check if we need to create an automatic snapshot
+    // Create automatic snapshots for each elapsed interval
     if (automaticSnapshots_) {
-        snapshotCounter_ += deltaTime; // Use real time for snapshot intervals
-        if (snapshotCounter_ >= snapshotInterval_) {
+        snapshotCounter_ += deltaTime;
+        while (snapshotCounter_ >= snapshotInterval_) {
             history_.push_back(createSnapshot());
-            snapshotCounter_ = 0.0;
-            
-            // Limit history size
-            while (history_.size() > 100) { // Arbitrary limit
+            snapshotCounter_ -= snapshotInterval_;
+
+            if (history_.size() > 100) {
                 history_.pop_front();
             }
         }
@@ -182,11 +180,12 @@ TimeState Timeline::createSnapshot() const {
 
 void Timeline::restoreSnapshot(const TimeState& state) {
     std::lock_guard<std::mutex> lock(mutex_);
-    
-    // Set the current time from the snapshot
+    restoreSnapshotLocked(state);
+}
+
+void Timeline::restoreSnapshotLocked(const TimeState& state) {
     currentTime_ = state.getTimestamp();
-    
-    // Restore all regions from the snapshot
+
     for (auto& region : regions_) {
         region->restoreSnapshot(state);
     }
@@ -237,12 +236,12 @@ void Timeline::clearHistory() {
 
 bool Timeline::jumpToSnapshot(size_t index) {
     std::lock_guard<std::mutex> lock(mutex_);
-    
+
     if (index >= history_.size()) {
         return false;
     }
-    
-    restoreSnapshot(history_[index]);
+
+    restoreSnapshotLocked(history_[index]);
     return true;
 }
 
@@ -270,5 +269,4 @@ void Timeline::reset() {
     instance_.reset();
 }
 
-} // namespace core
 } // namespace fabric

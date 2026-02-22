@@ -1,18 +1,13 @@
 #include "fabric/parser/ArgumentParser.hh"
-#include "fabric/utils/Logging.hh"
+#include "fabric/core/Log.hh"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-namespace Fabric {
+namespace fabric {
 namespace Tests {
 
 class ArgumentParserTest : public ::testing::Test {
 protected:
-  void SetUp() override {
-    // Initialize logger for tests
-    Logger::initialize();
-  }
-
   ArgumentParser parser;
 };
 
@@ -93,4 +88,4 @@ TEST_F(ArgumentParserTest, MissingArgument) {
 }
 
 } // namespace Tests
-} // namespace Fabric
+} // namespace fabric

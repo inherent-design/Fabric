@@ -19,7 +19,13 @@
 #include <future>
 #include <stack>
 
-namespace Fabric {
+namespace fabric {
+
+// KNOWN ISSUES (documented during 2026-02-21 audit):
+// - [FIXED] getData() returns unprotected reference -> use getDataNoLock() with held lock
+// - [FIXED] processDependencyOrder recursive mutex acquisition -> removed redundant lock
+// - [FIXED] currentStructuralIntent_ data race -> replaced with std::atomic<int>
+// - [FIXED] ABBA deadlock -> wouldCauseDeadlock restructured to match lock ordering
 
 /**
  * @brief Exception thrown when a cycle is detected in the graph
@@ -113,7 +119,6 @@ public:
         Shared,     // Multiple readers allowed
         Exclusive,  // Single writer, no readers
         Upgrade,    // Initially shared, can be upgraded to exclusive
-        Intent      // Signal intention to lock descendants
     };
 
     /**
@@ -168,9 +173,11 @@ public:
 
         /**
          * @brief Get the node's data (const version)
-         * 
-         * This method acquires a lock on the node.
-         * 
+         *
+         * WARNING: The returned reference outlives the internal lock. Caller
+         * must hold an external lock (via tryLock / NodeLockHandle) for the
+         * reference to be safe. Prefer getDataNoLock() with an explicit lock.
+         *
          * @return Reference to the data
          */
         const T& getData() const {
@@ -180,9 +187,13 @@ public:
 
         /**
          * @brief Get the node's data (mutable version)
-         * 
-         * This method acquires a lock on the node.
-         * 
+         *
+         * WARNING: The returned reference outlives the internal lock. Caller
+         * must hold an external lock (via tryLock / NodeLockHandle) for the
+         * reference to be safe. Prefer getDataNoLock() with an explicit lock.
+         * Will deadlock if called while a NodeLockHandle already holds this
+         * node's mutex (use getDataNoLock instead).
+         *
          * @return Reference to the data
          */
         T& getData() {
@@ -865,7 +876,7 @@ public:
             if (lock.owns_lock()) {
                 // Record the current structural operation intent
                 if (intent == LockIntent::GraphStructure) {
-                    const_cast<CoordinatedGraph*>(this)->currentStructuralIntent_ = intent;
+                    const_cast<CoordinatedGraph*>(this)->currentStructuralIntent_.store(static_cast<int>(intent), std::memory_order_release);
                 }
                 
                 return std::make_unique<GraphLockHandle>(
@@ -882,7 +893,7 @@ public:
                 if (lock.owns_lock()) {
                     // Record the current structural operation intent
                     if (intent == LockIntent::GraphStructure) {
-                        const_cast<CoordinatedGraph*>(this)->currentStructuralIntent_ = intent;
+                        const_cast<CoordinatedGraph*>(this)->currentStructuralIntent_.store(static_cast<int>(intent), std::memory_order_release);
                     }
                     
                     return std::make_unique<GraphLockHandle>(
@@ -1231,41 +1242,39 @@ public:
 
     /**
      * @brief Process nodes in dependency order, ensuring dependencies are processed before dependents
-     * 
+     *
      * @param processFunc Function to call for each node
      * @return true if all nodes were processed, false if a cycle was detected
      */
     bool processDependencyOrder(std::function<void(const KeyType&, T&)> processFunc) {
-        // First, compute a topological sort with a shared lock
-        std::vector<KeyType> sortedNodes;
-        {
+        // topologicalSort() copies graph data under its own lock and releases
+        // before sorting, so we must NOT hold a graph lock here.
+        std::vector<KeyType> sortedNodes = topologicalSort();
+
+        // Check for cycle: topologicalSort returns empty when graph is non-empty
+        if (sortedNodes.empty()) {
             auto lock = lockGraph(LockIntent::Read);
-            if (!lock || !lock->isLocked()) {
-                throw LockAcquisitionException("Failed to acquire graph lock for dependency processing");
-            }
-            
-            sortedNodes = topologicalSort();
-            if (sortedNodes.empty() && !nodes_.empty()) {
+            if (lock && lock->isLocked() && !nodes_.empty()) {
                 return false;  // Cycle detected
             }
+            return true;  // Empty graph
         }
-        
-        // Process nodes in topological order - release graph lock between node operations
-        // to prevent potential deadlocks
+
+        // Process nodes in topological order
         for (const auto& key : sortedNodes) {
             auto nodeLock = tryLockNode(key, LockIntent::NodeModify, true, 100);
             if (!nodeLock || !nodeLock->isLocked()) {
-                continue; // Skip if we couldn't lock the node
+                continue;
             }
-            
+
             auto node = nodeLock->getNode();
             if (!node) {
                 continue;
             }
-            
-            processFunc(key, node->getData());
+
+            processFunc(key, node->getDataNoLock());
         }
-        
+
         return true;
     }
 
@@ -1628,16 +1637,13 @@ public:
                 intent = LockIntent::NodeModify;
                 forWrite = true;
                 break;
-            case LockMode::Intent:
-                intent = LockIntent::GraphStructure;
-                forWrite = true;
-                break;
         }
 
-        // Track this pending lock acquisition in the lock graph
+        // Lock ordering: lockGraphMutex_ first, then graphMutex_ (via tryLockNode).
+        // wouldCauseDeadlock() follows the same ordering.
         {
             std::lock_guard<std::mutex> lock(lockGraphMutex_);
-            
+
             // Mark this resource as being locked by this thread
             threadResourceMap_[threadId].insert(resourceKey);
             
@@ -1697,9 +1703,6 @@ public:
                 break;
             case LockMode::Upgrade:
                 status = ResourceLockStatus::Shared; // Initially shared
-                break;
-            case LockMode::Intent:
-                status = ResourceLockStatus::Intention;
                 break;
         }
 
@@ -2017,8 +2020,7 @@ private:
      */
     void onGraphLockReleased(LockIntent intent) {
         if (intent == LockIntent::GraphStructure) {
-            // Clear the current structural intent
-            currentStructuralIntent_ = std::nullopt;
+            currentStructuralIntent_.store(-1, std::memory_order_release);
             
             // Notify all nodes that the structural operation is complete
             notifyAllNodeLockHolders(LockStatus::Acquired);
@@ -2046,14 +2048,12 @@ private:
      * @return true if the intent can proceed, false otherwise
      */
     bool canProceedWithIntent(LockIntent intent) const {
-        // If a graph structural operation is in progress and this is not a read intent,
-        // we should wait
-        if (currentStructuralIntent_ && 
-            currentStructuralIntent_ == LockIntent::GraphStructure && 
+        int current = currentStructuralIntent_.load(std::memory_order_acquire);
+        if (current >= 0 &&
+            static_cast<LockIntent>(current) == LockIntent::GraphStructure &&
             intent != LockIntent::Read) {
             return false;
         }
-        
         return true;
     }
     
@@ -2124,87 +2124,77 @@ private:
         const KeyType& resourceKey,
         std::thread::id threadId
     ) {
-        // First check DAG edges for proper lock ordering
-        auto threadResourcesIt = threadResourceMap_.find(threadId);
-        if (threadResourcesIt != threadResourceMap_.end() && !threadResourcesIt->second.empty()) {
-            auto graphLock = lockGraph(LockIntent::Read);
-            if (!graphLock || !graphLock->isLocked()) {
-                throw LockAcquisitionException("Failed to acquire graph lock for deadlock detection");
-            }
-            
-            // Check if there's a path in the DAG from any already held resource to the one we want
-            // In a DAG, we should always lock resources in topological order
-            for (const auto& heldResource : threadResourcesIt->second) {
-                // Check if there's a path from 'resourceKey' to 'heldResource'
-                // If there is, we're trying to lock resources out of order
-                
-                std::unordered_set<KeyType> visited;
-                std::queue<KeyType> queue;
-                
-                queue.push(resourceKey);
-                visited.insert(resourceKey);
-                
-                while (!queue.empty()) {
-                    KeyType current = queue.front();
-                    queue.pop();
-                    
-                    // If we found a path to a resource we already hold, deadlock is possible
-                    if (current == heldResource) {
-                        return true;
-                    }
-                    
-                    // Check all outgoing edges from the current node
-                    auto outEdgesIt = outEdges_.find(current);
-                    if (outEdgesIt != outEdges_.end()) {
-                        for (const auto& nextNode : outEdgesIt->second) {
-                            if (visited.find(nextNode) == visited.end()) {
-                                visited.insert(nextNode);
-                                queue.push(nextNode);
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Release lock before checking thread dependencies
-            graphLock.reset();
-        }
-        
-        // Next check thread dependencies for potential deadlocks
+        // Lock ordering: lockGraphMutex_ first, then graphMutex_ (shared).
+        // This matches tryLockResource() ordering, preventing ABBA deadlock.
+
+        // Step 1: Under lockGraphMutex_, copy the thread's held resources
+        // and check thread-level deadlock potential.
+        std::unordered_set<KeyType> heldResources;
         {
             std::lock_guard<std::mutex> lock(lockGraphMutex_);
-            
-            // If this thread doesn't hold any resources, no deadlock is possible
+
             auto threadIt = threadResourceMap_.find(threadId);
             if (threadIt == threadResourceMap_.end() || threadIt->second.empty()) {
                 return false;
             }
-            
-            // Get the existing resources this thread has locked
-            const auto& existingResources = threadIt->second;
-            
-            // Check if the new resource is held by another thread that also
-            // holds resources that this thread is waiting on
+
+            heldResources = threadIt->second;
+
+            // Check if another thread holds the resource we want and also
+            // holds one of ours (thread-level cycle).
             for (const auto& [otherThreadId, otherResources] : threadResourceMap_) {
                 if (otherThreadId == threadId) {
-                    continue; // Skip our own thread
+                    continue;
                 }
-                
-                // If the other thread has the resource we want
                 if (otherResources.find(resourceKey) != otherResources.end()) {
-                    // Check if there's any intersection between the resources
-                    // this thread holds and the resources the other thread holds
-                    for (const auto& ourResource : existingResources) {
+                    for (const auto& ourResource : heldResources) {
                         if (otherResources.find(ourResource) != otherResources.end()) {
-                            // Potential deadlock: other thread has our target resource
-                            // and we have a resource it also has
                             return true;
                         }
                     }
                 }
             }
         }
-        
+
+        // Step 2: Under graphMutex_ (shared), copy outEdges_ for BFS.
+        // lockGraphMutex_ is NOT held here — avoids nested locks entirely.
+        std::unordered_map<KeyType, std::unordered_set<KeyType>> localOutEdges;
+        {
+            auto graphLock = lockGraph(LockIntent::Read);
+            if (!graphLock || !graphLock->isLocked()) {
+                throw LockAcquisitionException("Failed to acquire graph lock for deadlock detection");
+            }
+            localOutEdges = outEdges_;
+        }
+
+        // Step 3: BFS on local copy (no locks held).
+        for (const auto& heldResource : heldResources) {
+            std::unordered_set<KeyType> visited;
+            std::queue<KeyType> bfsQueue;
+
+            bfsQueue.push(resourceKey);
+            visited.insert(resourceKey);
+
+            while (!bfsQueue.empty()) {
+                KeyType current = bfsQueue.front();
+                bfsQueue.pop();
+
+                if (current == heldResource) {
+                    return true;
+                }
+
+                auto outEdgesIt = localOutEdges.find(current);
+                if (outEdgesIt != localOutEdges.end()) {
+                    for (const auto& nextNode : outEdgesIt->second) {
+                        if (visited.find(nextNode) == visited.end()) {
+                            visited.insert(nextNode);
+                            bfsQueue.push(nextNode);
+                        }
+                    }
+                }
+            }
+        }
+
         return false;
     }
 
@@ -2306,8 +2296,9 @@ private:
     std::unordered_map<std::string, std::function<void(const KeyType&)>> removalCallbacks_;
     std::atomic<size_t> callbackCounter_{0};
     
-    // Track current structural operation intent to help with concurrency
-    std::optional<LockIntent> currentStructuralIntent_ = std::nullopt;
+    // Atomic flag for current structural intent. -1 = no intent, otherwise
+    // stores static_cast<int>(LockIntent). Lock-free reads in canProceedWithIntent.
+    std::atomic<int> currentStructuralIntent_{-1};
     
     // Lock tracking state for DAG functionality
     mutable std::mutex lockGraphMutex_;
@@ -2319,4 +2310,4 @@ private:
     bool deadlockDetectionEnabled_ = true;
 };
 
-} // namespace Fabric
+} // namespace fabric

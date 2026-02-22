@@ -5,7 +5,7 @@
 #include <memory>
 #include <cmath>
 
-using namespace fabric::core;
+using namespace fabric;
 
 // Helper for comparing floating point values
 template <typename T>

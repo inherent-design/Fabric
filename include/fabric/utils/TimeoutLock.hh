@@ -6,7 +6,7 @@
 #include <shared_mutex>
 #include <thread>
 
-namespace Fabric {
+namespace fabric {
 namespace Utils {
 
 /**
@@ -126,37 +126,7 @@ public:
         return uniqueLock;
     }
     
-    /**
-     * @brief Try to acquire a lock with a specific duration
-     * 
-     * This is a convenience method for acquiring a lock for a specific duration.
-     * The lock will be automatically released when the returned object goes out of scope.
-     * 
-     * @tparam LockType The type of lock to acquire (std::unique_lock or std::shared_lock)
-     * @param mutex The mutex to lock
-     * @param duration How long to hold the lock
-     * @return An optional containing the lock if successful, or empty if acquisition failed
-     */
-    template<typename LockType>
-    static std::optional<LockType> lockFor(
-        MutexType& mutex,
-        std::chrono::milliseconds duration = std::chrono::milliseconds(100)
-    ) {
-        // Acquire the lock
-        auto lock = LockType(mutex, std::try_to_lock);
-        if (!lock.owns_lock()) {
-            return std::nullopt;
-        }
-        
-        // Create a detached thread to release the lock after the duration
-        std::thread([lock = std::move(lock), duration]() mutable {
-            std::this_thread::sleep_for(duration);
-            lock.unlock();
-        }).detach();
-        
-        return lock;
-    }
 };
 
 } // namespace Utils
-} // namespace Fabric
+} // namespace fabric

@@ -5,8 +5,8 @@
 #include <memory>
 #include <string>
 
-using namespace Fabric;
-using namespace Fabric::Testing;
+using namespace fabric;
+using namespace fabric::Testing;
 
 class LifecycleTest : public ::testing::Test {
 protected:

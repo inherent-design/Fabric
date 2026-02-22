@@ -8,10 +8,12 @@ target_sources(UnitTests
   LifecycleTest.cc
   PluginTest.cc
   CommandTest.cc
-  ReactiveTest.cc
   ResourceTest.cc
   SpatialTest.cc
+  StateMachineTest.cc
   TemporalTest.cc
+  JsonTypesTest.cc
+  PipelineTest.cc
 )
 
 set_source_files_properties(
@@ -19,10 +21,10 @@ set_source_files_properties(
   LifecycleTest.cc
   PluginTest.cc
   ResourceHubTest.cc
-  ReactiveTest.cc
   ResourceTest.cc
   SpatialTest.cc
   TemporalTest.cc
+  PipelineTest.cc
   PROPERTIES
   COMPILE_DEFINITIONS "FABRIC_TEST"
 )

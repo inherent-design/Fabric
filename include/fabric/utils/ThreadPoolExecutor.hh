@@ -13,8 +13,9 @@
 #include <optional>
 #include <string>
 #include <stdexcept>
+#include <iostream>
 
-namespace Fabric {
+namespace fabric {
 namespace Utils {
 
 /**
@@ -54,10 +55,11 @@ public:
     ThreadPoolExecutor& operator=(const ThreadPoolExecutor&) = delete;
     
     /**
-     * @brief ThreadPoolExecutor is movable
+     * @brief ThreadPoolExecutor is not movable.
+     * Worker threads capture `this`; moving would create dangling pointers.
      */
-    ThreadPoolExecutor(ThreadPoolExecutor&&) noexcept;
-    ThreadPoolExecutor& operator=(ThreadPoolExecutor&&) noexcept;
+    ThreadPoolExecutor(ThreadPoolExecutor&&) = delete;
+    ThreadPoolExecutor& operator=(ThreadPoolExecutor&&) = delete;
     
     /**
      * @brief Set the number of worker threads
@@ -204,11 +206,17 @@ public:
     
     /**
      * @brief Shutdown the thread pool
-     * 
+     *
      * This method stops all worker threads and waits for them to finish.
      * No new tasks can be submitted after calling this method.
-     * 
-     * @param timeout Maximum time to wait for threads to finish
+     *
+     * WARNING (Phase 2): The timeout parameter does not work as intended.
+     * Implementation uses std::async to join threads, but std::future from
+     * std::async blocks on destruction, so the timeout is effectively ignored.
+     * This is the root cause of test hangs documented in CLAUDE.md. Needs
+     * replacement with cooperative shutdown (condition_variable + flag).
+     *
+     * @param timeout Maximum time to wait for threads to finish (currently ineffective)
      * @return true if all threads were gracefully shutdown, false if timeout occurred
      */
     bool shutdown(std::chrono::milliseconds timeout = std::chrono::milliseconds(1000));
@@ -272,4 +280,4 @@ private:
 };
 
 } // namespace Utils
-} // namespace Fabric
+} // namespace fabric
