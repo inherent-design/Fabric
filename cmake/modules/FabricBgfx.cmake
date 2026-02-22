@@ -18,3 +18,16 @@ set(BGFX_INSTALL            OFF CACHE BOOL "Create installation target" FORCE)
 set(BGFX_CUSTOM_TARGETS     OFF CACHE BOOL "Include custom targets" FORCE)
 
 FetchContent_MakeAvailable(bgfx)
+
+# Homebrew LLVM ships a newer libc++ than the macOS system; shaderc needs
+# the same rpath fix as FabricLib so __hash_memory resolves at link time.
+if(APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+        AND NOT CMAKE_CXX_COMPILER MATCHES "/usr/bin"
+        AND TARGET shaderc)
+    get_filename_component(_bgfx_compiler_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    get_filename_component(_bgfx_llvm_root "${_bgfx_compiler_dir}" DIRECTORY)
+    set(_bgfx_libcxx "${_bgfx_llvm_root}/lib/c++")
+    if(EXISTS "${_bgfx_libcxx}/libc++.dylib")
+        target_link_options(shaderc PRIVATE "-L${_bgfx_libcxx}" "-Wl,-rpath,${_bgfx_libcxx}")
+    endif()
+endif()
