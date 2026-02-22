@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <algorithm>
+#include <flecs.h>
 #include "fabric/core/Spatial.hh"
 
 namespace fabric {
@@ -87,14 +88,14 @@ struct TransformInterpolator {
     );
 };
 
-// Frustum-cull a scene tree against a view-projection matrix.
-// Returns pointers to visible SceneNode instances.
-// Nodes without an AABB are always considered visible.
+// Frustum-cull scene entities against a view-projection matrix.
+// Iterates entities with SceneEntity tag. Entities without BoundingBox
+// are always considered visible.
 class FrustumCuller {
 public:
-    static std::vector<SceneNode*> cull(
+    static std::vector<flecs::entity> cull(
         const float* viewProjection,
-        SceneNode& root
+        flecs::world& world
     );
 };
 

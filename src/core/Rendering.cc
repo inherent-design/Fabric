@@ -1,4 +1,5 @@
 #include "fabric/core/Rendering.hh"
+#include "fabric/core/ECS.hh"
 #include "fabric/utils/Profiler.hh"
 #include <cmath>
 
@@ -176,42 +177,32 @@ Transform<float> TransformInterpolator::interpolate(
 
 // FrustumCuller
 
-std::vector<SceneNode*> FrustumCuller::cull(
+std::vector<flecs::entity> FrustumCuller::cull(
     const float* viewProjection,
-    SceneNode& root
+    flecs::world& world
 ) {
     FABRIC_ZONE_SCOPED_N("FrustumCuller::cull");
 
     Frustum frustum;
     frustum.extractFromVP(viewProjection);
 
-    std::vector<SceneNode*> visible;
+    std::vector<flecs::entity> visible;
 
-    // Depth-first walk using an explicit stack
-    std::vector<SceneNode*> stack;
-    stack.push_back(&root);
+    // Flat iteration: test each SceneEntity independently
+    world.each([&](flecs::entity e, const Position&) {
+        if (!e.has<SceneEntity>()) return;
 
-    while (!stack.empty()) {
-        SceneNode* node = stack.back();
-        stack.pop_back();
-
-        const AABB* aabb = node->getAABB();
-        if (aabb) {
-            CullResult result = frustum.testAABB(*aabb);
-            if (result == CullResult::Outside) {
-                continue; // Skip this node and its entire subtree
-            }
+        const auto* bb = e.get<BoundingBox>();
+        if (bb) {
+            AABB aabb(
+                Vec3f(bb->minX, bb->minY, bb->minZ),
+                Vec3f(bb->maxX, bb->maxY, bb->maxZ)
+            );
+            if (frustum.testAABB(aabb) == CullResult::Outside) return;
         }
 
-        // Node is visible (either no AABB or Inside/Intersect)
-        visible.push_back(node);
-
-        // Push children in reverse order so left children are processed first
-        const auto& children = node->getChildren();
-        for (auto it = children.rbegin(); it != children.rend(); ++it) {
-            stack.push_back(it->get());
-        }
-    }
+        visible.push_back(e);
+    });
 
     return visible;
 }

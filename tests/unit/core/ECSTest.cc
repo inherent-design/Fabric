@@ -259,3 +259,68 @@ TEST(ECSTest, Progress) {
     });
     EXPECT_EQ(count, 1);
 }
+
+TEST(ECSTest, CreateSceneEntity) {
+    World world;
+    world.registerCoreComponents();
+
+    auto entity = world.createSceneEntity("cube");
+
+    EXPECT_TRUE(entity.has<Position>());
+    EXPECT_TRUE(entity.has<Rotation>());
+    EXPECT_TRUE(entity.has<Scale>());
+    EXPECT_TRUE(entity.has<SceneEntity>());
+
+    // Default position is origin
+    const auto* pos = entity.get<Position>();
+    ASSERT_NE(pos, nullptr);
+    EXPECT_FLOAT_EQ(pos->x, 0.0f);
+    EXPECT_FLOAT_EQ(pos->y, 0.0f);
+    EXPECT_FLOAT_EQ(pos->z, 0.0f);
+
+    // Default rotation is identity quaternion
+    const auto* rot = entity.get<Rotation>();
+    ASSERT_NE(rot, nullptr);
+    EXPECT_FLOAT_EQ(rot->w, 1.0f);
+
+    // Default scale is uniform 1
+    const auto* scl = entity.get<Scale>();
+    ASSERT_NE(scl, nullptr);
+    EXPECT_FLOAT_EQ(scl->x, 1.0f);
+    EXPECT_FLOAT_EQ(scl->y, 1.0f);
+    EXPECT_FLOAT_EQ(scl->z, 1.0f);
+}
+
+TEST(ECSTest, CreateSceneEntityUnnamed) {
+    World world;
+    world.registerCoreComponents();
+
+    auto entity = world.createSceneEntity();
+    EXPECT_TRUE(entity.is_alive());
+    EXPECT_TRUE(entity.has<SceneEntity>());
+    EXPECT_TRUE(entity.has<Position>());
+}
+
+TEST(ECSTest, CreateChildEntityWithParent) {
+    World world;
+    world.registerCoreComponents();
+
+    auto parent = world.createSceneEntity("parent");
+    auto child = world.createChildEntity(parent, "child");
+
+    EXPECT_TRUE(child.has<SceneEntity>());
+    EXPECT_TRUE(child.has<Position>());
+    EXPECT_TRUE(child.has(flecs::ChildOf, parent));
+    EXPECT_EQ(child.parent(), parent);
+}
+
+TEST(ECSTest, SceneEntityComponentRegistration) {
+    World world;
+    world.registerCoreComponents();
+
+    auto seComp = world.get().lookup("SceneEntity");
+    auto rendComp = world.get().lookup("Renderable");
+
+    EXPECT_TRUE(seComp.is_valid());
+    EXPECT_TRUE(rendComp.is_valid());
+}

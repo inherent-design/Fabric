@@ -40,6 +40,27 @@ void World::registerCoreComponents() {
     world_->component<Rotation>("Rotation");
     world_->component<Scale>("Scale");
     world_->component<BoundingBox>("BoundingBox");
+    world_->component<SceneEntity>("SceneEntity");
+    world_->component<Renderable>("Renderable");
+}
+
+flecs::entity World::createSceneEntity(const char* name) {
+    auto builder = name ? world_->entity(name) : world_->entity();
+    return builder
+        .set<Position>({0.0f, 0.0f, 0.0f})
+        .set<Rotation>({0.0f, 0.0f, 0.0f, 1.0f})
+        .set<Scale>({1.0f, 1.0f, 1.0f})
+        .add<SceneEntity>();
+}
+
+flecs::entity World::createChildEntity(flecs::entity parent, const char* name) {
+    auto builder = name ? world_->entity(name) : world_->entity();
+    return builder
+        .child_of(parent)
+        .set<Position>({0.0f, 0.0f, 0.0f})
+        .set<Rotation>({0.0f, 0.0f, 0.0f, 1.0f})
+        .set<Scale>({1.0f, 1.0f, 1.0f})
+        .add<SceneEntity>();
 }
 
 } // namespace fabric

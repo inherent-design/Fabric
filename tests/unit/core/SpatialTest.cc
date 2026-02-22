@@ -2,7 +2,6 @@
 #include "fabric/utils/Testing.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <gtest/gtest.h>
-#include <memory>
 #include <cmath>
 
 using namespace fabric;
@@ -355,72 +354,6 @@ TEST_F(SpatialTest, TransformPointAndDirection) {
     EXPECT_TRUE(almostEqual(transformedDirection.z, 0.0f));
 }
 
-TEST_F(SpatialTest, SceneNodeBasics) {
-    SceneNode root("root");
-    
-    // Create child nodes
-    SceneNode* child1 = root.createChild("child1");
-    SceneNode* child2 = root.createChild("child2");
-    
-    // Set transforms
-    Transform<float> rootTransform;
-    rootTransform.setPosition(Vector3<float, Space::World>(1.0f, 0.0f, 0.0f));
-    root.getLocalTransform() = rootTransform;
-    
-    Transform<float> child1Transform;
-    child1Transform.setPosition(Vector3<float, Space::World>(0.0f, 2.0f, 0.0f));
-    child1->getLocalTransform() = child1Transform;
-    
-    // Check local transforms
-    EXPECT_EQ(root.getLocalTransform().getPosition().x, 1.0f);
-    EXPECT_EQ(child1->getLocalTransform().getPosition().y, 2.0f);
-    
-    // Check global transforms
-    EXPECT_EQ(root.getGlobalTransform().getPosition().x, 1.0f);
-    
-    // Root pos + Child pos
-    EXPECT_EQ(child1->getGlobalTransform().getPosition().x, 1.0f);
-    EXPECT_EQ(child1->getGlobalTransform().getPosition().y, 2.0f);
-    
-    // Check children access
-    EXPECT_EQ(root.getChildren().size(), 2);
-}
-
-TEST_F(SpatialTest, SceneNodeHierarchy) {
-    SceneNode root("root");
-    SceneNode* child = root.createChild("child");
-    SceneNode* grandchild = child->createChild("grandchild");
-    
-    // Set transforms
-    Transform<float> rootTransform;
-    rootTransform.setPosition(Vector3<float, Space::World>(1.0f, 0.0f, 0.0f));
-    root.getLocalTransform() = rootTransform;
-    
-    Transform<float> childTransform;
-    childTransform.setPosition(Vector3<float, Space::World>(0.0f, 2.0f, 0.0f));
-    child->getLocalTransform() = childTransform;
-    
-    Transform<float> grandchildTransform;
-    grandchildTransform.setPosition(Vector3<float, Space::World>(0.0f, 0.0f, 3.0f));
-    grandchild->getLocalTransform() = grandchildTransform;
-    
-    // Check global transform of grandchild
-    Vector3<float, Space::World> expectedGrandchildGlobal(1.0f, 2.0f, 3.0f); // Sum of all positions in hierarchy
-    Vector3<float, Space::World> actualGrandchildGlobal = grandchild->getGlobalTransform().getPosition();
-    EXPECT_FLOAT_EQ(actualGrandchildGlobal.x, expectedGrandchildGlobal.x);
-    EXPECT_FLOAT_EQ(actualGrandchildGlobal.y, expectedGrandchildGlobal.y);
-    EXPECT_FLOAT_EQ(actualGrandchildGlobal.z, expectedGrandchildGlobal.z);
-    
-    // Test parent-child relationships
-    auto detachedChild = root.detachChild(child);
-    EXPECT_EQ(root.getChildren().size(), 0);
-    
-    // Reparent the grandchild directly to root
-    auto grandchildUnique = detachedChild->detachChild(grandchild);
-    SceneNode* grandchildPtr = grandchildUnique.get();
-    root.addChild(std::move(grandchildUnique));
-    EXPECT_EQ(root.getChildren().size(), 1);
-}
 
 TEST_F(SpatialTest, QuaternionSlerp) {
     // Slerp with identical quaternions returns the same quaternion
@@ -485,29 +418,3 @@ TEST_F(SpatialTest, Vector3Lerp) {
     EXPECT_FLOAT_EQ(mid.z, 15.0f);
 }
 
-TEST_F(SpatialTest, SceneBasics) {
-    Scene scene;
-    
-    // Get root node
-    SceneNode* root = scene.getRoot();
-    EXPECT_NE(root, nullptr);
-    
-    // Create a child node
-    SceneNode* child = root->createChild("child");
-    
-    // Set transforms
-    Transform<float> rootTransform;
-    rootTransform.setPosition(Vector3<float, Space::World>(1.0f, 0.0f, 0.0f));
-    root->getLocalTransform() = rootTransform;
-    
-    Transform<float> childTransform;
-    childTransform.setPosition(Vector3<float, Space::World>(0.0f, 2.0f, 0.0f));
-    child->getLocalTransform() = childTransform;
-    
-    // Check global transform
-    Vector3<float, Space::World> expectedChildGlobal(1.0f, 2.0f, 0.0f);
-    Vector3<float, Space::World> actualChildGlobal = child->getGlobalTransform().getPosition();
-    EXPECT_FLOAT_EQ(actualChildGlobal.x, expectedChildGlobal.x);
-    EXPECT_FLOAT_EQ(actualChildGlobal.y, expectedChildGlobal.y);
-    EXPECT_FLOAT_EQ(actualChildGlobal.z, expectedChildGlobal.z);
-}
