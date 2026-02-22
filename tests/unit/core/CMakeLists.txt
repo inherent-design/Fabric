@@ -15,6 +15,8 @@ target_sources(UnitTests
   JsonTypesTest.cc
   PipelineTest.cc
   RenderingTest.cc
+  CameraTest.cc
+  InputManagerTest.cc
 )
 
 set_source_files_properties(
