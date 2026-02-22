@@ -71,7 +71,7 @@ L5: Application
 | `StateMachine.hh` | Generic state machine template with transition validation, guards, entry/exit actions, and observers |
 | `Resource.hh` | Resource base with state machine (Unloaded, Loading, Loaded, LoadingFailed, Unloading), dependency tracking, priority levels |
 | `ResourceHub.hh` | Centralized resource management with CoordinatedGraph-backed dependency tracking, worker threads, memory budgets |
-| `Spatial.hh` | Type-safe Vector2/3/4, Quaternion, Matrix4x4, Transform, SceneNode, Scene; compile-time coordinate space tags (Local, World, Screen, Parent); GLM bridge for `inverse()` |
+| `Spatial.hh` | Type-safe Vector2/3/4, Quaternion, Matrix4x4, Transform; compile-time coordinate space tags (Local, World, Screen, Parent); GLM bridge for `inverse()` |
 | `Temporal.hh` | Multi-timeline time processing with snapshots, variable time flow, region support |
 | `Types.hh` | Core Variant (`nullptr_t, bool, int, float, double, string`), StringMap, Optional aliases |
 

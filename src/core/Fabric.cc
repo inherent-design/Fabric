@@ -1,6 +1,7 @@
 #include "fabric/core/Async.hh"
 #include "fabric/core/Camera.hh"
 #include "fabric/core/Constants.g.hh"
+#include "fabric/core/ECS.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/InputManager.hh"
 #include "fabric/core/Log.hh"
@@ -204,9 +205,10 @@ int main(int argc, char* argv[]) {
         cameraTransform.setPosition(fabric::Vector3<float, fabric::Space::World>(0.0f, 0.0f, -5.0f));
         camera.updateView(cameraTransform);
 
-        // Scene setup
-        fabric::Scene scene;
-        fabric::SceneView sceneView(0, camera, *scene.getRoot());
+        // ECS world setup
+        fabric::World ecsWorld;
+        ecsWorld.registerCoreComponents();
+        fabric::SceneView sceneView(0, camera, ecsWorld.get());
 
         // Camera control state
         constexpr float kMoveSpeed = 5.0f;

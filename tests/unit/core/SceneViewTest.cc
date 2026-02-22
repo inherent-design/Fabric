@@ -1,4 +1,5 @@
 #include "fabric/core/Camera.hh"
+#include "fabric/core/ECS.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/utils/Testing.hh"
@@ -11,152 +12,136 @@ using namespace fabric;
 
 class FrustumCullerTest : public ::testing::Test {
 protected:
-    // Build a VP matrix using bx::mtxProj + bx::mtxLookAt for consistency
-    // with Camera's internal implementation
-    void buildVP(float* outVP, const float* view, const float* proj) {
-        bx::mtxMul(outVP, view, proj);
+    World ecsWorld;
+
+    void SetUp() override {
+        ecsWorld.registerCoreComponents();
+    }
+
+    // Helper: create a scene entity with optional BoundingBox
+    flecs::entity createEntity(const char* name) {
+        return ecsWorld.createSceneEntity(name);
+    }
+
+    // Helper: create a child scene entity
+    flecs::entity createChildEntity(flecs::entity parent, const char* name) {
+        return ecsWorld.createChildEntity(parent, name);
+    }
+
+    // Helper: set BoundingBox on an entity
+    void setBoundingBox(flecs::entity e, float minX, float minY, float minZ,
+                        float maxX, float maxY, float maxZ) {
+        e.set<BoundingBox>({minX, minY, minZ, maxX, maxY, maxZ});
+    }
+
+    // Helper: collect visible entity names
+    std::unordered_set<std::string> visibleNames(
+        const std::vector<flecs::entity>& entities) {
+        std::unordered_set<std::string> names;
+        for (auto e : entities) {
+            names.insert(std::string(e.name().c_str()));
+        }
+        return names;
     }
 };
 
-TEST_F(FrustumCullerTest, NodesWithoutAABBAlwaysVisible) {
-    // Camera looking along +Z from origin
+TEST_F(FrustumCullerTest, EntitiesWithoutBoundingBoxAlwaysVisible) {
     Camera camera;
     camera.setPerspective(60.0f, 16.0f / 9.0f, 0.1f, 100.0f, true);
     Transform<float> camTransform;
     camera.updateView(camTransform);
 
-    SceneNode root("root");
-    root.createChild("child_a");
-    root.createChild("child_b");
+    createEntity("entity_a");
+    createEntity("entity_b");
 
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visible = FrustumCuller::cull(vp, root);
+    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
 
-    // All 3 nodes (root + 2 children) should be visible since none have AABBs
-    EXPECT_EQ(visible.size(), 3u);
+    // Both entities have no BoundingBox, so both should be visible
+    EXPECT_EQ(visible.size(), 2u);
 }
 
-TEST_F(FrustumCullerTest, NodeBehindCameraIsCulled) {
-    // Camera at origin, looking along +Z (left-handed)
+TEST_F(FrustumCullerTest, EntityBehindCameraIsCulled) {
     Camera camera;
     camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
     Transform<float> camTransform;
     camera.updateView(camTransform);
 
-    SceneNode root("root");
-    auto* behindNode = root.createChild("behind");
+    auto behind = createEntity("behind");
+    setBoundingBox(behind, -1.0f, -1.0f, -20.0f, 1.0f, 1.0f, -10.0f);
 
-    // Place AABB behind the camera (negative Z in left-handed = behind)
-    AABB behindBox(
-        Vec3f(-1.0f, -1.0f, -20.0f),
-        Vec3f(1.0f, 1.0f, -10.0f)
-    );
-    behindNode->setAABB(behindBox);
+    auto noBox = createEntity("no_box");
 
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visible = FrustumCuller::cull(vp, root);
+    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto names = visibleNames(visible);
 
-    // Root has no AABB so it is visible; behind node should be culled
-    bool foundBehind = false;
-    for (SceneNode* n : visible) {
-        if (n->getName() == "behind") foundBehind = true;
-    }
-    EXPECT_FALSE(foundBehind);
+    EXPECT_FALSE(names.count("behind"));
+    EXPECT_TRUE(names.count("no_box"));
 }
 
-TEST_F(FrustumCullerTest, NodeInFrontOfCameraIsVisible) {
+TEST_F(FrustumCullerTest, EntityInFrontOfCameraIsVisible) {
     Camera camera;
     camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
     Transform<float> camTransform;
     camera.updateView(camTransform);
 
-    SceneNode root("root");
-    auto* frontNode = root.createChild("front");
-
-    // Place AABB in front of the camera (positive Z in left-handed)
-    AABB frontBox(
-        Vec3f(-1.0f, -1.0f, 5.0f),
-        Vec3f(1.0f, 1.0f, 10.0f)
-    );
-    frontNode->setAABB(frontBox);
+    auto front = createEntity("front");
+    setBoundingBox(front, -1.0f, -1.0f, 5.0f, 1.0f, 1.0f, 10.0f);
 
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visible = FrustumCuller::cull(vp, root);
+    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto names = visibleNames(visible);
 
-    bool foundFront = false;
-    for (SceneNode* n : visible) {
-        if (n->getName() == "front") foundFront = true;
-    }
-    EXPECT_TRUE(foundFront);
+    EXPECT_TRUE(names.count("front"));
 }
 
-TEST_F(FrustumCullerTest, NodeFarOutsideFrustumIsCulled) {
+TEST_F(FrustumCullerTest, EntityFarOutsideFrustumIsCulled) {
     Camera camera;
     camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
     Transform<float> camTransform;
     camera.updateView(camTransform);
 
-    SceneNode root("root");
-    auto* farNode = root.createChild("far_right");
-
-    // Place AABB far to the right, well outside 60-degree FOV
-    AABB farBox(
-        Vec3f(500.0f, 500.0f, 5.0f),
-        Vec3f(510.0f, 510.0f, 10.0f)
-    );
-    farNode->setAABB(farBox);
+    auto farRight = createEntity("far_right");
+    setBoundingBox(farRight, 500.0f, 500.0f, 5.0f, 510.0f, 510.0f, 10.0f);
 
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visible = FrustumCuller::cull(vp, root);
+    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto names = visibleNames(visible);
 
-    bool foundFar = false;
-    for (SceneNode* n : visible) {
-        if (n->getName() == "far_right") foundFar = true;
-    }
-    EXPECT_FALSE(foundFar);
+    EXPECT_FALSE(names.count("far_right"));
 }
 
-TEST_F(FrustumCullerTest, SubtreeSkippedWhenParentCulled) {
+TEST_F(FrustumCullerTest, FlatCullingDoesNotSkipChildren) {
+    // With flat iteration, each entity is tested independently.
+    // A child without BoundingBox is visible even if its parent is culled.
     Camera camera;
     camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
     Transform<float> camTransform;
     camera.updateView(camTransform);
 
-    SceneNode root("root");
-    auto* outsideParent = root.createChild("outside_parent");
+    auto parent = createEntity("outside_parent");
+    setBoundingBox(parent, 500.0f, 500.0f, 5.0f, 510.0f, 510.0f, 10.0f);
 
-    // Parent has AABB outside frustum
-    AABB outsideBox(
-        Vec3f(500.0f, 500.0f, 5.0f),
-        Vec3f(510.0f, 510.0f, 10.0f)
-    );
-    outsideParent->setAABB(outsideBox);
-
-    // Child has no AABB (would normally be visible), but parent is culled
-    outsideParent->createChild("child_under_culled");
+    auto child = createChildEntity(parent, "child_no_box");
 
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visible = FrustumCuller::cull(vp, root);
+    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto names = visibleNames(visible);
 
-    // Only root should be visible. The parent and its child are both culled.
-    bool foundChild = false;
-    bool foundParent = false;
-    for (SceneNode* n : visible) {
-        if (n->getName() == "child_under_culled") foundChild = true;
-        if (n->getName() == "outside_parent") foundParent = true;
-    }
-    EXPECT_FALSE(foundParent);
-    EXPECT_FALSE(foundChild);
+    EXPECT_FALSE(names.count("outside_parent"));
+    // Child has no BoundingBox: always visible in flat iteration
+    EXPECT_TRUE(names.count("child_no_box"));
 }
 
 TEST_F(FrustumCullerTest, MixedVisibility) {
@@ -165,32 +150,23 @@ TEST_F(FrustumCullerTest, MixedVisibility) {
     Transform<float> camTransform;
     camera.updateView(camTransform);
 
-    SceneNode root("root");
+    auto visible1 = createEntity("visible_1");
+    setBoundingBox(visible1, -1.0f, -1.0f, 5.0f, 1.0f, 1.0f, 10.0f);
 
-    auto* visible1 = root.createChild("visible_1");
-    visible1->setAABB(AABB(Vec3f(-1.0f, -1.0f, 5.0f), Vec3f(1.0f, 1.0f, 10.0f)));
+    auto culled1 = createEntity("culled_1");
+    setBoundingBox(culled1, 500.0f, 0.0f, 5.0f, 510.0f, 1.0f, 10.0f);
 
-    auto* culled1 = root.createChild("culled_1");
-    culled1->setAABB(AABB(Vec3f(500.0f, 0.0f, 5.0f), Vec3f(510.0f, 1.0f, 10.0f)));
+    auto visible2 = createEntity("visible_2");
+    setBoundingBox(visible2, -2.0f, -2.0f, 20.0f, 2.0f, 2.0f, 25.0f);
 
-    auto* visible2 = root.createChild("visible_2");
-    visible2->setAABB(AABB(Vec3f(-2.0f, -2.0f, 20.0f), Vec3f(2.0f, 2.0f, 25.0f)));
-
-    auto* noAabb = root.createChild("no_aabb");
+    auto noAabb = createEntity("no_aabb");
 
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visibleNodes = FrustumCuller::cull(vp, root);
+    auto visibleNodes = FrustumCuller::cull(vp, ecsWorld.get());
+    auto names = visibleNames(visibleNodes);
 
-    // Count expected nodes: root (no aabb), visible_1, visible_2, no_aabb = 4
-    // culled_1 should not appear
-    std::unordered_set<std::string> names;
-    for (SceneNode* n : visibleNodes) {
-        names.insert(n->getName());
-    }
-
-    EXPECT_TRUE(names.count("root"));
     EXPECT_TRUE(names.count("visible_1"));
     EXPECT_TRUE(names.count("visible_2"));
     EXPECT_TRUE(names.count("no_aabb"));
@@ -198,68 +174,40 @@ TEST_F(FrustumCullerTest, MixedVisibility) {
 }
 
 TEST_F(FrustumCullerTest, OrthoFrustumCull) {
-    // Spatial.hh orthographic treats near/far as z-axis values directly.
-    // Symmetric range ensures clip space works as expected.
-    auto ortho = Matrix4x4<float>::orthographic(-10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
+    auto ortho = Matrix4x4<float>::orthographic(
+        -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
 
-    SceneNode root("root");
-    auto* inside = root.createChild("inside");
-    inside->setAABB(AABB(Vec3f(-1.0f, -1.0f, -1.0f), Vec3f(1.0f, 1.0f, 1.0f)));
+    auto inside = createEntity("inside");
+    setBoundingBox(inside, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f);
 
-    auto* outside = root.createChild("outside");
-    outside->setAABB(AABB(Vec3f(20.0f, 20.0f, 1.0f), Vec3f(30.0f, 30.0f, 5.0f)));
+    auto outside = createEntity("outside");
+    setBoundingBox(outside, 20.0f, 20.0f, 1.0f, 30.0f, 30.0f, 5.0f);
 
-    auto visible = FrustumCuller::cull(ortho.elements.data(), root);
+    auto visible = FrustumCuller::cull(ortho.elements.data(), ecsWorld.get());
+    auto names = visibleNames(visible);
 
-    bool foundInside = false, foundOutside = false;
-    for (SceneNode* n : visible) {
-        if (n->getName() == "inside") foundInside = true;
-        if (n->getName() == "outside") foundOutside = true;
-    }
-
-    EXPECT_TRUE(foundInside);
-    EXPECT_FALSE(foundOutside);
-}
-
-// SceneNode AABB tests
-
-TEST(SceneNodeAABBTest, DefaultHasNoAABB) {
-    SceneNode node("test");
-    EXPECT_EQ(node.getAABB(), nullptr);
-}
-
-TEST(SceneNodeAABBTest, SetAndGetAABB) {
-    SceneNode node("test");
-    AABB box(Vec3f(-1.0f, -1.0f, -1.0f), Vec3f(1.0f, 1.0f, 1.0f));
-    node.setAABB(box);
-
-    const AABB* result = node.getAABB();
-    ASSERT_NE(result, nullptr);
-    EXPECT_FLOAT_EQ(result->min.x, -1.0f);
-    EXPECT_FLOAT_EQ(result->max.x, 1.0f);
+    EXPECT_TRUE(names.count("inside"));
+    EXPECT_FALSE(names.count("outside"));
 }
 
 TEST_F(FrustumCullerTest, CameraMovementChangesVisibleSet) {
     Camera camera;
     camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
 
-    SceneNode root("root");
-    auto* leftNode = root.createChild("left");
-    leftNode->setAABB(AABB(Vec3f(-50.0f, -1.0f, 5.0f), Vec3f(-40.0f, 1.0f, 10.0f)));
+    auto leftNode = createEntity("left");
+    setBoundingBox(leftNode, -50.0f, -1.0f, 5.0f, -40.0f, 1.0f, 10.0f);
 
-    auto* rightNode = root.createChild("right");
-    rightNode->setAABB(AABB(Vec3f(40.0f, -1.0f, 5.0f), Vec3f(50.0f, 1.0f, 10.0f)));
+    auto rightNode = createEntity("right");
+    setBoundingBox(rightNode, 40.0f, -1.0f, 5.0f, 50.0f, 1.0f, 10.0f);
 
-    // Camera at origin: neither far-left nor far-right should be visible
+    // Camera at origin: neither far-left nor far-right visible
     Transform<float> camTransform;
     camera.updateView(camTransform);
 
     float vp[16];
     camera.getViewProjection(vp);
-    auto visible1 = FrustumCuller::cull(vp, root);
-
-    std::unordered_set<std::string> names1;
-    for (SceneNode* n : visible1) names1.insert(n->getName());
+    auto visible1 = FrustumCuller::cull(vp, ecsWorld.get());
+    auto names1 = visibleNames(visible1);
     EXPECT_FALSE(names1.count("left"));
     EXPECT_FALSE(names1.count("right"));
 
@@ -267,28 +215,24 @@ TEST_F(FrustumCullerTest, CameraMovementChangesVisibleSet) {
     camTransform.setPosition(Vec3f(-45.0f, 0.0f, 0.0f));
     camera.updateView(camTransform);
     camera.getViewProjection(vp);
-    auto visible2 = FrustumCuller::cull(vp, root);
-
-    std::unordered_set<std::string> names2;
-    for (SceneNode* n : visible2) names2.insert(n->getName());
+    auto visible2 = FrustumCuller::cull(vp, ecsWorld.get());
+    auto names2 = visibleNames(visible2);
     EXPECT_TRUE(names2.count("left"));
     EXPECT_FALSE(names2.count("right"));
 }
 
 TEST_F(FrustumCullerTest, MultipleCamerasOnDifferentViews) {
-    // Two cameras with different positions see different subsets of the scene
     Camera cameraA;
     cameraA.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
 
     Camera cameraB;
     cameraB.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
 
-    SceneNode root("root");
-    auto* nearCenter = root.createChild("near_center");
-    nearCenter->setAABB(AABB(Vec3f(-1.0f, -1.0f, 5.0f), Vec3f(1.0f, 1.0f, 10.0f)));
+    auto nearCenter = createEntity("near_center");
+    setBoundingBox(nearCenter, -1.0f, -1.0f, 5.0f, 1.0f, 1.0f, 10.0f);
 
-    auto* farRight = root.createChild("far_right");
-    farRight->setAABB(AABB(Vec3f(80.0f, -1.0f, 5.0f), Vec3f(90.0f, 1.0f, 10.0f)));
+    auto farRight = createEntity("far_right");
+    setBoundingBox(farRight, 80.0f, -1.0f, 5.0f, 90.0f, 1.0f, 10.0f);
 
     // Camera A at origin: sees near_center, not far_right
     Transform<float> transformA;
@@ -296,10 +240,8 @@ TEST_F(FrustumCullerTest, MultipleCamerasOnDifferentViews) {
 
     float vpA[16];
     cameraA.getViewProjection(vpA);
-    auto visibleA = FrustumCuller::cull(vpA, root);
-
-    std::unordered_set<std::string> namesA;
-    for (SceneNode* n : visibleA) namesA.insert(n->getName());
+    auto visibleA = FrustumCuller::cull(vpA, ecsWorld.get());
+    auto namesA = visibleNames(visibleA);
     EXPECT_TRUE(namesA.count("near_center"));
     EXPECT_FALSE(namesA.count("far_right"));
 
@@ -310,10 +252,52 @@ TEST_F(FrustumCullerTest, MultipleCamerasOnDifferentViews) {
 
     float vpB[16];
     cameraB.getViewProjection(vpB);
-    auto visibleB = FrustumCuller::cull(vpB, root);
-
-    std::unordered_set<std::string> namesB;
-    for (SceneNode* n : visibleB) namesB.insert(n->getName());
+    auto visibleB = FrustumCuller::cull(vpB, ecsWorld.get());
+    auto namesB = visibleNames(visibleB);
     EXPECT_FALSE(namesB.count("near_center"));
     EXPECT_TRUE(namesB.count("far_right"));
+}
+
+TEST_F(FrustumCullerTest, OnlySceneEntitiesCulled) {
+    // Entities without SceneEntity tag should not appear in cull results
+    Camera camera;
+    camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
+    Transform<float> camTransform;
+    camera.updateView(camTransform);
+
+    // Scene entity (should be visible)
+    auto scene = createEntity("scene_entity");
+
+    // Non-scene entity with Position but no SceneEntity tag
+    ecsWorld.get().entity("non_scene")
+        .set<Position>({0.0f, 0.0f, 5.0f});
+
+    float vp[16];
+    camera.getViewProjection(vp);
+    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto names = visibleNames(visible);
+
+    EXPECT_TRUE(names.count("scene_entity"));
+    EXPECT_FALSE(names.count("non_scene"));
+}
+
+// BoundingBox component tests (replacing SceneNodeAABBTest)
+
+TEST(BoundingBoxComponentTest, EntityDefaultHasNoBoundingBox) {
+    World world;
+    world.registerCoreComponents();
+    auto entity = world.createSceneEntity("test");
+    EXPECT_FALSE(entity.has<BoundingBox>());
+}
+
+TEST(BoundingBoxComponentTest, SetAndGetBoundingBox) {
+    World world;
+    world.registerCoreComponents();
+    auto entity = world.createSceneEntity("test");
+    entity.set<BoundingBox>({-1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f});
+
+    const auto* bb = entity.get<BoundingBox>();
+    ASSERT_NE(bb, nullptr);
+    EXPECT_FLOAT_EQ(bb->minX, -1.0f);
+    EXPECT_FLOAT_EQ(bb->maxX, 1.0f);
 }
