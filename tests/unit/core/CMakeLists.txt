@@ -18,6 +18,7 @@ target_sources(UnitTests
   CameraTest.cc
   InputManagerTest.cc
   SceneViewTest.cc
+  ECSTest.cc
 )
 
 set_source_files_properties(

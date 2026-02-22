@@ -81,6 +81,9 @@ include(FabricBgfx)
 # RmlUi - HTML/CSS UI (scaffold only, full integration is Sprint 3)
 include(FabricRmlUi)
 
+# Flecs ECS framework
+include(FabricFlecs)
+
 # SDL3 Configuration
 FetchContent_Declare(
     SDL3
@@ -140,6 +143,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/Camera.cc
     src/core/InputManager.cc
     src/core/SceneView.cc
+    src/core/ECS.cc
 )
 
 # Utils library components
@@ -195,6 +199,7 @@ target_link_libraries(FabricLib
         nlohmann_json::nlohmann_json
         asio::asio
         rmlui_core
+        flecs::flecs_static
 )
 
 target_compile_definitions(FabricLib
