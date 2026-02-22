@@ -133,6 +133,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/Temporal.cc
     src/core/ResourceHub.cc
     src/core/Async.cc
+    src/core/Rendering.cc
 )
 
 # Utils library components
