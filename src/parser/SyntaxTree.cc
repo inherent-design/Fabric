@@ -1,8 +1,8 @@
 #include "fabric/parser/SyntaxTree.hh"
 #include "fabric/utils/ErrorHandling.hh"
-#include "fabric/utils/Logging.hh"
+#include "fabric/core/Log.hh"
 
-namespace Fabric {
+namespace fabric {
 
 ASTNode::ASTNode(const Token &token) : token(token) {}
 
@@ -460,8 +460,8 @@ Variant parseValue(const std::string &token, TokenType type) {
       return token;
     }
   } catch (const std::exception &e) {
-    Logger::logError("Error parsing value: " + std::string(e.what()));
+    FABRIC_LOG_ERROR("Error parsing value: {}", e.what());
     return nullptr;
   }
 }
-} // namespace Fabric
+} // namespace fabric

@@ -2,7 +2,7 @@
 
 #include "fabric/core/Types.hh"
 
-namespace Fabric {
+namespace fabric {
 
 // Enum for token types with payloads for literals
 enum class TokenType {
@@ -227,4 +227,4 @@ struct Token {
 
   Token() : type(TokenType::EndOfFile), value(nullptr) {}
 };
-} // namespace Fabric
+} // namespace fabric

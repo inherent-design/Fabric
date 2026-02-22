@@ -1,6 +1,6 @@
 #include "fabric/core/ResourceHub.hh"
 #include "fabric/utils/ErrorHandling.hh"
-#include "fabric/utils/Logging.hh"
+#include "fabric/core/Log.hh"
 #include <algorithm>
 #include <iostream>
 #include <array>
@@ -9,10 +9,7 @@
 #include <mach-o/dyld.h>
 #endif
 
-namespace Fabric {
-
-// Initialize static members if needed
-std::timed_mutex ResourceHub::mutex_;
+namespace fabric {
 
 // Worker thread function
 void ResourceHub::workerThreadFunc() {
@@ -37,10 +34,10 @@ ResourceHub::~ResourceHub() {
                 shutdown();
                 shutdownCompleted = true;
             } catch (const std::exception& e) {
-                Logger::logError("Exception during ResourceHub shutdown: " + std::string(e.what()));
+                FABRIC_LOG_ERROR("Exception during ResourceHub shutdown: {}", e.what());
                 shutdownCompleted = true;
             } catch (...) {
-                Logger::logError("Unknown exception during ResourceHub shutdown");
+                FABRIC_LOG_ERROR("Unknown exception during ResourceHub shutdown");
                 shutdownCompleted = true;
             }
         });
@@ -49,7 +46,7 @@ ResourceHub::~ResourceHub() {
         while (!shutdownCompleted) {
             auto now = std::chrono::steady_clock::now();
             if (std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count() > shutdownTimeoutMs) {
-                Logger::logWarning("ResourceHub shutdown timed out, continuing with destruction");
+                FABRIC_LOG_WARN("ResourceHub shutdown timed out, continuing with destruction");
                 break;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -61,9 +58,9 @@ ResourceHub::~ResourceHub() {
         }
     } catch (const std::exception& e) {
         // Log but don't throw from destructor
-        Logger::logError("Exception in ResourceHub destructor: " + std::string(e.what()));
+        FABRIC_LOG_ERROR("Exception in ResourceHub destructor: {}", e.what());
     } catch (...) {
-        Logger::logError("Unknown exception in ResourceHub destructor");
+        FABRIC_LOG_ERROR("Unknown exception in ResourceHub destructor");
     }
 }
 
@@ -92,7 +89,7 @@ void ResourceHub::shutdown() {
     while (!queueMutex_.try_lock()) {
       if (std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - queueLockStart).count() > MUTEX_TIMEOUT_MS) {
-        Logger::logWarning("Failed to acquire queue mutex in shutdown");
+        FABRIC_LOG_WARN("Failed to acquire queue mutex in shutdown");
         break;
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -157,7 +154,7 @@ void ResourceHub::shutdown() {
     // Join threads with timeout protection
     for (auto thread : threadsToJoin) {
       if (isTimedOut()) {
-        Logger::logWarning("Shutdown timed out during thread joining");
+        FABRIC_LOG_WARN("Shutdown timed out during thread joining");
         break;
       }
       
@@ -175,7 +172,7 @@ void ResourceHub::shutdown() {
       while (!joinCompleted) {
         if (std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - joinStart).count() > THREAD_JOIN_TIMEOUT_MS) {
-          Logger::logWarning("Thread join timed out in shutdown");
+          FABRIC_LOG_WARN("Thread join timed out in shutdown");
           break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -219,7 +216,7 @@ void ResourceHub::shutdown() {
         while (!clearCompleted) {
           if (std::chrono::duration_cast<std::chrono::milliseconds>(
                   std::chrono::steady_clock::now() - clearStart).count() > CLEAR_TIMEOUT_MS) {
-            Logger::logWarning("Resource clearing timed out in shutdown");
+            FABRIC_LOG_WARN("Resource clearing timed out in shutdown");
             break;
           }
           std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -230,15 +227,15 @@ void ResourceHub::shutdown() {
           clearThread.detach();
         }
       } catch (const std::exception& e) {
-        Logger::logError("Exception during resource clearing in shutdown: " + std::string(e.what()));
+        FABRIC_LOG_ERROR("Exception during resource clearing in shutdown: {}", e.what());
       } catch (...) {
-        Logger::logError("Unknown exception during resource clearing in shutdown");
+        FABRIC_LOG_ERROR("Unknown exception during resource clearing in shutdown");
       }
     }
   } catch (const std::exception& e) {
-    Logger::logError("Exception in ResourceHub::shutdown(): " + std::string(e.what()));
+    FABRIC_LOG_ERROR("Exception in ResourceHub::shutdown(): {}", e.what());
   } catch (...) {
-    Logger::logError("Unknown exception in ResourceHub::shutdown()");
+    FABRIC_LOG_ERROR("Unknown exception in ResourceHub::shutdown()");
   }
 }
 
@@ -276,7 +273,7 @@ bool ResourceHub::unload(const std::string &resourceId, bool cascade) {
       return false;
     }
 
-    auto resource = nodeLock->getNode()->getData();
+    auto resource = nodeLock->getNode()->getDataNoLock();
 
     // Check if there are dependencies on this resource
     auto dependents = resourceGraph_.getInEdges(resourceId);
@@ -340,7 +337,7 @@ bool ResourceHub::unloadRecursive(const std::string &resourceId) {
           CoordinatedGraph<std::shared_ptr<Resource>>::LockIntent::NodeModify,
           true);
       if (nodeLock && nodeLock->isLocked()) {
-        auto res = nodeLock->getNode()->getData();
+        auto res = nodeLock->getNode()->getDataNoLock();
         if (res->getState() == ResourceState::Loaded) {
           res->unload();
         }
@@ -403,7 +400,7 @@ size_t ResourceHub::getMemoryUsage() const {
       continue;
     }
 
-    auto resource = nodeLock->getNode()->getData();
+    auto resource = nodeLock->getNode()->getDataNoLock();
     if (resource->getState() == ResourceState::Loaded) {
       total += resource->getMemoryUsage();
     }
@@ -445,14 +442,12 @@ bool ResourceHub::isLoaded(const std::string &resourceId) const {
     // Use RAII to ensure the lock is released
     // by creating a scope and releasing at the end
     {
-      // Get the resource data
-      auto resource = nodeLock->getNode()->getData();
+      auto resource = nodeLock->getNode()->getDataNoLock();
       if (!resource) {
         nodeLock->release();
         return false;
       }
-      
-      // Check the resource state
+
       ResourceState state = resource->getState();
       
       // Release the lock
@@ -463,11 +458,11 @@ bool ResourceHub::isLoaded(const std::string &resourceId) const {
     }
   } catch (const std::exception& e) {
     // Log error but don't propagate exception
-    Logger::logError("Exception in isLoaded for " + resourceId + ": " + e.what());
+    FABRIC_LOG_ERROR("Exception in isLoaded for {}: {}", resourceId, e.what());
     return false;
   } catch (...) {
     // Catch any other exceptions
-    Logger::logError("Unknown exception in isLoaded for " + resourceId);
+    FABRIC_LOG_ERROR("Unknown exception in isLoaded for {}", resourceId);
     return false;
   }
 }
@@ -536,7 +531,7 @@ size_t ResourceHub::enforceMemoryBudget() {
       return 0; // No need to enforce budget
     }
   } catch (const std::exception& e) {
-    Logger::logError("Exception in getMemoryUsage: " + std::string(e.what()));
+    FABRIC_LOG_ERROR("Exception in getMemoryUsage: {}", e.what());
     return 0;
   }
   
@@ -548,7 +543,7 @@ size_t ResourceHub::enforceMemoryBudget() {
   try {
     allResourceIds = resourceGraph_.getAllNodes();
   } catch (const std::exception& e) {
-    Logger::logError("Failed to get all nodes: " + std::string(e.what()));
+    FABRIC_LOG_ERROR("Failed to get all nodes: {}", e.what());
     return 0;
   }
   
@@ -570,7 +565,7 @@ size_t ResourceHub::enforceMemoryBudget() {
   // Collect initial candidate information with minimal locking
   for (const auto& id : allResourceIds) {
     if (isTimedOut()) {
-      Logger::logWarning("enforceMemoryBudget timed out during candidate collection");
+      FABRIC_LOG_WARN("enforceMemoryBudget timed out during candidate collection");
       return 0;
     }
     
@@ -611,7 +606,7 @@ size_t ResourceHub::enforceMemoryBudget() {
     bool hasSingleRef = false;
     
     try {
-      resource = nodeLock->getNode()->getData();
+      resource = nodeLock->getNode()->getDataNoLock();
       if (resource) {
         resourceSize = resource->getMemoryUsage();
         lastAccess = node->getLastAccessTime();
@@ -645,7 +640,7 @@ size_t ResourceHub::enforceMemoryBudget() {
         return a.lastAccessTime < b.lastAccessTime;
       });
   } catch (const std::exception& e) {
-    Logger::logError("Exception sorting candidates: " + std::string(e.what()));
+    FABRIC_LOG_ERROR("Exception sorting candidates: {}", e.what());
     return 0;
   }
   
@@ -657,7 +652,7 @@ size_t ResourceHub::enforceMemoryBudget() {
   
   for (const auto& candidate : candidates) {
     if (isTimedOut()) {
-      Logger::logWarning("enforceMemoryBudget timed out during eviction");
+      FABRIC_LOG_WARN("enforceMemoryBudget timed out during eviction");
       break;
     }
     
@@ -685,10 +680,10 @@ size_t ResourceHub::enforceMemoryBudget() {
     std::shared_ptr<Resource> resource;
     
     try {
-      resource = nodeLock->getNode()->getData();
-      
+      resource = nodeLock->getNode()->getDataNoLock();
+
       // Double-check conditions under lock
-      if (!resource || resource.use_count() > 1 || 
+      if (!resource || resource.use_count() > 1 ||
           resource->getState() != ResourceState::Loaded) {
         nodeLock->release();
         continue;
@@ -712,7 +707,7 @@ size_t ResourceHub::enforceMemoryBudget() {
         evictedCount++;
         
         // Log success
-        Logger::logDebug("Evicted resource: " + candidate.id);
+        FABRIC_LOG_DEBUG("Evicted resource: {}", candidate.id);
       }
     } catch (const std::exception& e) {
       // Make sure lock is released on exception
@@ -722,7 +717,7 @@ size_t ResourceHub::enforceMemoryBudget() {
         }
       } catch (...) { }
       
-      Logger::logError("Error evicting resource " + candidate.id + ": " + std::string(e.what()));
+      FABRIC_LOG_ERROR("Error evicting resource {}: {}", candidate.id, e.what());
       continue;
     }
     
@@ -792,7 +787,7 @@ void ResourceHub::processLoadQueue() {
                         std::shared_ptr<Resource>>::LockIntent::Read);
 
                 if (nodeLock && nodeLock->isLocked()) {
-                  resource = nodeLock->getNode()->getData();
+                  resource = nodeLock->getNode()->getDataNoLock();
                 }
               }
             } else {
@@ -800,12 +795,11 @@ void ResourceHub::processLoadQueue() {
             }
           }
         } else {
-          // Take a shared lock to read the data
           auto nodeLock = resourceNode->tryLock(
               CoordinatedGraph<std::shared_ptr<Resource>>::LockIntent::Read);
 
           if (nodeLock && nodeLock->isLocked()) {
-            resource = nodeLock->getNode()->getData();
+            resource = nodeLock->getNode()->getDataNoLock();
           }
         }
 
@@ -822,7 +816,7 @@ void ResourceHub::processLoadQueue() {
                 resourceNode->touch();
               }
             } catch (const std::exception &e) {
-              Logger::logError("Error loading resource " + request.resourceId + ": " + e.what());
+              FABRIC_LOG_ERROR("Error loading resource {}: {}", request.resourceId, e.what());
             }
           }
         }
@@ -831,7 +825,7 @@ void ResourceHub::processLoadQueue() {
         try {
           enforceBudget();
         } catch (const std::exception &e) {
-          Logger::logError("Error enforcing memory budget: " + std::string(e.what()));
+          FABRIC_LOG_ERROR("Error enforcing memory budget: {}", e.what());
         }
 
         // Call the callback - handle any exceptions
@@ -839,24 +833,24 @@ void ResourceHub::processLoadQueue() {
           try {
             request.callback(resource);
           } catch (const std::exception &e) {
-            Logger::logError("Error in resource callback for " + request.resourceId + ": " + e.what());
+            FABRIC_LOG_ERROR("Error in resource callback for {}: {}", request.resourceId, e.what());
           }
         }
       } catch (const std::exception &e) {
         // Catch any exception during request processing to keep the thread
         // alive
-        Logger::logError("Error processing request for " + request.resourceId + ": " + e.what());
+        FABRIC_LOG_ERROR("Error processing request for {}: {}", request.resourceId, e.what());
       } catch (...) {
         // Catch any unknown exception
-        Logger::logError("Unknown error processing request for " + request.resourceId);
+        FABRIC_LOG_ERROR("Unknown error processing request for {}", request.resourceId);
       }
     }
   } catch (const std::exception &e) {
     // Log the error but don't propagate it - this would terminate the thread
-    Logger::logCritical("Fatal worker thread error: " + std::string(e.what()));
+    FABRIC_LOG_CRITICAL("Fatal worker thread error: {}", e.what());
   } catch (...) {
     // Catch any unknown exception
-    Logger::logCritical("Unknown fatal worker thread error");
+    FABRIC_LOG_CRITICAL("Unknown fatal worker thread error");
   }
 }
 
@@ -873,7 +867,7 @@ void ResourceHub::disableWorkerThreadsForTesting() {
   while (!threadControlMutex_.try_lock()) {
     if (std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - start).count() > timeoutMs) {
-      Logger::logWarning("Could not acquire thread control mutex in disableWorkerThreadsForTesting");
+      FABRIC_LOG_WARN("Could not acquire thread control mutex in disableWorkerThreadsForTesting");
       
       // Even if we couldn't get the mutex, we've already set the shutdown flag
       // and notified threads, so they should eventually terminate
@@ -956,7 +950,7 @@ void ResourceHub::disableWorkerThreadsForTesting() {
           // Check overall timeout
           if (std::chrono::duration_cast<std::chrono::milliseconds>(
                   std::chrono::steady_clock::now() - joinStart).count() > MAX_JOIN_TIME_MS) {
-            Logger::logWarning("Thread termination timeout in disableWorkerThreadsForTesting");
+            FABRIC_LOG_WARN("Thread termination timeout in disableWorkerThreadsForTesting");
             return;
           }
         }
@@ -974,7 +968,7 @@ void ResourceHub::disableWorkerThreadsForTesting() {
   workerThreadCount_ = 0;
   
   // Log completion
-  Logger::logDebug("Worker threads disabled for testing");
+  FABRIC_LOG_DEBUG("Worker threads disabled for testing");
 }
 
 void ResourceHub::restartWorkerThreadsAfterTesting() {
@@ -1007,7 +1001,7 @@ void ResourceHub::restartWorkerThreadsAfterTesting() {
           }
           if (!joinCompleted) {
             // Log timeout warning
-            Logger::logWarning("Thread join timeout in restartWorkerThreadsAfterTesting");
+            FABRIC_LOG_WARN("Thread join timeout in restartWorkerThreadsAfterTesting");
           }
         });
 
@@ -1082,7 +1076,7 @@ void ResourceHub::setWorkerThreadCount(unsigned int count) {
           }
           if (!joinCompleted) {
             // Log timeout warning
-            Logger::logWarning("Thread join timeout in setWorkerThreadCount");
+            FABRIC_LOG_WARN("Thread join timeout in setWorkerThreadCount");
           }
         });
 
@@ -1115,7 +1109,7 @@ void ResourceHub::setWorkerThreadCount(unsigned int count) {
             &ResourceHub::workerThreadFunc, this));
       } catch (const std::exception &e) {
         // Log thread creation error
-        Logger::logError("Error creating worker thread: " + std::string(e.what()));
+        FABRIC_LOG_ERROR("Error creating worker thread: {}", e.what());
       }
     }
   }
@@ -1135,8 +1129,8 @@ ResourceHub::ResourceHub()
       workerThreadCount_(std::thread::hardware_concurrency()),
       shutdown_(false) {
   // Optional debug message but quieter
-  Logger::logDebug("ResourceHub initialized with " + std::to_string(workerThreadCount_) + 
-                  " configured worker threads");
+  FABRIC_LOG_DEBUG("ResourceHub initialized with {} configured worker threads",
+                   workerThreadCount_.load());
 
   // Don't start threads here - let them be started explicitly
   // This prevents issues with tests
@@ -1190,7 +1184,7 @@ ResourceHub::ResourceHub()
   
   // Only start worker threads if we're not in a test environment
   if (!inTestEnvironment && workerThreadCount_ > 0) {
-    Logger::logInfo("Starting " + std::to_string(workerThreadCount_) + " worker threads");
+    FABRIC_LOG_INFO("Starting {} worker threads", workerThreadCount_.load());
     for (unsigned int i = 0; i < workerThreadCount_; ++i) {
       workerThreads_.push_back(
           std::make_unique<std::thread>(&ResourceHub::workerThreadFunc, this));
@@ -1198,7 +1192,7 @@ ResourceHub::ResourceHub()
   } else {
     // In test environment, don't start threads automatically
     workerThreadCount_ = 0;
-    Logger::logDebug("ResourceHub detected test environment - not starting worker threads");
+    FABRIC_LOG_DEBUG("ResourceHub detected test environment - not starting worker threads");
   }
 }
 
@@ -1220,7 +1214,7 @@ void ResourceHub::clear() {
     try {
       allResourceIds = resourceGraph_.getAllNodes();
     } catch (const std::exception &e) {
-      Logger::logError("Failed to get all nodes during clear(): " + std::string(e.what()));
+      FABRIC_LOG_ERROR("Failed to get all nodes during clear(): {}", e.what());
       return;
     }
     
@@ -1234,11 +1228,11 @@ void ResourceHub::clear() {
       orderedIds = resourceGraph_.topologicalSort();
       if (orderedIds.empty() && !allResourceIds.empty()) {
         // Topological sort failed (possibly due to cycles), use the original ID list
-        Logger::logWarning("Topological sort failed during clear(), using unordered approach");
+        FABRIC_LOG_WARN("Topological sort failed during clear(), using unordered approach");
         orderedIds = allResourceIds;
       }
     } catch (const std::exception &e) {
-      Logger::logError("Error in topological sort during clear(): " + std::string(e.what()));
+      FABRIC_LOG_ERROR("Error in topological sort during clear(): {}", e.what());
       orderedIds = allResourceIds; // Fall back to unordered
     }
     
@@ -1248,7 +1242,7 @@ void ResourceHub::clear() {
       
       // Check for timeout
       if (isTimedOut()) {
-        Logger::logWarning("clear() timed out during resource unloading");
+        FABRIC_LOG_WARN("clear() timed out during resource unloading");
         break;
       }
       
@@ -1269,8 +1263,7 @@ void ResourceHub::clear() {
           continue;
         }
         
-        // Get the resource and unload it
-        auto resource = nodeLock->getNode()->getData();
+        auto resource = nodeLock->getNode()->getDataNoLock();
         if (resource && resource->getState() == ResourceState::Loaded) {
           resource->unload();
         }
@@ -1281,8 +1274,7 @@ void ResourceHub::clear() {
         // Now remove the node from the graph
         resourceGraph_.removeNode(id);
       } catch (const std::exception &e) {
-        Logger::logError("Error processing resource " + id + " during clear(): " + 
-                      std::string(e.what()));
+        FABRIC_LOG_ERROR("Error processing resource {} during clear(): {}", id, e.what());
       }
     }
     
@@ -1291,15 +1283,15 @@ void ResourceHub::clear() {
       try {
         auto remainingIds = resourceGraph_.getAllNodes();
         if (!remainingIds.empty()) {
-          Logger::logWarning("Some resources could not be cleared. " + 
-                         std::to_string(remainingIds.size()) + " resources remain.");
+          FABRIC_LOG_WARN("Some resources could not be cleared. {} resources remain.",
+                         remainingIds.size());
         }
       } catch (const std::exception &e) {
-        Logger::logError("Error checking remaining resources: " + std::string(e.what()));
+        FABRIC_LOG_ERROR("Error checking remaining resources: {}", e.what());
       }
     }
   } catch (const std::exception &e) {
-    Logger::logError("Unexpected exception in clear(): " + std::string(e.what()));
+    FABRIC_LOG_ERROR("Unexpected exception in clear(): {}", e.what());
   }
 }
 
@@ -1318,9 +1310,9 @@ bool ResourceHub::isEmpty() const {
   try {
     return resourceGraph_.empty();
   } catch (const std::exception &e) {
-    Logger::logError("Exception in isEmpty(): " + std::string(e.what()));
+    FABRIC_LOG_ERROR("Exception in isEmpty(): {}", e.what());
     return false;
   }
 }
 
-} // namespace Fabric
+} // namespace fabric

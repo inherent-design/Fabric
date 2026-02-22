@@ -9,7 +9,7 @@
 #include <memory>
 #include <functional>
 
-namespace Fabric {
+namespace fabric {
 
 /**
  * @brief WebView wrapper class for the Fabric Engine
@@ -108,4 +108,4 @@ private:
 #endif
 };
 
-} // namespace Fabric
+} // namespace fabric

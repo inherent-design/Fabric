@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-using namespace Fabric;
+using namespace fabric;
 using ::testing::_;
 using ::testing::Return;
 

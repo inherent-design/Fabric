@@ -3,7 +3,6 @@
 #include <algorithm>
 
 namespace fabric {
-namespace core {
 
 // SceneNode implementation
 void SceneNode::updateSelf(float deltaTime) {
@@ -100,5 +99,4 @@ template class Vector4<float, Space::Local>;
 template class Matrix4x4<float>;
 template class Transform<float>;
 
-} // namespace core
 } // namespace fabric

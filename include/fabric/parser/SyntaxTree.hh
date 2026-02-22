@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-namespace Fabric {
+namespace fabric {
 
 // Represents a node in the abstract syntax tree
 class ASTNode {
@@ -26,4 +26,4 @@ private:
 TokenType determineTokenType(const std::string &token);
 
 Variant parseValue(const std::string &token, TokenType type);
-} // namespace Fabric
+} // namespace fabric

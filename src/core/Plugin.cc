@@ -1,10 +1,10 @@
 #include "fabric/core/Plugin.hh"
 #include "fabric/utils/ErrorHandling.hh"
-#include "fabric/utils/Logging.hh"
+#include "fabric/core/Log.hh"
 #include <algorithm>
 #include <vector>
 
-namespace Fabric {
+namespace fabric {
 
 PluginManager& PluginManager::getInstance() {
   static PluginManager instance;
@@ -27,7 +27,7 @@ void PluginManager::registerPlugin(const std::string& name, const PluginFactory&
   }
   
   pluginFactories[name] = factory;
-  Logger::logDebug("Registered plugin '" + name + "'");
+  FABRIC_LOG_DEBUG("Registered plugin '{}'", name);
 }
 
 bool PluginManager::loadPlugin(const std::string& name) {
@@ -35,14 +35,14 @@ bool PluginManager::loadPlugin(const std::string& name) {
   
   // Check if already loaded
   if (loadedPlugins.find(name) != loadedPlugins.end()) {
-    Logger::logWarning("Plugin '" + name + "' is already loaded");
+    FABRIC_LOG_WARN("Plugin '{}' is already loaded", name);
     return true;
   }
   
   // Find factory
   auto factoryIt = pluginFactories.find(name);
   if (factoryIt == pluginFactories.end()) {
-    Logger::logError("Plugin '" + name + "' is not registered");
+    FABRIC_LOG_ERROR("Plugin '{}' is not registered", name);
     return false;
   }
   
@@ -50,21 +50,21 @@ bool PluginManager::loadPlugin(const std::string& name) {
     // Create plugin instance
     auto plugin = factoryIt->second();
     if (!plugin) {
-      Logger::logError("Failed to create plugin '" + name + "'");
+      FABRIC_LOG_ERROR("Failed to create plugin '{}'", name);
       return false;
     }
     
     // Add to loaded plugins
     loadedPlugins[name] = plugin;
-    Logger::logInfo("Loaded plugin '" + name + "' (" + plugin->getVersion() + 
-                   ") by " + plugin->getAuthor());
+    FABRIC_LOG_INFO("Loaded plugin '{}' ({}) by {}", name,
+                    plugin->getVersion(), plugin->getAuthor());
     
     return true;
   } catch (const std::exception& e) {
-    Logger::logError("Exception loading plugin '" + name + "': " + std::string(e.what()));
+    FABRIC_LOG_ERROR("Exception loading plugin '{}': {}", name, e.what());
     return false;
   } catch (...) {
-    Logger::logError("Unknown exception loading plugin '" + name + "'");
+    FABRIC_LOG_ERROR("Unknown exception loading plugin '{}'", name);
     return false;
   }
 }
@@ -77,7 +77,7 @@ bool PluginManager::unloadPlugin(const std::string& name) {
     
     auto it = loadedPlugins.find(name);
     if (it == loadedPlugins.end()) {
-      Logger::logWarning("Plugin '" + name + "' is not loaded");
+      FABRIC_LOG_WARN("Plugin '{}' is not loaded", name);
       return false;
     }
     
@@ -94,13 +94,13 @@ bool PluginManager::unloadPlugin(const std::string& name) {
       pluginToUnload->shutdown();
     }
     
-    Logger::logInfo("Unloaded plugin '" + name + "'");
+    FABRIC_LOG_INFO("Unloaded plugin '{}'", name);
     return true;
   } catch (const std::exception& e) {
-    Logger::logError("Exception unloading plugin '" + name + "': " + std::string(e.what()));
+    FABRIC_LOG_ERROR("Exception unloading plugin '{}': {}", name, e.what());
     return false;
   } catch (...) {
-    Logger::logError("Unknown exception unloading plugin '" + name + "'");
+    FABRIC_LOG_ERROR("Unknown exception unloading plugin '{}'", name);
     return false;
   }
 }
@@ -137,23 +137,23 @@ bool PluginManager::initializeAll() {
   
   for (const auto& [name, plugin] : plugins) {
     if (!plugin) {
-      Logger::logError("Null plugin reference for '" + name + "'");
+      FABRIC_LOG_ERROR("Null plugin reference for '{}'", name);
       success = false;
       continue;
     }
     
     try {
       if (!plugin->initialize()) {
-        Logger::logError("Failed to initialize plugin '" + name + "'");
+        FABRIC_LOG_ERROR("Failed to initialize plugin '{}'", name);
         success = false;
       } else {
-        Logger::logInfo("Initialized plugin '" + name + "'");
+        FABRIC_LOG_INFO("Initialized plugin '{}'", name);
       }
     } catch (const std::exception& e) {
-      Logger::logError("Exception initializing plugin '" + name + "': " + std::string(e.what()));
+      FABRIC_LOG_ERROR("Exception initializing plugin '{}': {}", name, e.what());
       success = false;
     } catch (...) {
-      Logger::logError("Unknown exception initializing plugin '" + name + "'");
+      FABRIC_LOG_ERROR("Unknown exception initializing plugin '{}'", name);
       success = false;
     }
   }
@@ -177,24 +177,27 @@ void PluginManager::shutdownAll() {
     loadedPlugins.clear();
   }
   
-  // Reverse the order to handle potential dependencies (shutdown in reverse order of loading)
+  // NOTE: This reversal does not guarantee dependency-correct shutdown order.
+  // Plugins are stored in an unordered_map, so iteration order (and therefore
+  // reversal order) is implementation-defined and unrelated to load sequence.
+  // Proper dependency-ordered shutdown requires an explicit dependency graph.
   std::reverse(plugins.begin(), plugins.end());
   
   for (const auto& [name, plugin] : plugins) {
     if (!plugin) {
-      Logger::logWarning("Null plugin reference for '" + name + "' during shutdown");
+      FABRIC_LOG_WARN("Null plugin reference for '{}' during shutdown", name);
       continue;
     }
     
     try {
       plugin->shutdown();
-      Logger::logInfo("Shut down plugin '" + name + "'");
+      FABRIC_LOG_INFO("Shut down plugin '{}'", name);
     } catch (const std::exception& e) {
-      Logger::logError("Exception shutting down plugin '" + name + "': " + std::string(e.what()));
+      FABRIC_LOG_ERROR("Exception shutting down plugin '{}': {}", name, e.what());
     } catch (...) {
-      Logger::logError("Unknown exception shutting down plugin '" + name + "'");
+      FABRIC_LOG_ERROR("Unknown exception shutting down plugin '{}'", name);
     }
   }
 }
 
-} // namespace Fabric
+} // namespace fabric

@@ -8,16 +8,9 @@
 #include <mutex>
 #include <optional>
 
-namespace Fabric {
+namespace fabric {
 
-/**
- * @brief Base class for all UI components in the Fabric framework
- * 
- * The Component class provides the foundation for creating UI elements 
- * within the Fabric framework. It defines the common interface that all
- * components must implement, including lifecycle methods, event handling,
- * and property management.
- */
+/// Base component class. Provides lifecycle methods, property storage, and child management.
 class Component {
 public:
   /**
@@ -43,16 +36,8 @@ public:
    */
   explicit Component(const std::string& id);
   
-  /**
-   * @brief Virtual destructor
-   */
   virtual ~Component() = default;
 
-  /**
-   * @brief Get the component's unique identifier
-   * 
-   * @return Component ID
-   */
   const std::string& getId() const;
 
   /**
@@ -113,20 +98,8 @@ public:
   template <typename T>
   T getProperty(const std::string& name) const;
 
-  /**
-   * @brief Check if a property exists
-   * 
-   * @param name Property name
-   * @return true if the property exists, false otherwise
-   */
   bool hasProperty(const std::string& name) const;
 
-  /**
-   * @brief Remove a property
-   * 
-   * @param name Property name to remove
-   * @return true if the property was removed, false if it didn't exist
-   */
   bool removeProperty(const std::string& name);
 
   /**
@@ -137,28 +110,11 @@ public:
    */
   void addChild(std::shared_ptr<Component> child);
 
-  /**
-   * @brief Remove a child component
-   * 
-   * @param childId ID of the child component to remove
-   * @return true if the child was removed, false otherwise
-   */
   bool removeChild(const std::string& childId);
 
-  /**
-   * @brief Get a child component by ID
-   * 
-   * @param childId ID of the child component to get
-   * @return Child component or nullptr if not found
-   */
   std::shared_ptr<Component> getChild(const std::string& childId) const;
 
-  /**
-   * @brief Get all child components
-   * 
-   * @return Vector of child components
-   */
-  const std::vector<std::shared_ptr<Component>>& getChildren() const;
+  std::vector<std::shared_ptr<Component>> getChildren() const;
 
 private:
   std::string id;
@@ -169,4 +125,4 @@ private:
   std::vector<std::shared_ptr<Component>> children;
 };
 
-} // namespace Fabric
+} // namespace fabric

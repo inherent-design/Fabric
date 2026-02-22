@@ -1,11 +1,11 @@
 #include "fabric/parser/ArgumentParser.hh"
 #include "fabric/core/Constants.g.hh"
 #include "fabric/utils/ErrorHandling.hh"
-#include "fabric/utils/Logging.hh"
+#include "fabric/core/Log.hh"
 #include <iostream>
 #include <sstream>
 
-namespace Fabric {
+namespace fabric {
 // Constructor is defaulted in the header, no need to define here
 
 // Add a new command line argument
@@ -15,8 +15,8 @@ void ArgumentParser::addArgument(const std::string &name,
   // Store the argument definition
   availableArgs[name] = {TokenType::LiteralString, !required};
   argumentDescriptions[name] = description;
-  Logger::logDebug("Added argument: " + name +
-                   (required ? " (required)" : " (optional)"));
+  FABRIC_LOG_DEBUG("Added argument: {} ({})", name,
+                   required ? "required" : "optional");
 }
 
 // Check if an argument exists in parsed arguments
@@ -75,7 +75,7 @@ void ArgumentParser::parse(int argc, char *argv[]) {
     if (!valid)
       return;
   } catch (const std::exception &e) {
-    Logger::logError("Error parsing arguments: " + std::string(e.what()));
+    FABRIC_LOG_ERROR("Error parsing arguments: {}", e.what());
   }
 }
 
@@ -120,7 +120,7 @@ void ArgumentParser::parse(const std::string &args) {
     if (!valid)
       return;
   } catch (const std::exception &e) {
-    Logger::logError("Error parsing arguments: " + std::string(e.what()));
+    FABRIC_LOG_ERROR("Error parsing arguments: {}", e.what());
   }
 }
 
@@ -148,7 +148,7 @@ bool ArgumentParser::validateArgs(const TokenTypeOptionsMap &options) {
     }
 
     this->errorMsg = errorMsg;
-    Logger::logError(errorMsg);
+    FABRIC_LOG_ERROR("{}", errorMsg);
   }
 
   this->valid = valid;
@@ -168,4 +168,4 @@ ArgumentParser ArgumentParserBuilder::build() const {
   parser.availableArgs = options;
   return parser;
 }
-} // namespace Fabric
+} // namespace fabric

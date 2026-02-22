@@ -2,7 +2,7 @@
 
 #include "fabric/core/Resource.hh" 
 #include "fabric/utils/CoordinatedGraph.hh"
-#include "fabric/utils/Logging.hh"
+#include "fabric/core/Log.hh"
 #include <any>
 #include <atomic>
 #include <chrono>
@@ -18,7 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace Fabric {
+namespace fabric {
 
 // Forward declarations
 namespace Test {
@@ -34,7 +34,7 @@ namespace Test {
  */
 class ResourceHub {
   // Allow test helper to access protected members
-  friend class Fabric::Test::ResourceHubTestHelper;
+  friend class fabric::Test::ResourceHubTestHelper;
   
 public:
   /**
@@ -99,8 +99,8 @@ public:
                     PHASE_TIMEOUT_MS / 3);
                 
                 if (nodeLock && nodeLock->isLocked()) {
-                  resource = nodeLock->getNode()->getData();
-                  nodeLock->release(); // Important: Release lock after getting data
+                  resource = nodeLock->getNode()->getDataNoLock();
+                  nodeLock->release();
                 }
               }
             } catch (...) {
@@ -135,8 +135,7 @@ public:
                         PHASE_TIMEOUT_MS / 3);
                         
                     if (nodeLock && nodeLock->isLocked()) {
-                      // Use the existing resource instead
-                      resource = nodeLock->getNode()->getData();
+                      resource = nodeLock->getNode()->getDataNoLock();
                       createdNewResource = false;
                       nodeLock->release();
                     }
@@ -149,24 +148,24 @@ public:
             } catch (...) {
               // If graph operations fail, we still have the resource locally
               // Just continue with local instance
-              Logger::logWarning("Failed to add resource to graph: " + resourceId);
+              FABRIC_LOG_WARN("Failed to add resource to graph: {}", resourceId);
             }
           } else {
-            Logger::logError("Failed to create resource: " + resourceId);
+            FABRIC_LOG_ERROR("Failed to create resource: {}", resourceId);
           }
         } catch (const std::exception &e) {
-          Logger::logError("Exception creating resource: " + std::string(e.what()));
+          FABRIC_LOG_ERROR("Exception creating resource: {}", e.what());
         } catch (...) {
-          Logger::logError("Unknown exception creating resource");
+          FABRIC_LOG_ERROR("Unknown exception creating resource");
         }
       }
       
       // Return early if we have no resource or timed out
       if (!resource) {
         if (isTimedOut()) {
-          Logger::logWarning("Timed out in ResourceHub::load during resource lookup for " + resourceId);
+          FABRIC_LOG_WARN("Timed out in ResourceHub::load during resource lookup for {}", resourceId);
         } else {
-          Logger::logError("Could not create or retrieve resource: " + resourceId);
+          FABRIC_LOG_ERROR("Could not create or retrieve resource: {}", resourceId);
         }
         return ResourceHandle<T>();
       }
@@ -186,25 +185,27 @@ public:
         
         // Load the resource with a separate timeout
         try {
-          // Create a future with timeout for loading
-          std::promise<bool> loadPromise;
-          auto loadFuture = loadPromise.get_future();
-          
-          // Create a thread to load the resource
-          std::thread loadThread([&resource, &loadPromise]() {
+          // Create a future with timeout for loading.
+          // Promise is moved into the lambda so the detached thread
+          // owns it outright. Resource is captured by value (shared_ptr
+          // copy) so it stays alive even if this stack frame returns.
+          auto loadPromise = std::make_shared<std::promise<bool>>();
+          auto loadFuture = loadPromise->get_future();
+
+          std::shared_ptr<Resource> resourceCopy = resource;
+          std::thread loadThread([resourceCopy, loadPromise]() {
             try {
-              bool result = resource->load();
-              loadPromise.set_value(result);
+              bool result = resourceCopy->load();
+              loadPromise->set_value(result);
             } catch (...) {
               try {
-                loadPromise.set_value(false);
+                loadPromise->set_value(false);
               } catch (...) {
                 // Promise might already be satisfied
               }
             }
           });
-          
-          // Detach the thread to avoid blocking
+
           loadThread.detach();
           
           // Wait for the future with timeout
@@ -218,12 +219,12 @@ public:
               loadSuccess = false;
             }
           } else {
-            Logger::logWarning("Resource loading timed out for: " + resourceId);
+            FABRIC_LOG_WARN("Resource loading timed out for: {}", resourceId);
             loadSuccess = false;
           }
           
           if (!loadSuccess) {
-            Logger::logWarning("Failed to load resource: " + resourceId);
+            FABRIC_LOG_WARN("Failed to load resource: {}", resourceId);
             // Continue anyway - we'll return the handle even if loading failed
           }
           
@@ -239,9 +240,9 @@ public:
             }
           }
         } catch (const std::exception &e) {
-          Logger::logError("Exception during resource loading: " + std::string(e.what()));
+          FABRIC_LOG_ERROR("Exception during resource loading: {}", e.what());
         } catch (...) {
-          Logger::logError("Unknown exception during resource loading");
+          FABRIC_LOG_ERROR("Unknown exception during resource loading");
         }
       }
       
@@ -252,22 +253,21 @@ public:
         // Even if loading failed, return a handle to the resource
         // The client can check the resource state
         if (!isTimedOut()) {
-          return ResourceHandle<T>(std::static_pointer_cast<T>(resource),
-                                  &ResourceHub::instance());
+          return ResourceHandle<T>(std::static_pointer_cast<T>(resource));
         } else {
-          Logger::logWarning("Timed out before returning resource handle: " + resourceId);
+          FABRIC_LOG_WARN("Timed out before returning resource handle: {}", resourceId);
           return ResourceHandle<T>();
         }
       } catch (const std::exception &e) {
-        Logger::logError("Exception creating resource handle: " + std::string(e.what()));
+        FABRIC_LOG_ERROR("Exception creating resource handle: {}", e.what());
         return ResourceHandle<T>();
       }
                               
     } catch (const std::exception &e) {
-      Logger::logError("Exception in ResourceHub::load() for " + resourceId + ": " + std::string(e.what()));
+      FABRIC_LOG_ERROR("Exception in ResourceHub::load() for {}: {}", resourceId, e.what());
       return ResourceHandle<T>();
     } catch (...) {
-      Logger::logError("Unknown exception in ResourceHub::load() for " + resourceId);
+      FABRIC_LOG_ERROR("Unknown exception in ResourceHub::load() for {}", resourceId);
       return ResourceHandle<T>();
     }
     
@@ -297,11 +297,10 @@ public:
       auto nodeLock = resourceNode->tryLock(
           CoordinatedGraph<std::shared_ptr<Resource>>::LockIntent::Read);
       if (nodeLock && nodeLock->isLocked()) {
-        auto resource = nodeLock->getNode()->getData();
+        auto resource = nodeLock->getNode()->getDataNoLock();
         if (resource->getState() == ResourceState::Loaded) {
           if (callback) {
-            callback(ResourceHandle<T>(std::static_pointer_cast<T>(resource),
-                                       &ResourceHub::instance()));
+            callback(ResourceHandle<T>(std::static_pointer_cast<T>(resource)));
           }
           return;
         }
@@ -316,8 +315,7 @@ public:
 
     if (callback) {
       request.callback = [callback](std::shared_ptr<Resource> resource) {
-        callback(ResourceHandle<T>(std::static_pointer_cast<T>(resource),
-                                   &ResourceHub::instance()));
+        callback(ResourceHandle<T>(std::static_pointer_cast<T>(resource)));
       };
     }
 
@@ -542,9 +540,6 @@ private:
   // Enforce budget
   void enforceBudget();
 
-  // Static mutex
-  static std::timed_mutex mutex_;
-
   // Memory management
   std::atomic<size_t> memoryBudget_;
 
@@ -595,4 +590,4 @@ void loadResourceAsync(const std::string &typeId, const std::string &resourceId,
   ResourceHub::instance().loadAsync<T>(typeId, resourceId, priority, callback);
 }
 
-} // namespace Fabric
+} // namespace fabric

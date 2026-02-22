@@ -2,11 +2,13 @@
 #include "fabric/utils/Testing.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <gtest/gtest.h>
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
-using namespace Fabric;
-using namespace Fabric::Testing;
+using namespace fabric;
+using namespace fabric::Testing;
 
 class EventTest : public ::testing::Test {
 protected:
@@ -69,16 +71,6 @@ TEST_F(EventTest, HandledFlag) {
   EXPECT_FALSE(testEvent1->isHandled());
 }
 
-TEST_F(EventTest, PropagateFlag) {
-  EXPECT_TRUE(testEvent1->shouldPropagate());
-  
-  testEvent1->setPropagate(false);
-  EXPECT_FALSE(testEvent1->shouldPropagate());
-  
-  testEvent1->setPropagate(true);
-  EXPECT_TRUE(testEvent1->shouldPropagate());
-}
-
 TEST_F(EventTest, AddEventListener) {
   std::string handlerId = dispatcher->addEventListener("click", recorder->getHandler());
   EXPECT_FALSE(handlerId.empty());
@@ -115,8 +107,8 @@ TEST_F(EventTest, DispatchEvent) {
 }
 
 TEST_F(EventTest, EventHandling) {
-  dispatcher->addEventListener("click", [](const Event& event) {
-    const_cast<Event&>(event).setHandled(true);
+  dispatcher->addEventListener("click", [](Event& event) {
+    event.setHandled(true);
   });
   
   EXPECT_TRUE(dispatcher->dispatchEvent(*testEvent1));
@@ -131,9 +123,9 @@ TEST_F(EventTest, MultipleEventListeners) {
     handler1Calls++;
   });
   
-  dispatcher->addEventListener("click", [&handler2Calls](const Event& event) {
+  dispatcher->addEventListener("click", [&handler2Calls](Event& event) {
     handler2Calls++;
-    const_cast<Event&>(event).setHandled(true); // Should stop propagation
+    event.setHandled(true);
   });
   
   dispatcher->addEventListener("click", [](const Event& event) {
@@ -144,5 +136,121 @@ TEST_F(EventTest, MultipleEventListeners) {
   EXPECT_TRUE(dispatcher->dispatchEvent(*testEvent1));
   EXPECT_EQ(handler1Calls, 1);
   EXPECT_EQ(handler2Calls, 1);
+}
+
+// Priority ordering tests
+
+TEST_F(EventTest, PriorityOrdering) {
+  std::vector<int> order;
+
+  dispatcher->addEventListener("click", [&](Event&) { order.push_back(2); }, 10);
+  dispatcher->addEventListener("click", [&](Event&) { order.push_back(0); }, -5);
+  dispatcher->addEventListener("click", [&](Event&) { order.push_back(1); }, 0);
+
+  dispatcher->dispatchEvent(*testEvent1);
+
+  ASSERT_EQ(order.size(), 3u);
+  EXPECT_EQ(order[0], 0); // priority -5 first
+  EXPECT_EQ(order[1], 1); // priority 0 second
+  EXPECT_EQ(order[2], 2); // priority 10 last
+}
+
+TEST_F(EventTest, SamePriorityPreservesInsertionOrder) {
+  std::vector<int> order;
+
+  dispatcher->addEventListener("click", [&](Event&) { order.push_back(0); });
+  dispatcher->addEventListener("click", [&](Event&) { order.push_back(1); });
+  dispatcher->addEventListener("click", [&](Event&) { order.push_back(2); });
+
+  dispatcher->dispatchEvent(*testEvent1);
+
+  ASSERT_EQ(order.size(), 3u);
+  EXPECT_EQ(order[0], 0);
+  EXPECT_EQ(order[1], 1);
+  EXPECT_EQ(order[2], 2);
+}
+
+TEST_F(EventTest, HighPriorityHandlerStopsLower) {
+  int lowCalls = 0;
+
+  // High priority handler (runs first) marks handled
+  dispatcher->addEventListener("click", [](Event& e) { e.setHandled(true); }, -10);
+  // Default priority handler should not run
+  dispatcher->addEventListener("click", [&](Event&) { lowCalls++; }, 0);
+
+  EXPECT_TRUE(dispatcher->dispatchEvent(*testEvent1));
+  EXPECT_EQ(lowCalls, 0);
+}
+
+// Cancellation tests
+
+TEST_F(EventTest, CancelledFlag) {
+  EXPECT_FALSE(testEvent1->isCancelled());
+
+  testEvent1->setCancelled(true);
+  EXPECT_TRUE(testEvent1->isCancelled());
+
+  testEvent1->setCancelled(false);
+  EXPECT_FALSE(testEvent1->isCancelled());
+}
+
+TEST_F(EventTest, CancellationStopsPropagation) {
+  int calls = 0;
+
+  dispatcher->addEventListener("click", [](Event& e) { e.setCancelled(true); });
+  dispatcher->addEventListener("click", [&](Event&) { calls++; });
+
+  EXPECT_TRUE(dispatcher->dispatchEvent(*testEvent1));
+  EXPECT_TRUE(testEvent1->isCancelled());
+  EXPECT_EQ(calls, 0);
+}
+
+// Any-typed data tests
+
+TEST_F(EventTest, AnyDataSetGet) {
+  testEvent1->setAnyData<std::vector<int>>("nums", {1, 2, 3});
+
+  auto result = testEvent1->getAnyData<std::vector<int>>("nums");
+  ASSERT_EQ(result.size(), 3u);
+  EXPECT_EQ(result[0], 1);
+  EXPECT_EQ(result[2], 3);
+}
+
+TEST_F(EventTest, AnyDataThrowsOnMissingKey) {
+  EXPECT_THROW(testEvent1->getAnyData<int>("nope"), FabricException);
+}
+
+TEST_F(EventTest, AnyDataThrowsOnWrongType) {
+  testEvent1->setAnyData<int>("val", 42);
+  EXPECT_THROW(testEvent1->getAnyData<std::string>("val"), FabricException);
+}
+
+TEST_F(EventTest, HasAnyData) {
+  EXPECT_FALSE(testEvent1->hasAnyData("key"));
+  testEvent1->setAnyData<int>("key", 1);
+  EXPECT_TRUE(testEvent1->hasAnyData("key"));
+}
+
+TEST_F(EventTest, AnyDataAndVariantDataCoexist) {
+  testEvent1->setData<int>("variant_val", 10);
+  testEvent1->setAnyData<double>("any_val", 3.14);
+
+  EXPECT_EQ(testEvent1->getData<int>("variant_val"), 10);
+  EXPECT_DOUBLE_EQ(testEvent1->getAnyData<double>("any_val"), 3.14);
+  EXPECT_TRUE(testEvent1->hasData("variant_val"));
+  EXPECT_FALSE(testEvent1->hasData("any_val")); // different storage
+  EXPECT_TRUE(testEvent1->hasAnyData("any_val"));
+}
+
+// BinaryData in Variant test
+
+TEST_F(EventTest, BinaryDataInVariant) {
+  std::vector<uint8_t> payload = {0xDE, 0xAD, 0xBE, 0xEF};
+  testEvent1->setData<std::vector<uint8_t>>("binary", payload);
+
+  auto result = testEvent1->getData<std::vector<uint8_t>>("binary");
+  ASSERT_EQ(result.size(), 4u);
+  EXPECT_EQ(result[0], 0xDE);
+  EXPECT_EQ(result[3], 0xEF);
 }
 

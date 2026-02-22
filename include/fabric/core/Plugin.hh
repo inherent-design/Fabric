@@ -8,7 +8,7 @@
 #include <vector>
 #include <mutex>
 
-namespace Fabric {
+namespace fabric {
 
 /**
  * @brief Interface for plugins in the Fabric framework
@@ -184,9 +184,9 @@ private:
   namespace { \
     struct PluginRegistrar_##PluginClass { \
       PluginRegistrar_##PluginClass() { \
-        Fabric::PluginManager::getInstance().registerPlugin( \
+        fabric::PluginManager::getInstance().registerPlugin( \
           #PluginClass, \
-          []() -> std::shared_ptr<Fabric::Plugin> { \
+          []() -> std::shared_ptr<fabric::Plugin> { \
             return std::make_shared<PluginClass>(); \
           } \
         ); \
@@ -195,4 +195,4 @@ private:
     static PluginRegistrar_##PluginClass registrar_##PluginClass; \
   }
 
-} // namespace Fabric
+} // namespace fabric

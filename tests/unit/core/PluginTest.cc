@@ -5,8 +5,8 @@
 #include <memory>
 #include <string>
 
-using namespace Fabric;
-using namespace Fabric::Testing;
+using namespace fabric;
+using namespace fabric::Testing;
 
 // Mock plugin implementation for testing
 class MockPlugin : public Plugin {

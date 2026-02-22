@@ -6,7 +6,7 @@
 // Only compile the WebView tests when WebView is enabled
 #if defined(FABRIC_USE_WEBVIEW)
 
-namespace Fabric {
+namespace fabric {
 namespace Tests {
 
 class WebViewTest : public ::testing::Test {
@@ -53,12 +53,12 @@ TEST_F(WebViewTest, SetHtml) {
 }
 
 } // namespace Tests
-} // namespace Fabric
+} // namespace fabric
 
 #else
 
 // Provide a placeholder test when WebView is disabled
-namespace Fabric {
+namespace fabric {
 namespace Tests {
 
 TEST(WebViewTest, Disabled) {
@@ -67,6 +67,6 @@ TEST(WebViewTest, Disabled) {
 }
 
 } // namespace Tests
-} // namespace Fabric
+} // namespace fabric
 
 #endif

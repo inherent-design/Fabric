@@ -1,8 +1,6 @@
 #include "fabric/core/Resource.hh"
-#include "fabric/utils/Logging.hh"
-#include "fabric/utils/ErrorHandling.hh"
 
-namespace Fabric {
+namespace fabric {
 
 // Initialize static members
 std::mutex ResourceFactory::mutex_;
@@ -22,4 +20,4 @@ std::shared_ptr<Resource> ResourceFactory::create(const std::string& typeId, con
     return it->second(id);
 }
 
-} // namespace Fabric
+} // namespace fabric

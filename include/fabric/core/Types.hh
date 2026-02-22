@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <variant>
 #include <functional>
@@ -10,60 +11,16 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace Fabric {
+namespace fabric {
 
-/**
- * @brief Common variant type used throughout the Fabric framework
- * 
- * This variant defines the basic types that can be stored in various
- * data structures like Tokens, Events, and Configuration values.
- */
-using Variant = std::variant<std::nullptr_t, bool, int, float, double, std::string>;
+// Binary data alias for codec/network/storage domains
+using BinaryData = std::vector<uint8_t>;
 
-/**
- * @brief Type for callback functions that don't return a value
- */
-using VoidCallback = std::function<void()>;
+using Variant = std::variant<std::nullptr_t, bool, int, float, double, std::string, std::vector<uint8_t>>;
 
-/**
- * @brief Type for a list of shared pointers to objects of type T
- */
-template <typename T>
-using SharedPtrList = std::vector<std::shared_ptr<T>>;
-
-/**
- * @brief Type for a unique pointer to an object of type T
- */
-template <typename T>
-using UniquePtr = std::unique_ptr<T>;
-
-/**
- * @brief Type for a shared pointer to an object of type T
- */
-template <typename T>
-using SharedPtr = std::shared_ptr<T>;
-
-/**
- * @brief Type for a map with string keys and values of type T
- */
 template <typename T>
 using StringMap = std::map<std::string, T>;
 
-/**
- * @brief Type for an unordered map with string keys and values of type T
- */
-template <typename T>
-using StringHashMap = std::unordered_map<std::string, T>;
-
-/**
- * @brief Type for an unordered set of type T
- */
-template <typename T>
-using HashSet = std::unordered_set<T>;
-
-/**
- * @brief Type for an optional value of type T
- */
 template <typename T>
 using Optional = std::optional<T>;
 
@@ -97,4 +54,4 @@ using TokenTypeOptionsMap = StringMap<TokenTypeOptionPair>;
 using StringStringMap = StringMap<std::string>;
 
 
-} // namespace Fabric
+} // namespace fabric
