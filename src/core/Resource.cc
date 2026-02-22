@@ -1,4 +1,5 @@
 #include "fabric/core/Resource.hh"
+#include "fabric/core/Log.hh"
 
 namespace fabric {
 
@@ -15,8 +16,10 @@ std::shared_ptr<Resource> ResourceFactory::create(const std::string& typeId, con
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = factories_.find(typeId);
     if (it == factories_.end()) {
+        FABRIC_LOG_ERROR("ResourceFactory: unknown type '{}' for resource '{}'", typeId, id);
         return nullptr;
     }
+    FABRIC_LOG_DEBUG("ResourceFactory: created resource '{}' of type '{}'", id, typeId);
     return it->second(id);
 }
 

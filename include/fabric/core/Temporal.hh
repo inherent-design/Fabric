@@ -14,8 +14,6 @@
 
 namespace fabric {
 
-class Entity;  // Forward declaration for Entity
-
 /**
  * @brief TimeState captures the state of a timeline at a specific moment
  * 
@@ -98,26 +96,16 @@ public:
     
     /** Set the time scale of this region */
     void setTimeScale(double scale);
-    
-    /** Add an entity to this time region */
-    void addEntity(Entity* entity);
-    
-    /** Remove an entity from this time region */
-    void removeEntity(Entity* entity);
-    
-    /** Get a list of entities in this region */
-    const std::vector<Entity*>& getEntities() const;
-    
-    /** Create a snapshot of all entities in this region */
+
+    /** Create a snapshot capturing this region's local time */
     TimeState createSnapshot() const;
-    
-    /** Restore a snapshot to all entities in this region */
+
+    /** Restore local time from a snapshot */
     void restoreSnapshot(const TimeState& state);
-    
+
 private:
     double timeScale_;
     double localTime_;
-    std::vector<Entity*> entities_;
 };
 
 /**
