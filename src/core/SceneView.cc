@@ -1,4 +1,5 @@
 #include "fabric/core/SceneView.hh"
+#include "fabric/utils/Profiler.hh"
 #include <bgfx/bgfx.h>
 
 namespace fabric {
@@ -11,6 +12,8 @@ void SceneView::setClearColor(uint32_t rgba) {
 }
 
 void SceneView::render() {
+    FABRIC_ZONE_SCOPED_N("SceneView::render");
+
     // 1. Get VP matrix from camera
     float vp[16];
     camera_.getViewProjection(vp);
