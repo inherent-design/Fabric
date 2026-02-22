@@ -1,202 +1,165 @@
 # Fabric Engine Architecture
 
-[← Back to Documentation Index](DOCUMENTATION.md)
-
-## Table of Contents
-- [Overview](#overview)
-- [Project Structure](#project-structure)
-- [Component Design](#component-design)
-  - [Core Components](#core-components)
-  - [Parser Components](#parser-components)
-  - [UI Components](#ui-components)
-  - [Utility Components](#utility-components)
-- [Build System](#build-system)
-- [Testing Architecture](#testing-architecture)
-- [Platform Support](#platform-support)
-- [Dependencies](#dependencies)
-- [Future Expansion](#future-expansion)
-- [Initialization Flow](#initialization-flow)
-
 ## Overview
 
-Fabric is a modern C++20 cross-platform framework for building applications with an embedded web UI. It combines native C++ performance with the flexibility of HTML/CSS/JavaScript for the user interface.
+Fabric is a C++20 cross-platform runtime for building interactive spatial-temporal applications. Programming primitives (math, time, events, commands) compose into structural primitives (scenes, entities, graphs, simulations) that applications use to create games, editors, simulations, and multimedia tools. All public symbols reside in the `fabric::` namespace, with sub-namespaces for utilities (`fabric::Utils`, `fabric::Testing`) and subsystems (`fabric::log`, `fabric::async`).
 
-## Project Structure
-
-The project follows a modular architecture organized into logical components:
+## Layer Architecture
 
 ```
-fabric/
-├── CMakeLists.txt          # Main build configuration
-├── README.md               # Project overview
-├── cmake/                  # CMake modules and configuration
-│   ├── Constants.g.hh.in   # Template for constants generation
-│   └── modules/            # Custom CMake modules
-│       └── GoogleTest.cmake # Google Test integration
-├── docs/                   # Documentation
-│   └── ARCHITECTURE.md     # This document
-├── include/                # Public API headers
-│   └── fabric/             # Main include directory
-│       ├── core/           # Core framework components
-│       │   └── Constants.g.hh # Generated constants
-│       ├── parser/         # Command line and syntax parsing
-│       │   ├── ArgumentParser.hh
-│       │   ├── SyntaxTree.hh
-│       │   └── Token.hh
-│       ├── ui/             # User interface components
-│       │   └── WebView.hh
-│       └── utils/          # Utility functions and classes
-│           ├── ErrorHandling.hh
-│           ├── Logging.hh
-│           └── Utils.hh
-├── src/                    # Implementation files
-│   ├── core/               # Core implementation
-│   │   └── Fabric.cc       # Application entry point
-│   ├── parser/             # Parser implementations
-│   │   ├── ArgumentParser.cc
-│   │   └── SyntaxTree.cc
-│   ├── ui/                 # UI implementations
-│   │   └── WebView.cc
-│   └── utils/              # Utilities implementations
-│       ├── ErrorHandling.cc
-│       ├── Logging.cc
-│       └── Utils.cc
-└── tests/                  # Test suite
-    ├── e2e/                # End-to-end tests
-    │   └── FabricE2ETest.cc
-    ├── integration/        # Integration tests
-    │   └── ParserLoggingIntegrationTest.cc
-    └── unit/               # Unit tests
-        ├── parser/         # Parser unit tests
-        │   └── ArgumentParserTest.cc
-        ├── ui/             # UI unit tests
-        │   └── WebViewTest.cc
-        └── utils/          # Utilities unit tests
-            ├── ErrorHandlingTest.cc
-            ├── LoggingTest.cc
-            └── UtilsTest.cc
+L0: Platform Abstraction
+    SDL3             Windowing, input, audio, timers, filesystem, native handles
+    bgfx             Cross-platform rendering: Vulkan/Metal/D3D12/GL (11 backends)
+    WebView          Embedded browser, JS bridge (optional, FABRIC_USE_WEBVIEW)
+    mimalloc         Global allocator override (Fabric executable only)
+
+L1: Infrastructure
+    Log              Quill-backed async SPSC logging, FABRIC_LOG_* macros
+    Profiler         Tracy abstraction, zero-cost when FABRIC_ENABLE_PROFILING is OFF
+    Async            Standalone Asio io_context scaffold, C++20 coroutine support
+    ErrorHandling    FabricException, throwError() utilities
+    StateMachine     Generic state machine template with validation and observers
+
+L2: Primitives
+    Spatial          Type-safe vec/mat/quat/transform with compile-time coordinate space tags; GLM bridge for Matrix4x4::inverse()
+    Temporal         Multi-timeline time processing, snapshots, variable flow
+    Event            Typed thread-safe publish/subscribe with propagation control
+    Command          Undo/redo command pattern with composite commands and history
+    Pipeline         Typed multi-stage data processing pipelines
+    Types            Core Variant, StringMap, Optional type aliases
+    JsonTypes        nlohmann/json ADL serializers for Vector, Quaternion types
+
+L2.5: Codec
+    Codec            Encode/decode pipeline for binary, text, and structured data formats
+
+L3: Structural
+    Component        Type-safe component architecture with variant properties and hierarchy
+    Resource         Resource base with state machine, dependency tracking, priority loading
+    ResourceHub      Centralized resource management, worker threads, memory budgets
+    Lifecycle        Validated state machine transitions (Created, Initialized, Rendered, Updating, Suspended, Destroyed)
+    CoordinatedGraph Thread-safe DAG with intent-based locking, deadlock detection, resource lock ordering
+    ImmutableDAG     Lock-free persistent DAG with structural sharing and snapshot isolation
+    BufferPool       Fixed-size buffer pool with thread-safe allocation and RAII handles
+
+L4: Framework
+    Plugin           Dependency-aware plugin loading with resource management
+    ArgumentParser   Builder-pattern CLI argument parser with validation
+    SyntaxTree       AST for config and data file parsing
+    Token            Tokenizer with extensible type system
+
+L5: Application
+    Fabric           Main executable entry point
+    FabricDemo       Interactive demo (future target)
 ```
 
-## Component Design
+## Component Inventory
 
-### Core Components
+### Core (`include/fabric/core/`)
 
-The core components provide the application framework, entry point, and foundational patterns:
+| Header | Purpose |
+|--------|---------|
+| `Async.hh` | Standalone Asio io_context scaffold; provides `fabric::async::init()`, `poll()`, `run()`, `shutdown()`, `makeStrand()`, `makeTimer()`, and `use_nothrow` completion token for C++20 coroutines |
+| `Command.hh` | Execute/undo/redo command pattern with composite commands and history |
+| `Component.hh` | Base component class with variant-based property storage, lifecycle methods, child management |
+| `Constants.g.hh` | Generated constants (APP_NAME, APP_VERSION); output to build dir from `cmake/Constants.g.hh.in` |
+| `Event.hh` | Thread-safe typed event handling with priority-sorted handlers, cancellation semantics, propagation control, and std::any payloads |
+| `JsonTypes.hh` | ADL-visible `to_json`/`from_json` for Vector2, Vector3, Vector4, Quaternion via nlohmann/json |
+| `Lifecycle.hh` | State machine for component lifecycle (Created, Initialized, Rendered, Updating, Suspended, Destroyed) |
+| `Log.hh` | Quill v11 wrapper; `fabric::log::init()`, `shutdown()`, `setLevel()`; FABRIC_LOG_{TRACE,DEBUG,INFO,WARN,ERROR,CRITICAL} macros with compile-time filtering |
+| `Pipeline.hh` | Typed multi-stage data processing pipeline with fan-out, conditional stages, and error handling |
+| `Plugin.hh` | Dependency-aware plugin loading with resource management |
+| `StateMachine.hh` | Generic state machine template with transition validation, guards, entry/exit actions, and observers |
+| `Resource.hh` | Resource base with state machine (Unloaded, Loading, Loaded, LoadingFailed, Unloading), dependency tracking, priority levels |
+| `ResourceHub.hh` | Centralized resource management with CoordinatedGraph-backed dependency tracking, worker threads, memory budgets |
+| `Spatial.hh` | Type-safe Vector2/3/4, Quaternion, Matrix4x4, Transform, SceneNode, Scene; compile-time coordinate space tags (Local, World, Screen, Parent); GLM bridge for `inverse()` |
+| `Temporal.hh` | Multi-timeline time processing with snapshots, variable time flow, region support |
+| `Types.hh` | Core Variant (`nullptr_t, bool, int, float, double, string`), StringMap, Optional aliases |
 
-- **Fabric.cc**: Application entry point that initializes subsystems and handles the main event loop
-- **Constants.g.hh**: Generated constants used throughout the application
-- **Component.hh/cc**: Base class for UI components with lifecycle management and properties
-- **Event.hh/cc**: Event system for communication between components
-- **Lifecycle.hh/cc**: Component lifecycle state management
-- **Plugin.hh/cc**: Plugin architecture for extensibility
+### Parser (`include/fabric/parser/`)
 
-### Parser Components
+| Header | Purpose |
+|--------|---------|
+| `ArgumentParser.hh` | Builder-pattern CLI argument parser with validation |
+| `SyntaxTree.hh` | AST for config and data file parsing |
+| `Token.hh` | Tokenizer with extensible type system |
 
-The parser system handles command-line arguments and syntax parsing:
+### UI (`include/fabric/ui/`)
 
-- **ArgumentParser**: Processes command-line arguments using a builder pattern for configuration.
-- **SyntaxTree**: Handles parsing of structured data.
-- **Token**: Defines the token system for lexical analysis with an extensive type system.
+| Header | Purpose |
+|--------|---------|
+| `WebView.hh` | Embedded browser with JavaScript bridge (optional, via `FABRIC_USE_WEBVIEW`) |
 
-### UI Components
+### Codec (`include/fabric/codec/`)
 
-The UI system provides a web-based user interface:
+| Header | Purpose |
+|--------|---------|
+| `Codec.hh` | Encode/decode pipeline for binary, text, and structured data formats with codec registry and chaining |
 
-- **WebView**: Embeds a web browser view for rendering HTML/CSS/JavaScript interfaces.
+### Utils (`include/fabric/utils/`)
 
-### Utility Components
+| Header | Purpose |
+|--------|---------|
+| `BufferPool.hh` | Fixed-size buffer pool with thread-safe allocation, RAII handles, and configurable block sizes |
+| `CoordinatedGraph.hh` | Thread-safe DAG with intent-based locking (Read, NodeModify, GraphStructure), node-level concurrency, deadlock detection, resource lock ordering, BFS/DFS/topological sort |
+| `ErrorHandling.hh` | FabricException class, `throwError()` utility, `ErrorCode` enum, and `Result<T>` template for hot-path error reporting |
+| `ImmutableDAG.hh` | Lock-free persistent DAG with structural sharing, snapshot isolation, BFS/DFS/topological sort, and LCA queries |
+| `Profiler.hh` | Tracy v0.13.1 abstraction; FABRIC_ZONE_*, FABRIC_FRAME_*, FABRIC_ALLOC/FREE, FABRIC_LOCKABLE macros; compiles to nothing when `FABRIC_ENABLE_PROFILING` is OFF |
+| `Testing.hh` | MockComponent, test utilities, helpers for concurrent test scenarios |
+| `ThreadPoolExecutor.hh` | Thread pool with task submission, timeout support, testing mode (synchronous execution) |
+| `TimeoutLock.hh` | Timeout-protected lock acquisition for shared_mutex and mutex types |
+| `Utils.hh` | `generateUniqueId()` with thread-safe random hex generation |
 
-Utility components provide common functionality used throughout the application:
+### Source-only Files
 
-- **Logging**: Configurable logging system with multiple severity levels
-- **ErrorHandling**: Exception handling and error reporting
-- **Utils**: Thread-safe utility functions for string manipulation, UUID generation, etc.
-- **Testing**: Testing utilities and mock implementations for unit and integration tests
-
-## Build System
-
-Fabric uses CMake (4.0+) as its build system with the following features:
-
-- **Static Library**: Core functionality is built as a static library (`FabricLib`)
-- **Executable**: Main application built on top of the library
-- **Dependencies**:
-  - SDL3: For cross-platform window management, input handling, and multimedia
-  - Webview: For embedding a web browser component
-  - Google Test: For unit and integration testing
-
-## Testing Architecture
-
-The testing system is organized into three layers:
-
-### Unit Tests
-
-Unit tests focus on testing individual components in isolation:
-
-- **ArgumentParserTest**: Tests CLI argument parsing functionality
-- **WebViewTest**: Tests UI webview functionality
-- **ComponentTest**: Tests component properties and hierarchy management
-- **EventTest**: Tests event dispatching and handling
-- **LifecycleTest**: Tests component lifecycle state transitions
-- **PluginTest**: Tests plugin loading and integration
-- **CoreApiTest**: Tests interactions between core components
-- **LoggingTest**: Tests logging system
-- **ErrorHandlingTest**: Tests error handling
-- **UtilsTest**: Tests utility functions including thread-safety
-
-### Integration Tests
-
-Integration tests verify the interaction between multiple components:
-
-- **ParserLoggingIntegrationTest**: Tests integration between the ArgumentParser and Logger
-- **ComponentLifecycleIntegrationTest**: Tests how components interact with lifecycle state transitions
-
-### End-to-End Tests
-
-End-to-end tests verify the complete application functionality:
-
-- **FabricE2ETest**: Tests full application execution with command-line parameters
-
-## Testing Execution
-
-Tests can be run using the following commands from the build directory:
-
-```bash
-# Run all unit tests
-./bin/UnitTests
-
-# Run all integration tests
-./bin/IntegrationTests
-
-# Run all end-to-end tests
-./bin/E2ETests
-```
-
-## Platform Support
-
-Fabric is designed to be cross-platform with support for:
-
-- **macOS**: Version 14.0+ (Universal binary for Intel and Apple Silicon)
-- **Windows**: Windows 7+
-- **Linux**: Kernel 6.6+
+| File | Purpose |
+|------|---------|
+| `src/core/MimallocOverride.cc` | Forces linker to pull mimalloc malloc/free/new/delete overrides; compiled into Fabric executable only, not test targets |
+| `src/core/Fabric.cc` | Main executable entry point |
 
 ## Dependencies
 
-- **SDL3**: Core platform abstraction for windowing, input, and more
-- **Webview**: Library for embedding web browser views
-- **Google Test**: Testing framework for unit and integration tests
+All dependencies are fetched via CMake `FetchContent`. Each has a dedicated module in `cmake/modules/`.
 
-## Future Expansion
+| Dependency | Version | Module | Purpose |
+|------------|---------|--------|---------|
+| SDL3 | 3.4.2 | (inline) | Windowing, input, audio, timers, filesystem, native handles |
+| webview | 0.12.0 | (inline) | Embedded browser, JS bridge |
+| GoogleTest | 1.17.0 | FabricGoogleTest | Unit and E2E testing |
+| GLM | 1.0.3 | FabricGLM | Math bridge for Matrix4x4::inverse(); header-only |
+| mimalloc | 2.2.7 | FabricMimalloc | Global allocator override (Fabric exe only, not test targets) |
+| Quill | 11.0.2 | FabricQuill | Async SPSC structured logging with compile-time level filtering |
+| nlohmann/json | 3.12.0 | FabricNlohmannJson | JSON serialization for spatial types |
+| Tracy | 0.13.1 | FabricTracy | Frame/zone/lock/memory profiler; opt-in via `FABRIC_ENABLE_PROFILING` |
+| Standalone Asio | 1.36.0 | FabricAsio | Async I/O with C++20 coroutines; io_context per-frame poll |
+| bgfx | 1.139.9155 | FabricBgfx | Cross-platform rendering: Vulkan/Metal/D3D12/GL (11 backends) |
 
-The modular design allows for easy expansion in these areas:
+## Build System
 
-1. Additional UI components
-2. More parser capabilities
-3. Enhanced platform-specific features
-4. Extended utility libraries
+CMake 3.25+ with target-based configuration throughout. FabricLib is a static library compiled once from all core, utils, parser, codec, and UI sources; all targets link against it. See [BUILD.md](BUILD.md) for build commands, presets, and tooling details.
 
-## Initialization Flow
+### CMake Options
 
-1. **Logger Initialization**: First subsystem to initialize
-2. **Command Line Parsing**: Process startup arguments
-3. **WebView Initialization**: Set up the UI component
-4. **Main Event Loop**: Process events and handle user interaction
+| Option | Default | Description |
+|--------|---------|-------------|
+| `FABRIC_BUILD_TESTS` | `ON` | Build UnitTests and E2ETests executables |
+| `FABRIC_USE_WEBVIEW` | `ON` | Enable WebView support and link webview::core |
+| `FABRIC_BUILD_UNIVERSAL` | `OFF` | Build universal (arm64+x86_64) binaries on macOS |
+| `FABRIC_ENABLE_PROFILING` | `OFF` | Enable Tracy profiler instrumentation |
+
+## Testing
+
+GoogleTest 1.17.0 for all tests. Two test executables: UnitTests (per-component, `tests/unit/`) and E2ETests (application-level, `tests/e2e/`). Both use a custom `tests/TestMain.cc` that initializes Quill logging before test execution. 241 tests across 17 suites. See [TESTING.md](TESTING.md) for test conventions and running instructions.
+
+## Platform Support
+
+| Platform | Minimum | Compiler | Notes |
+|----------|---------|----------|-------|
+| macOS | 14.0+ | Apple Clang | Cocoa + WebKit frameworks |
+| Linux | Recent kernel | GCC 10+ or Clang 13+ | webkit2gtk-4.1 (falls back to 4.0) |
+| Windows | 10+ | MSVC 19.29+ | Windows 10 SDK, WebView2, shlwapi, version libs |
+
+## Known Issues
+
+1. **Temporal dead scaffolding**: approximately 70% of Temporal.hh is unused scaffolding. Core timeline and snapshot functionality works; the rest needs cleanup.
+2. **Singletons**: Timeline, ResourceHub, and PluginManager are singletons. Planned migration to pass-by-reference through an application context object.
+3. **mimalloc macOS zone interposition**: mimalloc's malloc zone replacement on macOS can conflict with AddressSanitizer and some debugging tools. The override is excluded from test targets to avoid interference.

@@ -1,105 +1,102 @@
-# 🌌 Fabric Engine
+# Fabric Engine
 
-<div align="center">
-  <!-- Add logo image once available -->
-  <p>Reality is fluid. Perspective is everything.</p>
-</div>
+C++20 cross-platform runtime for building interactive spatial-temporal applications.
 
-> 🚧 **Work in Progress** - Fabric Engine is in active development. The engine is functional but not yet production-ready. APIs may change and documentation is evolving.
+> **Work in Progress.** The engine is functional but not production-ready. APIs may change.
 
-## Overview
+## Systems
 
-Fabric Engine shatters conventional information hierarchies by creating a framework where reality adapts to your perspective. What appears as an atom from one viewpoint becomes a universe from another—no fixed scales, only fluid perception.
+- **Component**: type-safe component architecture with variant-based properties
+- **Event**: thread-safe event handling with propagation and typed data
+- **Lifecycle**: validated state machine transitions for component lifecycle
+- **Plugin**: dependency-aware plugin system with resource management
+- **ResourceHub**: centralized resource loading with dependency tracking
+- **Spatial**: type-safe vector operations with coordinate space transformations (GLM bridge)
+- **Temporal**: multi-timeline time processing with variable time flow
+- **Command**: execute/undo/redo with composite commands and command history
+- **Async**: Asio io_context scaffolding for coroutine-based async I/O
+- **JsonTypes**: nlohmann/json serializers for core math types
+- **ArgumentParser**: builder-pattern CLI argument parser with validation
+- **SyntaxTree/Token**: AST and tokenizer for config and data parsing
+- **WebView**: embedded browser with JavaScript bridge (optional, via `FABRIC_USE_WEBVIEW`)
 
-Inspired by games like Star Citizen, Stellaris, and Fractal Block World, Fabric provides the tools to build applications where users can seamlessly traverse multiple scales of reality—from subatomic to cosmic—while maintaining coherent state and perspective-appropriate interactions.
+## Building
 
-> *"The mesosphere isn't a fixed scale but the stage where your consciousness currently performs."*
+### Prerequisites
 
-## Core Concepts
+- [mise](https://mise.jdx.dev/) (manages cmake + ninja)
+- C++20 compatible compiler (Apple Clang, GCC 10+, Clang 13+, MSVC 19.29+)
 
-- **Quanta** - Information particles that shape-shift based on how you observe them
-- **Scopes** - Reality containers that define the rules within your current perspective
-- **Transformations** - Temporal flows that evolve information across states
-- **Perspectives** - The viewpoints that determine your active mesosphere
-- **Boundaries** - The bleeding edges where perception fades into quantum uncertainty or statistical blur
+### Build and Test
 
-When you shift perspective toward any quantum, it becomes your new mesosphere—complete with its own micro and macro horizons. You don't just see different things; you redefine what "things" are.
+```bash
+mise install            # Install tooling
+mise run build          # Debug build
+mise run test           # Unit tests
+```
 
-## Current Features
+Or with CMake presets:
 
-- **Cross-Platform Core**: Windows, macOS, and Linux support
-- **Component System**: Type-safe, thread-safe component architecture with variant-based properties
-- **Event System**: Thread-safe event handling with proper propagation and type-safe data
-- **Lifecycle Management**: Thread-safe component lifecycle with validated state transitions
-- **Plugin Architecture**: Thread-safe, dependency-aware plugin system with resource management
-- **Concurrency Model**: Intent-based locking with awareness propagation for deadlock prevention
-- **Resource Management**: Thread-safe resource loading with dependency tracking
-- **Time System**: Multi-timeline temporal processing with variable time flow
-- **Spatial System**: Type-safe vector operations with coordinate space transformations
-- **WebView Integration**: Native webview with bidirectional JavaScript bridge
-- **Command-Line Interface**: Robust argument parsing and validation
-- **Error Handling**: Comprehensive error management system
-- **Logging System**: Multi-level logging with formatting options
-- **Testing Framework**: Comprehensive unit, integration, and thread safety tests
-- **Modular Architecture**: Clean separation of components for maintainability
+```bash
+cmake --preset dev-debug
+cmake --build --preset dev-debug
+```
 
-## Implementation
+## Dependencies
 
-The Fabric Engine is built with a modular architecture that supports perspective-fluid information processing:
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| SDL3 | 3.4.2 | Windowing, input, audio, timers |
+| webview | 0.12.0 | Embedded browser, JS bridge |
+| GoogleTest | 1.17.0 | Unit and E2E testing |
+| GLM | 1.0.3 | Matrix math (inverse, decomposition) |
+| mimalloc | 2.2.7 | Global memory allocator (Fabric exe) |
+| Quill | 11.0.2 | Async structured logging |
+| nlohmann/json | 3.12.0 | JSON serialization for core types |
+| Tracy | 0.13.1 | Frame profiling (optional) |
+| Standalone Asio | 1.36.0 | Async I/O, C++20 coroutines |
+| fmtquill | 12.1.0 | Format library (bundled via Quill) |
 
-- **Quantum Core**: Fundamentally mutable foundation that adapts to perspective
-- **Scope System**: Defines the rules of reality for particular viewpoints
-- **Transformation Engine**: Enables temporal evolution within and between scopes
-- **Perspective Manager**: Controls active viewpoints and scale relationships
+All dependencies are fetched via CMake `FetchContent`. Each library has a dedicated module under `cmake/modules/`.
+
+## Platform Support
+
+| Platform | Minimum | Notes |
+|----------|---------|-------|
+| macOS | 14.0+ | Xcode CLT, Cocoa + WebKit frameworks |
+| Linux | Recent kernel | webkit2gtk-4.1 (or 4.0 fallback) |
+| Windows | 10+ | MSVC, Windows 10 SDK |
+
+## Project Structure
+
+```
+fabric/
+├── include/fabric/
+│   ├── core/           # Component, Command, Event, Lifecycle, Plugin,
+│   │                   # Resource, ResourceHub, Temporal, Spatial, Types,
+│   │                   # Log, Async, JsonTypes, Constants.g
+│   ├── parser/         # ArgumentParser, SyntaxTree, Token
+│   ├── ui/             # WebView
+│   └── utils/          # CoordinatedGraph, ThreadPoolExecutor,
+│                       # TimeoutLock, Profiler, ErrorHandling, Testing, Utils
+├── src/                # Implementation files (.cc)
+├── tests/
+│   ├── unit/           # Per-component unit tests (17 files, 164 tests)
+│   └── e2e/            # End-to-end tests
+├── cmake/modules/      # 7 FetchContent modules
+├── tasks/              # POSIX shell scripts for mise
+├── CMakeLists.txt      # Build config (FabricLib static library)
+├── CMakePresets.json    # 7 presets (dev + CI)
+└── mise.toml           # Task runner config
+```
 
 ## Documentation
 
-[**View Full Documentation**](docs/DOCUMENTATION.md) - Complete documentation hub with navigation
-
-Key documents:
-- [Architecture](docs/ARCHITECTURE.md) - Detailed system architecture
-- [Build Guide](docs/BUILD.md) - Build instructions for all platforms
-- [Concurrency](docs/CONCURRENCY.md) - Thread safety and coordination approach
-- [Roadmap](docs/ROADMAP.md) - Development timeline and planned features
-- [Examples](docs/EXAMPLES.md) - Code examples and tutorials
-
-## Building from Source
-
-### Prerequisites
-- CMake 4.0 or higher
-- C++20 compatible compiler
-- Platform-specific development tools
-
-See the [Build Guide](docs/BUILD.md) for detailed platform-specific instructions.
-
-### Quick Start
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/fabric.git
-cd fabric
-
-# Create build directory
-mkdir build && cd build
-
-# Configure and build
-cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug
-make
-
-# Run the tests
-./bin/UnitTests
-./bin/IntegrationTests
-
-# Run the application
-./bin/Fabric --help
-```
+- [Architecture](docs/ARCHITECTURE.md)
+- [Build Guide](docs/BUILD.md)
+- [Testing Guide](docs/TESTING.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## License
 
 [MIT License](LICENSE)
-
-## Contributing
-
-Contributions are welcome! Please see our [Contributing Guidelines](docs/contributing.md) for details on how to get started.
-
-> *"To contribute meaningfully, first understand that your perspective shapes what you perceive as problems and solutions. The most valuable insights often come from shifting to a viewpoint where the problem itself is transformed."*
