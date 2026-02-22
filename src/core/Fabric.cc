@@ -250,18 +250,18 @@ int main(int argc, char* argv[]) {
             auto rotation = yawQ * pitchQ;
             cameraTransform.setRotation(rotation);
 
-            // Derive direction vectors from current rotation
-            auto fwd = rotation.rotateVector(
-                fabric::Vector3<float, fabric::Space::World>(0.0f, 0.0f, 1.0f));
-            auto right = rotation.rotateVector(
-                fabric::Vector3<float, fabric::Space::World>(1.0f, 0.0f, 0.0f));
-            auto up = fabric::Vector3<float, fabric::Space::World>(0.0f, 1.0f, 0.0f);
-
             while (accumulator >= kFixedDt) {
                 fabric::async::poll();
                 timeline.update(kFixedDt);
 
-                // Movement relative to camera orientation
+                // Derive direction vectors inside the fixed step so movement
+                // stays consistent if rotation is ever updated per tick.
+                auto fwd = rotation.rotateVector(
+                    fabric::Vector3<float, fabric::Space::World>(0.0f, 0.0f, 1.0f));
+                auto right = rotation.rotateVector(
+                    fabric::Vector3<float, fabric::Space::World>(1.0f, 0.0f, 0.0f));
+                auto up = fabric::Vector3<float, fabric::Space::World>(0.0f, 1.0f, 0.0f);
+
                 float step = kMoveSpeed * static_cast<float>(kFixedDt);
                 auto pos = cameraTransform.getPosition();
 
