@@ -1,0 +1,99 @@
+name: Sanitizers
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [src/**, include/**, tests/**, CMakeLists.txt, cmake/**]
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCCACHE_GHA_ENABLED: "true"
+
+jobs:
+  asan-ubsan:
+    name: ASan + UBSan
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build clang pkg-config \
+            libwebkit2gtk-4.1-dev libvulkan-dev libx11-dev \
+            libxrandr-dev libxi-dev libxcursor-dev libgl-dev
+
+      - name: Cache FetchContent
+        uses: actions/cache@v5
+        with:
+          path: build/ci-sanitize/_deps
+          key: linux-amd64-sanitize-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          restore-keys: |
+            linux-amd64-sanitize-deps-
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure
+        run: cmake --preset ci-sanitize
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: sccache
+          CMAKE_CXX_COMPILER_LAUNCHER: sccache
+
+      - name: Build
+        run: cmake --build build/ci-sanitize -j
+
+      - name: Test
+        run: ctest --test-dir build/ci-sanitize --output-on-failure
+
+  tsan:
+    name: ThreadSanitizer
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 30
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build clang pkg-config \
+            libwebkit2gtk-4.1-dev libvulkan-dev libx11-dev \
+            libxrandr-dev libxi-dev libxcursor-dev libgl-dev
+
+      - name: Cache FetchContent
+        uses: actions/cache@v5
+        with:
+          path: build/ci-tsan/_deps
+          key: linux-amd64-tsan-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          restore-keys: |
+            linux-amd64-tsan-deps-
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure
+        run: cmake --preset ci-tsan
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: sccache
+          CMAKE_CXX_COMPILER_LAUNCHER: sccache
+
+      - name: Build
+        run: cmake --build build/ci-tsan -j
+
+      - name: Test
+        run: ctest --test-dir build/ci-tsan --output-on-failure

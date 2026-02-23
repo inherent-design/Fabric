@@ -1,0 +1,37 @@
+name: Dependency Scan
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"
+  push:
+    branches: [main]
+    paths: [CMakeLists.txt, cmake/modules/**]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  security-events: write
+  contents: read
+
+jobs:
+  osv-scan:
+    name: OSV-Scanner
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake \
+            libwebkit2gtk-4.1-dev libvulkan-dev
+
+      - name: Configure (populate _deps)
+        run: cmake --preset ci-linux-gcc
+
+      - name: Run OSV-Scanner
+        uses: google/osv-scanner-action/scan@v2.3.3
+        with:
+          scan-args: "--recursive --call-analysis=all ."

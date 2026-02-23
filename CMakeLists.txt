@@ -60,8 +60,11 @@ include(FabricGoogleTest)
 # GLM (OpenGL Mathematics) - header-only math library
 include(FabricGLM)
 
-# mimalloc - global allocator replacement
-include(FabricMimalloc)
+# mimalloc - global allocator replacement (gated for sanitizer compatibility)
+option(FABRIC_USE_MIMALLOC "Link mimalloc as global allocator override" ON)
+if(FABRIC_USE_MIMALLOC)
+    include(FabricMimalloc)
+endif()
 
 # Quill - async structured logging
 include(FabricQuill)
@@ -266,9 +269,14 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_CXX_COMPILER M
     endif()
 endif()
 
-# Create the Fabric executable (with mimalloc global allocator override)
-add_executable(Fabric src/core/Fabric.cc src/core/MimallocOverride.cc)
-target_link_libraries(Fabric PRIVATE FabricLib mimalloc-static)
+# Create the Fabric executable
+if(FABRIC_USE_MIMALLOC)
+    add_executable(Fabric src/core/Fabric.cc src/core/MimallocOverride.cc)
+    target_link_libraries(Fabric PRIVATE FabricLib mimalloc-static)
+else()
+    add_executable(Fabric src/core/Fabric.cc)
+    target_link_libraries(Fabric PRIVATE FabricLib)
+endif()
 
 #------------------------------------------------------------------------------
 # Testing Configuration

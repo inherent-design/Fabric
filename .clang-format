@@ -1,0 +1,72 @@
+---
+Language: Cpp
+Standard: c++20
+
+# Indentation
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+NamespaceIndentation: None
+IndentCaseLabels: true
+IndentPPDirectives: None
+IndentRequiresClause: true
+
+# Line width
+ColumnLimit: 120
+
+# Braces
+BreakBeforeBraces: Attach
+
+# Alignment
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignOperands: Align
+AlignTrailingComments: true
+
+# Short forms
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Inline
+AllowShortLoopsOnASingleLine: false
+
+# Pointers and references
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+# Templates and requires
+SpaceAfterTemplateKeyword: true
+RequiresClausePosition: OwnLine
+
+# Includes
+SortIncludes: CaseInsensitive
+IncludeBlocks: Preserve
+
+# Spaces
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyBlock: false
+SpacesInAngles: Never
+SpacesInParens: Never
+
+# Breaking
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: NextLine
+BinPackArguments: true
+BinPackParameters: true
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+BreakStringLiterals: true
+
+# Lambdas
+LambdaBodyIndentation: Signature
+
+# Misc
+InsertBraces: false
+InsertNewlineAtEOF: true
+MaxEmptyLinesToKeep: 1
+EmptyLineBeforeAccessModifier: LogicalBlock
+SeparateDefinitionBlocks: Leave
+...

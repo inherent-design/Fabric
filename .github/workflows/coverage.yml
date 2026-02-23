@@ -1,0 +1,74 @@
+name: Coverage
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [src/**, include/**, tests/**, CMakeLists.txt, cmake/**]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCCACHE_GHA_ENABLED: "true"
+
+jobs:
+  coverage:
+    name: Code Coverage
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build clang llvm pkg-config \
+            libwebkit2gtk-4.1-dev libvulkan-dev libx11-dev \
+            libxrandr-dev libxi-dev libxcursor-dev libgl-dev
+
+      - name: Cache FetchContent
+        uses: actions/cache@v5
+        with:
+          path: build/ci-coverage/_deps
+          key: linux-amd64-coverage-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          restore-keys: |
+            linux-amd64-coverage-deps-
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure
+        run: cmake --preset ci-coverage
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: sccache
+          CMAKE_CXX_COMPILER_LAUNCHER: sccache
+
+      - name: Build
+        run: cmake --build build/ci-coverage -j
+
+      - name: Test
+        run: ctest --test-dir build/ci-coverage --output-on-failure
+
+      - name: Merge profiles
+        run: llvm-profdata merge -sparse build/ci-coverage/fabric-*.profraw -o coverage.profdata
+
+      - name: Generate lcov report
+        run: |
+          llvm-cov export \
+            build/ci-coverage/bin/UnitTests \
+            -instr-profile=coverage.profdata \
+            -format=lcov \
+            -ignore-filename-regex='build/|_deps/|tests/' \
+            > coverage.lcov
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.lcov

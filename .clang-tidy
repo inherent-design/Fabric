@@ -1,0 +1,53 @@
+---
+# Fabric Engine clang-tidy configuration
+#
+# Advisory mode: WarningsAsErrors is empty so findings are informational.
+# Tighten as the codebase matures.
+
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  cert-*,
+  -cert-err58-cpp,
+  concurrency-*,
+  cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-avoid-magic-numbers,
+  modernize-use-override,
+  modernize-use-nullptr,
+  -modernize-use-trailing-return-type,
+  performance-*,
+  readability-identifier-naming,
+  -readability-magic-numbers
+
+WarningsAsErrors: ''
+
+HeaderFilterRegex: 'include/fabric/.*'
+
+CheckOptions:
+  # Naming conventions (match existing Fabric style)
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack
+  - key: readability-identifier-naming.MemberCase
+    value: camelBack
+  - key: readability-identifier-naming.MethodCase
+    value: camelBack
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: camelBack
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: '_'
+  - key: readability-identifier-naming.TemplateParameterCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypeAliasCase
+    value: CamelCase
+  - key: readability-identifier-naming.VariableCase
+    value: camelBack
+...

@@ -73,17 +73,90 @@
                 "CMAKE_C_COMPILER": "cl",
                 "CMAKE_CXX_COMPILER": "cl"
             }
+        },
+        {
+            "name": "ci-sanitize",
+            "displayName": "CI: Sanitizers (ASan + UBSan)",
+            "inherits": "base",
+            "condition": { "type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer",
+                "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined",
+                "FABRIC_BUILD_TESTS": "ON",
+                "FABRIC_USE_MIMALLOC": "OFF"
+            }
+        },
+        {
+            "name": "ci-tsan",
+            "displayName": "CI: ThreadSanitizer",
+            "inherits": "base",
+            "condition": { "type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_CXX_FLAGS": "-fsanitize=thread",
+                "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=thread",
+                "FABRIC_BUILD_TESTS": "ON",
+                "FABRIC_USE_MIMALLOC": "OFF"
+            }
+        },
+        {
+            "name": "ci-coverage",
+            "displayName": "CI: Code Coverage",
+            "inherits": "base",
+            "condition": { "type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_CXX_FLAGS": "-fprofile-instr-generate -fcoverage-mapping",
+                "CMAKE_EXE_LINKER_FLAGS": "-fprofile-instr-generate",
+                "FABRIC_BUILD_TESTS": "ON",
+                "FABRIC_USE_MIMALLOC": "OFF"
+            }
         }
     ],
     "buildPresets": [
         { "name": "dev-debug", "configurePreset": "dev-debug" },
-        { "name": "dev-release", "configurePreset": "dev-release" }
+        { "name": "dev-release", "configurePreset": "dev-release" },
+        { "name": "ci-sanitize", "configurePreset": "ci-sanitize" },
+        { "name": "ci-tsan", "configurePreset": "ci-tsan" },
+        { "name": "ci-coverage", "configurePreset": "ci-coverage" }
     ],
     "testPresets": [
         {
             "name": "dev-debug",
             "configurePreset": "dev-debug",
             "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "ci-sanitize",
+            "configurePreset": "ci-sanitize",
+            "output": { "outputOnFailure": true },
+            "environment": {
+                "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+                "UBSAN_OPTIONS": "print_stacktrace=1:halt_on_error=1"
+            }
+        },
+        {
+            "name": "ci-tsan",
+            "configurePreset": "ci-tsan",
+            "output": { "outputOnFailure": true },
+            "environment": {
+                "TSAN_OPTIONS": "halt_on_error=1:second_deadlock_stack=1"
+            }
+        },
+        {
+            "name": "ci-coverage",
+            "configurePreset": "ci-coverage",
+            "output": { "outputOnFailure": true },
+            "environment": {
+                "LLVM_PROFILE_FILE": "fabric-%p.profraw"
+            }
         }
     ]
 }
