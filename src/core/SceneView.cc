@@ -29,19 +29,21 @@ void SceneView::render() {
         DrawCall dc;
         dc.viewId = viewId_;
 
-        // Build transform matrix from ECS components
-        const auto* pos = entity.get<Position>();
-        const auto* rot = entity.get<Rotation>();
-        const auto* scl = entity.get<Scale>();
-
-        Transform<float> t;
-        if (pos) t.setPosition(Vector3<float, Space::World>(pos->x, pos->y, pos->z));
-        if (rot) t.setRotation(Quaternion<float>(rot->x, rot->y, rot->z, rot->w));
-        if (scl) t.setScale(Vector3<float, Space::World>(scl->x, scl->y, scl->z));
-
-        auto matrix = t.getMatrix();
-        for (int i = 0; i < 16; ++i) {
-            dc.transform[static_cast<size_t>(i)] = matrix.elements[static_cast<size_t>(i)];
+        // Read pre-computed world transform from CASCADE system
+        const auto* ltw = entity.get<LocalToWorld>();
+        if (ltw) {
+            dc.transform = ltw->matrix;
+        } else {
+            // Fallback: compose from components if LocalToWorld is missing
+            Transform<float> t;
+            const auto* pos = entity.get<Position>();
+            const auto* rot = entity.get<Rotation>();
+            const auto* scl = entity.get<Scale>();
+            if (pos) t.setPosition(Vector3<float, Space::World>(pos->x, pos->y, pos->z));
+            if (rot) t.setRotation(Quaternion<float>(rot->x, rot->y, rot->z, rot->w));
+            if (scl) t.setScale(Vector3<float, Space::World>(scl->x, scl->y, scl->z));
+            auto matrix = t.getMatrix();
+            dc.transform = matrix.elements;
         }
         renderList_.addDrawCall(dc);
     }

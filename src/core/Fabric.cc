@@ -1,3 +1,4 @@
+#include "fabric/core/AppContext.hh"
 #include "fabric/core/Async.hh"
 #include "fabric/core/Camera.hh"
 #include "fabric/core/Constants.g.hh"
@@ -5,6 +6,7 @@
 #include "fabric/core/Event.hh"
 #include "fabric/core/InputManager.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/core/ResourceHub.hh"
 #include "fabric/core/SceneView.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/Temporal.hh"
@@ -209,6 +211,14 @@ int main(int argc, char* argv[]) {
         fabric::World ecsWorld;
         ecsWorld.registerCoreComponents();
         fabric::SceneView sceneView(0, camera, ecsWorld.get());
+
+        // Resource management
+        fabric::ResourceHub resourceHub;
+        resourceHub.disableWorkerThreadsForTesting(); // no async loads yet
+
+        // Aggregate context for subsystem references
+        fabric::AppContext appContext{ecsWorld, timeline, dispatcher, resourceHub};
+        (void)appContext; // will be threaded through systems in future passes
 
         // Camera control state
         constexpr float kMoveSpeed = 5.0f;

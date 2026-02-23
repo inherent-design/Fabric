@@ -87,17 +87,18 @@ One test is currently disabled (prefixed with `DISABLED_`). Use `--gtest_also_ru
 
 ### ResourceHub Tests
 
-When testing code that interacts with ResourceHub, disable worker threads to prevent hangs:
+When testing code that interacts with ResourceHub, create a local instance and disable worker threads to prevent hangs:
 
 ```cpp
-ResourceHub::instance().disableWorkerThreadsForTesting();
-ASSERT_EQ(ResourceHub::instance().getWorkerThreadCount(), 0);
+ResourceHub hub;
+hub.disableWorkerThreadsForTesting();
+ASSERT_EQ(hub.getWorkerThreadCount(), 0);
 ```
 
 Restore in teardown:
 
 ```cpp
-ResourceHub::instance().restartWorkerThreadsAfterTesting();
+hub.restartWorkerThreadsAfterTesting();
 ```
 
 ### General Guidance

@@ -1,4 +1,5 @@
 #include "fabric/core/ECS.hh"
+#include "fabric/core/Spatial.hh"
 #include "fabric/utils/Profiler.hh"
 
 #include <utility>
@@ -42,8 +43,41 @@ void World::registerCoreComponents() {
     world_->component<Rotation>("Rotation");
     world_->component<Scale>("Scale");
     world_->component<BoundingBox>("BoundingBox");
+    world_->component<LocalToWorld>("LocalToWorld");
     world_->component<SceneEntity>("SceneEntity");
     world_->component<Renderable>("Renderable");
+}
+
+void World::updateTransforms() {
+    FABRIC_ZONE_SCOPED_N("ECS::updateTransforms");
+
+    // CASCADE query ensures breadth-first order: parents are processed before children.
+    // The optional ChildOf term means root entities (no parent) are also matched.
+    auto q = world_->query_builder<const Position, const Rotation, const Scale, LocalToWorld>()
+        .with(flecs::ChildOf, flecs::Wildcard).cascade().optional()
+        .build();
+
+    q.each([](flecs::entity e,
+              const Position& pos, const Rotation& rot, const Scale& scl,
+              LocalToWorld& ltw) {
+        // Compose local transform from Position * Rotation * Scale
+        Transform<float> t;
+        t.setPosition(Vector3<float, Space::World>(pos.x, pos.y, pos.z));
+        t.setRotation(Quaternion<float>(rot.x, rot.y, rot.z, rot.w));
+        t.setScale(Vector3<float, Space::World>(scl.x, scl.y, scl.z));
+        auto localMatrix = t.getMatrix();
+
+        auto parent = e.parent();
+        if (parent.is_valid() && parent.has<LocalToWorld>()) {
+            // Parent already processed (CASCADE guarantee): multiply parent * local
+            const auto* parentLtw = parent.get<LocalToWorld>();
+            Matrix4x4<float> parentMat(parentLtw->matrix);
+            auto worldMatrix = parentMat * localMatrix;
+            ltw.matrix = worldMatrix.elements;
+        } else {
+            ltw.matrix = localMatrix.elements;
+        }
+    });
 }
 
 flecs::entity World::createSceneEntity(const char* name) {
@@ -52,6 +86,7 @@ flecs::entity World::createSceneEntity(const char* name) {
         .set<Position>({0.0f, 0.0f, 0.0f})
         .set<Rotation>({0.0f, 0.0f, 0.0f, 1.0f})
         .set<Scale>({1.0f, 1.0f, 1.0f})
+        .set<LocalToWorld>({})
         .add<SceneEntity>();
 }
 
@@ -62,6 +97,7 @@ flecs::entity World::createChildEntity(flecs::entity parent, const char* name) {
         .set<Position>({0.0f, 0.0f, 0.0f})
         .set<Rotation>({0.0f, 0.0f, 0.0f, 1.0f})
         .set<Scale>({1.0f, 1.0f, 1.0f})
+        .set<LocalToWorld>({})
         .add<SceneEntity>();
 }
 

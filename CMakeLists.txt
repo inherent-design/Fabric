@@ -170,6 +170,7 @@ set(FABRIC_UI_SOURCE_FILES
     src/ui/WebView.cc
     src/ui/BgfxRenderInterface.cc
     src/ui/BgfxSystemInterface.cc
+    src/ui/StbImage.cc
 )
 
 # Create internal static library (compile sources once, link into all targets)
@@ -188,6 +189,7 @@ target_include_directories(FabricLib
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE
         ${FABRIC_RMLUI_SHADER_OUT}
+        ${bgfx_SOURCE_DIR}/bimg/3rdparty/stb
 )
 
 target_link_libraries(FabricLib

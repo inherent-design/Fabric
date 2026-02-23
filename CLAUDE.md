@@ -27,16 +27,18 @@ FabricLib is a static library that all targets link against. The `Fabric` execut
 
 Both `UnitTests` and `E2ETests` use a custom `tests/TestMain.cc` that initializes Quill logging before GoogleTest runs. Do not add a separate `main()` in test files.
 
-When writing ResourceHub tests, disable worker threads to prevent hangs:
+When writing ResourceHub tests, create a local instance and disable worker threads to prevent hangs:
 
 ```cpp
-ResourceHub::instance().disableWorkerThreadsForTesting();
+ResourceHub hub;
+hub.disableWorkerThreadsForTesting();
 ```
 
 Or use `reset()` which disables workers, clears all resources, and resets the memory budget:
 
 ```cpp
-ResourceHub::instance().reset();
+ResourceHub hub;
+hub.reset();
 ```
 
 For ResourceHub tests, prefer:

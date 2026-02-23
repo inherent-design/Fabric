@@ -76,3 +76,10 @@ TEST(BgfxRenderInterfaceTest, SetTransformNullResetsState) {
     renderer.SetTransform(nullptr);
     // No crash, state is reset (verified indirectly via render)
 }
+
+TEST(BgfxRenderInterfaceTest, LoadTextureNonexistentFileReturnsZero) {
+    fabric::BgfxRenderInterface renderer;
+    Rml::Vector2i dimensions{0, 0};
+    auto handle = renderer.LoadTexture(dimensions, "/nonexistent/path/to/image.png");
+    EXPECT_EQ(handle, Rml::TextureHandle(0));
+}

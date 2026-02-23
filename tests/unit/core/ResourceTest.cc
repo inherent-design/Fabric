@@ -138,21 +138,15 @@ bool EnsureTestResourceFactoryRegistered() {
 
 class ResourceTest : public ::testing::Test {
 protected:
+    fabric::ResourceHub hub_;
+
     void SetUp() override {
-        // Register test factory using the helper function
         EnsureTestResourceFactoryRegistered();
-        
-        // Simple setup - get a clean ResourceHub instance
-        auto& hub = fabric::ResourceHub::instance();
-        
-        // Reset it directly - this disables threads and clears resources
-        hub.reset();
+        hub_.reset();
     }
-    
+
     void TearDown() override {
-        // Simple cleanup - reset ResourceHub to clean state
-        auto& hub = fabric::ResourceHub::instance();
-        hub.reset();
+        hub_.reset();
     }
 };
 
@@ -174,24 +168,16 @@ protected:
  */
 class ResourceDeterministicTest : public ::testing::Test {
 protected:
+    fabric::ResourceHub hub_;
+
     void SetUp() override {
-        // Ensure factory is registered
         EnsureTestResourceFactoryRegistered();
-        
-        // Simple setup - get a clean ResourceHub instance
-        auto& hub = fabric::ResourceHub::instance();
-        
-        // Just reset it directly - this should disable threads and clear resources
-        hub.reset();
-        
-        // Set memory budget to large value
-        hub.setMemoryBudget(std::numeric_limits<size_t>::max());
+        hub_.reset();
+        hub_.setMemoryBudget(std::numeric_limits<size_t>::max());
     }
-    
+
     void TearDown() override {
-        // Simple cleanup - reset ResourceHub to clean state
-        auto& hub = fabric::ResourceHub::instance();
-        hub.reset();
+        hub_.reset();
     }
 };
 
@@ -253,10 +239,6 @@ TEST_F(ResourceTest, ResourceHandleLifetime) {
  * Following the successful pattern from ResourceHubMinimalTest.
  */
 TEST_F(ResourceTest, ResourceHubGetResource) {
-    // Get a clean ResourceHub
-    auto& hub = fabric::ResourceHub::instance();
-    
-    // Create and register our own factory directly
     if (!fabric::ResourceFactory::isTypeRegistered("test")) {
         fabric::ResourceFactory::registerType<TestResource>(
             "test",
@@ -265,16 +247,13 @@ TEST_F(ResourceTest, ResourceHubGetResource) {
             }
         );
     }
-    
-    // Load a resource directly using the hub
-    fabric::ResourceHandle<TestResource> handle = hub.load<TestResource>("test", "test:resource1");
-    
-    // Verify the handle and resource
+
+    fabric::ResourceHandle<TestResource> handle = hub_.load<TestResource>("test", "test:resource1");
+
     ASSERT_TRUE(handle) << "Resource handle should be valid";
     EXPECT_EQ(handle->getId(), "test:resource1") << "Resource ID should match";
     EXPECT_EQ(handle->getState(), fabric::ResourceState::Loaded) << "Resource should be loaded";
-    
-    // Release the handle to clean up
+
     handle.reset();
 }
 
@@ -356,45 +335,31 @@ TEST_F(ResourceTest, ResourceHubUnload) {
 
 // Test ResourceHub memory budget functionality
 TEST_F(ResourceDeterministicTest, ResourceHubMemoryBudget) {
-    // Single focus: Test that memory budget can be set and retrieved
-    
-    // Step 1: Safely get the hub instance with recovery protection
     try {
-        // Get the hub and store the original budget for later restoration
-        ResourceHub& hub = ResourceHub::instance();
-        
-        // Make sure threads are disabled for testing to ensure stability
-        hub.disableWorkerThreadsForTesting();
-        
-        // Store the original budget for later restoration
-        const size_t originalBudget = hub.getMemoryBudget();
-        
-        // Step 2: Set a specific test budget with timeout protection
+        hub_.disableWorkerThreadsForTesting();
+
+        const size_t originalBudget = hub_.getMemoryBudget();
         const size_t testBudget = 2 * 1024 * 1024; // 2MB
-        
-        bool operationSucceeded = RunWithTimeout([&hub, testBudget]() {
-            hub.setMemoryBudget(testBudget);
+
+        bool operationSucceeded = RunWithTimeout([this, testBudget]() {
+            hub_.setMemoryBudget(testBudget);
         }, std::chrono::milliseconds(500));
-        
+
         ASSERT_TRUE(operationSucceeded) << "Setting memory budget timed out";
-        
-        // Step 3: Verify the budget was correctly set, with timeout protection
+
         size_t retrievedBudget = 0;
-        operationSucceeded = RunWithTimeout([&hub, &retrievedBudget]() {
-            retrievedBudget = hub.getMemoryBudget();
+        operationSucceeded = RunWithTimeout([this, &retrievedBudget]() {
+            retrievedBudget = hub_.getMemoryBudget();
         }, std::chrono::milliseconds(500));
-        
+
         ASSERT_TRUE(operationSucceeded) << "Getting memory budget timed out";
         EXPECT_EQ(retrievedBudget, testBudget) << "Budget should match the value we set";
-        
-        // Step 4: Restore original budget to avoid affecting other tests, with timeout protection
-        operationSucceeded = RunWithTimeout([&hub, originalBudget]() {
-            hub.setMemoryBudget(originalBudget);
+
+        operationSucceeded = RunWithTimeout([this, originalBudget]() {
+            hub_.setMemoryBudget(originalBudget);
         }, std::chrono::milliseconds(500));
-        
+
         ASSERT_TRUE(operationSucceeded) << "Restoring original budget timed out";
-        
-        // Important: Don't restart worker threads here - that's handled in TearDown
     } catch (const std::exception& e) {
         FAIL() << "Exception in ResourceHubMemoryBudget test: " << e.what();
     }
