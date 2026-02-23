@@ -2,6 +2,8 @@
 #include "fabric/core/Log.hh"
 #include "fabric/utils/Profiler.hh"
 
+#include "stb_image.h"
+
 // Suppress WGSL: bgfx CMake helpers don't compile it yet
 #define BGFX_PLATFORM_SUPPORTS_WGSL 0
 #include <bgfx/embedded_shader.h>
@@ -207,12 +209,32 @@ void BgfxRenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) 
 
 // -- Textures --
 
-Rml::TextureHandle BgfxRenderInterface::LoadTexture(Rml::Vector2i& /*dimensions*/,
+Rml::TextureHandle BgfxRenderInterface::LoadTexture(Rml::Vector2i& dimensions,
                                                      const Rml::String& source) {
-    // File-based texture loading not implemented for Sprint 3 MVP.
-    // Font atlas uses GenerateTexture; image loading deferred.
-    FABRIC_LOG_WARN("LoadTexture not implemented: {}", source);
-    return Rml::TextureHandle(0);
+    FABRIC_ZONE_SCOPED;
+
+    int w = 0, h = 0, channels = 0;
+    unsigned char* data = stbi_load(source.c_str(), &w, &h, &channels, 4);
+    if (!data) {
+        FABRIC_LOG_WARN("LoadTexture failed: {}", source);
+        return Rml::TextureHandle(0);
+    }
+
+    dimensions.x = w;
+    dimensions.y = h;
+
+    uint32_t size = static_cast<uint32_t>(w * h * 4);
+    bgfx::TextureHandle tex = bgfx::createTexture2D(
+        static_cast<uint16_t>(w), static_cast<uint16_t>(h),
+        false, 1, bgfx::TextureFormat::RGBA8,
+        BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP,
+        bgfx::copy(data, size));
+
+    stbi_image_free(data);
+
+    auto handle = nextTexHandle_++;
+    textures_[handle] = tex;
+    return static_cast<Rml::TextureHandle>(handle);
 }
 
 Rml::TextureHandle BgfxRenderInterface::GenerateTexture(

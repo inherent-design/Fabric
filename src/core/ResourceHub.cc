@@ -1122,11 +1122,6 @@ void ResourceHub::setWorkerThreadCount(unsigned int count) {
   workerThreadCount_ = count;
 }
 
-ResourceHub &ResourceHub::instance() {
-  static ResourceHub manager;
-  return manager;
-}
-
 // Constructor implementation
 ResourceHub::ResourceHub()
     : memoryBudget_(1024 * 1024 * 1024), // 1 GB default

@@ -1,6 +1,8 @@
 #include "fabric/core/ECS.hh"
+#include "fabric/core/Spatial.hh"
 
 #include <gtest/gtest.h>
+#include <cmath>
 #include <vector>
 
 using namespace fabric;
@@ -48,11 +50,13 @@ TEST(ECSTest, ComponentRegistration) {
     auto rotComp = world.get().lookup("Rotation");
     auto scaleComp = world.get().lookup("Scale");
     auto bbComp = world.get().lookup("BoundingBox");
+    auto ltwComp = world.get().lookup("LocalToWorld");
 
     EXPECT_TRUE(posComp.is_valid());
     EXPECT_TRUE(rotComp.is_valid());
     EXPECT_TRUE(scaleComp.is_valid());
     EXPECT_TRUE(bbComp.is_valid());
+    EXPECT_TRUE(ltwComp.is_valid());
 }
 
 TEST(ECSTest, EntityCreationWithComponents) {
@@ -269,6 +273,7 @@ TEST(ECSTest, CreateSceneEntity) {
     EXPECT_TRUE(entity.has<Position>());
     EXPECT_TRUE(entity.has<Rotation>());
     EXPECT_TRUE(entity.has<Scale>());
+    EXPECT_TRUE(entity.has<LocalToWorld>());
     EXPECT_TRUE(entity.has<SceneEntity>());
 
     // Default position is origin
@@ -323,4 +328,104 @@ TEST(ECSTest, SceneEntityComponentRegistration) {
 
     EXPECT_TRUE(seComp.is_valid());
     EXPECT_TRUE(rendComp.is_valid());
+}
+
+// Helper: extract translation from column-major LocalToWorld matrix
+static void extractTranslation(const LocalToWorld& ltw, float& x, float& y, float& z) {
+    // Column-major: translation is at indices 12, 13, 14
+    x = ltw.matrix[12];
+    y = ltw.matrix[13];
+    z = ltw.matrix[14];
+}
+
+TEST(ECSTest, UpdateTransformsRootEntity) {
+    World world;
+    world.registerCoreComponents();
+
+    auto root = world.createSceneEntity("root");
+    root.set<Position>({5.0f, 0.0f, 0.0f});
+
+    world.updateTransforms();
+
+    const auto* ltw = root.get<LocalToWorld>();
+    ASSERT_NE(ltw, nullptr);
+    float x, y, z;
+    extractTranslation(*ltw, x, y, z);
+    EXPECT_FLOAT_EQ(x, 5.0f);
+    EXPECT_FLOAT_EQ(y, 0.0f);
+    EXPECT_FLOAT_EQ(z, 0.0f);
+}
+
+TEST(ECSTest, UpdateTransformsParentChild) {
+    World world;
+    world.registerCoreComponents();
+
+    auto parent = world.createSceneEntity("parent");
+    parent.set<Position>({5.0f, 0.0f, 0.0f});
+
+    auto child = world.createChildEntity(parent, "child");
+    child.set<Position>({0.0f, 3.0f, 0.0f});
+
+    world.updateTransforms();
+
+    // Child world position should be parent + child = (5, 3, 0)
+    const auto* ltw = child.get<LocalToWorld>();
+    ASSERT_NE(ltw, nullptr);
+    float x, y, z;
+    extractTranslation(*ltw, x, y, z);
+    EXPECT_FLOAT_EQ(x, 5.0f);
+    EXPECT_FLOAT_EQ(y, 3.0f);
+    EXPECT_FLOAT_EQ(z, 0.0f);
+}
+
+TEST(ECSTest, UpdateTransformsThreeLevels) {
+    World world;
+    world.registerCoreComponents();
+
+    auto grandparent = world.createSceneEntity("gp");
+    grandparent.set<Position>({1.0f, 0.0f, 0.0f});
+
+    auto parent = world.createChildEntity(grandparent, "p");
+    parent.set<Position>({0.0f, 2.0f, 0.0f});
+
+    auto child = world.createChildEntity(parent, "c");
+    child.set<Position>({0.0f, 0.0f, 3.0f});
+
+    world.updateTransforms();
+
+    // Child world position: (1, 2, 3)
+    const auto* ltw = child.get<LocalToWorld>();
+    ASSERT_NE(ltw, nullptr);
+    float x, y, z;
+    extractTranslation(*ltw, x, y, z);
+    EXPECT_FLOAT_EQ(x, 1.0f);
+    EXPECT_FLOAT_EQ(y, 2.0f);
+    EXPECT_FLOAT_EQ(z, 3.0f);
+}
+
+TEST(ECSTest, UpdateTransformsRotationPropagation) {
+    World world;
+    world.registerCoreComponents();
+
+    // Parent rotated 90 degrees around Y axis
+    auto parent = world.createSceneEntity("parent");
+    auto q = Quaternion<float>::fromAxisAngle(
+        Vector3<float, Space::World>(0.0f, 1.0f, 0.0f),
+        static_cast<float>(M_PI / 2.0));
+    parent.set<Rotation>({q.x, q.y, q.z, q.w});
+
+    // Child at local position (1, 0, 0)
+    auto child = world.createChildEntity(parent, "child");
+    child.set<Position>({1.0f, 0.0f, 0.0f});
+
+    world.updateTransforms();
+
+    // 90 degrees Y rotation maps (1,0,0) -> (0,0,-1)
+    const auto* ltw = child.get<LocalToWorld>();
+    ASSERT_NE(ltw, nullptr);
+    float x, y, z;
+    extractTranslation(*ltw, x, y, z);
+    EXPECT_NEAR(x, 0.0f, 1e-5f);
+    EXPECT_NEAR(y, 0.0f, 1e-5f);
+    EXPECT_NEAR(z, -1.0f, 1e-5f);
 }

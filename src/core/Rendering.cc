@@ -194,11 +194,40 @@ std::vector<flecs::entity> FrustumCuller::cull(
 
         const auto* bb = e.get<BoundingBox>();
         if (bb) {
-            AABB aabb(
+            AABB localAABB(
                 Vec3f(bb->minX, bb->minY, bb->minZ),
                 Vec3f(bb->maxX, bb->maxY, bb->maxZ)
             );
-            if (frustum.testAABB(aabb) == CullResult::Outside) return;
+
+            // Transform AABB to world space using LocalToWorld if available
+            const auto* ltw = e.get<LocalToWorld>();
+            if (ltw) {
+                Matrix4x4<float> m(ltw->matrix);
+                // Transform all 8 corners and re-fit the AABB
+                AABB worldAABB;
+                bool first = true;
+                for (int cx = 0; cx < 2; ++cx) {
+                    for (int cy = 0; cy < 2; ++cy) {
+                        for (int cz = 0; cz < 2; ++cz) {
+                            Vec3f corner(
+                                cx == 0 ? localAABB.min.x : localAABB.max.x,
+                                cy == 0 ? localAABB.min.y : localAABB.max.y,
+                                cz == 0 ? localAABB.min.z : localAABB.max.z
+                            );
+                            auto worldCorner = m.transformPoint<Space::World, Space::World>(corner);
+                            if (first) {
+                                worldAABB = AABB(worldCorner, worldCorner);
+                                first = false;
+                            } else {
+                                worldAABB.expand(worldCorner);
+                            }
+                        }
+                    }
+                }
+                if (frustum.testAABB(worldAABB) == CullResult::Outside) return;
+            } else {
+                if (frustum.testAABB(localAABB) == CullResult::Outside) return;
+            }
         }
 
         visible.push_back(e);

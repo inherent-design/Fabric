@@ -42,103 +42,89 @@ private:
   std::atomic<int> unloadCount{0};
 };
 
-// Minimal test class for resource hub with simplified setup
 // Enhanced test helper class to access protected members of ResourceHub
 class ResourceHubTestHelper {
 public:
-  // Helper function to directly add a resource to the graph with timeout protection
-  static bool addResource(const std::string& id, std::shared_ptr<Resource> resource) {
+  static bool addResource(ResourceHub& hub, const std::string& id, std::shared_ptr<Resource> resource) {
     try {
-      return ResourceHub::instance().resourceGraph_.addNode(id, resource);
+      return hub.resourceGraph_.addNode(id, resource);
     } catch (const std::exception& e) {
       std::cerr << "Exception in addResource: " << e.what() << std::endl;
       return false;
     }
   }
-  
-  // Helper function to get a node directly from the graph with timeout protection
-  static auto getNode(const std::string& id) {
+
+  static auto getNode(ResourceHub& hub, const std::string& id) {
     try {
-      return ResourceHub::instance().resourceGraph_.getNode(id, 100); // 100ms timeout
+      return hub.resourceGraph_.getNode(id, 100);
     } catch (const std::exception& e) {
       std::cerr << "Exception in getNode: " << e.what() << std::endl;
       return std::shared_ptr<CoordinatedGraph<std::shared_ptr<Resource>>::Node>(nullptr);
     }
   }
-  
-  // Helper to directly check if a node exists
-  static bool hasNode(const std::string& id) {
+
+  static bool hasNode(ResourceHub& hub, const std::string& id) {
     try {
-      return ResourceHub::instance().resourceGraph_.hasNode(id);
+      return hub.resourceGraph_.hasNode(id);
     } catch (const std::exception& e) {
       std::cerr << "Exception in hasNode: " << e.what() << std::endl;
       return false;
     }
   }
-  
-  // Helper to check the graph size
-  static size_t getGraphSize() {
+
+  static size_t getGraphSize(ResourceHub& hub) {
     try {
-      return ResourceHub::instance().resourceGraph_.size();
+      return hub.resourceGraph_.size();
     } catch (const std::exception& e) {
       std::cerr << "Exception in getGraphSize: " << e.what() << std::endl;
       return 0;
     }
   }
-  
-  // Helper to add a dependency between resources
-  static bool addDependency(const std::string& dependentId, const std::string& dependencyId) {
+
+  static bool addDependency(ResourceHub& hub, const std::string& dependentId, const std::string& dependencyId) {
     try {
-      return ResourceHub::instance().resourceGraph_.addEdge(dependentId, dependencyId);
+      return hub.resourceGraph_.addEdge(dependentId, dependencyId);
     } catch (const std::exception& e) {
       std::cerr << "Exception in addDependency: " << e.what() << std::endl;
       return false;
     }
   }
-  
-  // Helper to access last access time of a resource
-  static auto getLastAccessTime(const std::string& id) {
-    auto node = getNode(id);
+
+  static auto getLastAccessTime(ResourceHub& hub, const std::string& id) {
+    auto node = getNode(hub, id);
     if (node) {
       return node->getLastAccessTime();
     }
-    // Return a default time point if node not found
     return std::chrono::steady_clock::now();
   }
 };
 
-// Friend declaration in ResourceHub.hh is needed for this to work
-
 class ResourceHubMinimalTest : public ::testing::Test {
 protected:
+  ResourceHub hub_;
+
   void SetUp() override {
-    // Reset the ResourceHub to a clean state
-    ResourceHub::instance().reset();
-    
-    // Verify the hub is empty and worker threads are disabled
-    ASSERT_TRUE(ResourceHub::instance().isEmpty());
-    ASSERT_EQ(ResourceHub::instance().getWorkerThreadCount(), 0);
-    
-    // Register factory for test resource
+    hub_.reset();
+
+    ASSERT_TRUE(hub_.isEmpty());
+    ASSERT_EQ(hub_.getWorkerThreadCount(), 0);
+
     if (!ResourceFactory::isTypeRegistered("TestResource")) {
       ResourceFactory::registerType<MinimalTestResource>(
-        "TestResource", 
+        "TestResource",
         [](const std::string& id) {
           return std::make_shared<MinimalTestResource>(id);
         }
       );
     }
-    
-    // Verify the factory is registered correctly
+
     ASSERT_TRUE(ResourceFactory::isTypeRegistered("TestResource"));
   }
-  
+
   void TearDown() override {
-    // Clean up resources
     try {
-      ResourceHub::instance().reset();
+      hub_.reset();
     } catch (const std::exception& e) {
-      // Log but don't fail teardown
       std::cerr << "Error during teardown: " << e.what() << std::endl;
     }
   }
@@ -179,32 +165,25 @@ TEST_F(ResourceHubMinimalTest, ResourceFactoryCreate) {
 
 // First test: Just verify resource creation and direct load
 TEST_F(ResourceHubMinimalTest, DirectResourceCreationAndLoad) {
-  auto& hub = ResourceHub::instance();
-  
-  // Explicitly verify worker threads are disabled
-  hub.disableWorkerThreadsForTesting();
-  ASSERT_EQ(hub.getWorkerThreadCount(), 0) << "Worker threads should be disabled for this test";
-  
-  // Clear any existing resources to start clean
-  hub.clear();
-  
-  // Register our resource type
+  hub_.disableWorkerThreadsForTesting();
+  ASSERT_EQ(hub_.getWorkerThreadCount(), 0) << "Worker threads should be disabled for this test";
+
+  hub_.clear();
+
   if (!ResourceFactory::isTypeRegistered("TestResource")) {
     ResourceFactory::registerType<MinimalTestResource>(
-      "TestResource", 
+      "TestResource",
       [](const std::string& id) {
-        return std::make_shared<MinimalTestResource>(id, 512); // Use smaller size for tests
+        return std::make_shared<MinimalTestResource>(id, 512);
       }
     );
   }
-  
-  // Create resource directly
+
   auto directResource = std::make_shared<MinimalTestResource>("testDirect");
   ASSERT_TRUE(directResource->load());
   ASSERT_EQ(directResource->getState(), ResourceState::Loaded);
-  
-  // Extra cleanup
-  hub.clear();
+
+  hub_.clear();
 }
 
 // Second test: Test direct manipulation of the graph - extremely simplified

@@ -2,6 +2,8 @@
 
 #include <flecs.h>
 
+#include <array>
+
 namespace fabric {
 
 // Plain structs for Flecs component registration.
@@ -21,6 +23,13 @@ struct Scale {
 struct BoundingBox {
     float minX, minY, minZ;
     float maxX, maxY, maxZ;
+};
+
+// World-space transform matrix, updated by CASCADE system from Position/Rotation/Scale hierarchy
+struct LocalToWorld {
+    std::array<float, 16> matrix = {
+        1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1
+    };
 };
 
 // Tag component for entities that are part of the scene graph
@@ -48,10 +57,13 @@ public:
     // Advance the world by deltaTime (runs all registered systems)
     bool progress(float deltaTime = 0.0f);
 
-    // Register Position, Rotation, Scale, BoundingBox, SceneEntity, Renderable
+    // Register Position, Rotation, Scale, BoundingBox, LocalToWorld, SceneEntity, Renderable
     void registerCoreComponents();
 
-    // Create a scene entity with Position + Rotation + Scale + SceneEntity tag
+    // Propagate Position/Rotation/Scale through ChildOf hierarchy into LocalToWorld
+    void updateTransforms();
+
+    // Create a scene entity with Position + Rotation + Scale + LocalToWorld + SceneEntity tag
     flecs::entity createSceneEntity(const char* name = nullptr);
 
     // Create a child entity (ChildOf relationship) with scene components
