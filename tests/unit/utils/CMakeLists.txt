@@ -7,6 +7,7 @@ target_sources(UnitTests
   CoordinatedGraphTest.cc
   BufferPoolTest.cc
   ImmutableDAGTest.cc
+  BVHTest.cc
 )
 
 set_source_files_properties(
@@ -16,6 +17,7 @@ set_source_files_properties(
   CoordinatedGraphTest.cc
   BufferPoolTest.cc
   ImmutableDAGTest.cc
+  BVHTest.cc
   PROPERTIES
   COMPILE_DEFINITIONS "FABRIC_TEST"
 )
