@@ -16,6 +16,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  SCCACHE_GHA_ENABLED: "true"
+
 jobs:
   build:
     name: ${{ matrix.target }}
@@ -31,25 +34,26 @@ jobs:
             preset: ci-linux-gcc
             os: linux
             arch: x64
-            compiler_cache: ccache
           - target: Linux ARM64
-            runner: blacksmith-8vcpu-ubuntu-2404-arm
+            runner: blacksmith-4vcpu-ubuntu-2404-arm
             preset: ci-linux-gcc
             os: linux
             arch: arm64
-            compiler_cache: ccache
           - target: Windows AMD64
-            runner: windows-latest
+            runner: blacksmith-4vcpu-windows-2025
             preset: ci-windows
             os: windows
             arch: amd64
-            compiler_cache: sccache
+          - target: Windows ARM64
+            runner: windows-11-arm
+            preset: ci-windows
+            os: windows
+            arch: arm64
           - target: macOS ARM64
             runner: macos-26
             preset: ci-macos
             os: macos
             arch: arm64
-            compiler_cache: ccache
 
     steps:
       - name: Checkout
@@ -60,13 +64,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ninja-build pkg-config \
-            libwebkit2gtk-4.1-dev libvulkan-dev libfreetype-dev \
-            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
-            libxfixes-dev libxi-dev libxss-dev \
-            libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev \
-            libgl-dev libegl-dev \
-            libasound2-dev libpulse-dev libpipewire-0.3-dev \
-            libdbus-1-dev libudev-dev
+            libwebkit2gtk-4.1-dev libvulkan-dev libx11-dev \
+            libxrandr-dev libxi-dev libxcursor-dev libgl-dev
 
       - name: Setup MSVC (Windows)
         if: matrix.os == 'windows'
@@ -82,30 +81,22 @@ jobs:
         if: matrix.os == 'macos'
         run: brew install ninja cmake
 
-      - name: Cache CPM dependencies
+      - name: Cache FetchContent
         uses: actions/cache@v5
         with:
-          path: cpm-cache
-          key: cpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          path: build/${{ matrix.preset }}/_deps
+          key: ${{ matrix.target }}-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
           restore-keys: |
-            cpm-${{ runner.os }}-${{ runner.arch }}-
+            ${{ matrix.target }}-deps-
 
-      - name: Setup ccache
-        if: matrix.compiler_cache == 'ccache'
-        uses: hendrikmuhs/ccache-action@v1
-        with:
-          key: ${{ matrix.target }}
-
-      - name: Setup sccache (Windows)
-        if: matrix.compiler_cache == 'sccache'
+      - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Configure
         run: cmake --preset ${{ matrix.preset }}
         env:
-          CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm-cache
-          CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.compiler_cache }}
-          CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.compiler_cache }}
+          CMAKE_C_COMPILER_LAUNCHER: sccache
+          CMAKE_CXX_COMPILER_LAUNCHER: sccache
 
       - name: Build
         run: cmake --build build/${{ matrix.preset }} -j

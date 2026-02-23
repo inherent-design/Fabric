@@ -1,0 +1,52 @@
+name: CodeQL
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [src/**, include/**]
+  schedule:
+    - cron: "0 8 * * 3"
+  push:
+    branches: [main]
+    paths: [src/**, include/**]
+  workflow_dispatch:
+
+permissions:
+  security-events: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL Analysis
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake \
+            libwebkit2gtk-4.1-dev libvulkan-dev
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: cpp
+          queries: security-extended
+
+      - name: Configure
+        run: cmake --preset ci-linux-gcc
+
+      - name: Build
+        run: cmake --build build/ci-linux-gcc -j
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:cpp"

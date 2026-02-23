@@ -29,7 +29,7 @@ jobs:
       - name: Check formatting (${{ matrix.path }})
         uses: jidicula/clang-format-action@v4.16.0
         with:
-          clang-format-version: "21"
+          clang-format-version: "18"
           check-path: ${{ matrix.path }}
 
   clang-tidy:
@@ -43,34 +43,17 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang clang-tidy ninja-build cmake pkg-config \
-            libwebkit2gtk-4.1-dev libvulkan-dev libfreetype-dev \
-            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
-            libxfixes-dev libxi-dev libxss-dev \
-            libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev \
-            libgl-dev libegl-dev \
-            libasound2-dev libpulse-dev libpipewire-0.3-dev \
-            libdbus-1-dev libudev-dev
+          sudo apt-get install -y clang clang-tidy ninja-build cmake \
+            libwebkit2gtk-4.1-dev libvulkan-dev
 
-      - name: Cache CPM dependencies
+      - name: Cache FetchContent dependencies
         uses: actions/cache@v5
         with:
-          path: cpm-cache
-          key: cpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
-          restore-keys: |
-            cpm-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1
-        with:
-          key: lint-clang-tidy
+          path: build/ci-linux-clang/_deps
+          key: lint-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
 
       - name: Configure
         run: cmake --preset ci-linux-clang
-        env:
-          CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm-cache
-          CMAKE_C_COMPILER_LAUNCHER: ccache
-          CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
       - name: Build
         run: cmake --build build/ci-linux-clang -j
@@ -81,8 +64,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          style: ""              # disabled; format-check job handles formatting
-          tidy-checks: ""        # uses .clang-tidy config at repo root
+          style: ""
+          tidy-checks: ""
           database: build/ci-linux-clang
           files-changed-only: true
           thread-comments: true

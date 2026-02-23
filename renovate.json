@@ -47,16 +47,6 @@
             ],
             "datasourceTemplate": "github-tags",
             "versioningTemplate": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)(-(?<build>\\d+))?$"
-        },
-        {
-            "customType": "regex",
-            "description": "Freetype (non-semver tag format: VER-X-Y-Z)",
-            "fileMatch": ["(^|/)cmake/modules/FabricRmlUi\\.cmake$"],
-            "matchStrings": [
-                "GIT_REPOSITORY\\s+https://github\\.com/(?<depName>freetype/freetype)\\.git\\s+GIT_TAG\\s+(?<currentValue>VER-[^\\s]+)"
-            ],
-            "datasourceTemplate": "github-tags",
-            "versioningTemplate": "regex:^VER-(?<major>\\d+)-(?<minor>\\d+)-(?<patch>\\d+)$"
         }
     ],
     "packageRules": [
