@@ -144,6 +144,8 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/InputManager.cc
     src/core/SceneView.cc
     src/core/ECS.cc
+    src/core/Simulation.cc
+    src/core/VoxelMesher.cc
 )
 
 # Utils library components

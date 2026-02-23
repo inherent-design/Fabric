@@ -19,6 +19,10 @@ target_sources(UnitTests
   InputManagerTest.cc
   SceneViewTest.cc
   ECSTest.cc
+  ChunkedGridTest.cc
+  FieldLayerTest.cc
+  SimulationTest.cc
+  VoxelMesherTest.cc
 )
 
 set_source_files_properties(
