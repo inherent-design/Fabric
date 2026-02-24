@@ -2,6 +2,15 @@
 cmake = "latest"
 ninja = "latest"
 
+# LLVM: Homebrew manages install (macOS ABI compatibility),
+# mise scopes the environment per-project via [env] below.
+[env]
+_.path = ["/opt/homebrew/opt/llvm/bin"]
+CC = "clang"
+CXX = "clang++"
+CPPFLAGS = "-I/opt/homebrew/opt/llvm/include"
+LDFLAGS = "-L/opt/homebrew/opt/llvm/lib"
+
 #
 # Build
 #
