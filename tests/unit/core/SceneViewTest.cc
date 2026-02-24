@@ -296,7 +296,7 @@ TEST(BoundingBoxComponentTest, SetAndGetBoundingBox) {
     auto entity = world.createSceneEntity("test");
     entity.set<BoundingBox>({-1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f});
 
-    const auto* bb = entity.get<BoundingBox>();
+    const auto* bb = entity.try_get<BoundingBox>();
     ASSERT_NE(bb, nullptr);
     EXPECT_FLOAT_EQ(bb->minX, -1.0f);
     EXPECT_FLOAT_EQ(bb->maxX, 1.0f);

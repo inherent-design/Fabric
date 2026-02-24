@@ -3,6 +3,7 @@
 #include "fabric/utils/ErrorHandling.hh"
 #include <gtest/gtest.h>
 #include <cmath>
+#include <numbers>
 
 using namespace fabric;
 
@@ -169,7 +170,7 @@ TEST_F(SpatialTest, QuaternionBasics) {
 TEST_F(SpatialTest, QuaternionRotation) {
     // Create a quaternion for 90 degrees rotation around Z axis
     Vector3<float, Space::World> axis(0.0f, 0.0f, 1.0f);
-    float angle = M_PI / 2; // 90 degrees
+    float angle = std::numbers::pi / 2; // 90 degrees
     Quaternion<float> qRot = Quaternion<float>::fromAxisAngle(axis, angle);
     
     // Rotate a vector with this quaternion (should rotate x into y)
@@ -296,7 +297,7 @@ TEST_F(SpatialTest, TransformBasics) {
     // Set custom transform
     Vector3<float, Space::World> position(1.0f, 2.0f, 3.0f);
     Vector3<float, Space::World> rotAxis(0.0f, 1.0f, 0.0f);
-    Quaternion<float> rotation = Quaternion<float>::fromAxisAngle(rotAxis, M_PI / 2);
+    Quaternion<float> rotation = Quaternion<float>::fromAxisAngle(rotAxis, std::numbers::pi / 2);
     Vector3<float, Space::World> scale(2.0f, 2.0f, 2.0f);
     
     transform.setPosition(position);
@@ -322,7 +323,7 @@ TEST_F(SpatialTest, TransformPointAndDirection) {
     // Create a transform that scales, rotates, and translates
     Vector3<float, Space::World> position(0.0f, 1.0f, 0.0f);
     Vector3<float, Space::World> rotAxis(0.0f, 0.0f, 1.0f);
-    Quaternion<float> rotation = Quaternion<float>::fromAxisAngle(rotAxis, M_PI / 2); // 90 degrees around Z
+    Quaternion<float> rotation = Quaternion<float>::fromAxisAngle(rotAxis, std::numbers::pi / 2); // 90 degrees around Z
     Vector3<float, Space::World> scale(2.0f, 2.0f, 2.0f);
     
     Transform<float> transform;
@@ -367,7 +368,7 @@ TEST_F(SpatialTest, QuaternionSlerp) {
     // Endpoints: t=0 returns a, t=1 returns b
     Vector3<float, Space::World> axis(0.0f, 0.0f, 1.0f);
     Quaternion<float> a = Quaternion<float>::fromAxisAngle(axis, 0.0f);
-    Quaternion<float> b = Quaternion<float>::fromAxisAngle(axis, static_cast<float>(M_PI) / 2.0f);
+    Quaternion<float> b = Quaternion<float>::fromAxisAngle(axis, static_cast<float>(std::numbers::pi) / 2.0f);
 
     auto at0 = Quaternion<float>::slerp(a, b, 0.0f);
     EXPECT_TRUE(almostEqual(at0.x, a.x));
@@ -383,7 +384,7 @@ TEST_F(SpatialTest, QuaternionSlerp) {
 
     // Midpoint: t=0.5 for 90-degree rotation should give 45-degree rotation
     auto mid = Quaternion<float>::slerp(a, b, 0.5f);
-    Quaternion<float> expected45 = Quaternion<float>::fromAxisAngle(axis, static_cast<float>(M_PI) / 4.0f);
+    Quaternion<float> expected45 = Quaternion<float>::fromAxisAngle(axis, static_cast<float>(std::numbers::pi) / 4.0f);
     EXPECT_TRUE(almostEqual(mid.x, expected45.x));
     EXPECT_TRUE(almostEqual(mid.y, expected45.y));
     EXPECT_TRUE(almostEqual(mid.z, expected45.z));

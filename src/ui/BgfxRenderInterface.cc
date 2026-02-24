@@ -4,7 +4,13 @@
 
 #include "stb_image.h"
 
-// Suppress WGSL: bgfx CMake helpers don't compile it yet
+// Suppress shader profiles we don't compile per-platform.
+// bgfx's embedded_shader.h enables DXBC on Linux and WGSL broadly,
+// but we only compile the profiles listed in FabricRmlUi.cmake.
+#if !defined(_WIN32)
+#define BGFX_PLATFORM_SUPPORTS_DXBC 0
+#define BGFX_PLATFORM_SUPPORTS_DXIL 0
+#endif
 #define BGFX_PLATFORM_SUPPORTS_WGSL 0
 #include <bgfx/embedded_shader.h>
 
@@ -19,6 +25,10 @@
 #include "essl/fs_rmlui.sc.bin.h"
 #include "spv/vs_rmlui.sc.bin.h"
 #include "spv/fs_rmlui.sc.bin.h"
+#if BX_PLATFORM_WINDOWS
+#include "dxbc/vs_rmlui.sc.bin.h"
+#include "dxbc/fs_rmlui.sc.bin.h"
+#endif
 #if BX_PLATFORM_OSX || BX_PLATFORM_IOS || BX_PLATFORM_VISIONOS
 #include "mtl/vs_rmlui.sc.bin.h"
 #include "mtl/fs_rmlui.sc.bin.h"

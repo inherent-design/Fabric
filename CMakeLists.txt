@@ -23,7 +23,10 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 # C++ standard settings
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+# GNU extensions required: Quill's QUILL_LOG_* macros use ##__VA_ARGS__
+# (GCC comma-eating extension) which requires -std=gnu++20 on GCC.
+# Clang and MSVC handle this regardless of the extensions setting.
+set(CMAKE_CXX_EXTENSIONS ON)
 
 # Output directories configuration
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
@@ -92,6 +95,7 @@ FetchContent_Declare(
     SDL3
     GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
     GIT_TAG release-3.4.2
+    GIT_SHALLOW    TRUE
     SYSTEM
     EXCLUDE_FROM_ALL
 )
@@ -120,6 +124,7 @@ FetchContent_Declare(
     webview
     GIT_REPOSITORY https://github.com/webview/webview
     GIT_TAG 0.12.0
+    GIT_SHALLOW    TRUE
     SYSTEM
     EXCLUDE_FROM_ALL
 )

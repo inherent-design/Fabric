@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 #include <cmath>
+#include <numbers>
 #include <vector>
 
 using namespace fabric;
@@ -24,7 +25,7 @@ TEST(ECSTest, WorldMoveConstruction) {
     auto found = moved.get().lookup("test_entity");
     EXPECT_TRUE(found.is_valid());
 
-    const auto* pos = found.get<Position>();
+    const auto* pos = found.try_get<Position>();
     ASSERT_NE(pos, nullptr);
     EXPECT_FLOAT_EQ(pos->x, 1.0f);
 }
@@ -72,13 +73,13 @@ TEST(ECSTest, EntityCreationWithComponents) {
     EXPECT_TRUE(entity.has<Rotation>());
     EXPECT_TRUE(entity.has<Scale>());
 
-    const auto* pos = entity.get<Position>();
+    const auto* pos = entity.try_get<Position>();
     ASSERT_NE(pos, nullptr);
     EXPECT_FLOAT_EQ(pos->x, 1.0f);
     EXPECT_FLOAT_EQ(pos->y, 2.0f);
     EXPECT_FLOAT_EQ(pos->z, 3.0f);
 
-    const auto* rot = entity.get<Rotation>();
+    const auto* rot = entity.try_get<Rotation>();
     ASSERT_NE(rot, nullptr);
     EXPECT_FLOAT_EQ(rot->w, 1.0f);
 }
@@ -91,7 +92,7 @@ TEST(ECSTest, EntityWithBoundingBox) {
         .set<Position>({0.0f, 0.0f, 0.0f})
         .set<BoundingBox>({-1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f});
 
-    const auto* bb = entity.get<BoundingBox>();
+    const auto* bb = entity.try_get<BoundingBox>();
     ASSERT_NE(bb, nullptr);
     EXPECT_FLOAT_EQ(bb->minX, -1.0f);
     EXPECT_FLOAT_EQ(bb->maxX, 1.0f);
@@ -277,19 +278,19 @@ TEST(ECSTest, CreateSceneEntity) {
     EXPECT_TRUE(entity.has<SceneEntity>());
 
     // Default position is origin
-    const auto* pos = entity.get<Position>();
+    const auto* pos = entity.try_get<Position>();
     ASSERT_NE(pos, nullptr);
     EXPECT_FLOAT_EQ(pos->x, 0.0f);
     EXPECT_FLOAT_EQ(pos->y, 0.0f);
     EXPECT_FLOAT_EQ(pos->z, 0.0f);
 
     // Default rotation is identity quaternion
-    const auto* rot = entity.get<Rotation>();
+    const auto* rot = entity.try_get<Rotation>();
     ASSERT_NE(rot, nullptr);
     EXPECT_FLOAT_EQ(rot->w, 1.0f);
 
     // Default scale is uniform 1
-    const auto* scl = entity.get<Scale>();
+    const auto* scl = entity.try_get<Scale>();
     ASSERT_NE(scl, nullptr);
     EXPECT_FLOAT_EQ(scl->x, 1.0f);
     EXPECT_FLOAT_EQ(scl->y, 1.0f);
@@ -347,7 +348,7 @@ TEST(ECSTest, UpdateTransformsRootEntity) {
 
     world.updateTransforms();
 
-    const auto* ltw = root.get<LocalToWorld>();
+    const auto* ltw = root.try_get<LocalToWorld>();
     ASSERT_NE(ltw, nullptr);
     float x, y, z;
     extractTranslation(*ltw, x, y, z);
@@ -369,7 +370,7 @@ TEST(ECSTest, UpdateTransformsParentChild) {
     world.updateTransforms();
 
     // Child world position should be parent + child = (5, 3, 0)
-    const auto* ltw = child.get<LocalToWorld>();
+    const auto* ltw = child.try_get<LocalToWorld>();
     ASSERT_NE(ltw, nullptr);
     float x, y, z;
     extractTranslation(*ltw, x, y, z);
@@ -394,7 +395,7 @@ TEST(ECSTest, UpdateTransformsThreeLevels) {
     world.updateTransforms();
 
     // Child world position: (1, 2, 3)
-    const auto* ltw = child.get<LocalToWorld>();
+    const auto* ltw = child.try_get<LocalToWorld>();
     ASSERT_NE(ltw, nullptr);
     float x, y, z;
     extractTranslation(*ltw, x, y, z);
@@ -411,7 +412,7 @@ TEST(ECSTest, UpdateTransformsRotationPropagation) {
     auto parent = world.createSceneEntity("parent");
     auto q = Quaternion<float>::fromAxisAngle(
         Vector3<float, Space::World>(0.0f, 1.0f, 0.0f),
-        static_cast<float>(M_PI / 2.0));
+        static_cast<float>(std::numbers::pi / 2.0));
     parent.set<Rotation>({q.x, q.y, q.z, q.w});
 
     // Child at local position (1, 0, 0)
@@ -421,7 +422,7 @@ TEST(ECSTest, UpdateTransformsRotationPropagation) {
     world.updateTransforms();
 
     // 90 degrees Y rotation maps (1,0,0) -> (0,0,-1)
-    const auto* ltw = child.get<LocalToWorld>();
+    const auto* ltw = child.try_get<LocalToWorld>();
     ASSERT_NE(ltw, nullptr);
     float x, y, z;
     extractTranslation(*ltw, x, y, z);

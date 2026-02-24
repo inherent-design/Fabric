@@ -70,8 +70,8 @@ void World::updateTransforms() {
         auto parent = e.parent();
         if (parent.is_valid() && parent.has<LocalToWorld>()) {
             // Parent already processed (CASCADE guarantee): multiply parent * local
-            const auto* parentLtw = parent.get<LocalToWorld>();
-            Matrix4x4<float> parentMat(parentLtw->matrix);
+            const auto& parentLtw = parent.get<LocalToWorld>();
+            Matrix4x4<float> parentMat(parentLtw.matrix);
             auto worldMatrix = parentMat * localMatrix;
             ltw.matrix = worldMatrix.elements;
         } else {

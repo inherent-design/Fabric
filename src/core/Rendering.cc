@@ -192,7 +192,7 @@ std::vector<flecs::entity> FrustumCuller::cull(
     world.each([&](flecs::entity e, const Position&) {
         if (!e.has<SceneEntity>()) return;
 
-        const auto* bb = e.get<BoundingBox>();
+        const auto* bb = e.try_get<BoundingBox>();
         if (bb) {
             AABB localAABB(
                 Vec3f(bb->minX, bb->minY, bb->minZ),
@@ -200,7 +200,7 @@ std::vector<flecs::entity> FrustumCuller::cull(
             );
 
             // Transform AABB to world space using LocalToWorld if available
-            const auto* ltw = e.get<LocalToWorld>();
+            const auto* ltw = e.try_get<LocalToWorld>();
             if (ltw) {
                 Matrix4x4<float> m(ltw->matrix);
                 // Transform all 8 corners and re-fit the AABB

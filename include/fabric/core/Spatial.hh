@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <numbers>
 #include <type_traits>
 
 #include <glm/glm.hpp>
@@ -425,7 +426,7 @@ public:
     // Pitch (y-axis rotation)
     T sinp = 2 * (w * y - z * x);
     if (std::abs(sinp) >= 1)
-      angles.y = std::copysign(T(M_PI / 2), sinp); // Use 90 degrees if out of range
+      angles.y = std::copysign(std::numbers::pi_v<T> / T(2), sinp);
     else
       angles.y = std::asin(sinp);
     

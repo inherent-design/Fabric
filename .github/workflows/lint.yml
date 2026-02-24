@@ -57,9 +57,19 @@ jobs:
         with:
           path: build/ci-linux-clang/_deps
           key: lint-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          restore-keys: |
+            lint-deps-
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: lint-clang-tidy
 
       - name: Configure
         run: cmake --preset ci-linux-clang
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
       - name: Build
         run: cmake --build build/ci-linux-clang -j
