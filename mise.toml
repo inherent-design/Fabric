@@ -34,13 +34,17 @@ description = "Auto-format source files"
 run = "FORMAT_FIX=1 sh tasks/format.sh"
 
 [tasks.lint]
-description = "Run clang-tidy on source files"
+description = "Run clang-tidy on all source files (slow)"
 run = "sh tasks/lint.sh"
+
+[tasks."lint:changed"]
+description = "Run clang-tidy on git-dirty files only (fast)"
+run = "LINT_CHANGED=1 sh tasks/lint.sh"
 
 [tasks."lint:fix"]
 alias = "fix"
-description = "Run clang-tidy with auto-fix"
-run = "LINT_FIX=1 sh tasks/lint.sh"
+description = "Run clang-tidy with auto-fix (CAUTION: can break cross-file refs)"
+run = "LINT_FIX=1 LINT_CHANGED=1 sh tasks/lint.sh"
 
 [tasks.cppcheck]
 description = "Run cppcheck static analysis"
