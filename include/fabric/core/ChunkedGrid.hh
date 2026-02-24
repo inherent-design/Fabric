@@ -5,7 +5,7 @@
 #include <functional>
 #include <memory>
 #include <tuple>
-#include <unordered_map>
+#include <map>
 #include <vector>
 
 namespace fabric {
@@ -83,6 +83,13 @@ template <typename T> class ChunkedGrid {
         }
     }
 
+    void forEachChunk(std::function<void(int, int, int)> fn) const {
+        for (const auto& [key, _] : chunks_) {
+            auto [cx, cy, cz] = unpackKey(key);
+            fn(cx, cy, cz);
+        }
+    }
+
     // Returns: [+x, -x, +y, -y, +z, -z]
     std::array<T, 6> getNeighbors6(int x, int y, int z) const {
         return {{get(x + 1, y, z), get(x - 1, y, z), get(x, y + 1, z), get(x, y - 1, z), get(x, y, z + 1),
@@ -90,7 +97,7 @@ template <typename T> class ChunkedGrid {
     }
 
   private:
-    std::unordered_map<int64_t, std::unique_ptr<std::array<T, kChunkVolume>>> chunks_;
+    std::map<int64_t, std::unique_ptr<std::array<T, kChunkVolume>>> chunks_;
 
     static int64_t packKey(int cx, int cy, int cz) {
         return (static_cast<int64_t>(cx) << 42) | (static_cast<int64_t>(cy & 0x1FFFFF) << 21) |

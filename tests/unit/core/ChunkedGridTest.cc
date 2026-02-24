@@ -1,6 +1,8 @@
 #include "fabric/core/ChunkedGrid.hh"
 #include <gtest/gtest.h>
 #include <set>
+#include <tuple>
+#include <vector>
 
 using namespace fabric;
 
@@ -118,4 +120,71 @@ TEST_F(ChunkedGridTest, WorldToChunkNegativeFloorDivision) {
     ChunkedGrid<float>::worldToChunk(-33, 0, 0, cx, cy, cz, lx, ly, lz);
     EXPECT_EQ(cx, -2);
     EXPECT_EQ(lx, 31);
+}
+
+TEST_F(ChunkedGridTest, ActiveChunksOrderIsDeterministic) {
+    // Insert chunks in scattered order
+    grid.set(3 * 32, 0, 0, 1.0f);   // chunk (3,0,0)
+    grid.set(0, 0, 0, 1.0f);        // chunk (0,0,0)
+    grid.set(1 * 32, 0, 0, 1.0f);   // chunk (1,0,0)
+    grid.set(-1 * 32, 0, 0, 1.0f);  // chunk (-1,0,0)
+    grid.set(0, 2 * 32, 0, 1.0f);   // chunk (0,2,0)
+
+    auto first = grid.activeChunks();
+    auto second = grid.activeChunks();
+    EXPECT_EQ(first, second);
+
+    // New grid, same chunks inserted in different order
+    ChunkedGrid<float> grid2;
+    grid2.set(0, 2 * 32, 0, 1.0f);
+    grid2.set(-1 * 32, 0, 0, 1.0f);
+    grid2.set(0, 0, 0, 1.0f);
+    grid2.set(3 * 32, 0, 0, 1.0f);
+    grid2.set(1 * 32, 0, 0, 1.0f);
+
+    auto third = grid2.activeChunks();
+    EXPECT_EQ(first, third);
+}
+
+TEST_F(ChunkedGridTest, IterationOrderMatchesAfterInsertDelete) {
+    grid.set(0, 0, 0, 1.0f);
+    grid.set(32, 0, 0, 1.0f);
+    grid.set(64, 0, 0, 1.0f);
+    grid.set(96, 0, 0, 1.0f);
+    grid.set(128, 0, 0, 1.0f);
+
+    grid.removeChunk(1, 0, 0);
+    grid.removeChunk(3, 0, 0);
+
+    grid.set(-32, 0, 0, 1.0f);
+    grid.set(0, 32, 0, 1.0f);
+    grid.set(0, 0, 32, 1.0f);
+
+    auto first = grid.activeChunks();
+
+    // Repeat identical operations on a fresh grid in different insert order
+    ChunkedGrid<float> grid2;
+    grid2.set(128, 0, 0, 1.0f);
+    grid2.set(0, 0, 32, 1.0f);
+    grid2.set(0, 0, 0, 1.0f);
+    grid2.set(64, 0, 0, 1.0f);
+    grid2.set(-32, 0, 0, 1.0f);
+    grid2.set(0, 32, 0, 1.0f);
+
+    auto second = grid2.activeChunks();
+    EXPECT_EQ(first, second);
+}
+
+TEST_F(ChunkedGridTest, ForEachChunkDeterministic) {
+    grid.set(3 * 32, 0, 0, 1.0f);
+    grid.set(0, 0, 0, 1.0f);
+    grid.set(-1 * 32, 0, 0, 1.0f);
+    grid.set(0, 2 * 32, 0, 1.0f);
+
+    auto active = grid.activeChunks();
+
+    std::vector<std::tuple<int, int, int>> fromForEach;
+    grid.forEachChunk([&](int cx, int cy, int cz) { fromForEach.emplace_back(cx, cy, cz); });
+
+    EXPECT_EQ(active, fromForEach);
 }

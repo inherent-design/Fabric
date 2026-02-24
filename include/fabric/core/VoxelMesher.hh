@@ -2,6 +2,7 @@
 
 #include "fabric/core/ChunkedGrid.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/core/VoxelVertex.hh"
 #include <array>
 #include <bgfx/bgfx.h>
 #include <cstdint>
@@ -9,15 +10,10 @@
 
 namespace fabric {
 
-struct VoxelVertex {
-    float px, py, pz; // position
-    float nx, ny, nz; // normal
-    float r, g, b, a; // color (from essence)
-};
-
 struct ChunkMeshData {
     std::vector<VoxelVertex> vertices;
     std::vector<uint32_t> indices;
+    std::vector<std::array<float, 4>> palette; // RGBA entries indexed by VoxelVertex::paletteIndex()
 };
 
 struct ChunkMesh {
@@ -25,6 +21,7 @@ struct ChunkMesh {
     bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
     uint32_t indexCount = 0;
     bool valid = false;
+    std::vector<std::array<float, 4>> palette;
 };
 
 class VoxelMesher {
