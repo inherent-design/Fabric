@@ -46,6 +46,6 @@ jobs:
         run: cmake --preset ci-linux-gcc
 
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action/scan@v2.3.3
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.3
         with:
           scan-args: "--recursive --call-analysis=all ."
