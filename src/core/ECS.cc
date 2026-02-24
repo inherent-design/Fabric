@@ -54,12 +54,12 @@ void World::updateTransforms() {
     // CASCADE query ensures breadth-first order: parents are processed before children.
     // The optional ChildOf term means root entities (no parent) are also matched.
     auto q = world_->query_builder<const Position, const Rotation, const Scale, LocalToWorld>()
-        .with(flecs::ChildOf, flecs::Wildcard).cascade().optional()
-        .build();
+                 .with(flecs::ChildOf, flecs::Wildcard)
+                 .cascade()
+                 .optional()
+                 .build();
 
-    q.each([](flecs::entity e,
-              const Position& pos, const Rotation& rot, const Scale& scl,
-              LocalToWorld& ltw) {
+    q.each([](flecs::entity e, const Position& pos, const Rotation& rot, const Scale& scl, LocalToWorld& ltw) {
         // Compose local transform from Position * Rotation * Scale
         Transform<float> t;
         t.setPosition(Vector3<float, Space::World>(pos.x, pos.y, pos.z));
@@ -82,8 +82,7 @@ void World::updateTransforms() {
 
 flecs::entity World::createSceneEntity(const char* name) {
     auto builder = name ? world_->entity(name) : world_->entity();
-    return builder
-        .set<Position>({0.0f, 0.0f, 0.0f})
+    return builder.set<Position>({0.0f, 0.0f, 0.0f})
         .set<Rotation>({0.0f, 0.0f, 0.0f, 1.0f})
         .set<Scale>({1.0f, 1.0f, 1.0f})
         .set<LocalToWorld>({})
@@ -92,8 +91,7 @@ flecs::entity World::createSceneEntity(const char* name) {
 
 flecs::entity World::createChildEntity(flecs::entity parent, const char* name) {
     auto builder = name ? world_->entity(name) : world_->entity();
-    return builder
-        .child_of(parent)
+    return builder.child_of(parent)
         .set<Position>({0.0f, 0.0f, 0.0f})
         .set<Rotation>({0.0f, 0.0f, 0.0f, 1.0f})
         .set<Scale>({1.0f, 1.0f, 1.0f})

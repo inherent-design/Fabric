@@ -5,7 +5,8 @@ namespace fabric {
 
 // Initialize static members
 std::mutex ResourceFactory::mutex_;
-std::unordered_map<std::string, std::function<std::shared_ptr<Resource>(const std::string&)>> ResourceFactory::factories_;
+std::unordered_map<std::string, std::function<std::shared_ptr<Resource>(const std::string&)>>
+    ResourceFactory::factories_;
 
 bool ResourceFactory::isTypeRegistered(const std::string& typeId) {
     std::lock_guard<std::mutex> lock(mutex_);

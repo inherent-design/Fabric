@@ -13,7 +13,7 @@ ThreadPoolExecutor::ThreadPoolExecutor(size_t threadCount)
     for (size_t i = 0; i < threadCount_; ++i) {
         workerThreads_.emplace_back(&ThreadPoolExecutor::workerThread, this);
     }
-    
+
     FABRIC_LOG_DEBUG("ThreadPoolExecutor created with {} threads", threadCount_.load());
 }
 
@@ -39,24 +39,24 @@ void ThreadPoolExecutor::setThreadCount(size_t count) {
     if (count == 0) {
         throw std::invalid_argument("Thread count must be at least 1");
     }
-    
+
     // Store the current thread count
     size_t oldCount = threadCount_;
-    
+
     // Set the new thread count
     threadCount_ = count;
-    
+
     // If we're reducing the thread count
     if (count < oldCount) {
         std::lock_guard<std::mutex> lock(queueMutex_);
-        
+
         // Notify worker threads that they should check their status
         queueCondition_.notify_all();
-        
+
         // The excess threads will exit naturally in workerThread()
         // when they recheck threadCount_
     }
-    
+
     // If we're increasing the thread count
     if (count > oldCount && !shutdown_ && !pausedForTesting_) {
         // Start new worker threads
@@ -64,9 +64,8 @@ void ThreadPoolExecutor::setThreadCount(size_t count) {
             workerThreads_.emplace_back(&ThreadPoolExecutor::workerThread, this);
         }
     }
-    
-    FABRIC_LOG_DEBUG("ThreadPoolExecutor thread count changed from {} to {}",
-                     oldCount, count);
+
+    FABRIC_LOG_DEBUG("ThreadPoolExecutor thread count changed from {} to {}", oldCount, count);
 }
 
 size_t ThreadPoolExecutor::getThreadCount() const {
@@ -92,8 +91,8 @@ bool ThreadPoolExecutor::shutdown(std::chrono::milliseconds timeout) {
             continue;
         }
 
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - startTime);
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime);
 
         if (elapsed >= timeout) {
             // Time budget exhausted — detach remaining threads
@@ -173,10 +172,10 @@ void ThreadPoolExecutor::resumeAfterTesting() {
     if (!pausedForTesting_) {
         return;
     }
-    
+
     // Resume normal operation
     pausedForTesting_ = false;
-    
+
     // Restart worker threads if needed
     if (!shutdown_ && workerThreads_.size() < threadCount_) {
         size_t threadsToStart = threadCount_ - workerThreads_.size();
@@ -184,7 +183,7 @@ void ThreadPoolExecutor::resumeAfterTesting() {
             workerThreads_.emplace_back(&ThreadPoolExecutor::workerThread, this);
         }
     }
-    
+
     FABRIC_LOG_DEBUG("ThreadPoolExecutor resumed after testing");
 }
 
@@ -208,28 +207,28 @@ void ThreadPoolExecutor::workerThread() {
                 break;
             }
         }
-        
+
         // Check if this thread should exit due to thread count reduction
         if (threadIndex >= threadCount_) {
             break;
         }
-        
+
         // Get a task from the queue
         Task task;
         bool hasTask = false;
         {
             std::unique_lock<std::mutex> lock(queueMutex_);
-            
+
             // Wait for a task or shutdown signal
             queueCondition_.wait(lock, [this, threadIndex] {
                 return !taskQueue_.empty() || shutdown_ || pausedForTesting_ || threadIndex >= threadCount_;
             });
-            
+
             // Check for shutdown or thread count reduction
             if (shutdown_ || pausedForTesting_ || threadIndex >= threadCount_) {
                 break;
             }
-            
+
             // Get the task
             if (!taskQueue_.empty()) {
                 task = std::move(taskQueue_.front());
@@ -237,7 +236,7 @@ void ThreadPoolExecutor::workerThread() {
                 hasTask = true;
             }
         }
-        
+
         // Execute the task
         if (hasTask) {
             try {

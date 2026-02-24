@@ -9,7 +9,7 @@
 namespace fabric {
 
 class BgfxRenderInterface : public Rml::RenderInterface {
-public:
+  public:
     BgfxRenderInterface();
     ~BgfxRenderInterface() override;
 
@@ -24,23 +24,17 @@ public:
 
     // -- RenderInterface required methods --
 
-    Rml::CompiledGeometryHandle CompileGeometry(
-        Rml::Span<const Rml::Vertex> vertices,
-        Rml::Span<const int> indices) override;
+    Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices,
+                                                Rml::Span<const int> indices) override;
 
-    void RenderGeometry(
-        Rml::CompiledGeometryHandle geometry,
-        Rml::Vector2f translation,
-        Rml::TextureHandle texture) override;
+    void RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation,
+                        Rml::TextureHandle texture) override;
 
     void ReleaseGeometry(Rml::CompiledGeometryHandle geometry) override;
 
-    Rml::TextureHandle LoadTexture(Rml::Vector2i& dimensions,
-                                   const Rml::String& source) override;
+    Rml::TextureHandle LoadTexture(Rml::Vector2i& dimensions, const Rml::String& source) override;
 
-    Rml::TextureHandle GenerateTexture(
-        Rml::Span<const Rml::byte> source,
-        Rml::Vector2i dimensions) override;
+    Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i dimensions) override;
 
     void ReleaseTexture(Rml::TextureHandle texture) override;
 
@@ -58,7 +52,7 @@ public:
     bool isScissorEnabled() const { return scissorEnabled_; }
     Rml::Rectanglei scissorRegion() const { return scissorRect_; }
 
-private:
+  private:
     struct CompiledGeom {
         bgfx::VertexBufferHandle vbh;
         bgfx::IndexBufferHandle ibh;

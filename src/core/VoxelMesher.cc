@@ -6,22 +6,13 @@ namespace {
 
 // Face directions: +X, -X, +Y, -Y, +Z, -Z
 constexpr float kNormals[6][3] = {
-    { 1.0f,  0.0f,  0.0f},
-    {-1.0f,  0.0f,  0.0f},
-    { 0.0f,  1.0f,  0.0f},
-    { 0.0f, -1.0f,  0.0f},
-    { 0.0f,  0.0f,  1.0f},
-    { 0.0f,  0.0f, -1.0f},
+    {1.0f, 0.0f, 0.0f},  {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
+    {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f},  {0.0f, 0.0f, -1.0f},
 };
 
 // Neighbor offsets matching the face order
 constexpr int kNeighborOff[6][3] = {
-    { 1,  0,  0},
-    {-1,  0,  0},
-    { 0,  1,  0},
-    { 0, -1,  0},
-    { 0,  0,  1},
-    { 0,  0, -1},
+    {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
 };
 
 // 4 vertices per face, CCW winding when viewed from outside the cube.
@@ -47,18 +38,14 @@ bgfx::VertexLayout VoxelMesher::getVertexLayout() {
     bgfx::VertexLayout layout;
     layout.begin()
         .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::Normal,   3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::Color0,   4, bgfx::AttribType::Float)
+        .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
+        .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
         .end();
     return layout;
 }
 
-ChunkMeshData VoxelMesher::meshChunkData(
-    int cx, int cy, int cz,
-    const ChunkedGrid<float>& density,
-    const ChunkedGrid<Vector4<float, Space::World>>& essence,
-    float threshold)
-{
+ChunkMeshData VoxelMesher::meshChunkData(int cx, int cy, int cz, const ChunkedGrid<float>& density,
+                                         const ChunkedGrid<Vector4<float, Space::World>>& essence, float threshold) {
     ChunkMeshData data;
 
     int baseX = cx * kChunkSize;
@@ -73,7 +60,8 @@ ChunkMeshData VoxelMesher::meshChunkData(
                 int wz = baseZ + lz;
 
                 float d = density.get(wx, wy, wz);
-                if (d <= threshold) continue;
+                if (d <= threshold)
+                    continue;
 
                 // Read essence for color
                 auto e = essence.get(wx, wy, wz);
@@ -87,10 +75,10 @@ ChunkMeshData VoxelMesher::meshChunkData(
                 } else {
                     // essence = [Order, Chaos, Life, Decay]
                     // Color: R = Chaos, G = Life, B = Order, A = 1 - Decay*0.5
-                    cr = e.y;  // Chaos
-                    cg = e.z;  // Life
-                    cb = e.x;  // Order
-                    ca = 1.0f - e.w * 0.5f;  // Decay
+                    cr = e.y;               // Chaos
+                    cg = e.z;               // Life
+                    cb = e.x;               // Order
+                    ca = 1.0f - e.w * 0.5f; // Decay
                 }
 
                 for (int face = 0; face < 6; ++face) {
@@ -99,7 +87,8 @@ ChunkMeshData VoxelMesher::meshChunkData(
                     int nz = wz + kNeighborOff[face][2];
 
                     float nd = density.get(nx, ny, nz);
-                    if (nd > threshold) continue;
+                    if (nd > threshold)
+                        continue;
 
                     // Emit quad for this face
                     auto base = static_cast<uint32_t>(data.vertices.size());
@@ -134,26 +123,20 @@ ChunkMeshData VoxelMesher::meshChunkData(
     return data;
 }
 
-ChunkMesh VoxelMesher::meshChunk(
-    int cx, int cy, int cz,
-    const ChunkedGrid<float>& density,
-    const ChunkedGrid<Vector4<float, Space::World>>& essence,
-    float threshold)
-{
+ChunkMesh VoxelMesher::meshChunk(int cx, int cy, int cz, const ChunkedGrid<float>& density,
+                                 const ChunkedGrid<Vector4<float, Space::World>>& essence, float threshold) {
     auto data = meshChunkData(cx, cy, cz, density, essence, threshold);
-    if (data.vertices.empty()) return ChunkMesh{};
+    if (data.vertices.empty())
+        return ChunkMesh{};
 
     ChunkMesh mesh;
     auto layout = getVertexLayout();
 
     mesh.vbh = bgfx::createVertexBuffer(
-        bgfx::copy(data.vertices.data(),
-                    static_cast<uint32_t>(data.vertices.size() * sizeof(VoxelVertex))),
-        layout);
+        bgfx::copy(data.vertices.data(), static_cast<uint32_t>(data.vertices.size() * sizeof(VoxelVertex))), layout);
 
     mesh.ibh = bgfx::createIndexBuffer(
-        bgfx::copy(data.indices.data(),
-                    static_cast<uint32_t>(data.indices.size() * sizeof(uint32_t))),
+        bgfx::copy(data.indices.data(), static_cast<uint32_t>(data.indices.size() * sizeof(uint32_t))),
         BGFX_BUFFER_INDEX32);
 
     mesh.indexCount = static_cast<uint32_t>(data.indices.size());

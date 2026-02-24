@@ -27,9 +27,7 @@ struct BoundingBox {
 
 // World-space transform matrix, updated by CASCADE system from Position/Rotation/Scale hierarchy
 struct LocalToWorld {
-    std::array<float, 16> matrix = {
-        1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1
-    };
+    std::array<float, 16> matrix = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 };
 
 // Tag component for entities that are part of the scene graph
@@ -42,7 +40,7 @@ struct Renderable {
 
 // Flecs world wrapper with RAII lifecycle management
 class World {
-public:
+  public:
     World();
     ~World();
 
@@ -69,7 +67,7 @@ public:
     // Create a child entity (ChildOf relationship) with scene components
     flecs::entity createChildEntity(flecs::entity parent, const char* name = nullptr);
 
-private:
+  private:
     flecs::world* world_;
 };
 

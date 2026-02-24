@@ -15,13 +15,10 @@ inline constexpr int kChunkShift = 5;
 inline constexpr int kChunkMask = kChunkSize - 1;
 inline constexpr int kChunkVolume = kChunkSize * kChunkSize * kChunkSize;
 
-template <typename T>
-class ChunkedGrid {
-public:
+template <typename T> class ChunkedGrid {
+  public:
     // C++20 arithmetic right shift gives floor division for power-of-2
-    static void worldToChunk(int wx, int wy, int wz,
-                             int& cx, int& cy, int& cz,
-                             int& lx, int& ly, int& lz) {
+    static void worldToChunk(int wx, int wy, int wz, int& cx, int& cy, int& cz, int& lx, int& ly, int& lz) {
         cx = wx >> kChunkShift;
         cy = wy >> kChunkShift;
         cz = wz >> kChunkShift;
@@ -35,7 +32,8 @@ public:
         worldToChunk(x, y, z, cx, cy, cz, lx, ly, lz);
         auto key = packKey(cx, cy, cz);
         auto it = chunks_.find(key);
-        if (it == chunks_.end()) return T{};
+        if (it == chunks_.end())
+            return T{};
         return (*it->second)[localIndex(lx, ly, lz)];
     }
 
@@ -51,13 +49,9 @@ public:
         (*chunk)[localIndex(lx, ly, lz)] = value;
     }
 
-    bool hasChunk(int cx, int cy, int cz) const {
-        return chunks_.contains(packKey(cx, cy, cz));
-    }
+    bool hasChunk(int cx, int cy, int cz) const { return chunks_.contains(packKey(cx, cy, cz)); }
 
-    void removeChunk(int cx, int cy, int cz) {
-        chunks_.erase(packKey(cx, cy, cz));
-    }
+    void removeChunk(int cx, int cy, int cz) { chunks_.erase(packKey(cx, cy, cz)); }
 
     size_t chunkCount() const { return chunks_.size(); }
 
@@ -71,11 +65,11 @@ public:
         return result;
     }
 
-    void forEachCell(int cx, int cy, int cz,
-                     std::function<void(int, int, int, T&)> fn) {
+    void forEachCell(int cx, int cy, int cz, std::function<void(int, int, int, T&)> fn) {
         auto key = packKey(cx, cy, cz);
         auto it = chunks_.find(key);
-        if (it == chunks_.end()) return;
+        if (it == chunks_.end())
+            return;
         auto& data = *it->second;
         int baseX = cx * kChunkSize;
         int baseY = cy * kChunkSize;
@@ -83,8 +77,7 @@ public:
         for (int lz = 0; lz < kChunkSize; ++lz) {
             for (int ly = 0; ly < kChunkSize; ++ly) {
                 for (int lx = 0; lx < kChunkSize; ++lx) {
-                    fn(baseX + lx, baseY + ly, baseZ + lz,
-                       data[localIndex(lx, ly, lz)]);
+                    fn(baseX + lx, baseY + ly, baseZ + lz, data[localIndex(lx, ly, lz)]);
                 }
             }
         }
@@ -92,22 +85,15 @@ public:
 
     // Returns: [+x, -x, +y, -y, +z, -z]
     std::array<T, 6> getNeighbors6(int x, int y, int z) const {
-        return {{
-            get(x + 1, y, z),
-            get(x - 1, y, z),
-            get(x, y + 1, z),
-            get(x, y - 1, z),
-            get(x, y, z + 1),
-            get(x, y, z - 1)
-        }};
+        return {{get(x + 1, y, z), get(x - 1, y, z), get(x, y + 1, z), get(x, y - 1, z), get(x, y, z + 1),
+                 get(x, y, z - 1)}};
     }
 
-private:
+  private:
     std::unordered_map<int64_t, std::unique_ptr<std::array<T, kChunkVolume>>> chunks_;
 
     static int64_t packKey(int cx, int cy, int cz) {
-        return (static_cast<int64_t>(cx) << 42) |
-               (static_cast<int64_t>(cy & 0x1FFFFF) << 21) |
+        return (static_cast<int64_t>(cx) << 42) | (static_cast<int64_t>(cy & 0x1FFFFF) << 21) |
                static_cast<int64_t>(cz & 0x1FFFFF);
     }
 
@@ -116,14 +102,14 @@ private:
         int cy = static_cast<int>((key >> 21) & 0x1FFFFF);
         int cz = static_cast<int>(key & 0x1FFFFF);
         // Sign-extend 21-bit values
-        if (cy & 0x100000) cy |= ~0x1FFFFF;
-        if (cz & 0x100000) cz |= ~0x1FFFFF;
+        if (cy & 0x100000)
+            cy |= ~0x1FFFFF;
+        if (cz & 0x100000)
+            cz |= ~0x1FFFFF;
         return {cx, cy, cz};
     }
 
-    static int localIndex(int lx, int ly, int lz) {
-        return lx + ly * kChunkSize + lz * kChunkSize * kChunkSize;
-    }
+    static int localIndex(int lx, int ly, int lz) { return lx + ly * kChunkSize + lz * kChunkSize * kChunkSize; }
 };
 
 } // namespace fabric

@@ -8,12 +8,13 @@ namespace fabric {
 // Owns projection and view matrices as float[16] (bgfx-compatible).
 // Uses bx::mtxProj / bx::mtxLookAt internally, NOT Spatial.hh projection.
 class Camera {
-public:
+  public:
     Camera();
 
     // Projection setup (homogeneousNdc: true for OpenGL/Vulkan, false for D3D/Metal)
     void setPerspective(float fovYDeg, float aspect, float nearPlane, float farPlane, bool homogeneousNdc);
-    void setOrthographic(float left, float right, float bottom, float top, float nearPlane, float farPlane, bool homogeneousNdc);
+    void setOrthographic(float left, float right, float bottom, float top, float nearPlane, float farPlane,
+                         bool homogeneousNdc);
 
     // Update view matrix from a Transform (call each frame)
     void updateView(const Transform<float>& transform);
@@ -32,7 +33,7 @@ public:
     float farPlane() const;
     bool isOrthographic() const;
 
-private:
+  private:
     float view_[16];
     float projection_[16];
     float fovY_ = 60.0f;
