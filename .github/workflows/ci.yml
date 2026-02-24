@@ -44,12 +44,6 @@ jobs:
             os: windows
             arch: amd64
             compiler_cache: sccache
-          - target: Windows ARM64
-            runner: windows-11-arm
-            preset: ci-windows
-            os: windows
-            arch: arm64
-            compiler_cache: sccache
           - target: macOS ARM64
             runner: macos-26
             preset: ci-macos

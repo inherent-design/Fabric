@@ -1,29 +1,6 @@
 [tools]
 cmake = "latest"
-codeql = { version = "latest", bin_path = "codeql", platforms = """
-[linux-x64]
-asset_pattern = "codeql-linux64.zip"
-
-[macos-arm64]
-asset_pattern = "codeql-osx64.zip"
-
-[macos-x64]
-asset_pattern = "codeql-osx64.zip"
-
-[windows-x64]
-asset_pattern = "codeql-win64.zip"
-""" }
 ninja = "latest"
-
-# LLVM: Homebrew manages install (macOS ABI compatibility),
-# mise scopes the environment per-project via [env] below.
-[env]
-_.path = ["/opt/homebrew/opt/llvm/bin"]
-CC = "clang"
-CXX = "clang++"
-CPPFLAGS = "-I/opt/homebrew/opt/llvm/include"
-LDFLAGS = "-L/opt/homebrew/opt/llvm/lib"
-CPM_SOURCE_CACHE = "~/.cache/CPM"
 
 #
 # Build
@@ -41,7 +18,7 @@ run = "sh tasks/build.sh"
 [tasks."build:release"]
 alias = "br"
 description = "Configure and build (Release)"
-run = "BUILD_PRESET=dev-release sh tasks/build.sh"
+run = "BUILD_TYPE=Release sh tasks/build.sh"
 
 #
 # Lint & Format
@@ -57,17 +34,13 @@ description = "Auto-format source files"
 run = "FORMAT_FIX=1 sh tasks/format.sh"
 
 [tasks.lint]
-description = "Run clang-tidy on all source files (slow)"
+description = "Run clang-tidy on source files"
 run = "sh tasks/lint.sh"
-
-[tasks."lint:changed"]
-description = "Run clang-tidy on git-dirty files only (fast)"
-run = "LINT_CHANGED=1 sh tasks/lint.sh"
 
 [tasks."lint:fix"]
 alias = "fix"
-description = "Run clang-tidy with auto-fix (CAUTION: can break cross-file refs)"
-run = "LINT_FIX=1 LINT_CHANGED=1 sh tasks/lint.sh"
+description = "Run clang-tidy with auto-fix"
+run = "LINT_FIX=1 sh tasks/lint.sh"
 
 [tasks.cppcheck]
 description = "Run cppcheck static analysis"
@@ -115,8 +88,3 @@ run = "SANITIZE_PRESET=ci-tsan sh tasks/sanitize.sh"
 [tasks.coverage]
 description = "Build with coverage and generate lcov report"
 run = "sh tasks/coverage.sh"
-
-[tasks.codeql]
-description = "Run CodeQL security analysis locally"
-depends = ["build"]
-run = "sh tasks/codeql.sh"
