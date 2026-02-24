@@ -152,8 +152,8 @@ class ThreadPoolExecutor {
      * @return Future for the function's result
      */
     template <typename Func, typename... Args>
-    auto submitWithTimeout(std::chrono::milliseconds timeout, Func&& func, Args&&... args)
-        -> std::future<std::invoke_result_t<Func, Args...>> {
+    auto submitWithTimeout(std::chrono::milliseconds timeout, Func&& func,
+                           Args&&... args) -> std::future<std::invoke_result_t<Func, Args...>> {
         using ReturnType = std::invoke_result_t<Func, Args...>;
 
         // Create a promise for the result
