@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths: [src/**, include/**, tests/**, CMakeLists.txt, cmake/**, CMakePresets.json]
+  pull_request:
+    branches: [main]
+    paths: [src/**, include/**, tests/**, CMakeLists.txt, cmake/**, CMakePresets.json]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: Linux AMD64
+            runner: blacksmith-4vcpu-ubuntu-2404
+            preset: ci-linux-gcc
+            os: linux
+            arch: x64
+            compiler_cache: ccache
+          - target: Linux ARM64
+            runner: blacksmith-4vcpu-ubuntu-2404-arm
+            preset: ci-linux-gcc
+            os: linux
+            arch: arm64
+            compiler_cache: ccache
+          - target: Windows AMD64
+            runner: blacksmith-4vcpu-windows-2025
+            preset: ci-windows
+            os: windows
+            arch: amd64
+            compiler_cache: sccache
+          - target: macOS ARM64
+            runner: macos-26
+            preset: ci-macos
+            os: macos
+            arch: arm64
+            compiler_cache: ccache
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build pkg-config \
+            libwebkit2gtk-4.1-dev libvulkan-dev libfreetype-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxfixes-dev libxi-dev libxss-dev \
+            libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev \
+            libgl-dev libegl-dev \
+            libasound2-dev libpulse-dev libpipewire-0.3-dev \
+            libdbus-1-dev libudev-dev
+
+      - name: Setup MSVC (Windows)
+        if: matrix.os == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: ${{ matrix.arch }}
+
+      - name: Install Ninja (Windows)
+        if: matrix.os == 'windows'
+        run: choco install ninja -y
+
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos'
+        run: brew install ninja cmake
+
+      - name: Cache FetchContent
+        uses: actions/cache@v5
+        with:
+          path: build/${{ matrix.preset }}/_deps
+          key: ${{ matrix.target }}-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          restore-keys: |
+            ${{ matrix.target }}-deps-
+
+      - name: Setup ccache
+        if: matrix.compiler_cache == 'ccache'
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Setup sccache (Windows)
+        if: matrix.compiler_cache == 'sccache'
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ${{ matrix.compiler_cache }}
+          CMAKE_CXX_COMPILER_LAUNCHER: ${{ matrix.compiler_cache }}
+
+      - name: Build
+        run: cmake --build build/${{ matrix.preset }} -j
+
+      - name: Test
+        run: ctest --test-dir build/${{ matrix.preset }} --output-on-failure

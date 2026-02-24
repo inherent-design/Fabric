@@ -1,0 +1,80 @@
+name: Coverage
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [src/**, include/**, tests/**, CMakeLists.txt, cmake/**]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: Code Coverage
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build clang llvm pkg-config \
+            libwebkit2gtk-4.1-dev libvulkan-dev libfreetype-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxfixes-dev libxi-dev libxss-dev \
+            libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev \
+            libgl-dev libegl-dev \
+            libasound2-dev libpulse-dev libpipewire-0.3-dev \
+            libdbus-1-dev libudev-dev
+
+      - name: Cache FetchContent
+        uses: actions/cache@v5
+        with:
+          path: build/ci-coverage/_deps
+          key: linux-amd64-coverage-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          restore-keys: |
+            linux-amd64-coverage-deps-
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: linux-amd64-coverage
+
+      - name: Configure
+        run: cmake --preset ci-coverage
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
+      - name: Build
+        run: cmake --build build/ci-coverage -j
+
+      - name: Test
+        run: ctest --test-dir build/ci-coverage --output-on-failure
+        env:
+          LLVM_PROFILE_FILE: "${{ github.workspace }}/build/ci-coverage/fabric-%p.profraw"
+
+      - name: Merge profiles
+        run: llvm-profdata merge -sparse build/ci-coverage/fabric-*.profraw -o build/ci-coverage/coverage.profdata
+
+      - name: Generate lcov report
+        run: |
+          llvm-cov export \
+            build/ci-coverage/bin/UnitTests \
+            -instr-profile=build/ci-coverage/coverage.profdata \
+            -format=lcov \
+            -ignore-filename-regex='build/|_deps/|tests/' \
+            > build/ci-coverage/coverage.lcov
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: build/ci-coverage/coverage.lcov

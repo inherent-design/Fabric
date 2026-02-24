@@ -9,11 +9,10 @@
 
 namespace fabric {
 
-using SimRule =
-    std::function<void(DensityField&, EssenceField&, int x, int y, int z, double dt)>;
+using SimRule = std::function<void(DensityField&, EssenceField&, int x, int y, int z, double dt)>;
 
 class SimulationHarness {
-public:
+  public:
     SimulationHarness() = default;
 
     void registerRule(const std::string& name, SimRule rule);
@@ -27,7 +26,7 @@ public:
     EssenceField& essence();
     const EssenceField& essence() const;
 
-private:
+  private:
     DensityField density_;
     EssenceField essence_;
     std::vector<std::pair<std::string, SimRule>> rules_;

@@ -1,0 +1,108 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [src/**, include/**, tests/**]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format-check:
+    name: clang-format
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        path: [src, include]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Check formatting (${{ matrix.path }})
+        uses: jidicula/clang-format-action@v4.16.0
+        with:
+          clang-format-version: "21"
+          check-path: ${{ matrix.path }}
+
+  clang-tidy:
+    name: clang-tidy
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang clang-tidy ninja-build cmake pkg-config \
+            libwebkit2gtk-4.1-dev libvulkan-dev libfreetype-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxfixes-dev libxi-dev libxss-dev \
+            libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev \
+            libgl-dev libegl-dev \
+            libasound2-dev libpulse-dev libpipewire-0.3-dev \
+            libdbus-1-dev libudev-dev
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v5
+        with:
+          path: build/ci-linux-clang/_deps
+          key: lint-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          restore-keys: |
+            lint-deps-
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: lint-clang-tidy
+
+      - name: Configure
+        run: cmake --preset ci-linux-clang
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+
+      - name: Build
+        run: cmake --build build/ci-linux-clang -j
+
+      - name: Run clang-tidy on changed files
+        uses: cpp-linter/cpp-linter-action@v2.16.7
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          style: ""              # disabled; format-check job handles formatting
+          tidy-checks: ""        # uses .clang-tidy config at repo root
+          database: build/ci-linux-clang
+          files-changed-only: true
+          thread-comments: true
+
+  cppcheck:
+    name: cppcheck
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        run: |
+          cppcheck \
+            --enable=warning,performance,portability \
+            --error-exitcode=1 \
+            --suppress=missingInclude \
+            --suppress=unmatchedSuppression \
+            -I include/ \
+            src/ include/

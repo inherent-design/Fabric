@@ -1,11 +1,11 @@
 #pragma once
 
-#include <vector>
+#include "fabric/core/Spatial.hh"
+#include <algorithm>
 #include <array>
 #include <cstdint>
-#include <algorithm>
 #include <flecs.h>
-#include "fabric/core/Spatial.hh"
+#include <vector>
 
 namespace fabric {
 
@@ -35,7 +35,7 @@ struct Plane {
     void normalize();
 };
 
-enum class CullResult {
+enum class CullResult : std::uint8_t {
     Inside,
     Outside,
     Intersect
@@ -66,7 +66,7 @@ struct DrawCall {
 
 // Sorted collection of draw calls per view
 class RenderList {
-public:
+  public:
     void addDrawCall(const DrawCall& call);
     void sortByKey();
     void clear();
@@ -75,28 +75,21 @@ public:
     size_t size() const;
     bool empty() const;
 
-private:
+  private:
     std::vector<DrawCall> drawCalls_;
 };
 
 // Transform interpolation using slerp (rotation) + lerp (position, scale)
 struct TransformInterpolator {
-    static Transform<float> interpolate(
-        const Transform<float>& prev,
-        const Transform<float>& current,
-        float alpha
-    );
+    static Transform<float> interpolate(const Transform<float>& prev, const Transform<float>& current, float alpha);
 };
 
 // Frustum-cull scene entities against a view-projection matrix.
 // Iterates entities with SceneEntity tag. Entities without BoundingBox
 // are always considered visible.
 class FrustumCuller {
-public:
-    static std::vector<flecs::entity> cull(
-        const float* viewProjection,
-        flecs::world& world
-    );
+  public:
+    static std::vector<flecs::entity> cull(const float* viewProjection, flecs::world& world);
 };
 
 } // namespace fabric

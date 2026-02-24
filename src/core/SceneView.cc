@@ -30,18 +30,21 @@ void SceneView::render() {
         dc.viewId = viewId_;
 
         // Read pre-computed world transform from CASCADE system
-        const auto* ltw = entity.get<LocalToWorld>();
+        const auto* ltw = entity.try_get<LocalToWorld>();
         if (ltw) {
             dc.transform = ltw->matrix;
         } else {
             // Fallback: compose from components if LocalToWorld is missing
             Transform<float> t;
-            const auto* pos = entity.get<Position>();
-            const auto* rot = entity.get<Rotation>();
-            const auto* scl = entity.get<Scale>();
-            if (pos) t.setPosition(Vector3<float, Space::World>(pos->x, pos->y, pos->z));
-            if (rot) t.setRotation(Quaternion<float>(rot->x, rot->y, rot->z, rot->w));
-            if (scl) t.setScale(Vector3<float, Space::World>(scl->x, scl->y, scl->z));
+            const auto* pos = entity.try_get<Position>();
+            const auto* rot = entity.try_get<Rotation>();
+            const auto* scl = entity.try_get<Scale>();
+            if (pos)
+                t.setPosition(Vector3<float, Space::World>(pos->x, pos->y, pos->z));
+            if (rot)
+                t.setRotation(Quaternion<float>(rot->x, rot->y, rot->z, rot->w));
+            if (scl)
+                t.setScale(Vector3<float, Space::World>(scl->x, scl->y, scl->z));
             auto matrix = t.getMatrix();
             dc.transform = matrix.elements;
         }

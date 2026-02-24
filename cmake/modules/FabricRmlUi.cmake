@@ -5,10 +5,43 @@ include_guard()
 
 include(FetchContent)
 
+#------------------------------------------------------------------------------
+# FreeType (required by RmlUi font engine)
+# Use system package on Linux/macOS; build from source on Windows.
+#------------------------------------------------------------------------------
+find_package(Freetype QUIET)
+if(NOT FREETYPE_FOUND)
+    message(STATUS "System Freetype not found - building from source via FetchContent")
+    FetchContent_Declare(
+        freetype
+        GIT_REPOSITORY https://github.com/freetype/freetype.git
+        GIT_TAG        VER-2-14-1
+        SYSTEM
+        EXCLUDE_FROM_ALL
+    )
+    set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "" FORCE)
+    set(FT_DISABLE_BZIP2 ON CACHE BOOL "" FORCE)
+    set(FT_DISABLE_BROTLI ON CACHE BOOL "" FORCE)
+    set(FT_DISABLE_PNG ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(freetype)
+
+    # Populate find_package(Freetype) variables so RmlUi's internal
+    # find_package(Freetype) succeeds without re-searching.
+    set(FREETYPE_FOUND TRUE CACHE BOOL "" FORCE)
+    set(FREETYPE_INCLUDE_DIRS "${freetype_SOURCE_DIR}/include" CACHE PATH "" FORCE)
+    set(FREETYPE_LIBRARIES freetype CACHE STRING "" FORCE)
+    if(NOT TARGET Freetype::Freetype)
+        add_library(Freetype::Freetype ALIAS freetype)
+    endif()
+endif()
+
+#------------------------------------------------------------------------------
+# RmlUi
+#------------------------------------------------------------------------------
 FetchContent_Declare(
     RmlUi
     GIT_REPOSITORY https://github.com/mikke89/RmlUi.git
-    GIT_TAG        6.0
+    GIT_TAG        6.2
     GIT_SHALLOW    TRUE
     SYSTEM
     EXCLUDE_FROM_ALL
@@ -19,7 +52,7 @@ set(RMLUI_SAMPLES OFF CACHE BOOL "" FORCE)
 set(RMLUI_TESTS OFF CACHE BOOL "" FORCE)
 set(RMLUI_THIRDPARTY_CONTAINERS ON CACHE BOOL "" FORCE)
 
-# FreeType font engine for text rendering (requires system FreeType)
+# FreeType font engine for text rendering
 set(RMLUI_FONT_ENGINE "freetype" CACHE STRING "" FORCE)
 
 # Preserve BUILD_SHARED_LIBS state: RmlUi may flip it to ON
@@ -53,7 +86,7 @@ elseif(IOS)
 elseif(WIN32)
     set(_SHADER_PLATFORM windows)
     set(_SHADER_PROFILES "s_5_0;120;300_es;spirv")
-    set(_SHADER_EXTS     "dx11;glsl;essl;spv")
+    set(_SHADER_EXTS     "dxbc;glsl;essl;spv")
 elseif(UNIX)
     set(_SHADER_PLATFORM linux)
     set(_SHADER_PROFILES "120;300_es;spirv")

@@ -15,7 +15,7 @@ double TimeState::getTimestamp() const {
 
 std::unordered_map<TimeState::EntityID, bool> TimeState::diff(const TimeState& other) const {
     std::unordered_map<EntityID, bool> result;
-    
+
     // Check entities in this state
     for (const auto& [id, state] : entityStates_) {
         auto it = other.entityStates_.find(id);
@@ -27,14 +27,14 @@ std::unordered_map<TimeState::EntityID, bool> TimeState::diff(const TimeState& o
             result[id] = true;
         }
     }
-    
+
     // Check entities that only exist in the other state
     for (const auto& [id, state] : other.entityStates_) {
         if (entityStates_.find(id) == entityStates_.end()) {
             result[id] = false;
         }
     }
-    
+
     return result;
 }
 
@@ -76,27 +76,27 @@ void TimeRegion::restoreSnapshot(const TimeState& state) {
 }
 
 // Timeline implementation
-Timeline::Timeline() :
-    currentTime_(0.0),
-    globalTimeScale_(1.0),
-    isPaused_(false),
-    automaticSnapshots_(false),
-    snapshotInterval_(1.0),
-    snapshotCounter_(0.0) {
+Timeline::Timeline()
+    : currentTime_(0.0),
+      globalTimeScale_(1.0),
+      isPaused_(false),
+      automaticSnapshots_(false),
+      snapshotInterval_(1.0),
+      snapshotCounter_(0.0) {
     FABRIC_LOG_DEBUG("Timeline initialized");
 }
 
 void Timeline::update(double deltaTime) {
     std::lock_guard<std::mutex> lock(mutex_);
-    
+
     if (isPaused_) {
         return;
     }
-    
+
     // Apply global time scale
     double scaledDelta = deltaTime * globalTimeScale_;
     currentTime_ += scaledDelta;
-    
+
     // Accumulate real time and emit a snapshot for each elapsed interval.
     // Ring buffer caps at 100 entries to bound memory.
     if (automaticSnapshots_) {
@@ -111,7 +111,7 @@ void Timeline::update(double deltaTime) {
             }
         }
     }
-    
+
     // Update all time regions
     for (auto& region : regions_) {
         region->update(scaledDelta);
@@ -130,9 +130,7 @@ TimeRegion* Timeline::createRegion(double timeScale) {
 void Timeline::removeRegion(TimeRegion* region) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = std::find_if(regions_.begin(), regions_.end(),
-                         [region](const std::unique_ptr<TimeRegion>& r) {
-                             return r.get() == region;
-                         });
+                           [region](const std::unique_ptr<TimeRegion>& r) { return r.get() == region; });
 
     if (it != regions_.end()) {
         regions_.erase(it);

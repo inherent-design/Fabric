@@ -7,13 +7,13 @@
 namespace fabric {
 
 class BgfxSystemInterface : public Rml::SystemInterface {
-public:
+  public:
     BgfxSystemInterface();
 
     double GetElapsedTime() override;
     bool LogMessage(Rml::Log::Type type, const Rml::String& message) override;
 
-private:
+  private:
     std::chrono::steady_clock::time_point startTime_;
 };
 

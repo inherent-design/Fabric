@@ -1,0 +1,85 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": ["config:recommended"],
+    "labels": ["dependencies"],
+    "prHourlyLimit": 4,
+    "prConcurrentLimit": 10,
+    "customManagers": [
+        {
+            "customType": "regex",
+            "description": "CMake FetchContent GIT_TAG dependencies",
+            "fileMatch": [
+                "(^|/)CMakeLists\\.txt$",
+                "(^|/)cmake/modules/Fabric.*\\.cmake$"
+            ],
+            "matchStrings": [
+                "GIT_REPOSITORY\\s+https://github\\.com/(?<depName>[^/]+/[^/\\s]+?)(?:\\.git)?\\s+GIT_TAG\\s+(?<currentValue>[^\\s]+)"
+            ],
+            "datasourceTemplate": "github-tags",
+            "versioningTemplate": "semver"
+        },
+        {
+            "customType": "regex",
+            "description": "nlohmann/json URL-based download",
+            "fileMatch": ["(^|/)cmake/modules/FabricNlohmannJson\\.cmake$"],
+            "matchStrings": [
+                "URL\\s+https://github\\.com/(?<depName>nlohmann/json)/releases/download/(?<currentValue>v[^/]+)/"
+            ],
+            "datasourceTemplate": "github-releases",
+            "versioningTemplate": "semver"
+        },
+        {
+            "customType": "regex",
+            "description": "Standalone Asio (non-semver tag format: asio-X-Y-Z)",
+            "fileMatch": ["(^|/)cmake/modules/FabricAsio\\.cmake$"],
+            "matchStrings": [
+                "GIT_REPOSITORY\\s+https://github\\.com/(?<depName>chriskohlhoff/asio)\\.git\\s+GIT_TAG\\s+(?<currentValue>asio-[^\\s]+)"
+            ],
+            "datasourceTemplate": "github-tags",
+            "versioningTemplate": "regex:^asio-(?<major>\\d+)-(?<minor>\\d+)-(?<patch>\\d+)$"
+        },
+        {
+            "customType": "regex",
+            "description": "bgfx.cmake (non-semver tag format: vMAJOR.MINOR.PATCH-BUILD)",
+            "fileMatch": ["(^|/)cmake/modules/FabricBgfx\\.cmake$"],
+            "matchStrings": [
+                "GIT_REPOSITORY\\s+https://github\\.com/(?<depName>bkaradzic/bgfx\\.cmake)\\.git\\s+GIT_TAG\\s+(?<currentValue>v[^\\s]+)"
+            ],
+            "datasourceTemplate": "github-tags",
+            "versioningTemplate": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)(-(?<build>\\d+))?$"
+        },
+        {
+            "customType": "regex",
+            "description": "Freetype (non-semver tag format: VER-X-Y-Z)",
+            "fileMatch": ["(^|/)cmake/modules/FabricRmlUi\\.cmake$"],
+            "matchStrings": [
+                "GIT_REPOSITORY\\s+https://github\\.com/(?<depName>freetype/freetype)\\.git\\s+GIT_TAG\\s+(?<currentValue>VER-[^\\s]+)"
+            ],
+            "datasourceTemplate": "github-tags",
+            "versioningTemplate": "regex:^VER-(?<major>\\d+)-(?<minor>\\d+)-(?<patch>\\d+)$"
+        }
+    ],
+    "packageRules": [
+        {
+            "description": "Group all CMake FetchContent dependency updates",
+            "matchManagers": ["custom.regex"],
+            "groupName": "cmake-dependencies",
+            "groupSlug": "cmake-deps"
+        },
+        {
+            "description": "Asio uses non-semver tags; auto-merge patch updates",
+            "matchPackageNames": ["chriskohlhoff/asio"],
+            "automerge": false
+        },
+        {
+            "description": "bgfx uses non-standard versioning; pin to manual review",
+            "matchPackageNames": ["bkaradzic/bgfx.cmake"],
+            "automerge": false
+        },
+        {
+            "description": "SDL3 uses release-X.Y.Z tags",
+            "matchPackageNames": ["libsdl-org/SDL"],
+            "extractVersion": "^release-(?<version>.*)$"
+        }
+    ]
+}

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "fabric/core/Event.hh"
-#include <SDL3/SDL.h>
 #include <array>
+#include <SDL3/SDL.h>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -12,7 +12,7 @@ namespace fabric {
 // Translates SDL3 events into Fabric EventDispatcher actions.
 // Standalone; no main loop wiring yet.
 class InputManager {
-public:
+  public:
     InputManager();
     explicit InputManager(EventDispatcher& dispatcher);
 
@@ -36,7 +36,7 @@ public:
     // Query if action is currently active (key held)
     bool isActionActive(const std::string& action) const;
 
-private:
+  private:
     EventDispatcher* dispatcher_ = nullptr;
     std::unordered_map<SDL_Keycode, std::string> keyBindings_;
     std::unordered_set<std::string> activeActions_;

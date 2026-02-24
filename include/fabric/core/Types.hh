@@ -1,15 +1,15 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
-#include <variant>
 #include <functional>
-#include <memory>
-#include <vector>
 #include <map>
+#include <memory>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
+#include <vector>
 
 namespace fabric {
 
@@ -18,11 +18,9 @@ using BinaryData = std::vector<uint8_t>;
 
 using Variant = std::variant<std::nullptr_t, bool, int, float, double, std::string, std::vector<uint8_t>>;
 
-template <typename T>
-using StringMap = std::map<std::string, T>;
+template <typename T> using StringMap = std::map<std::string, T>;
 
-template <typename T>
-using Optional = std::optional<T>;
+template <typename T> using Optional = std::optional<T>;
 
 // Forward declarations for use in type aliases
 struct Token;
@@ -52,6 +50,5 @@ using TokenTypeOptionsMap = StringMap<TokenTypeOptionPair>;
  * @brief Type for a map of string to string
  */
 using StringStringMap = StringMap<std::string>;
-
 
 } // namespace fabric

@@ -1,21 +1,16 @@
 #!/bin/sh
-# Configure and build Fabric Engine.
-# Env: BUILD_TYPE  - cmake build type (default: Debug)
-# Env: BUILD_DIR   - build output directory (default: build)
-# Env: EXTRA_FLAGS - extra cmake flags
+# Configure and build Fabric Engine using CMakePresets.
+# Env: BUILD_PRESET - cmake preset name (default: dev-debug)
+# See CMakePresets.json for available presets.
 set -eu
 
-build_type="${BUILD_TYPE:-Debug}"
-build_dir="${BUILD_DIR:-build}"
+preset="${BUILD_PRESET:-dev-debug}"
+build_dir="build/${preset}"
 
 if [ ! -f "${build_dir}/build.ninja" ]; then
-  echo "Configuring (${build_type})"
-  cmake -G Ninja \
-    -DCMAKE_BUILD_TYPE="${build_type}" \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    ${EXTRA_FLAGS:-} \
-    -B "${build_dir}"
+  echo "Configuring (${preset})"
+  cmake --preset "${preset}"
 fi
 
-echo "Building (${build_type})"
-cmake --build "${build_dir}"
+echo "Building (${preset})"
+cmake --build "${build_dir}" -j

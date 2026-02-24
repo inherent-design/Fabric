@@ -1,0 +1,51 @@
+name: Dependency Scan
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"
+  push:
+    branches: [main]
+    paths: [CMakeLists.txt, cmake/modules/**]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  security-events: write
+  contents: read
+
+jobs:
+  osv-scan:
+    name: OSV-Scanner
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake pkg-config \
+            libwebkit2gtk-4.1-dev libvulkan-dev libfreetype-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxfixes-dev libxi-dev libxss-dev \
+            libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev \
+            libgl-dev libegl-dev \
+            libasound2-dev libpulse-dev libpipewire-0.3-dev \
+            libdbus-1-dev libudev-dev
+
+      - name: Cache FetchContent
+        uses: actions/cache@v5
+        with:
+          path: build/ci-linux-gcc/_deps
+          key: dep-scan-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          restore-keys: |
+            dep-scan-deps-
+
+      - name: Configure (populate _deps)
+        run: cmake --preset ci-linux-gcc
+
+      - name: Run OSV-Scanner
+        uses: google/osv-scanner-action/scan@v2.3.3
+        with:
+          scan-args: "--recursive --call-analysis=all ."

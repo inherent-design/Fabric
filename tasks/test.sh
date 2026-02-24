@@ -5,7 +5,7 @@
 # Env: TEST_TIMEOUT - per-suite timeout in seconds (default: 120)
 set -eu
 
-build_dir="${BUILD_DIR:-build}"
+build_dir="${BUILD_DIR:-build/dev-debug}"
 suite="${TEST_SUITE:-unit}"
 timeout_sec="${TEST_TIMEOUT:-120}"
 

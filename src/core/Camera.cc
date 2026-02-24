@@ -19,7 +19,8 @@ void Camera::setPerspective(float fovYDeg, float aspect, float nearPlane, float 
     bx::mtxProj(projection_, fovYDeg, aspect, nearPlane, farPlane, homogeneousNdc);
 }
 
-void Camera::setOrthographic(float left, float right, float bottom, float top, float nearPlane, float farPlane, bool homogeneousNdc) {
+void Camera::setOrthographic(float left, float right, float bottom, float top, float nearPlane, float farPlane,
+                             bool homogeneousNdc) {
     near_ = nearPlane;
     far_ = farPlane;
     orthographic_ = true;
@@ -30,10 +31,8 @@ void Camera::updateView(const Transform<float>& transform) {
     auto pos = transform.getPosition();
 
     // Left-handed: forward is +Z
-    auto fwd = transform.getRotation().rotateVector(
-        Vector3<float, Space::World>(0.0f, 0.0f, 1.0f));
-    auto up = transform.getRotation().rotateVector(
-        Vector3<float, Space::World>(0.0f, 1.0f, 0.0f));
+    auto fwd = transform.getRotation().rotateVector(Vector3<float, Space::World>(0.0f, 0.0f, 1.0f));
+    auto up = transform.getRotation().rotateVector(Vector3<float, Space::World>(0.0f, 1.0f, 0.0f));
 
     bx::Vec3 eye(pos.x, pos.y, pos.z);
     bx::Vec3 at(pos.x + fwd.x, pos.y + fwd.y, pos.z + fwd.z);
@@ -54,10 +53,20 @@ void Camera::getViewProjection(float* outVP) const {
     bx::mtxMul(outVP, view_, projection_);
 }
 
-float Camera::fovY() const { return fovY_; }
-float Camera::aspectRatio() const { return aspect_; }
-float Camera::nearPlane() const { return near_; }
-float Camera::farPlane() const { return far_; }
-bool Camera::isOrthographic() const { return orthographic_; }
+float Camera::fovY() const {
+    return fovY_;
+}
+float Camera::aspectRatio() const {
+    return aspect_;
+}
+float Camera::nearPlane() const {
+    return near_;
+}
+float Camera::farPlane() const {
+    return far_;
+}
+bool Camera::isOrthographic() const {
+    return orthographic_;
+}
 
 } // namespace fabric

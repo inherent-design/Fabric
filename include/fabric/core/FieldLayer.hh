@@ -5,9 +5,8 @@
 
 namespace fabric {
 
-template <typename T>
-class FieldLayer {
-public:
+template <typename T> class FieldLayer {
+  public:
     T read(int x, int y, int z) const { return grid_.get(x, y, z); }
     void write(int x, int y, int z, const T& value) { grid_.set(x, y, z, value); }
 
@@ -22,7 +21,8 @@ public:
                 }
             }
         }
-        if (count == 0) return T{};
+        if (count == 0)
+            return T{};
         return sum * (static_cast<float>(1) / static_cast<float>(count));
     }
 
@@ -39,7 +39,7 @@ public:
     ChunkedGrid<T>& grid() { return grid_; }
     const ChunkedGrid<T>& grid() const { return grid_; }
 
-private:
+  private:
     ChunkedGrid<T> grid_;
 };
 

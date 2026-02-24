@@ -1,16 +1,15 @@
 #pragma once
 
 #include "fabric/core/Rendering.hh"
-#include <vector>
 #include <algorithm>
 #include <functional>
 #include <limits>
+#include <vector>
 
 namespace fabric {
 
-template <typename T>
-class BVH {
-public:
+template <typename T> class BVH {
+  public:
     void insert(const AABB& bounds, T data) {
         items_.push_back({bounds, std::move(data)});
         dirty_ = true;
@@ -84,7 +83,7 @@ public:
     size_t size() const { return items_.size(); }
     bool empty() const { return items_.empty(); }
 
-private:
+  private:
     struct Item {
         AABB bounds;
         T data;
@@ -122,18 +121,21 @@ private:
         float dz = nodeBounds.max.z - nodeBounds.min.z;
 
         int axis = 0;
-        if (dy > dx && dy > dz) axis = 1;
-        else if (dz > dx && dz > dy) axis = 2;
+        if (dy > dx && dy > dz)
+            axis = 1;
+        else if (dz > dx && dz > dy)
+            axis = 2;
 
         // Sort indices by centroid along chosen axis
-        std::sort(indices.begin() + start, indices.begin() + end,
-            [&](int a, int b) {
-                Vec3f ca = items_[a].bounds.center();
-                Vec3f cb = items_[b].bounds.center();
-                if (axis == 0) return ca.x < cb.x;
-                if (axis == 1) return ca.y < cb.y;
-                return ca.z < cb.z;
-            });
+        std::sort(indices.begin() + start, indices.begin() + end, [&](int a, int b) {
+            Vec3f ca = items_[a].bounds.center();
+            Vec3f cb = items_[b].bounds.center();
+            if (axis == 0)
+                return ca.x < cb.x;
+            if (axis == 1)
+                return ca.y < cb.y;
+            return ca.z < cb.z;
+        });
 
         int mid = start + (end - start) / 2;
 
@@ -163,8 +165,10 @@ private:
             return;
         }
 
-        if (node.left >= 0) queryRecursive(node.left, region, results);
-        if (node.right >= 0) queryRecursive(node.right, region, results);
+        if (node.left >= 0)
+            queryRecursive(node.left, region, results);
+        if (node.right >= 0)
+            queryRecursive(node.right, region, results);
     }
 
     void queryFrustumRecursive(int nodeIndex, const Frustum& frustum, std::vector<T>& results) const {
@@ -180,19 +184,15 @@ private:
             return;
         }
 
-        if (node.left >= 0) queryFrustumRecursive(node.left, frustum, results);
-        if (node.right >= 0) queryFrustumRecursive(node.right, frustum, results);
+        if (node.left >= 0)
+            queryFrustumRecursive(node.left, frustum, results);
+        if (node.right >= 0)
+            queryFrustumRecursive(node.right, frustum, results);
     }
 
     static AABB unionAABB(const AABB& a, const AABB& b) {
-        return AABB(
-            Vec3f(std::min(a.min.x, b.min.x),
-                  std::min(a.min.y, b.min.y),
-                  std::min(a.min.z, b.min.z)),
-            Vec3f(std::max(a.max.x, b.max.x),
-                  std::max(a.max.y, b.max.y),
-                  std::max(a.max.z, b.max.z))
-        );
+        return AABB(Vec3f(std::min(a.min.x, b.min.x), std::min(a.min.y, b.min.y), std::min(a.min.z, b.min.z)),
+                    Vec3f(std::max(a.max.x, b.max.x), std::max(a.max.y, b.max.y), std::max(a.max.z, b.max.z)));
     }
 };
 

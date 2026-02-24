@@ -20,6 +20,7 @@
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 #include <SDL3/SDL_properties.h>
 
 #include <chrono>
@@ -33,25 +34,19 @@ bgfx::PlatformData getPlatformData(SDL_Window* window) {
     SDL_PropertiesID props = SDL_GetWindowProperties(window);
 
 #if defined(SDL_PLATFORM_WIN32)
-    pd.nwh = SDL_GetPointerProperty(
-        props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+    pd.nwh = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
 #elif defined(SDL_PLATFORM_MACOS)
-    pd.nwh = SDL_GetPointerProperty(
-        props, SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, nullptr);
+    pd.nwh = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, nullptr);
 #elif defined(SDL_PLATFORM_LINUX)
-    void* wl = SDL_GetPointerProperty(
-        props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr);
+    void* wl = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr);
     if (wl) {
-        pd.ndt = SDL_GetPointerProperty(
-            props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, nullptr);
+        pd.ndt = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, nullptr);
         pd.nwh = wl;
         pd.type = bgfx::NativeWindowHandleType::Wayland;
     } else {
-        pd.ndt = SDL_GetPointerProperty(
-            props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, nullptr);
-        pd.nwh = reinterpret_cast<void*>(static_cast<uintptr_t>(
-            SDL_GetNumberProperty(
-                props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0)));
+        pd.ndt = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, nullptr);
+        pd.nwh = reinterpret_cast<void*>(
+            static_cast<uintptr_t>(SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0)));
     }
 #endif
 
@@ -70,15 +65,13 @@ int main(int argc, char* argv[]) {
     argParser.parse(argc, argv);
 
     if (argParser.hasArgument("--version")) {
-        std::cout << fabric::APP_NAME << " version " << fabric::APP_VERSION
-                  << std::endl;
+        std::cout << fabric::APP_NAME << " version " << fabric::APP_VERSION << std::endl;
         fabric::log::shutdown();
         return 0;
     }
 
     if (argParser.hasArgument("--help")) {
-        std::cout << "Usage: " << fabric::APP_EXECUTABLE_NAME << " [options]"
-                  << std::endl;
+        std::cout << "Usage: " << fabric::APP_EXECUTABLE_NAME << " [options]" << std::endl;
         std::cout << "Options:" << std::endl;
         std::cout << "  --version    Display version information" << std::endl;
         std::cout << "  --help       Display this help message" << std::endl;
@@ -96,9 +89,8 @@ int main(int argc, char* argv[]) {
         constexpr int kWindowWidth = 1280;
         constexpr int kWindowHeight = 720;
 
-        SDL_Window* window = SDL_CreateWindow(
-            fabric::APP_NAME, kWindowWidth, kWindowHeight,
-            SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE);
+        SDL_Window* window = SDL_CreateWindow(fabric::APP_NAME, kWindowWidth, kWindowHeight,
+                                              SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE);
 
         if (!window) {
             FABRIC_LOG_CRITICAL("Window creation failed: {}", SDL_GetError());
@@ -129,13 +121,10 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        bgfx::setViewClear(
-            0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f, 0);
-        bgfx::setViewRect(
-            0, 0, 0, static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
+        bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f, 0);
+        bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
 
-        FABRIC_LOG_INFO("bgfx renderer: {}",
-            bgfx::getRendererName(bgfx::getRendererType()));
+        FABRIC_LOG_INFO("bgfx renderer: {}", bgfx::getRendererName(bgfx::getRendererType()));
 
         // RmlUi backend interfaces
         fabric::BgfxSystemInterface rmlSystem;
@@ -146,9 +135,7 @@ int main(int argc, char* argv[]) {
         Rml::SetRenderInterface(&rmlRenderer);
         Rml::Initialise();
 
-        Rml::Context* rmlContext = Rml::CreateContext(
-            "main",
-            Rml::Vector2i(pw, ph));
+        Rml::Context* rmlContext = Rml::CreateContext("main", Rml::Vector2i(pw, ph));
 
         FABRIC_LOG_INFO("RmlUi context created ({}x{})", pw, ph);
 
@@ -185,14 +172,16 @@ int main(int argc, char* argv[]) {
 
         dispatcher.addEventListener("time_faster", [&timeline](fabric::Event&) {
             double scale = timeline.getGlobalTimeScale() + 0.25;
-            if (scale > 4.0) scale = 4.0;
+            if (scale > 4.0)
+                scale = 4.0;
             timeline.setGlobalTimeScale(scale);
             FABRIC_LOG_INFO("Time scale: {:.2f}", timeline.getGlobalTimeScale());
         });
 
         dispatcher.addEventListener("time_slower", [&timeline](fabric::Event&) {
             double scale = timeline.getGlobalTimeScale() - 0.25;
-            if (scale < 0.25) scale = 0.25;
+            if (scale < 0.25)
+                scale = 0.25;
             timeline.setGlobalTimeScale(scale);
             FABRIC_LOG_INFO("Time scale: {:.2f}", timeline.getGlobalTimeScale());
         });
@@ -240,11 +229,11 @@ int main(int argc, char* argv[]) {
             FABRIC_ZONE_SCOPED_N("main_loop");
 
             auto now = std::chrono::high_resolution_clock::now();
-            double frameTime =
-                std::chrono::duration<double>(now - lastTime).count();
+            double frameTime = std::chrono::duration<double>(now - lastTime).count();
             lastTime = now;
 
-            if (frameTime > 0.25) frameTime = 0.25;
+            if (frameTime > 0.25)
+                frameTime = 0.25;
             accumulator += frameTime;
 
             SDL_Event event;
@@ -258,12 +247,10 @@ int main(int argc, char* argv[]) {
                     auto w = static_cast<uint32_t>(event.window.data1);
                     auto h = static_cast<uint32_t>(event.window.data2);
                     bgfx::reset(w, h, BGFX_RESET_VSYNC);
-                    bgfx::setViewRect(0, 0, 0,
-                        static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                    bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(w), static_cast<uint16_t>(h));
                     float newAspect = static_cast<float>(w) / static_cast<float>(h);
                     camera.setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogeneousNdc);
-                    rmlContext->SetDimensions(Rml::Vector2i(
-                        static_cast<int>(w), static_cast<int>(h)));
+                    rmlContext->SetDimensions(Rml::Vector2i(static_cast<int>(w), static_cast<int>(h)));
                 }
             }
 
@@ -272,8 +259,10 @@ int main(int argc, char* argv[]) {
             cameraPitch += inputManager.mouseDeltaY() * kMouseSensitivity;
 
             constexpr float kMaxPitch = 1.5f; // ~86 degrees
-            if (cameraPitch > kMaxPitch) cameraPitch = kMaxPitch;
-            if (cameraPitch < -kMaxPitch) cameraPitch = -kMaxPitch;
+            if (cameraPitch > kMaxPitch)
+                cameraPitch = kMaxPitch;
+            if (cameraPitch < -kMaxPitch)
+                cameraPitch = -kMaxPitch;
 
             // Build camera rotation from yaw (Y axis) then pitch (X axis)
             auto yawQ = fabric::Quaternion<float>::fromAxisAngle(
@@ -289,21 +278,25 @@ int main(int argc, char* argv[]) {
 
                 // Derive direction vectors inside the fixed step so movement
                 // stays consistent if rotation is ever updated per tick.
-                auto fwd = rotation.rotateVector(
-                    fabric::Vector3<float, fabric::Space::World>(0.0f, 0.0f, 1.0f));
-                auto right = rotation.rotateVector(
-                    fabric::Vector3<float, fabric::Space::World>(1.0f, 0.0f, 0.0f));
+                auto fwd = rotation.rotateVector(fabric::Vector3<float, fabric::Space::World>(0.0f, 0.0f, 1.0f));
+                auto right = rotation.rotateVector(fabric::Vector3<float, fabric::Space::World>(1.0f, 0.0f, 0.0f));
                 auto up = fabric::Vector3<float, fabric::Space::World>(0.0f, 1.0f, 0.0f);
 
                 float step = kMoveSpeed * static_cast<float>(kFixedDt);
                 auto pos = cameraTransform.getPosition();
 
-                if (inputManager.isActionActive("move_forward"))  pos = pos + fwd * step;
-                if (inputManager.isActionActive("move_backward")) pos = pos - fwd * step;
-                if (inputManager.isActionActive("move_right"))    pos = pos + right * step;
-                if (inputManager.isActionActive("move_left"))     pos = pos - right * step;
-                if (inputManager.isActionActive("move_up"))       pos = pos + up * step;
-                if (inputManager.isActionActive("move_down"))     pos = pos - up * step;
+                if (inputManager.isActionActive("move_forward"))
+                    pos = pos + fwd * step;
+                if (inputManager.isActionActive("move_backward"))
+                    pos = pos - fwd * step;
+                if (inputManager.isActionActive("move_right"))
+                    pos = pos + right * step;
+                if (inputManager.isActionActive("move_left"))
+                    pos = pos - right * step;
+                if (inputManager.isActionActive("move_up"))
+                    pos = pos + up * step;
+                if (inputManager.isActionActive("move_down"))
+                    pos = pos - up * step;
 
                 cameraTransform.setPosition(pos);
                 accumulator -= kFixedDt;
@@ -320,8 +313,7 @@ int main(int argc, char* argv[]) {
                 // RmlUi overlay on view 255 (after 3D scene, before frame flip)
                 int curW, curH;
                 SDL_GetWindowSizeInPixels(window, &curW, &curH);
-                rmlRenderer.beginFrame(
-                    static_cast<uint16_t>(curW), static_cast<uint16_t>(curH));
+                rmlRenderer.beginFrame(static_cast<uint16_t>(curW), static_cast<uint16_t>(curH));
                 rmlContext->Update();
                 rmlContext->Render();
 

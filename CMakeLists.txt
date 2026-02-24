@@ -23,7 +23,10 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 # C++ standard settings
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+# GNU extensions required: Quill's QUILL_LOG_* macros use ##__VA_ARGS__
+# (GCC comma-eating extension) which requires -std=gnu++20 on GCC.
+# Clang and MSVC handle this regardless of the extensions setting.
+set(CMAKE_CXX_EXTENSIONS ON)
 
 # Output directories configuration
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
@@ -60,8 +63,11 @@ include(FabricGoogleTest)
 # GLM (OpenGL Mathematics) - header-only math library
 include(FabricGLM)
 
-# mimalloc - global allocator replacement
-include(FabricMimalloc)
+# mimalloc - global allocator replacement (gated for sanitizer compatibility)
+option(FABRIC_USE_MIMALLOC "Link mimalloc as global allocator override" ON)
+if(FABRIC_USE_MIMALLOC)
+    include(FabricMimalloc)
+endif()
 
 # Quill - async structured logging
 include(FabricQuill)
@@ -89,6 +95,7 @@ FetchContent_Declare(
     SDL3
     GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
     GIT_TAG release-3.4.2
+    GIT_SHALLOW    TRUE
     SYSTEM
     EXCLUDE_FROM_ALL
 )
@@ -117,6 +124,7 @@ FetchContent_Declare(
     webview
     GIT_REPOSITORY https://github.com/webview/webview
     GIT_TAG 0.12.0
+    GIT_SHALLOW    TRUE
     SYSTEM
     EXCLUDE_FROM_ALL
 )
@@ -266,9 +274,14 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_CXX_COMPILER M
     endif()
 endif()
 
-# Create the Fabric executable (with mimalloc global allocator override)
-add_executable(Fabric src/core/Fabric.cc src/core/MimallocOverride.cc)
-target_link_libraries(Fabric PRIVATE FabricLib mimalloc-static)
+# Create the Fabric executable
+if(FABRIC_USE_MIMALLOC)
+    add_executable(Fabric src/core/Fabric.cc src/core/MimallocOverride.cc)
+    target_link_libraries(Fabric PRIVATE FabricLib mimalloc-static)
+else()
+    add_executable(Fabric src/core/Fabric.cc)
+    target_link_libraries(Fabric PRIVATE FabricLib)
+endif()
 
 #------------------------------------------------------------------------------
 # Testing Configuration
@@ -354,10 +367,15 @@ if(WIN32)
     message(STATUS "Configuring for Windows")
 
     # Target Windows 10 (required by SDL3 and WebView2)
+    # NOMINMAX: prevent <windows.h> from defining min/max macros that break
+    # std::numeric_limits<T>::max() in Quill and other template code.
+    # WIN32_LEAN_AND_MEAN: exclude rarely-used Windows headers, speeds compilation.
     target_compile_definitions(FabricLib PUBLIC
         _WIN32_WINNT=0x0A00
         WINVER=0x0A00
         NTDDI_VERSION=0x0A000007
+        NOMINMAX
+        WIN32_LEAN_AND_MEAN
     )
 
     # Configure as Windows GUI application
