@@ -23,6 +23,7 @@ CC = "clang"
 CXX = "clang++"
 CPPFLAGS = "-I/opt/homebrew/opt/llvm/include"
 LDFLAGS = "-L/opt/homebrew/opt/llvm/lib"
+CPM_SOURCE_CACHE = "~/.cache/CPM"
 
 #
 # Build

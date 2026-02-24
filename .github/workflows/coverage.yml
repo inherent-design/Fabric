@@ -35,13 +35,13 @@ jobs:
             libasound2-dev libpulse-dev libpipewire-0.3-dev \
             libdbus-1-dev libudev-dev
 
-      - name: Cache FetchContent
+      - name: Cache CPM dependencies
         uses: actions/cache@v5
         with:
-          path: build/ci-coverage/_deps
-          key: linux-amd64-coverage-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          path: cpm-cache
+          key: cpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
           restore-keys: |
-            linux-amd64-coverage-deps-
+            cpm-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1
@@ -51,6 +51,7 @@ jobs:
       - name: Configure
         run: cmake --preset ci-coverage
         env:
+          CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm-cache
           CMAKE_C_COMPILER_LAUNCHER: ccache
           CMAKE_CXX_COMPILER_LAUNCHER: ccache
 

@@ -1,15 +1,12 @@
 # FabricAsio.cmake - Fetch and configure Standalone Asio (header-only)
-include(FetchContent)
 
-FetchContent_Declare(
-    asio
-    GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
-    GIT_TAG        asio-1-36-0
+CPMAddPackage(
+    NAME asio
+    GITHUB_REPOSITORY chriskohlhoff/asio
+    GIT_TAG asio-1-36-0
     SYSTEM
     EXCLUDE_FROM_ALL
 )
-
-FetchContent_MakeAvailable(asio)
 
 # Create INTERFACE library target (header-only, no compilation)
 add_library(asio::asio INTERFACE IMPORTED GLOBAL)

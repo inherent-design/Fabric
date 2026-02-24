@@ -53,9 +53,9 @@ configure_file(
 )
 
 #------------------------------------------------------------------------------
-# Dependencies
+# Dependencies (CPM.cmake - source-cached package manager)
 #------------------------------------------------------------------------------
-include(FetchContent)
+include(cmake/CPM.cmake)
 
 # Google Test for testing
 include(FabricGoogleTest)
@@ -91,26 +91,22 @@ include(FabricRmlUi)
 include(FabricFlecs)
 
 # SDL3 Configuration
-FetchContent_Declare(
-    SDL3
-    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-    GIT_TAG release-3.4.2
-    GIT_SHALLOW    TRUE
-    SYSTEM
-    EXCLUDE_FROM_ALL
-)
-
-# SDL3 build options
-set(SDL_SHARED OFF CACHE BOOL "Build SDL shared libraries" FORCE)
-set(SDL_STATIC ON CACHE BOOL "Build SDL static libraries" FORCE)
-set(SDL_TEST OFF CACHE BOOL "Build SDL tests" FORCE)
+set(SDL_SHARED OFF)
+set(SDL_STATIC ON)
+set(SDL_TEST OFF)
 
 # Enable core SDL3 subsystems
 foreach(SUBSYSTEM IN ITEMS AUDIO VIDEO RENDER EVENTS JOYSTICK HIDAPI SENSOR THREADS TIMERS)
-    set(SDL_${SUBSYSTEM} ON CACHE BOOL "Enable SDL ${SUBSYSTEM}" FORCE)
+    set(SDL_${SUBSYSTEM} ON)
 endforeach()
 
-FetchContent_MakeAvailable(SDL3)
+CPMAddPackage(
+    NAME SDL3
+    GITHUB_REPOSITORY libsdl-org/SDL
+    GIT_TAG release-3.4.2
+    SYSTEM
+    EXCLUDE_FROM_ALL
+)
 
 # WebView
 option(FABRIC_USE_WEBVIEW "Enable WebView support" ON)
@@ -120,16 +116,13 @@ if(UNIX AND NOT APPLE)
     set(WEBVIEW_WEBKITGTK_API "4.1" CACHE STRING "WebKitGTK API version")
 endif()
 
-FetchContent_Declare(
-    webview
-    GIT_REPOSITORY https://github.com/webview/webview
+CPMAddPackage(
+    NAME webview
+    GITHUB_REPOSITORY webview/webview
     GIT_TAG 0.12.0
-    GIT_SHALLOW    TRUE
     SYSTEM
     EXCLUDE_FROM_ALL
 )
-
-FetchContent_MakeAvailable(webview)
 
 #------------------------------------------------------------------------------
 # Source Files and Library Configuration

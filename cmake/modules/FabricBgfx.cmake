@@ -1,27 +1,9 @@
 # FabricBgfx.cmake - Fetch and configure bgfx rendering backend
-include(FetchContent)
 
 # bgfx requires Objective-C++ on Apple for Metal and Vulkan (MoltenVK) renderers
 if(APPLE)
     enable_language(OBJCXX)
 endif()
-
-# bgfx.cmake bundles bx, bimg, bgfx as submodules
-FetchContent_Declare(
-    bgfx
-    GIT_REPOSITORY https://github.com/bkaradzic/bgfx.cmake.git
-    GIT_TAG        v1.139.9155-513
-    GIT_SHALLOW    TRUE
-    SYSTEM
-    EXCLUDE_FROM_ALL
-)
-
-# Suppress bgfx examples (they pull in extra dependencies)
-set(BGFX_BUILD_EXAMPLES     OFF CACHE BOOL "Build bgfx examples" FORCE)
-set(BGFX_BUILD_TOOLS        ON  CACHE BOOL "Build bgfx tools (shaderc, texturec, geometryc)" FORCE)
-set(BGFX_INSTALL            OFF CACHE BOOL "Create installation target" FORCE)
-set(BGFX_CUSTOM_TARGETS     OFF CACHE BOOL "Include custom targets" FORCE)
-set(BGFX_AMALGAMATED       ON  CACHE BOOL "Amalgamate sources for faster builds" FORCE)
 
 # bgfx bundles third-party code (glsl-optimizer) with undefined-behavior
 # issues that crash shaderc when built with sanitizers.  Temporarily strip
@@ -34,7 +16,20 @@ string(REGEX REPLACE "-f(sanitize|no-omit-frame-pointer|profile-instr-generate|c
 string(REGEX REPLACE "-f(sanitize|no-omit-frame-pointer|profile-instr-generate|coverage-mapping)[^ ]*" "" CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
 string(REGEX REPLACE "-f(sanitize|profile-instr-generate)[^ ]*" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 
-FetchContent_MakeAvailable(bgfx)
+# bgfx.cmake bundles bx, bimg, bgfx as submodules
+CPMAddPackage(
+    NAME bgfx
+    GITHUB_REPOSITORY bkaradzic/bgfx.cmake
+    GIT_TAG v1.139.9155-513
+    OPTIONS
+        "BGFX_BUILD_EXAMPLES OFF"
+        "BGFX_BUILD_TOOLS ON"
+        "BGFX_INSTALL OFF"
+        "BGFX_CUSTOM_TARGETS OFF"
+        "BGFX_AMALGAMATED ON"
+    SYSTEM
+    EXCLUDE_FROM_ALL
+)
 
 set(CMAKE_CXX_FLAGS "${_bgfx_saved_cxx}")
 set(CMAKE_C_FLAGS   "${_bgfx_saved_c}")

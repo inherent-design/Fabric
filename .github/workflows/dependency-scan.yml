@@ -34,16 +34,18 @@ jobs:
             libasound2-dev libpulse-dev libpipewire-0.3-dev \
             libdbus-1-dev libudev-dev
 
-      - name: Cache FetchContent
+      - name: Cache CPM dependencies
         uses: actions/cache@v5
         with:
-          path: build/ci-linux-gcc/_deps
-          key: dep-scan-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          path: cpm-cache
+          key: cpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
           restore-keys: |
-            dep-scan-deps-
+            cpm-${{ runner.os }}-${{ runner.arch }}-
 
-      - name: Configure (populate _deps)
+      - name: Configure (populate dependencies)
         run: cmake --preset ci-linux-gcc
+        env:
+          CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm-cache
 
       - name: Run OSV-Scanner
         uses: google/osv-scanner-action/osv-scanner-action@v2.3.3

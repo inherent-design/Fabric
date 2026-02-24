@@ -1,22 +1,13 @@
 # FabricGoogleTest.cmake - Fetch and configure Google Test
-include(FetchContent)
 
-# Prevent installation of Google Test (must be set before FetchContent_MakeAvailable)
-set(INSTALL_GTEST OFF CACHE BOOL "Disable Google Test installation" FORCE)
-
-# Download and configure Google Test
-FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
+CPMAddPackage(
+    NAME googletest
+    GITHUB_REPOSITORY google/googletest
     GIT_TAG v1.17.0
+    OPTIONS "INSTALL_GTEST OFF"
     SYSTEM
     EXCLUDE_FROM_ALL
 )
-
-FetchContent_MakeAvailable(googletest)
-
-# GoogleTest's CMake targets (GTest::gtest, etc.) already export proper include directories.
-# No manual include_directories() needed.
 
 # Function to add a test executable
 function(add_fabric_test TEST_NAME TEST_SOURCES)
