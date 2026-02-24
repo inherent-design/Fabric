@@ -40,6 +40,19 @@ jobs:
             libasound2-dev libpulse-dev libpipewire-0.3-dev \
             libdbus-1-dev libudev-dev
 
+      - name: Cache FetchContent
+        uses: actions/cache@v5
+        with:
+          path: build/ci-linux-gcc/_deps
+          key: codeql-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          restore-keys: |
+            codeql-deps-
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: codeql-analysis
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
@@ -48,6 +61,9 @@ jobs:
 
       - name: Configure
         run: cmake --preset ci-linux-gcc
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
       - name: Build
         run: cmake --build build/ci-linux-gcc -j

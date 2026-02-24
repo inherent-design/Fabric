@@ -104,6 +104,7 @@ CPMAddPackage(
     NAME SDL3
     GITHUB_REPOSITORY libsdl-org/SDL
     GIT_TAG release-3.4.2
+    GIT_SHALLOW    TRUE
     SYSTEM
     EXCLUDE_FROM_ALL
 )
@@ -120,6 +121,7 @@ CPMAddPackage(
     NAME webview
     GITHUB_REPOSITORY webview/webview
     GIT_TAG 0.12.0
+    GIT_SHALLOW    TRUE
     SYSTEM
     EXCLUDE_FROM_ALL
 )

@@ -34,6 +34,14 @@ jobs:
             libasound2-dev libpulse-dev libpipewire-0.3-dev \
             libdbus-1-dev libudev-dev
 
+      - name: Cache FetchContent
+        uses: actions/cache@v5
+        with:
+          path: build/ci-linux-gcc/_deps
+          key: dep-scan-deps-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
+          restore-keys: |
+            dep-scan-deps-
+
       - name: Configure (populate _deps)
         run: cmake --preset ci-linux-gcc
 
