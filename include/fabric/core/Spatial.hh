@@ -484,15 +484,15 @@ template <typename T> class Matrix4x4 {
     }
 
     // Create a perspective projection matrix
-    static Matrix4x4<T> perspective(T fovY, T aspect, T near, T far) {
+    static Matrix4x4<T> perspective(T fovY, T aspect, T zNear, T zFar) {
         Matrix4x4<T> result;
 
         T f = T(1) / std::tan(fovY / T(2));
 
         result(0, 0) = f / aspect;
         result(1, 1) = f;
-        result(2, 2) = (far + near) / (near - far);
-        result(2, 3) = (T(2) * far * near) / (near - far);
+        result(2, 2) = (zFar + zNear) / (zNear - zFar);
+        result(2, 3) = (T(2) * zFar * zNear) / (zNear - zFar);
         result(3, 2) = -T(1);
         result(3, 3) = T(0);
 
@@ -500,16 +500,16 @@ template <typename T> class Matrix4x4 {
     }
 
     // Create an orthographic projection matrix
-    static Matrix4x4<T> orthographic(T left, T right, T bottom, T top, T near, T far) {
+    static Matrix4x4<T> orthographic(T left, T right, T bottom, T top, T zNear, T zFar) {
         Matrix4x4<T> result;
 
         result(0, 0) = T(2) / (right - left);
         result(1, 1) = T(2) / (top - bottom);
-        result(2, 2) = T(2) / (near - far);
+        result(2, 2) = T(2) / (zNear - zFar);
 
         result(0, 3) = (left + right) / (left - right);
         result(1, 3) = (bottom + top) / (bottom - top);
-        result(2, 3) = (near + far) / (near - far);
+        result(2, 3) = (zNear + zFar) / (zNear - zFar);
 
         return result;
     }
