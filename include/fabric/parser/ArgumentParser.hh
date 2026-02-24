@@ -11,7 +11,7 @@ class ArgumentParser {
   public:
     ArgumentParser() = default;
 
-    std::string getErrorMsg() const { return errorMsg; }
+    const std::string& getErrorMsg() const { return errorMsg; }
     bool isValid() const { return valid; }
 
     const TokenMap& getArguments() const;
