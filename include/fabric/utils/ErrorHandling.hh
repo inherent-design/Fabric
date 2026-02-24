@@ -24,7 +24,7 @@ class FabricException : public std::exception {
 [[noreturn]] void throwError(const std::string& message);
 
 // Lightweight error code for hot paths where exceptions are too expensive
-enum class ErrorCode : uint16_t {
+enum class ErrorCode : std::uint8_t {
     Ok = 0,
     BufferOverrun,
     InvalidState,

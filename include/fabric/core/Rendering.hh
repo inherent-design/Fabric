@@ -35,7 +35,7 @@ struct Plane {
     void normalize();
 };
 
-enum class CullResult {
+enum class CullResult : std::uint8_t {
     Inside,
     Outside,
     Intersect
