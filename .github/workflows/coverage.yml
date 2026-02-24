@@ -59,6 +59,8 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build/ci-coverage --output-on-failure
+        env:
+          LLVM_PROFILE_FILE: "${{ github.workspace }}/build/ci-coverage/fabric-%p.profraw"
 
       - name: Merge profiles
         run: llvm-profdata merge -sparse build/ci-coverage/fabric-*.profraw -o coverage.profdata
