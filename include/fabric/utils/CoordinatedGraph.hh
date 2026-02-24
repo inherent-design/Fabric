@@ -5,7 +5,6 @@
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
-#include <cstdint>
 #include <functional>
 #include <future>
 #include <memory>
@@ -91,7 +90,7 @@ template <typename T, typename KeyType = std::string> class CoordinatedGraph {
     /**
      * @brief Lock intent type to specify the purpose of a lock
      */
-    enum class LockIntent : std::uint8_t {
+    enum class LockIntent {
         Read,           // Intent to read without modification
         NodeModify,     // Intent to modify node data only
         GraphStructure, // Intent to modify graph structure (highest priority)
@@ -100,7 +99,7 @@ template <typename T, typename KeyType = std::string> class CoordinatedGraph {
     /**
      * @brief Status of a lock for notification callbacks
      */
-    enum class LockStatus : std::uint8_t {
+    enum class LockStatus {
         Acquired,       // Lock has been acquired
         Released,       // Lock has been released
         Preempted,      // Lock has been preempted by higher priority
@@ -111,7 +110,7 @@ template <typename T, typename KeyType = std::string> class CoordinatedGraph {
     /**
      * @brief Lock acquisition mode for resource locks
      */
-    enum class LockMode : std::uint8_t {
+    enum class LockMode {
         Shared,    // Multiple readers allowed
         Exclusive, // Single writer, no readers
         Upgrade,   // Initially shared, can be upgraded to exclusive
@@ -120,7 +119,7 @@ template <typename T, typename KeyType = std::string> class CoordinatedGraph {
     /**
      * @brief Status of a resource lock
      */
-    enum class ResourceLockStatus : std::uint8_t {
+    enum class ResourceLockStatus {
         Unlocked,  // Not locked
         Shared,    // Held in shared mode
         Exclusive, // Held in exclusive mode
@@ -131,7 +130,7 @@ template <typename T, typename KeyType = std::string> class CoordinatedGraph {
     /**
      * @brief Node states used for traversal algorithms
      */
-    enum class NodeState : std::uint8_t {
+    enum class NodeState {
         Unvisited,
         Visiting,
         Visited

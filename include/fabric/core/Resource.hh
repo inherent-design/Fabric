@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -14,7 +13,7 @@ namespace fabric {
 /**
  * @brief State of a resource in the resource management system
  */
-enum class ResourceState : std::uint8_t {
+enum class ResourceState {
     Unloaded,      // Resource is not loaded
     Loading,       // Resource is currently being loaded
     Loaded,        // Resource is fully loaded and ready to use
@@ -25,7 +24,7 @@ enum class ResourceState : std::uint8_t {
 /**
  * @brief Priority of a resource load operation
  */
-enum class ResourcePriority : std::uint8_t {
+enum class ResourcePriority {
     Lowest, // Background loading, lowest priority
     Low,    // Lower than normal priority
     Normal, // Default priority for most resources

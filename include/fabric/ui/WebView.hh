@@ -3,38 +3,7 @@
 // Check if the FABRIC_USE_WEBVIEW macro is defined
 #if defined(FABRIC_USE_WEBVIEW)
 #include "webview/webview.h"
-
-// webview.h transitively includes X11/Xlib.h → X11/X.h on Linux, which
-// defines bare-word macros (Always, None, Never, Bool, Status, Success,
-// True, False) that collide with identifiers in downstream headers
-// (GoogleTest's struct None, Quill's enum members, etc.).
-// Undefine them immediately so every TU that includes WebView.hh gets a
-// clean namespace.
-#ifdef Always
-#undef Always
 #endif
-#ifdef None
-#undef None
-#endif
-#ifdef Never
-#undef Never
-#endif
-#ifdef Bool
-#undef Bool
-#endif
-#ifdef Status
-#undef Status
-#endif
-#ifdef Success
-#undef Success
-#endif
-#ifdef True
-#undef True
-#endif
-#ifdef False
-#undef False
-#endif
-#endif // FABRIC_USE_WEBVIEW
 
 #include <functional>
 #include <memory>

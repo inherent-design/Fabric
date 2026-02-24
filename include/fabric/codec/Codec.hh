@@ -93,7 +93,7 @@ class ByteReader {
 
     std::string_view readString(size_t n) {
         auto ptr = readRaw(n);
-        return {reinterpret_cast<const char*>(ptr), n}; // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+        return {reinterpret_cast<const char*>(ptr), n};
     }
 
     size_t remaining() const { return size_ - pos_; }
@@ -185,10 +185,8 @@ class ByteWriter {
     void writeBytes(std::span<const uint8_t> data) { buf_.insert(buf_.end(), data.begin(), data.end()); }
 
     void writeString(std::string_view s) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         buf_.insert(buf_.end(), reinterpret_cast<const uint8_t*>(s.data()),
-                    reinterpret_cast<const uint8_t*>(s.data() +
-                                                     s.size())); // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+                    reinterpret_cast<const uint8_t*>(s.data() + s.size()));
     }
 
     const std::vector<uint8_t>& data() const { return buf_; }

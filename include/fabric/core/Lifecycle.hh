@@ -1,13 +1,12 @@
 #pragma once
 
 #include "fabric/core/StateMachine.hh"
-#include <cstdint>
 #include <functional>
 #include <string>
 
 namespace fabric {
 
-enum class LifecycleState : std::uint8_t {
+enum class LifecycleState {
     Created,
     Initialized,
     Rendered,

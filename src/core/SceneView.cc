@@ -39,9 +39,12 @@ void SceneView::render() {
             const auto* pos = entity.try_get<Position>();
             const auto* rot = entity.try_get<Rotation>();
             const auto* scl = entity.try_get<Scale>();
-            if (pos) t.setPosition(Vector3<float, Space::World>(pos->x, pos->y, pos->z));
-            if (rot) t.setRotation(Quaternion<float>(rot->x, rot->y, rot->z, rot->w));
-            if (scl) t.setScale(Vector3<float, Space::World>(scl->x, scl->y, scl->z));
+            if (pos)
+                t.setPosition(Vector3<float, Space::World>(pos->x, pos->y, pos->z));
+            if (rot)
+                t.setRotation(Quaternion<float>(rot->x, rot->y, rot->z, rot->w));
+            if (scl)
+                t.setScale(Vector3<float, Space::World>(scl->x, scl->y, scl->z));
             auto matrix = t.getMatrix();
             dc.transform = matrix.elements;
         }
