@@ -23,6 +23,9 @@ target_sources(UnitTests
   FieldLayerTest.cc
   SimulationTest.cc
   VoxelMesherTest.cc
+  VoxelRaycastTest.cc
+  ChunkStreamingTest.cc
+  ChunkMeshManagerTest.cc
 )
 
 set_source_files_properties(
