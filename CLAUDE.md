@@ -5,13 +5,29 @@
 Build and test via mise (preferred):
 
 ```bash
+# Build
 mise run build          # Debug build
 mise run build:release  # Release build
+
+# Lint & Format
+mise run format         # Check clang-format
+mise run format:fix     # Auto-format
+mise run lint           # clang-tidy (all files, slow)
+mise run lint:changed   # clang-tidy (git-dirty only, fast)
+mise run lint:fix       # clang-tidy with auto-fix
+mise run cppcheck       # cppcheck static analysis
+
+# Test
 mise run test           # Unit tests (with timeout)
 mise run test:e2e       # E2E tests
+mise run test:all       # Unit + E2E
 mise run test:filter X  # Filter by test name
-mise run lint           # clang-tidy
-mise run lint:fix       # clang-tidy with auto-fix
+
+# Analysis
+mise run sanitize       # ASan + UBSan
+mise run sanitize:tsan  # ThreadSanitizer
+mise run coverage       # Coverage + lcov report
+mise run codeql         # CodeQL security analysis
 ```
 
 Or with CMake presets:
@@ -158,6 +174,8 @@ pipeline.process(myString);
 `fabric/utils/ImmutableDAG.hh` is a lock-free persistent DAG with structural sharing. Each mutation returns a new version; old versions remain valid. Supports BFS, DFS, topological sort, and LCA queries.
 
 ## bgfx
+
+All dependencies are managed via CPM.cmake v0.42.1 (`cmake/CPM.cmake`). Each library has a dedicated module in `cmake/modules/Fabric*.cmake` using `CPMAddPackage()`. Set `CPM_SOURCE_CACHE=~/.cache/CPM` (configured in `mise.toml`) to share sources across builds.
 
 bgfx v1.139.9155 is fetched via `cmake/modules/FabricBgfx.cmake`. CMake targets are `bgfx`, `bx`, `bimg` (no namespace prefix). On macOS, bgfx uses Metal by default. Shader tools (shaderc, texturec, geometryc) are built alongside.
 

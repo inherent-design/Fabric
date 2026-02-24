@@ -2,7 +2,7 @@
 
 ## Overview
 
-Fabric uses GoogleTest 1.17.0 for all testing. The test suite contains 164 tests across 18 suites, organized into unit and E2E categories. Tests run in approximately 1.2 seconds.
+Fabric uses GoogleTest 1.17.0 for all testing. The test suite contains 364 tests across 38 suites, organized into unit and E2E categories. Tests run in approximately 1.7 seconds.
 
 A custom `TestMain.cc` initializes Quill logging and pauses the ThreadPoolExecutor before test execution, preventing background thread interference.
 
@@ -51,7 +51,19 @@ mise run test:filter SpatialTest     # Run specific test by name
 | `core/TemporalTest.cc` | Timeline and time processing |
 | `parser/ArgumentParserTest.cc` | CLI argument parsing |
 | `ui/WebViewTest.cc` | WebView and JS bridge |
+| `core/CameraTest.cc` | Projection, view matrix, bgfx compat |
+| `core/InputManagerTest.cc` | SDL3 event mapping, key bindings |
+| `core/SceneViewTest.cc` | Cull + render pipeline, Flecs queries |
+| `core/RenderingTest.cc` | AABB, Frustum, DrawCall, RenderList |
+| `core/ECSTest.cc` | Flecs world, ChildOf, CASCADE, LocalToWorld |
+| `core/ChunkedGridTest.cc` | Sparse 32^3 chunk storage, neighbors |
+| `core/FieldLayerTest.cc` | Typed field read/write/sample/fill |
+| `core/BVHTest.cc` | Bounding volume hierarchy, frustum queries |
+| `core/SimulationTest.cc` | Tick-based rules, deterministic ordering |
+| `core/VoxelMesherTest.cc` | Block meshing, hidden face culling |
+| `utils/BufferPoolTest.cc` | Fixed-size pool, RAII handles |
 | `utils/CoordinatedGraphTest.cc` | Graph operations and locking |
+| `utils/ImmutableDAGTest.cc` | Lock-free persistent DAG |
 | `utils/ErrorHandlingTest.cc` | Error utilities |
 | `utils/LoggingTest.cc` | Quill logging macros (FABRIC_LOG_*) |
 | `utils/UtilsTest.cc` | String utils, UUID generation |

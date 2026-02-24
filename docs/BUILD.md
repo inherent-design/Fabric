@@ -30,16 +30,19 @@ cmake --build --preset dev-debug
 
 ### CMake presets
 
-The project includes `CMakePresets.json` with 7 presets (1 hidden base, 6 visible):
+The project includes `CMakePresets.json` with 9 presets (1 hidden base, 8 visible):
 
 | Preset | Type | Notes |
 |--------|------|-------|
 | `dev-debug` | Development | Debug build, tests enabled |
 | `dev-release` | Development | Release build, tests disabled |
 | `ci-linux-gcc` | CI | Linux only, GCC |
-| `ci-linux-clang` | CI | Linux only, Clang |
+| `ci-linux-clang` | CI | Linux only, Clang (used for clang-tidy) |
 | `ci-macos` | CI | macOS only, Apple Clang |
 | `ci-windows` | CI | Windows only, MSVC/Ninja |
+| `ci-sanitize` | CI | Linux/Clang, ASan + UBSan |
+| `ci-tsan` | CI | Linux/Clang, ThreadSanitizer |
+| `ci-coverage` | CI | Linux/Clang, source-based coverage (llvm-cov) |
 
 All presets use Ninja as the generator. Build output goes to `build/<preset-name>/`.
 
@@ -50,6 +53,7 @@ All presets use Ninja as the generator. Build output goes to `build/<preset-name
 | `FABRIC_BUILD_TESTS` | `ON` | Build test executables (UnitTests, E2ETests) |
 | `FABRIC_USE_WEBVIEW` | `ON` | Enable WebView support; defines `FABRIC_USE_WEBVIEW` preprocessor symbol |
 | `FABRIC_BUILD_UNIVERSAL` | `OFF` | Build universal binaries (arm64 + x86_64), macOS only |
+| `FABRIC_USE_MIMALLOC` | `ON` | Link mimalloc global allocator override into Fabric executable |
 | `FABRIC_ENABLE_PROFILING` | `OFF` | Enable Tracy profiler instrumentation; defines `FABRIC_PROFILING_ENABLED` |
 
 ## Platform requirements
@@ -103,13 +107,27 @@ Both test executables use a custom `tests/TestMain.cc` that initializes and shut
 
 See [Testing Guide](TESTING.md) for test conventions and patterns.
 
+## Analysis
+
+```bash
+mise run sanitize           # Build and test with ASan + UBSan
+mise run sanitize:tsan      # Build and test with ThreadSanitizer
+mise run coverage           # Build with coverage, generate lcov report
+mise run codeql             # Run CodeQL security analysis locally
+```
+
+Sanitizer and coverage presets use Clang with the corresponding compiler flags. Coverage generates an lcov report at `build/ci-coverage/coverage.lcov`.
+
 ## Dependencies
 
-All dependencies are fetched automatically via CMake `FetchContent`. No manual installation is required.
+All dependencies are fetched automatically via [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) v0.42.1. No manual installation is required. Set `CPM_SOURCE_CACHE=~/.cache/CPM` (configured in `mise.toml`) to share downloaded sources across builds.
 
 | Dependency | Version | Type | Purpose |
 |------------|---------|------|---------|
+| [bgfx](https://github.com/bkaradzic/bgfx.cmake) | 1.139.9155 | Static | Multi-backend rendering (Metal, D3D11/12, Vulkan, OpenGL) |
 | [SDL3](https://github.com/libsdl-org/SDL) | 3.4.2 | Static | Windowing, input, audio, timers |
+| [Flecs](https://github.com/SanderMertens/flecs) | 4.1.4 | Static | Entity Component System (archetype SoA, query caching) |
+| [RmlUi](https://github.com/mikke89/RmlUi) | 6.0 | Static | In-game UI (HTML/CSS layout, bgfx RenderInterface, FreeType) |
 | [webview](https://github.com/webview/webview) | 0.12.0 | Static | Embedded browser view, JS bridge |
 | [GoogleTest](https://github.com/google/googletest) | 1.17.0 | Static | Testing framework (GTest + GMock) |
 | [GLM](https://github.com/g-truc/glm) | 1.0.3 | Header only | OpenGL Mathematics (vectors, matrices, quaternions) |
