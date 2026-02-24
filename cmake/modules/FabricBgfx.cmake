@@ -1,6 +1,11 @@
 # FabricBgfx.cmake - Fetch and configure bgfx rendering backend
 include(FetchContent)
 
+# bgfx requires Objective-C++ on Apple for Metal and Vulkan (MoltenVK) renderers
+if(APPLE)
+    enable_language(OBJCXX)
+endif()
+
 # bgfx.cmake bundles bx, bimg, bgfx as submodules
 FetchContent_Declare(
     bgfx
@@ -18,6 +23,18 @@ set(BGFX_INSTALL            OFF CACHE BOOL "Create installation target" FORCE)
 set(BGFX_CUSTOM_TARGETS     OFF CACHE BOOL "Include custom targets" FORCE)
 
 FetchContent_MakeAvailable(bgfx)
+
+# Xcode 26+ SDK requires ObjC++ for Foundation headers included transitively
+# by bgfx Vulkan (via MoltenVK) and WebGPU renderers. Without this, pure C++
+# compilation fails with "unknown type name 'NSString'" errors.
+if(APPLE AND TARGET bgfx)
+    set_source_files_properties(
+        "${bgfx_SOURCE_DIR}/bgfx/src/renderer_vk.cpp"
+        "${bgfx_SOURCE_DIR}/bgfx/src/renderer_webgpu.cpp"
+        TARGET_DIRECTORY bgfx
+        PROPERTIES LANGUAGE OBJCXX
+    )
+endif()
 
 # Homebrew LLVM ships a newer libc++ than the macOS system; shaderc needs
 # the same rpath fix as FabricLib so __hash_memory resolves at link time.
