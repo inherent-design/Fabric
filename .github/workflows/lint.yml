@@ -80,8 +80,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          style: ""
-          tidy-checks: ""
+          style: ""              # disabled; format-check job handles formatting
+          tidy-checks: ""        # uses .clang-tidy config at repo root
           database: build/ci-linux-clang
           files-changed-only: true
           thread-comments: true

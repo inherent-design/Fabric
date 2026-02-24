@@ -63,18 +63,18 @@ jobs:
           LLVM_PROFILE_FILE: "${{ github.workspace }}/build/ci-coverage/fabric-%p.profraw"
 
       - name: Merge profiles
-        run: llvm-profdata merge -sparse build/ci-coverage/fabric-*.profraw -o coverage.profdata
+        run: llvm-profdata merge -sparse build/ci-coverage/fabric-*.profraw -o build/ci-coverage/coverage.profdata
 
       - name: Generate lcov report
         run: |
           llvm-cov export \
             build/ci-coverage/bin/UnitTests \
-            -instr-profile=coverage.profdata \
+            -instr-profile=build/ci-coverage/coverage.profdata \
             -format=lcov \
             -ignore-filename-regex='build/|_deps/|tests/' \
-            > coverage.lcov
+            > build/ci-coverage/coverage.lcov
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
         with:
-          files: coverage.lcov
+          files: build/ci-coverage/coverage.lcov
