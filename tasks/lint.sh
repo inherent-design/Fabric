@@ -5,11 +5,11 @@
 # Requires: compile_commands.json in build dir (cmake generates this)
 set -eu
 
-build_dir="${BUILD_DIR:-build}"
+build_dir="${BUILD_DIR:-build/dev-debug}"
 
 if [ ! -f "${build_dir}/compile_commands.json" ]; then
-  echo "No compile_commands.json found. Configuring build first."
-  cmake -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B "${build_dir}"
+  echo "No compile_commands.json found. Running build first."
+  sh "$(dirname "$0")/build.sh"
 fi
 
 fix_flag=""

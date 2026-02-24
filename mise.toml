@@ -40,7 +40,7 @@ run = "sh tasks/build.sh"
 [tasks."build:release"]
 alias = "br"
 description = "Configure and build (Release)"
-run = "BUILD_TYPE=Release sh tasks/build.sh"
+run = "BUILD_PRESET=dev-release sh tasks/build.sh"
 
 #
 # Lint & Format
