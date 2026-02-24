@@ -367,10 +367,15 @@ if(WIN32)
     message(STATUS "Configuring for Windows")
 
     # Target Windows 10 (required by SDL3 and WebView2)
+    # NOMINMAX: prevent <windows.h> from defining min/max macros that break
+    # std::numeric_limits<T>::max() in Quill and other template code.
+    # WIN32_LEAN_AND_MEAN: exclude rarely-used Windows headers, speeds compilation.
     target_compile_definitions(FabricLib PUBLIC
         _WIN32_WINNT=0x0A00
         WINVER=0x0A00
         NTDDI_VERSION=0x0A000007
+        NOMINMAX
+        WIN32_LEAN_AND_MEAN
     )
 
     # Configure as Windows GUI application

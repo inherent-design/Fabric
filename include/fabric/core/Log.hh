@@ -8,6 +8,36 @@
 //   FABRIC_LOG_INFO("Server started on port {}", port);
 //   FABRIC_LOG_ERROR("Failed to load resource: {}", resource_id);
 
+// Neutralize X11 macro pollution.  <X11/X.h> (included transitively by
+// WebKitGTK and other Linux system headers) defines bare-word macros that
+// collide with Quill's enum member names (e.g. Always, None, Never).
+// Undefining them here keeps the Quill headers parseable regardless of
+// include order.
+#ifdef Always
+#  undef Always
+#endif
+#ifdef None
+#  undef None
+#endif
+#ifdef Never
+#  undef Never
+#endif
+#ifdef Bool
+#  undef Bool
+#endif
+#ifdef Status
+#  undef Status
+#endif
+#ifdef Success
+#  undef Success
+#endif
+#ifdef True
+#  undef True
+#endif
+#ifdef False
+#  undef False
+#endif
+
 #include <quill/Backend.h>
 #include <quill/Frontend.h>
 #include <quill/LogMacros.h>
