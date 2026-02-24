@@ -21,8 +21,17 @@ description = "Configure and build (Release)"
 run = "BUILD_TYPE=Release sh tasks/build.sh"
 
 #
-# Lint
+# Lint & Format
 #
+
+[tasks.format]
+alias = "fmt"
+description = "Check clang-format on source files"
+run = "sh tasks/format.sh"
+
+[tasks."format:fix"]
+description = "Auto-format source files"
+run = "FORMAT_FIX=1 sh tasks/format.sh"
 
 [tasks.lint]
 description = "Run clang-tidy on source files"
@@ -32,6 +41,10 @@ run = "sh tasks/lint.sh"
 alias = "fix"
 description = "Run clang-tidy with auto-fix"
 run = "LINT_FIX=1 sh tasks/lint.sh"
+
+[tasks.cppcheck]
+description = "Run cppcheck static analysis"
+run = "sh tasks/cppcheck.sh"
 
 #
 # Test
@@ -59,3 +72,19 @@ description = "Run unit tests with gtest filter"
 depends = ["build"]
 usage = 'arg "filter" help="gtest --gtest_filter value"'
 run = "TEST_FILTER=\"{{arg(name='filter')}}\" sh tasks/test.sh"
+
+#
+# Analysis
+#
+
+[tasks.sanitize]
+description = "Build and test with ASan + UBSan"
+run = "sh tasks/sanitize.sh"
+
+[tasks."sanitize:tsan"]
+description = "Build and test with ThreadSanitizer"
+run = "SANITIZE_PRESET=ci-tsan sh tasks/sanitize.sh"
+
+[tasks.coverage]
+description = "Build with coverage and generate lcov report"
+run = "sh tasks/coverage.sh"
