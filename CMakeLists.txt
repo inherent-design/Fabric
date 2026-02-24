@@ -147,6 +147,9 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/ECS.cc
     src/core/Simulation.cc
     src/core/VoxelMesher.cc
+    src/core/VoxelRaycast.cc
+    src/core/ChunkStreaming.cc
+    src/core/ChunkMeshManager.cc
 )
 
 # Utils library components
