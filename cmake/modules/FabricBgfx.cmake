@@ -16,6 +16,11 @@ string(REGEX REPLACE "-f(sanitize|no-omit-frame-pointer|profile-instr-generate|c
 string(REGEX REPLACE "-f(sanitize|no-omit-frame-pointer|profile-instr-generate|coverage-mapping)[^ ]*" "" CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
 string(REGEX REPLACE "-f(sanitize|profile-instr-generate)[^ ]*" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 
+# bgfx requires Objective-C++ on Apple for Metal and Vulkan (MoltenVK) renderers
+if(APPLE)
+    enable_language(OBJCXX)
+endif()
+
 # bgfx.cmake bundles bx, bimg, bgfx as submodules
 CPMAddPackage(
     NAME bgfx
@@ -34,6 +39,18 @@ CPMAddPackage(
 set(CMAKE_CXX_FLAGS "${_bgfx_saved_cxx}")
 set(CMAKE_C_FLAGS   "${_bgfx_saved_c}")
 set(CMAKE_EXE_LINKER_FLAGS "${_bgfx_saved_exe}")
+
+# Xcode 26+ SDK requires ObjC++ for Foundation headers included transitively
+# by bgfx Vulkan (via MoltenVK) and WebGPU renderers. Without this, pure C++
+# compilation fails with "unknown type name 'NSString'" errors.
+if(APPLE AND TARGET bgfx)
+    set_source_files_properties(
+        "${bgfx_SOURCE_DIR}/bgfx/src/renderer_vk.cpp"
+        "${bgfx_SOURCE_DIR}/bgfx/src/renderer_webgpu.cpp"
+        TARGET_DIRECTORY bgfx
+        PROPERTIES LANGUAGE OBJCXX
+    )
+endif()
 
 # Xcode 26+ SDK requires ObjC++ for Foundation headers included transitively
 # by bgfx Vulkan (via MoltenVK) and WebGPU renderers. Without this, pure C++
