@@ -1,5 +1,18 @@
 [tools]
 cmake = "latest"
+codeql = { version = "latest", bin_path = "codeql", platforms = """
+[linux-x64]
+asset_pattern = "codeql-linux64.zip"
+
+[macos-arm64]
+asset_pattern = "codeql-osx64.zip"
+
+[macos-x64]
+asset_pattern = "codeql-osx64.zip"
+
+[windows-x64]
+asset_pattern = "codeql-win64.zip"
+""" }
 ninja = "latest"
 
 # LLVM: Homebrew manages install (macOS ABI compatibility),
@@ -101,3 +114,8 @@ run = "SANITIZE_PRESET=ci-tsan sh tasks/sanitize.sh"
 [tasks.coverage]
 description = "Build with coverage and generate lcov report"
 run = "sh tasks/coverage.sh"
+
+[tasks.codeql]
+description = "Run CodeQL security analysis locally"
+depends = ["build"]
+run = "sh tasks/codeql.sh"
