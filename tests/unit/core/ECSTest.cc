@@ -2,6 +2,7 @@
 #include "fabric/core/Spatial.hh"
 
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 #include <vector>
