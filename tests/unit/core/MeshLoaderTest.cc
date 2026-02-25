@@ -2,6 +2,7 @@
 #include "fabric/utils/ErrorHandling.hh"
 #include <fstream>
 #include <gtest/gtest.h>
+#include <ozz/animation/runtime/skeleton.h>
 
 using namespace fabric;
 
@@ -69,4 +70,41 @@ TEST_F(MeshLoaderTest, SkeletonCanHold100Joints) {
     EXPECT_EQ(data.skeleton.size(), 100u);
     EXPECT_EQ(data.skeleton[0].parentIndex, -1);
     EXPECT_EQ(data.skeleton[99].parentIndex, 98);
+}
+
+TEST_F(MeshLoaderTest, BuildOzzSkeletonFromJointInfo) {
+    std::vector<JointInfo> joints(3);
+    joints[0].name = "root";
+    joints[0].parentIndex = -1;
+    joints[1].name = "spine";
+    joints[1].parentIndex = 0;
+    joints[2].name = "head";
+    joints[2].parentIndex = 1;
+
+    auto skeleton = buildOzzSkeleton(joints);
+    ASSERT_NE(skeleton, nullptr);
+    EXPECT_EQ(skeleton->num_joints(), 3);
+}
+
+TEST_F(MeshLoaderTest, BuildOzzSkeletonEmpty) {
+    std::vector<JointInfo> empty;
+    auto skeleton = buildOzzSkeleton(empty);
+    EXPECT_EQ(skeleton, nullptr);
+}
+
+TEST_F(MeshLoaderTest, SyntheticSkinnedMeshEndToEnd) {
+    MeshData mesh;
+    mesh.positions.resize(4);
+    mesh.indices = {0, 1, 2, 0, 2, 3};
+
+    mesh.skeleton.resize(2);
+    mesh.skeleton[0].name = "root";
+    mesh.skeleton[0].parentIndex = -1;
+    mesh.skeleton[1].name = "child";
+    mesh.skeleton[1].parentIndex = 0;
+
+    auto skeleton = buildOzzSkeleton(mesh.skeleton);
+    ASSERT_NE(skeleton, nullptr);
+    EXPECT_EQ(skeleton->num_joints(), 2);
+    EXPECT_GT(skeleton->num_soa_joints(), 0);
 }
