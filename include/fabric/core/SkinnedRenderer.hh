@@ -8,8 +8,9 @@
 
 namespace fabric {
 
-// Maximum joints uploadable to the GPU skinning shader uniform array
-inline constexpr int kMaxGpuJoints = 100;
+// Maximum joints uploadable to the GPU skinning shader uniform array.
+// Derived from kMaxJoints in Animation.hh to keep a single source of truth.
+inline constexpr int kMaxGpuJoints = kMaxJoints;
 
 // bgfx vertex layout for skinned meshes:
 // pos(float3) + normal(float3) + uv(float2) + joints(uint8x4) + weights(float4)

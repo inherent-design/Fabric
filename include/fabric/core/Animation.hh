@@ -19,8 +19,9 @@
 
 namespace fabric {
 
-// Maximum joints supported for humanoid characters (60-100 bones)
-inline constexpr int kMaxJoints = 128;
+// Maximum joints supported for humanoid characters (60-100 bones).
+// Aligned with GPU uniform array limit (kMaxGpuJoints in SkinnedRenderer.hh).
+inline constexpr int kMaxJoints = 100;
 
 // ECS component: shared skeleton reference
 struct Skeleton {
@@ -85,6 +86,14 @@ class AnimationSampler {
 
   private:
     ozz::animation::SamplingJob::Context context_;
+    // Cache: inverse bind matrices computed once per skeleton
+    ozz::vector<ozz::math::Float4x4> cachedInvBindMatrices_;
+    int cachedSkeletonJointCount_ = -1; // invalidation key
+};
+
+// ECS component: per-entity animation sampler (caches ozz SamplingJob context)
+struct AnimationSamplerComponent {
+    AnimationSampler sampler;
 };
 
 // Flecs system that queries entities with (Skeleton, AnimationState, SkinningData)
