@@ -20,7 +20,7 @@ struct CaveConfig {
 // producing worm-like tunnels rather than random holes.
 class CaveCarver {
   public:
-    explicit CaveCarver(CaveConfig config);
+    explicit CaveCarver(const CaveConfig& config);
 
     // Carve caves into the density field within the given AABB region.
     // Density values are reduced where cave noise exceeds threshold.

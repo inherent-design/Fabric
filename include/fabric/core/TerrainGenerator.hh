@@ -28,7 +28,7 @@ struct TerrainConfig {
 // Essence is derived from 3D position and density gradient.
 class TerrainGenerator {
   public:
-    explicit TerrainGenerator(TerrainConfig config);
+    explicit TerrainGenerator(const TerrainConfig& config);
 
     void generate(FieldLayer<float>& density, FieldLayer<Vector4<float, Space::World>>& essence, const AABB& region);
 

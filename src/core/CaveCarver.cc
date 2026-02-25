@@ -9,7 +9,7 @@
 
 namespace fabric {
 
-CaveCarver::CaveCarver(CaveConfig config) : config_(config) {}
+CaveCarver::CaveCarver(const CaveConfig& config) : config_(config) {}
 
 const CaveConfig& CaveCarver::config() const {
     return config_;
