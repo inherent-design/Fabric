@@ -191,7 +191,7 @@ std::shared_ptr<ozz::animation::Skeleton> buildOzzSkeleton(const std::vector<Joi
     // Recursive helper to build joint tree from flat parent-index array
     std::function<void(ozz::animation::offline::RawSkeleton::Joint&, int)> buildJoint;
     buildJoint = [&](ozz::animation::offline::RawSkeleton::Joint& joint, int index) {
-        joint.name = joints[static_cast<size_t>(index)].name.c_str();
+        joint.name = joints[static_cast<size_t>(index)].name;
         joint.transform = ozz::math::Transform::identity();
 
         for (size_t i = 0; i < joints.size(); ++i) {
