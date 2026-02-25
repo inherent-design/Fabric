@@ -113,29 +113,37 @@ AnimationSampler::computeSkinningMatrices(const ozz::animation::Skeleton& skelet
     FABRIC_ZONE_SCOPED;
 
     const int numJoints = skeleton.num_joints();
-    const auto& restPoses = skeleton.joint_rest_poses();
 
-    // Compute inverse bind matrices from the rest pose using LocalToModelJob.
-    // The inverse bind matrix for each joint is the inverse of its model-space
-    // rest pose transform.
-    ozz::vector<ozz::math::SoaTransform> restLocals(restPoses.begin(), restPoses.end());
-    ozz::vector<ozz::math::Float4x4> restModels;
-    restModels.resize(static_cast<size_t>(numJoints));
+    // Cache inverse bind matrices per skeleton. They are constant for a given
+    // skeleton, so we only recompute when the joint count changes (new skeleton).
+    if (cachedSkeletonJointCount_ != numJoints) {
+        const auto& restPoses = skeleton.joint_rest_poses();
+        ozz::vector<ozz::math::SoaTransform> restLocals(restPoses.begin(), restPoses.end());
+        ozz::vector<ozz::math::Float4x4> restModels;
+        restModels.resize(static_cast<size_t>(numJoints));
 
-    ozz::animation::LocalToModelJob restLtm;
-    restLtm.skeleton = &skeleton;
-    restLtm.input = ozz::make_span(restLocals);
-    restLtm.output = ozz::make_span(restModels);
-    if (!restLtm.Run()) {
-        throwError("AnimationSampler::computeSkinningMatrices: rest pose LocalToModelJob failed");
+        ozz::animation::LocalToModelJob restLtm;
+        restLtm.skeleton = &skeleton;
+        restLtm.input = ozz::make_span(restLocals);
+        restLtm.output = ozz::make_span(restModels);
+        if (!restLtm.Run()) {
+            throwError("AnimationSampler::computeSkinningMatrices: rest pose LocalToModelJob failed");
+        }
+
+        // Invert each rest-pose model matrix and store in cache
+        cachedInvBindMatrices_.resize(static_cast<size_t>(numJoints));
+        for (int i = 0; i < numJoints; ++i) {
+            Matrix4x4<float> restModel = ozzToMatrix4x4(restModels[static_cast<size_t>(i)]);
+            cachedInvBindMatrices_[static_cast<size_t>(i)] = matrix4x4ToOzz(restModel.inverse());
+        }
+        cachedSkeletonJointCount_ = numJoints;
     }
 
     std::vector<Matrix4x4<float>> skinning(static_cast<size_t>(numJoints));
     for (int i = 0; i < numJoints; ++i) {
-        // skinMatrix = modelMatrix * inverse(restPoseModelMatrix)
-        Matrix4x4<float> model = ozzToMatrix4x4(models[static_cast<size_t>(i)]);
-        Matrix4x4<float> invBind = ozzToMatrix4x4(restModels[static_cast<size_t>(i)]).inverse();
-        skinning[static_cast<size_t>(i)] = model * invBind;
+        // skinMatrix = modelMatrix * cachedInverseBindMatrix
+        skinning[static_cast<size_t>(i)] = ozzToMatrix4x4(models[static_cast<size_t>(i)]) *
+                                           ozzToMatrix4x4(cachedInvBindMatrices_[static_cast<size_t>(i)]);
     }
 
     return skinning;
@@ -144,8 +152,9 @@ AnimationSampler::computeSkinningMatrices(const ozz::animation::Skeleton& skelet
 // --- AnimationSystem (Flecs) ---
 
 void registerAnimationSystem(flecs::world& world) {
-    world.system<Skeleton, AnimationState, SkinningData>("AnimationSystem")
-        .each([](flecs::entity /*entity*/, Skeleton& skel, AnimationState& state, SkinningData& skinning) {
+    world.system<Skeleton, AnimationState, SkinningData, AnimationSamplerComponent>("AnimationSystem")
+        .each([](flecs::entity entity, Skeleton& skel, AnimationState& state, SkinningData& skinning,
+                 AnimationSamplerComponent& samplerComp) {
             if (!skel.skeleton || !state.clip || !state.playing) {
                 return;
             }
@@ -156,8 +165,10 @@ void registerAnimationSystem(flecs::world& world) {
 
             // Advance time
             if (duration > 0.0f) {
-                // Use world delta_time if available; fall back to 1/60
-                float dt = 1.0f / 60.0f;
+                float dt = entity.world().delta_time();
+                if (dt <= 0.0f) {
+                    dt = 1.0f / 60.0f; // fallback for first frame
+                }
                 state.time += dt * state.speed;
 
                 if (state.loop) {
@@ -182,8 +193,8 @@ void registerAnimationSystem(flecs::world& world) {
             // Compute ratio [0,1]
             float ratio = (duration > 0.0f) ? (state.time / duration) : 0.0f;
 
-            // Sample, local-to-model, skinning
-            AnimationSampler sampler;
+            // Sample, local-to-model, skinning (reuse per-entity sampler)
+            auto& sampler = samplerComp.sampler;
             ozz::vector<ozz::math::SoaTransform> locals;
             sampler.sample(clip, skeleton, ratio, locals);
 

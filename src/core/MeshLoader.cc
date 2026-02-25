@@ -8,6 +8,11 @@
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
 
+#include <functional>
+#include <ozz/animation/offline/raw_skeleton.h>
+#include <ozz/animation/offline/skeleton_builder.h>
+#include <ozz/base/memory/allocator.h>
+
 namespace fabric {
 
 MeshData MeshLoader::load(const std::filesystem::path& path) {
@@ -167,6 +172,55 @@ MeshData MeshLoader::load(const std::filesystem::path& path) {
     }
 
     return result;
+}
+
+namespace {
+// ozz allocates via its own aligned allocator; must use ozz::Delete for cleanup
+struct OzzSkeletonDeleter {
+    void operator()(ozz::animation::Skeleton* p) const { ozz::Delete(p); }
+};
+} // namespace
+
+std::shared_ptr<ozz::animation::Skeleton> buildOzzSkeleton(const std::vector<JointInfo>& joints) {
+    if (joints.empty()) {
+        return nullptr;
+    }
+
+    ozz::animation::offline::RawSkeleton rawSkeleton;
+
+    // Recursive helper to build joint tree from flat parent-index array
+    std::function<void(ozz::animation::offline::RawSkeleton::Joint&, int)> buildJoint;
+    buildJoint = [&](ozz::animation::offline::RawSkeleton::Joint& joint, int index) {
+        joint.name = joints[static_cast<size_t>(index)].name;
+        joint.transform = ozz::math::Transform::identity();
+
+        for (size_t i = 0; i < joints.size(); ++i) {
+            if (joints[i].parentIndex == index) {
+                joint.children.resize(joint.children.size() + 1);
+                buildJoint(joint.children.back(), static_cast<int>(i));
+            }
+        }
+    };
+
+    // Find root joints (parentIndex == -1)
+    for (size_t i = 0; i < joints.size(); ++i) {
+        if (joints[i].parentIndex == -1) {
+            rawSkeleton.roots.resize(rawSkeleton.roots.size() + 1);
+            buildJoint(rawSkeleton.roots.back(), static_cast<int>(i));
+        }
+    }
+
+    if (!rawSkeleton.Validate()) {
+        return nullptr;
+    }
+
+    ozz::animation::offline::SkeletonBuilder builder;
+    auto skeleton = builder(rawSkeleton);
+    if (!skeleton) {
+        return nullptr;
+    }
+
+    return std::shared_ptr<ozz::animation::Skeleton>(skeleton.release(), OzzSkeletonDeleter{});
 }
 
 } // namespace fabric

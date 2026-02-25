@@ -5,11 +5,13 @@
 #include "fabric/core/Spatial.hh"
 #include <bgfx/bgfx.h>
 #include <cstdint>
+#include <unordered_map>
 
 namespace fabric {
 
-// Maximum joints uploadable to the GPU skinning shader uniform array
-inline constexpr int kMaxGpuJoints = 100;
+// Maximum joints uploadable to the GPU skinning shader uniform array.
+// Derived from kMaxJoints in Animation.hh to keep a single source of truth.
+inline constexpr int kMaxGpuJoints = kMaxJoints;
 
 // bgfx vertex layout for skinned meshes:
 // pos(float3) + normal(float3) + uv(float2) + joints(uint8x4) + weights(float4)
@@ -43,6 +45,15 @@ class SkinnedRenderer {
     bgfx::VertexLayout layout_;
     bgfx::ProgramHandle program_;
     bgfx::UniformHandle uniformJointMatrices_;
+
+    // Cache: static vertex/index buffers per mesh pointer (geometry is immutable)
+    struct MeshBufferCache {
+        bgfx::VertexBufferHandle vbh = BGFX_INVALID_HANDLE;
+        bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
+        size_t vertexCount = 0;
+        size_t indexCount = 0;
+    };
+    std::unordered_map<const void*, MeshBufferCache> meshBufferCache_;
 };
 
 } // namespace fabric

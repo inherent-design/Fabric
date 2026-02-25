@@ -168,3 +168,29 @@ TEST_F(ShadowSystemTest, ViewIdReservation) {
     EXPECT_EQ(ShadowSystem::kShadowViewBase, 240);
     EXPECT_EQ(ShadowSystem::kMaxCascades, 4);
 }
+
+TEST_F(ShadowSystemTest, TexelSnapping) {
+    ShadowConfig cfg;
+    cfg.cascadeCount = 1;
+    cfg.cascadeResolution = {1024, 0, 0, 0};
+    ShadowSystem shadow(cfg);
+
+    Vector3<float, Space::World> lightDir(0.0f, -1.0f, 0.5f);
+
+    Transform<float> t;
+    t.setPosition(Vector3<float, Space::World>(5.3f, 10.0f, 7.8f));
+    camera.updateView(t);
+    shadow.update(camera, lightDir);
+    auto cascade = shadow.getCascadeData(0);
+
+    // Verify translation components are quantized to texel grid.
+    // NDC texel size for 1024 resolution = 2.0 / 1024 = 0.001953125
+    float ndcTexelSize = 2.0f / 1024.0f;
+
+    // mtx[12] and mtx[13] should be exact multiples of ndcTexelSize
+    float snapX = cascade.lightViewProj[12] / ndcTexelSize;
+    float snapY = cascade.lightViewProj[13] / ndcTexelSize;
+
+    EXPECT_FLOAT_EQ(snapX, std::floor(snapX));
+    EXPECT_FLOAT_EQ(snapY, std::floor(snapY));
+}

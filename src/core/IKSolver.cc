@@ -218,11 +218,15 @@ FABRIKResult solveFABRIK(const std::vector<Vec3f>& chain, const Vec3f& target, f
 void applyIKToSkeleton(ozz::vector<ozz::math::SoaTransform>& locals, int jointIndex, const Quatf& rotation) {
     FABRIC_ZONE_SCOPED;
 
+    if (jointIndex < 0) {
+        return;
+    }
+
     // ozz SoA packs 4 joints per SoaTransform element
     int soaIndex = jointIndex / 4;
     int laneIndex = jointIndex % 4;
 
-    if (soaIndex < 0 || static_cast<size_t>(soaIndex) >= locals.size()) {
+    if (static_cast<size_t>(soaIndex) >= locals.size()) {
         return;
     }
 
