@@ -37,7 +37,7 @@ ShadowConfig presetConfig(ShadowQualityPreset preset) {
     return cfg;
 }
 
-ShadowSystem::ShadowSystem(ShadowConfig config) : config_(config) {}
+ShadowSystem::ShadowSystem(const ShadowConfig& config) : config_(config) {}
 
 void ShadowSystem::setConfig(const ShadowConfig& config) {
     config_ = config;

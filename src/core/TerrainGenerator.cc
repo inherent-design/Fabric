@@ -9,7 +9,7 @@
 
 namespace fabric {
 
-TerrainGenerator::TerrainGenerator(TerrainConfig config) : config_(config) {}
+TerrainGenerator::TerrainGenerator(const TerrainConfig& config) : config_(config) {}
 
 const TerrainConfig& TerrainGenerator::config() const {
     return config_;
