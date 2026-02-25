@@ -6,8 +6,6 @@
     "C_Cpp.default.intelliSenseMode": "macos-clang-arm64",
     "C_Cpp.errorSquiggles": "enabled",
     "C_Cpp.autocompleteAddParentheses": true,
-    // When compile_commands.json exists, prefer it over manual include paths.
-    // If cmake-tools is active, it can also act as the configuration provider.
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
 
     // -- CMake Tools --
@@ -23,13 +21,20 @@
     "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
     "cmake.parallelJobs": 0,
 
+    // -- Clang-Format --
+    "clang-format.style": "file",
+    "clang-format.fallbackStyle": "LLVM",
+
     // -- File Associations --
     "files.associations": {
         "*.hh": "cpp",
         "*.cc": "cpp",
         "*.g.hh": "cpp",
         "*.g.hh.in": "cmake",
-        "CMakeLists.txt": "cmake"
+        "*.sc": "c",
+        "CMakeLists.txt": "cmake",
+        "*.rml": "html",
+        "*.rcss": "css"
     },
 
     // -- Editor (C++ files) --
@@ -37,7 +42,7 @@
         "editor.tabSize": 4,
         "editor.insertSpaces": true,
         "editor.formatOnSave": false,
-        "editor.defaultFormatter": "ms-vscode.cpptools"
+        "editor.defaultFormatter": "xaver.clang-format"
     },
     "[cmake]": {
         "editor.tabSize": 4,
@@ -58,8 +63,6 @@
     },
 
     // -- Terminal --
-    // mise shims on PATH ensure cmake/ninja resolve correctly in the integrated terminal.
-    // If tools are not found, run: mise install
     "terminal.integrated.env.osx": {
         "PATH": "${env:HOME}/.local/share/mise/shims:${env:PATH}"
     }

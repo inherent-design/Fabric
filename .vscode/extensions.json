@@ -3,7 +3,8 @@
         "ms-vscode.cpptools",
         "ms-vscode.cmake-tools",
         "vadimcn.vscode-lldb",
-        "hverlin.mise-vscode"
+        "hverlin.mise-vscode",
+        "xaver.clang-format"
     ],
     "unwantedRecommendations": []
 }
