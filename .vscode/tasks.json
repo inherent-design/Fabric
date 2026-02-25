@@ -5,41 +5,25 @@
             "label": "build",
             "type": "shell",
             "command": "mise",
-            "args": [
-                "run",
-                "build"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "problemMatcher": [
-                "$gcc"
-            ],
+            "args": ["run", "build"],
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": ["$gcc"],
             "detail": "Configure and build (Debug)"
         },
         {
             "label": "build:release",
             "type": "shell",
             "command": "mise",
-            "args": [
-                "run",
-                "build:release"
-            ],
+            "args": ["run", "build:release"],
             "group": "build",
-            "problemMatcher": [
-                "$gcc"
-            ],
+            "problemMatcher": ["$gcc"],
             "detail": "Configure and build (Release)"
         },
         {
             "label": "clean",
             "type": "shell",
             "command": "mise",
-            "args": [
-                "run",
-                "clean"
-            ],
+            "args": ["run", "clean"],
             "problemMatcher": [],
             "detail": "Remove build artifacts"
         },
@@ -47,75 +31,91 @@
             "label": "test",
             "type": "shell",
             "command": "mise",
-            "args": [
-                "run",
-                "test"
-            ],
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
-            "problemMatcher": [
-                "$gcc"
-            ],
-            "detail": "Build and run unit tests"
+            "args": ["run", "test"],
+            "group": { "kind": "test", "isDefault": true },
+            "problemMatcher": ["$gcc"],
+            "detail": "Run unit tests"
         },
         {
             "label": "test:all",
             "type": "shell",
             "command": "mise",
-            "args": [
-                "run",
-                "test:all"
-            ],
+            "args": ["run", "test:all"],
             "group": "test",
-            "problemMatcher": [
-                "$gcc"
-            ],
-            "detail": "Build and run all tests"
+            "problemMatcher": ["$gcc"],
+            "detail": "Run unit + E2E tests"
+        },
+        {
+            "label": "format",
+            "type": "shell",
+            "command": "mise",
+            "args": ["run", "format"],
+            "problemMatcher": [],
+            "detail": "Check clang-format compliance"
+        },
+        {
+            "label": "format:fix",
+            "type": "shell",
+            "command": "mise",
+            "args": ["run", "format:fix"],
+            "problemMatcher": [],
+            "detail": "Auto-format all source files"
         },
         {
             "label": "lint",
             "type": "shell",
             "command": "mise",
-            "args": [
-                "run",
-                "lint"
-            ],
-            "problemMatcher": [
-                "$gcc"
-            ],
-            "detail": "Run clang-tidy on source files"
+            "args": ["run", "lint"],
+            "problemMatcher": ["$gcc"],
+            "detail": "Run clang-tidy on all source files"
+        },
+        {
+            "label": "lint:changed",
+            "type": "shell",
+            "command": "mise",
+            "args": ["run", "lint:changed"],
+            "problemMatcher": ["$gcc"],
+            "detail": "Run clang-tidy on git-dirty files only"
         },
         {
             "label": "lint:fix",
             "type": "shell",
             "command": "mise",
-            "args": [
-                "run",
-                "lint:fix"
-            ],
-            "problemMatcher": [
-                "$gcc"
-            ],
+            "args": ["run", "lint:fix"],
+            "problemMatcher": ["$gcc"],
             "detail": "Run clang-tidy with auto-fix"
         },
         {
-            "label": "cmake-configure",
+            "label": "cppcheck",
+            "type": "shell",
+            "command": "mise",
+            "args": ["run", "cppcheck"],
+            "problemMatcher": ["$gcc"],
+            "detail": "Run cppcheck static analysis"
+        },
+        {
+            "label": "sanitize",
+            "type": "shell",
+            "command": "mise",
+            "args": ["run", "sanitize"],
+            "problemMatcher": ["$gcc"],
+            "detail": "Build and test with ASan + UBSan"
+        },
+        {
+            "label": "sanitize:tsan",
+            "type": "shell",
+            "command": "mise",
+            "args": ["run", "sanitize:tsan"],
+            "problemMatcher": ["$gcc"],
+            "detail": "Build and test with ThreadSanitizer"
+        },
+        {
+            "label": "cmake-configure (preset)",
             "type": "shell",
             "command": "cmake",
-            "args": [
-                "-G",
-                "Ninja",
-                "-B",
-                "build",
-                "-DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++",
-                "-DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang",
-                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
-                "-DCMAKE_BUILD_TYPE=Debug"
-            ],
+            "args": ["--preset", "dev-debug"],
             "problemMatcher": [],
-            "detail": "Run CMake configure step (generates compile_commands.json)"
+            "detail": "Run CMake configure with dev-debug preset"
         }
     ]
 }
