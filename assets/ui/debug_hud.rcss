@@ -1,0 +1,38 @@
+body {
+    font-family: monospace;
+    font-size: 14dp;
+    color: #e0e0e0;
+}
+
+#debug-panel {
+    position: fixed;
+    top: 8dp;
+    left: 8dp;
+    padding: 8dp 12dp;
+    background-color: #00000099;
+    border: 1dp #ffffff33;
+    width: 320dp;
+}
+
+.label {
+    color: #888888;
+    display: inline;
+}
+
+.value {
+    color: #ffffff;
+    display: inline;
+}
+
+.row {
+    margin-bottom: 2dp;
+}
+
+.section-title {
+    color: #aaaaaa;
+    font-size: 12dp;
+    margin-top: 4dp;
+    margin-bottom: 2dp;
+    border-bottom: 1dp #ffffff22;
+    padding-bottom: 2dp;
+}
