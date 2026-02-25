@@ -143,6 +143,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/Rendering.cc
     src/core/Camera.cc
     src/core/InputManager.cc
+    src/core/InputRouter.cc
     src/core/SceneView.cc
     src/core/ECS.cc
     src/core/Simulation.cc
@@ -150,6 +151,14 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/VoxelRaycast.cc
     src/core/ChunkStreaming.cc
     src/core/ChunkMeshManager.cc
+    src/core/MovementFSM.cc
+    src/core/CharacterController.cc
+    src/core/CameraController.cc
+    src/core/VoxelInteraction.cc
+    src/core/MeleeSystem.cc
+    src/core/FlightController.cc
+    src/core/TransitionController.cc
+    src/core/DashController.cc
 )
 
 # Utils library components

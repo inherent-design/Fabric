@@ -17,6 +17,7 @@ target_sources(UnitTests
   RenderingTest.cc
   CameraTest.cc
   InputManagerTest.cc
+  InputRouterTest.cc
   SceneViewTest.cc
   ECSTest.cc
   ChunkedGridTest.cc
@@ -26,6 +27,14 @@ target_sources(UnitTests
   VoxelRaycastTest.cc
   ChunkStreamingTest.cc
   ChunkMeshManagerTest.cc
+  MovementFSMTest.cc
+  CharacterControllerTest.cc
+  CameraControllerTest.cc
+  VoxelInteractionTest.cc
+  MeleeSystemTest.cc
+  FlightControllerTest.cc
+  TransitionControllerTest.cc
+  DashControllerTest.cc
 )
 
 set_source_files_properties(
