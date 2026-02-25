@@ -40,7 +40,7 @@ class ShadowSystem {
     static constexpr uint8_t kShadowViewBase = 240;
     static constexpr int kMaxCascades = 4;
 
-    explicit ShadowSystem(ShadowConfig config = {});
+    explicit ShadowSystem(const ShadowConfig& config = {});
 
     void setConfig(const ShadowConfig& config);
     const ShadowConfig& config() const;

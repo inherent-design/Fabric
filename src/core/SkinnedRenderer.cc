@@ -45,10 +45,8 @@ bgfx::VertexLayout createSkinnedVertexLayout() {
     return layout;
 }
 
-SkinnedRenderer::SkinnedRenderer() : layout_(createSkinnedVertexLayout()) {
-    program_ = BGFX_INVALID_HANDLE;
-    uniformJointMatrices_ = BGFX_INVALID_HANDLE;
-}
+SkinnedRenderer::SkinnedRenderer()
+    : layout_(createSkinnedVertexLayout()), program_(BGFX_INVALID_HANDLE), uniformJointMatrices_(BGFX_INVALID_HANDLE) {}
 
 SkinnedRenderer::~SkinnedRenderer() {
     if (bgfx::isValid(uniformJointMatrices_)) {

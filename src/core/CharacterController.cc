@@ -87,7 +87,7 @@ CharacterController::CollisionResult CharacterController::move(const Vec3f& curr
                 pos.y = highestTop;
             } else {
                 // Moving up, clamp to below the blocking voxel
-                pos.y = pos.y; // Stay put on Y
+                // Stay put on Y; no vertical displacement allowed
             }
         } else {
             pos.y = candidate.y;
