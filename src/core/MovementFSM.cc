@@ -5,19 +5,32 @@ namespace fabric {
 
 std::string MovementFSM::stateToString(CharacterState state) {
     switch (state) {
-        case CharacterState::Grounded:    return "Grounded";
-        case CharacterState::Falling:     return "Falling";
-        case CharacterState::Jumping:     return "Jumping";
-        case CharacterState::Climbing:    return "Climbing";
-        case CharacterState::Swimming:    return "Swimming";
-        case CharacterState::WallRunning: return "WallRunning";
-        case CharacterState::Hanging:     return "Hanging";
-        case CharacterState::Flying:      return "Flying";
-        case CharacterState::Sliding:     return "Sliding";
-        case CharacterState::Ragdoll:     return "Ragdoll";
-        case CharacterState::Dashing:     return "Dashing";
-        case CharacterState::Boosting:    return "Boosting";
-        default:                          return "Unknown";
+        case CharacterState::Grounded:
+            return "Grounded";
+        case CharacterState::Falling:
+            return "Falling";
+        case CharacterState::Jumping:
+            return "Jumping";
+        case CharacterState::Climbing:
+            return "Climbing";
+        case CharacterState::Swimming:
+            return "Swimming";
+        case CharacterState::WallRunning:
+            return "WallRunning";
+        case CharacterState::Hanging:
+            return "Hanging";
+        case CharacterState::Flying:
+            return "Flying";
+        case CharacterState::Sliding:
+            return "Sliding";
+        case CharacterState::Ragdoll:
+            return "Ragdoll";
+        case CharacterState::Dashing:
+            return "Dashing";
+        case CharacterState::Boosting:
+            return "Boosting";
+        default:
+            return "Unknown";
     }
 }
 

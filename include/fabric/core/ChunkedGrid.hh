@@ -3,9 +3,9 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <tuple>
-#include <map>
 #include <vector>
 
 namespace fabric {

@@ -15,13 +15,11 @@ AABB FlightController::getAABB(const Vec3f& pos) const {
     return AABB(minCorner, maxCorner);
 }
 
-bool FlightController::isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid,
-                                float threshold) const {
+bool FlightController::isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid, float threshold) const {
     return grid.get(vx, vy, vz) >= threshold;
 }
 
-bool FlightController::aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid,
-                                          float threshold) const {
+bool FlightController::aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold) const {
     int minVX = static_cast<int>(std::floor(box.min.x));
     int minVY = static_cast<int>(std::floor(box.min.y));
     int minVZ = static_cast<int>(std::floor(box.min.z));
@@ -49,9 +47,8 @@ Vec3f FlightController::applyDrag(const Vec3f& velocity, float dragCoefficient, 
     return result;
 }
 
-FlightController::FlightResult FlightController::move(
-    const Vec3f& currentPos, const Vec3f& displacement,
-    const ChunkedGrid<float>& grid, float densityThreshold) {
+FlightController::FlightResult FlightController::move(const Vec3f& currentPos, const Vec3f& displacement,
+                                                      const ChunkedGrid<float>& grid, float densityThreshold) {
 
     FlightResult result;
     Vec3f pos = currentPos;

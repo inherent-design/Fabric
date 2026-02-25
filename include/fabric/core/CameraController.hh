@@ -7,7 +7,10 @@
 
 namespace fabric {
 
-enum class CameraMode { FirstPerson, ThirdPerson };
+enum class CameraMode {
+    FirstPerson,
+    ThirdPerson
+};
 
 struct CameraConfig {
     float mouseSensitivity = 0.003f;
@@ -38,8 +41,8 @@ class CameraController {
 
     void processMouseInput(float deltaX, float deltaY);
 
-    void update(const Vector3<float, Space::World>& targetPos, float dt,
-                const ChunkedGrid<float>* grid = nullptr, float densityThreshold = 0.5f);
+    void update(const Vector3<float, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid = nullptr,
+                float densityThreshold = 0.5f);
 
     Vector3<float, Space::World> position() const;
 

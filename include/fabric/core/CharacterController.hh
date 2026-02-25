@@ -19,11 +19,10 @@ class CharacterController {
 
     CharacterController(float width, float height, float depth);
 
-    CollisionResult move(const Vec3f& currentPos, const Vec3f& displacement,
-                         const ChunkedGrid<float>& grid, float densityThreshold = 0.5f);
+    CollisionResult move(const Vec3f& currentPos, const Vec3f& displacement, const ChunkedGrid<float>& grid,
+                         float densityThreshold = 0.5f);
 
-    bool checkOnGround(const Vec3f& pos, const ChunkedGrid<float>& grid,
-                       float densityThreshold = 0.5f) const;
+    bool checkOnGround(const Vec3f& pos, const ChunkedGrid<float>& grid, float densityThreshold = 0.5f) const;
 
     AABB getAABB(const Vec3f& pos) const;
 
@@ -38,15 +37,12 @@ class CharacterController {
 
     static constexpr float kGroundEpsilon = 0.01f;
 
-    bool isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid,
-                 float threshold) const;
+    bool isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid, float threshold) const;
 
-    bool aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid,
-                           float threshold) const;
+    bool aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold) const;
 
     // TODO(human): Implement the step-up resolution strategy
-    float tryStepUp(const Vec3f& pos, float dx, float dz,
-                    const ChunkedGrid<float>& grid, float threshold) const;
+    float tryStepUp(const Vec3f& pos, float dx, float dz, const ChunkedGrid<float>& grid, float threshold) const;
 };
 
 } // namespace fabric

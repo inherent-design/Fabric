@@ -3,7 +3,7 @@
 
 namespace fabric {
 
-ChunkStreamingManager::ChunkStreamingManager(StreamingConfig config) : config_(config) {}
+ChunkStreamingManager::ChunkStreamingManager(const StreamingConfig& config) : config_(config) {}
 
 StreamingUpdate ChunkStreamingManager::update(float viewX, float viewY, float viewZ, float speed) {
     FABRIC_ZONE_SCOPED_N("ChunkStreamingManager::update");

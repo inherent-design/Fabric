@@ -11,8 +11,7 @@ struct VoxelVertex {
     uint32_t posNormalAO;
     uint32_t material;
 
-    static VoxelVertex pack(uint8_t px, uint8_t py, uint8_t pz, uint8_t normalIdx, uint8_t ao,
-                            uint16_t paletteIdx) {
+    static VoxelVertex pack(uint8_t px, uint8_t py, uint8_t pz, uint8_t normalIdx, uint8_t ao, uint16_t paletteIdx) {
         VoxelVertex v;
         v.posNormalAO = static_cast<uint32_t>(px) | (static_cast<uint32_t>(py) << 8) |
                         (static_cast<uint32_t>(pz) << 16) | (static_cast<uint32_t>(normalIdx & 0x7) << 24) |

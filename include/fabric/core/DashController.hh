@@ -17,8 +17,8 @@ class DashController {
     bool startDash(DashState& state, const CharacterConfig& config, bool isAirborne);
 
     // Tick active dash, return displacement for this frame
-    DashResult update(DashState& state, const CharacterConfig& config,
-                      const Vec3f& dashDirection, float dt, bool isAirborne);
+    DashResult update(DashState& state, const CharacterConfig& config, const Vec3f& dashDirection, float dt,
+                      bool isAirborne);
 
     // Tick cooldown (call every frame regardless of dash state)
     void updateCooldown(DashState& state, float dt);

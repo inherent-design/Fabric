@@ -31,23 +31,17 @@ class MeleeSystem {
 
     // Generate attack hitbox from player position + facing direction
     // Aligns hitbox to nearest world axis (Sprint 5b simplification)
-    MeleeAttack createAttack(
-        const Vector3<float, Space::World>& playerPos,
-        const Vector3<float, Space::World>& facingDir,
-        const MeleeConfig& config);
+    MeleeAttack createAttack(const Vector3<float, Space::World>& playerPos,
+                             const Vector3<float, Space::World>& facingDir, const MeleeConfig& config);
 
     // Check if attack hitbox overlaps any target AABBs. Returns indices of hit targets.
-    std::vector<size_t> checkHits(
-        const MeleeAttack& attack,
-        const std::vector<AABB>& targetBounds);
+    std::vector<size_t> checkHits(const MeleeAttack& attack, const std::vector<AABB>& targetBounds);
 
     bool canAttack(float cooldownRemaining) const;
     float updateCooldown(float remaining, float dt) const;
 
-    void emitDamageEvent(
-        const Vector3<float, Space::World>& targetPos,
-        float damage,
-        const Vector3<float, Space::World>& knockbackDir);
+    void emitDamageEvent(const Vector3<float, Space::World>& targetPos, float damage,
+                         const Vector3<float, Space::World>& knockbackDir);
 
   private:
     EventDispatcher& dispatcher_;

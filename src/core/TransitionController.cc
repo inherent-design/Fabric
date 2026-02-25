@@ -3,26 +3,18 @@
 
 namespace fabric {
 
-TransitionController::TransitionResult TransitionController::enterFlight(
-    const Vec3f& currentVelocity,
-    float upwardImpulse,
-    float momentumScale) {
+TransitionController::TransitionResult TransitionController::enterFlight(const Vec3f& currentVelocity,
+                                                                         float upwardImpulse, float momentumScale) {
 
     TransitionResult result;
-    result.velocity = Vec3f(
-        currentVelocity.x * momentumScale,
-        upwardImpulse,
-        currentVelocity.z * momentumScale);
+    result.velocity = Vec3f(currentVelocity.x * momentumScale, upwardImpulse, currentVelocity.z * momentumScale);
     result.newState = CharacterState::Flying;
     return result;
 }
 
-TransitionController::TransitionResult TransitionController::exitFlight(
-    const Vec3f& currentVelocity,
-    const Vec3f& position,
-    const ChunkedGrid<float>& grid,
-    float groundCheckDistance,
-    float densityThreshold) {
+TransitionController::TransitionResult
+TransitionController::exitFlight(const Vec3f& currentVelocity, const Vec3f& position, const ChunkedGrid<float>& grid,
+                                 float groundCheckDistance, float densityThreshold) {
 
     TransitionResult result;
     result.velocity = currentVelocity;
@@ -37,11 +29,8 @@ TransitionController::TransitionResult TransitionController::exitFlight(
     return result;
 }
 
-bool TransitionController::checkGroundBelow(
-    const Vec3f& position,
-    const ChunkedGrid<float>& grid,
-    float distance,
-    float densityThreshold) const {
+bool TransitionController::checkGroundBelow(const Vec3f& position, const ChunkedGrid<float>& grid, float distance,
+                                            float densityThreshold) const {
 
     int x = static_cast<int>(std::floor(position.x));
     int z = static_cast<int>(std::floor(position.z));

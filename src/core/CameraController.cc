@@ -40,8 +40,8 @@ void CameraController::processMouseInput(float deltaX, float deltaY) {
     clampPitch();
 }
 
-void CameraController::update(const Vector3<float, Space::World>& targetPos, float dt,
-                               const ChunkedGrid<float>* grid, float densityThreshold) {
+void CameraController::update(const Vector3<float, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid,
+                              float densityThreshold) {
     using Vec3 = Vector3<float, Space::World>;
 
     Vec3 eyePoint = targetPos + Vec3(0.0f, config_.eyeHeight, 0.0f);

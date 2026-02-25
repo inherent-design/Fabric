@@ -14,9 +14,8 @@ bool DashController::startDash(DashState& state, const CharacterConfig& config, 
     return true;
 }
 
-DashController::DashResult DashController::update(
-    DashState& state, const CharacterConfig& config,
-    const Vec3f& dashDirection, float dt, bool isAirborne) {
+DashController::DashResult DashController::update(DashState& state, const CharacterConfig& config,
+                                                  const Vec3f& dashDirection, float dt, bool isAirborne) {
 
     DashResult result;
 

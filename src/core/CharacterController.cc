@@ -16,13 +16,11 @@ AABB CharacterController::getAABB(const Vec3f& pos) const {
     return AABB(minCorner, maxCorner);
 }
 
-bool CharacterController::isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid,
-                                   float threshold) const {
+bool CharacterController::isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid, float threshold) const {
     return grid.get(vx, vy, vz) >= threshold;
 }
 
-bool CharacterController::aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid,
-                                             float threshold) const {
+bool CharacterController::aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold) const {
     int minVX = static_cast<int>(std::floor(box.min.x));
     int minVY = static_cast<int>(std::floor(box.min.y));
     int minVZ = static_cast<int>(std::floor(box.min.z));
@@ -38,8 +36,8 @@ bool CharacterController::aabbOverlapsSolid(const AABB& box, const ChunkedGrid<f
     return false;
 }
 
-float CharacterController::tryStepUp(const Vec3f& pos, float dx, float dz,
-                                      const ChunkedGrid<float>& grid, float threshold) const {
+float CharacterController::tryStepUp(const Vec3f& pos, float dx, float dz, const ChunkedGrid<float>& grid,
+                                     float threshold) const {
     // TODO(human): Implement the step-up resolution strategy
     // Try stepping up by increments up to stepHeight_ to clear obstacles.
     // Return the Y offset needed, or 0 if step-up is not possible.
@@ -53,9 +51,8 @@ float CharacterController::tryStepUp(const Vec3f& pos, float dx, float dz,
     return 0.0f;
 }
 
-CharacterController::CollisionResult CharacterController::move(
-    const Vec3f& currentPos, const Vec3f& displacement,
-    const ChunkedGrid<float>& grid, float densityThreshold) {
+CharacterController::CollisionResult CharacterController::move(const Vec3f& currentPos, const Vec3f& displacement,
+                                                               const ChunkedGrid<float>& grid, float densityThreshold) {
 
     CollisionResult result;
     Vec3f pos = currentPos;
@@ -81,7 +78,8 @@ CharacterController::CollisionResult CharacterController::move(
                         for (int vy = footVY; vy <= static_cast<int>(std::floor(pos.y)); ++vy) {
                             if (isSolid(vx, vy, vz, grid, densityThreshold)) {
                                 float top = static_cast<float>(vy + 1);
-                                if (top > highestTop) highestTop = top;
+                                if (top > highestTop)
+                                    highestTop = top;
                             }
                         }
                     }
@@ -138,7 +136,7 @@ CharacterController::CollisionResult CharacterController::move(
 }
 
 bool CharacterController::checkOnGround(const Vec3f& pos, const ChunkedGrid<float>& grid,
-                                         float densityThreshold) const {
+                                        float densityThreshold) const {
     // Check voxels directly below feet
     float checkY = pos.y - kGroundEpsilon;
     int vy = static_cast<int>(std::floor(checkY));

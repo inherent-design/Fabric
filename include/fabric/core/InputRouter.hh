@@ -11,7 +11,11 @@ class Element;
 
 namespace fabric {
 
-enum class InputMode { GameOnly, UIOnly, GameAndUI };
+enum class InputMode {
+    GameOnly,
+    UIOnly,
+    GameAndUI
+};
 
 class InputRouter {
   public:

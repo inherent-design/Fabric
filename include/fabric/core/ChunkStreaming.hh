@@ -38,7 +38,7 @@ struct StreamingUpdate {
 
 class ChunkStreamingManager {
   public:
-    explicit ChunkStreamingManager(StreamingConfig config = {});
+    explicit ChunkStreamingManager(const StreamingConfig& config = {});
 
     StreamingUpdate update(float viewX, float viewY, float viewZ, float speed);
 

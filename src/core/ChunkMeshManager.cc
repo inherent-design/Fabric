@@ -27,7 +27,8 @@ int ChunkMeshManager::update() {
     while (it != dirty_.end() && count < config_.maxRemeshPerTick) {
         auto coord = *it;
         it = dirty_.erase(it);
-        meshes_[coord] = VoxelMesher::meshChunkData(coord.cx, coord.cy, coord.cz, density_, essence_, config_.threshold);
+        meshes_[coord] =
+            VoxelMesher::meshChunkData(coord.cx, coord.cy, coord.cz, density_, essence_, config_.threshold);
         ++count;
     }
     return count;
