@@ -1,0 +1,53 @@
+name: Format
+
+on:
+  pull_request:
+    branches: [dev, main]
+    paths: [src/**, include/**, tests/**]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clang-format:
+    name: clang-format (${{ matrix.path }})
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        path: [src, include]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Check formatting
+        uses: jidicula/clang-format-action@v4.16.0
+        with:
+          clang-format-version: "21"
+          check-path: ${{ matrix.path }}
+
+  cppcheck:
+    name: cppcheck
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        run: |
+          cppcheck \
+            --enable=warning,performance,portability \
+            --error-exitcode=1 \
+            --suppress=missingInclude \
+            --suppress=unmatchedSuppression \
+            -I include/ \
+            src/ include/

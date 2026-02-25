@@ -1,9 +1,8 @@
 name: Coverage
 
+# Disabled until Codecov is configured.
+# To run manually: Actions > Coverage > Run workflow
 on:
-  pull_request:
-    branches: [main]
-    paths: [src/**, include/**, tests/**, CMakeLists.txt, cmake/**]
   workflow_dispatch:
 
 permissions:

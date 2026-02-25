@@ -1,7 +1,7 @@
 name: Lint
 
 on:
-  pull_request:
+  push:
     branches: [main]
     paths: [src/**, include/**, tests/**]
   workflow_dispatch:
@@ -15,23 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  format-check:
-    name: clang-format
-    runs-on: blacksmith-2vcpu-ubuntu-2404
-    timeout-minutes: 5
-    strategy:
-      matrix:
-        path: [src, include]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Check formatting (${{ matrix.path }})
-        uses: jidicula/clang-format-action@v4.16.0
-        with:
-          clang-format-version: "21"
-          check-path: ${{ matrix.path }}
-
   clang-tidy:
     name: clang-tidy
     runs-on: blacksmith-4vcpu-ubuntu-2404
@@ -81,29 +64,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          style: ""              # disabled; format-check job handles formatting
-          tidy-checks: ""        # uses .clang-tidy config at repo root
+          style: ""
+          tidy-checks: ""
           database: build/ci-linux-clang
           files-changed-only: true
           thread-comments: true
-
-  cppcheck:
-    name: cppcheck
-    runs-on: blacksmith-2vcpu-ubuntu-2404
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install cppcheck
-        run: sudo apt-get update && sudo apt-get install -y cppcheck
-
-      - name: Run cppcheck
-        run: |
-          cppcheck \
-            --enable=warning,performance,portability \
-            --error-exitcode=1 \
-            --suppress=missingInclude \
-            --suppress=unmatchedSuppression \
-            -I include/ \
-            src/ include/
