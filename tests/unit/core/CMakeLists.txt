@@ -35,6 +35,15 @@ target_sources(UnitTests
   FlightControllerTest.cc
   TransitionControllerTest.cc
   DashControllerTest.cc
+  EssencePaletteTest.cc
+  ShadowSystemTest.cc
+  TerrainGeneratorTest.cc
+  MeshLoaderTest.cc
+  AnimationTest.cc
+  AnimationSamplerTest.cc
+  SkinnedRendererTest.cc
+  IKSolverTest.cc
+  CaveCarverTest.cc
 )
 
 set_source_files_properties(

@@ -1,0 +1,14 @@
+# FabricFastgltf.cmake - Fetch and configure fastgltf (glTF 2.0 parser)
+
+set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "" FORCE)
+set(FASTGLTF_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(FASTGLTF_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+set(FASTGLTF_ENABLE_DOCS OFF CACHE BOOL "" FORCE)
+
+CPMAddPackage(
+    NAME fastgltf
+    GITHUB_REPOSITORY spnda/fastgltf
+    GIT_TAG v0.9.0
+    SYSTEM
+    EXCLUDE_FROM_ALL
+)

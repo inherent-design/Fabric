@@ -90,6 +90,15 @@ include(FabricRmlUi)
 # Flecs ECS framework
 include(FabricFlecs)
 
+# FastNoise2 - SIMD noise generation for terrain
+include(FabricFastNoise2)
+
+# fastgltf - high-performance glTF 2.0 parser
+include(FabricFastgltf)
+
+# ozz-animation - SoA SIMD skeletal animation runtime
+include(FabricOzzAnimation)
+
 # SDL3 Configuration
 set(SDL_SHARED OFF)
 set(SDL_STATIC ON)
@@ -159,6 +168,14 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/FlightController.cc
     src/core/TransitionController.cc
     src/core/DashController.cc
+    src/core/EssencePalette.cc
+    src/core/ShadowSystem.cc
+    src/core/TerrainGenerator.cc
+    src/core/MeshLoader.cc
+    src/core/Animation.cc
+    src/core/SkinnedRenderer.cc
+    src/core/IKSolver.cc
+    src/core/CaveCarver.cc
 )
 
 # Utils library components
@@ -186,6 +203,7 @@ set(FABRIC_UI_SOURCE_FILES
     src/ui/BgfxRenderInterface.cc
     src/ui/BgfxSystemInterface.cc
     src/ui/StbImage.cc
+    src/ui/DebugHUD.cc
 )
 
 # Create internal static library (compile sources once, link into all targets)
@@ -221,6 +239,11 @@ target_link_libraries(FabricLib
         asio::asio
         rmlui_core
         flecs::flecs_static
+        FastNoise
+        fastgltf::fastgltf
+        ozz_animation
+        ozz_base
+        ozz_geometry
 )
 
 target_compile_definitions(FabricLib
@@ -237,8 +260,14 @@ target_compile_definitions(FabricLib
 # Tracy profiling (no-op when FABRIC_ENABLE_PROFILING is OFF)
 fabric_link_tracy(FabricLib)
 
+# Skinned mesh shaders (vs_skinned, fs_skinned)
+include(FabricSkinnedShaders)
+
+# Add skinned shader output to include path (set by FabricSkinnedShaders module)
+target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT})
+
 # Shader compilation must finish before FabricLib sources compile
-add_dependencies(FabricLib FabricRmlUiShaders)
+add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders)
 
 # Per-target compile options (replaces global CMAKE_CXX_FLAGS_* variables)
 target_compile_options(FabricLib PRIVATE
@@ -301,11 +330,13 @@ if(FABRIC_BUILD_TESTS)
     add_executable(E2ETests tests/TestMain.cc)
 
     # Link against FabricLib and GTest (FabricLib provides all transitive deps)
+    # ozz_animation_offline is needed for building test skeletons and animations
     foreach(TEST_TARGET UnitTests E2ETests)
         target_link_libraries(${TEST_TARGET} PRIVATE
             FabricLib
             GTest::gtest
             GTest::gmock
+            ozz_animation_offline
         )
     endforeach()
 
