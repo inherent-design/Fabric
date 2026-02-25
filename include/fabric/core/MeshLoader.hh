@@ -4,8 +4,11 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
+
+#include <ozz/animation/runtime/skeleton.h>
 
 namespace fabric {
 
@@ -38,5 +41,9 @@ class MeshLoader {
   public:
     MeshData load(const std::filesystem::path& path);
 };
+
+// Convert MeshData joint hierarchy to ozz runtime skeleton.
+// Returns nullptr if joints vector is empty.
+std::shared_ptr<ozz::animation::Skeleton> buildOzzSkeleton(const std::vector<JointInfo>& joints);
 
 } // namespace fabric
