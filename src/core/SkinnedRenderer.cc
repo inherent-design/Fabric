@@ -145,8 +145,8 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
         }
 
         MeshBufferCache cache;
-        cache.vbh = bgfx::createVertexBuffer(
-            bgfx::copy(vertexData.data(), static_cast<uint32_t>(vertexData.size())), layout_);
+        cache.vbh =
+            bgfx::createVertexBuffer(bgfx::copy(vertexData.data(), static_cast<uint32_t>(vertexData.size())), layout_);
         cache.ibh = bgfx::createIndexBuffer(
             bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t))),
             BGFX_BUFFER_INDEX32);

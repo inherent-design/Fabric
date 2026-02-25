@@ -142,9 +142,8 @@ AnimationSampler::computeSkinningMatrices(const ozz::animation::Skeleton& skelet
     std::vector<Matrix4x4<float>> skinning(static_cast<size_t>(numJoints));
     for (int i = 0; i < numJoints; ++i) {
         // skinMatrix = modelMatrix * cachedInverseBindMatrix
-        skinning[static_cast<size_t>(i)] =
-            ozzToMatrix4x4(models[static_cast<size_t>(i)]) *
-            ozzToMatrix4x4(cachedInvBindMatrices_[static_cast<size_t>(i)]);
+        skinning[static_cast<size_t>(i)] = ozzToMatrix4x4(models[static_cast<size_t>(i)]) *
+                                           ozzToMatrix4x4(cachedInvBindMatrices_[static_cast<size_t>(i)]);
     }
 
     return skinning;
