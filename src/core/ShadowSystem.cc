@@ -145,6 +145,19 @@ void ShadowSystem::computeLightMatrix(int cascade, const Camera& camera, const V
     bx::mtxOrtho(lightProj, -radius, radius, -radius, radius, 0.0f, 2.0f * radius, 0.0f, false);
 
     bx::mtxMul(cascades_[cascade].lightViewProj.data(), lightView, lightProj);
+
+    // Texel snapping: quantize light-space origin to shadow map texel grid
+    // to prevent sub-texel camera movement from causing shadow edge shimmer.
+    {
+        int resolution = config_.cascadeResolution[static_cast<size_t>(cascade)];
+        if (resolution > 0) {
+            float* mtx = cascades_[cascade].lightViewProj.data();
+            float ndcTexelSize = 2.0f / static_cast<float>(resolution);
+            mtx[12] = std::floor(mtx[12] / ndcTexelSize) * ndcTexelSize;
+            mtx[13] = std::floor(mtx[13] / ndcTexelSize) * ndcTexelSize;
+        }
+    }
+
     cascades_[cascade].splitDistance = farDist;
 }
 

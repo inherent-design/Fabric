@@ -5,6 +5,7 @@
 #include "fabric/core/Spatial.hh"
 #include <bgfx/bgfx.h>
 #include <cstdint>
+#include <unordered_map>
 
 namespace fabric {
 
@@ -44,6 +45,15 @@ class SkinnedRenderer {
     bgfx::VertexLayout layout_;
     bgfx::ProgramHandle program_;
     bgfx::UniformHandle uniformJointMatrices_;
+
+    // Cache: static vertex/index buffers per mesh pointer (geometry is immutable)
+    struct MeshBufferCache {
+        bgfx::VertexBufferHandle vbh = BGFX_INVALID_HANDLE;
+        bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
+        size_t vertexCount = 0;
+        size_t indexCount = 0;
+    };
+    std::unordered_map<const void*, MeshBufferCache> meshBufferCache_;
 };
 
 } // namespace fabric

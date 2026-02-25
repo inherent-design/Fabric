@@ -49,6 +49,14 @@ SkinnedRenderer::SkinnedRenderer()
     : layout_(createSkinnedVertexLayout()), program_(BGFX_INVALID_HANDLE), uniformJointMatrices_(BGFX_INVALID_HANDLE) {}
 
 SkinnedRenderer::~SkinnedRenderer() {
+    for (auto& [_, cache] : meshBufferCache_) {
+        if (bgfx::isValid(cache.vbh)) {
+            bgfx::destroy(cache.vbh);
+        }
+        if (bgfx::isValid(cache.ibh)) {
+            bgfx::destroy(cache.ibh);
+        }
+    }
     if (bgfx::isValid(uniformJointMatrices_)) {
         bgfx::destroy(uniformJointMatrices_);
     }
@@ -76,74 +84,79 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
         return;
     }
 
-    // Pack vertex data: pos(3) + normal(3) + uv(2) + joints(uint8x4) + weights(4)
-    const size_t vertexCount = mesh.positions.size();
-    const size_t stride = layout_.getStride();
-    std::vector<uint8_t> vertexData(vertexCount * stride);
+    const auto* cacheKey = static_cast<const void*>(&mesh);
+    auto it = meshBufferCache_.find(cacheKey);
 
-    for (size_t i = 0; i < vertexCount; ++i) {
-        auto* dst = vertexData.data() + i * stride;
-        size_t offset = 0;
+    if (it == meshBufferCache_.end()) {
+        // Cache miss: pack vertex data and create static buffers
+        const size_t vertexCount = mesh.positions.size();
+        const size_t stride = layout_.getStride();
+        std::vector<uint8_t> vertexData(vertexCount * stride);
 
-        // Position (3 floats)
-        const auto& pos = mesh.positions[i];
-        std::memcpy(dst + offset, &pos.x, sizeof(float) * 3);
-        offset += sizeof(float) * 3;
+        for (size_t i = 0; i < vertexCount; ++i) {
+            auto* dst = vertexData.data() + i * stride;
+            size_t offset = 0;
 
-        // Normal (3 floats)
-        if (i < mesh.normals.size()) {
-            const auto& n = mesh.normals[i];
-            std::memcpy(dst + offset, &n.x, sizeof(float) * 3);
-        } else {
-            float defaultNormal[3] = {0.0f, 1.0f, 0.0f};
-            std::memcpy(dst + offset, defaultNormal, sizeof(float) * 3);
+            // Position (3 floats)
+            const auto& pos = mesh.positions[i];
+            std::memcpy(dst + offset, &pos.x, sizeof(float) * 3);
+            offset += sizeof(float) * 3;
+
+            // Normal (3 floats)
+            if (i < mesh.normals.size()) {
+                const auto& n = mesh.normals[i];
+                std::memcpy(dst + offset, &n.x, sizeof(float) * 3);
+            } else {
+                float defaultNormal[3] = {0.0f, 1.0f, 0.0f};
+                std::memcpy(dst + offset, defaultNormal, sizeof(float) * 3);
+            }
+            offset += sizeof(float) * 3;
+
+            // UV (2 floats)
+            if (i < mesh.uvs.size()) {
+                const auto& uv = mesh.uvs[i];
+                std::memcpy(dst + offset, &uv.x, sizeof(float) * 2);
+            } else {
+                float defaultUv[2] = {0.0f, 0.0f};
+                std::memcpy(dst + offset, defaultUv, sizeof(float) * 2);
+            }
+            offset += sizeof(float) * 2;
+
+            // Joint indices (4 uint8)
+            if (i < mesh.jointIndices.size()) {
+                const auto& joints = mesh.jointIndices[i];
+                uint8_t packed[4] = {static_cast<uint8_t>(joints[0]), static_cast<uint8_t>(joints[1]),
+                                     static_cast<uint8_t>(joints[2]), static_cast<uint8_t>(joints[3])};
+                std::memcpy(dst + offset, packed, 4);
+            } else {
+                uint8_t zero[4] = {0, 0, 0, 0};
+                std::memcpy(dst + offset, zero, 4);
+            }
+            offset += 4;
+
+            // Weights (4 floats)
+            if (i < mesh.jointWeights.size()) {
+                const auto& w = mesh.jointWeights[i];
+                std::memcpy(dst + offset, &w.x, sizeof(float) * 4);
+            } else {
+                float defaultWeight[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+                std::memcpy(dst + offset, defaultWeight, sizeof(float) * 4);
+            }
         }
-        offset += sizeof(float) * 3;
 
-        // UV (2 floats)
-        if (i < mesh.uvs.size()) {
-            const auto& uv = mesh.uvs[i];
-            std::memcpy(dst + offset, &uv.x, sizeof(float) * 2);
-        } else {
-            float defaultUv[2] = {0.0f, 0.0f};
-            std::memcpy(dst + offset, defaultUv, sizeof(float) * 2);
-        }
-        offset += sizeof(float) * 2;
+        MeshBufferCache cache;
+        cache.vbh = bgfx::createVertexBuffer(
+            bgfx::copy(vertexData.data(), static_cast<uint32_t>(vertexData.size())), layout_);
+        cache.ibh = bgfx::createIndexBuffer(
+            bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t))),
+            BGFX_BUFFER_INDEX32);
+        cache.vertexCount = vertexCount;
+        cache.indexCount = mesh.indices.size();
 
-        // Joint indices (4 uint8)
-        if (i < mesh.jointIndices.size()) {
-            const auto& joints = mesh.jointIndices[i];
-            uint8_t packed[4] = {static_cast<uint8_t>(joints[0]), static_cast<uint8_t>(joints[1]),
-                                 static_cast<uint8_t>(joints[2]), static_cast<uint8_t>(joints[3])};
-            std::memcpy(dst + offset, packed, 4);
-        } else {
-            uint8_t zero[4] = {0, 0, 0, 0};
-            std::memcpy(dst + offset, zero, 4);
-        }
-        offset += 4;
-
-        // Weights (4 floats)
-        if (i < mesh.jointWeights.size()) {
-            const auto& w = mesh.jointWeights[i];
-            std::memcpy(dst + offset, &w.x, sizeof(float) * 4);
-        } else {
-            float defaultWeight[4] = {1.0f, 0.0f, 0.0f, 0.0f};
-            std::memcpy(dst + offset, defaultWeight, sizeof(float) * 4);
-        }
+        it = meshBufferCache_.emplace(cacheKey, cache).first;
     }
 
-    // Create transient buffers
-    bgfx::TransientVertexBuffer tvb;
-    bgfx::TransientIndexBuffer tib;
-
-    if (!bgfx::allocTransientBuffers(&tvb, layout_, static_cast<uint32_t>(vertexCount), &tib,
-                                     static_cast<uint32_t>(mesh.indices.size()), true)) {
-        FABRIC_LOG_WARN("SkinnedRenderer: failed to allocate transient buffers");
-        return;
-    }
-
-    std::memcpy(tvb.data, vertexData.data(), vertexData.size());
-    std::memcpy(tib.data, mesh.indices.data(), mesh.indices.size() * sizeof(uint32_t));
+    const auto& cache = it->second;
 
     // Upload joint matrices (clamp to max GPU joints)
     const size_t jointCount = std::min(skinning.jointMatrices.size(), static_cast<size_t>(kMaxGpuJoints));
@@ -154,9 +167,9 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
     // Set transform
     bgfx::setTransform(transform.elements.data());
 
-    // Set buffers and submit
-    bgfx::setVertexBuffer(0, &tvb);
-    bgfx::setIndexBuffer(&tib);
+    // Set cached static buffers and submit
+    bgfx::setVertexBuffer(0, cache.vbh);
+    bgfx::setIndexBuffer(cache.ibh);
 
     uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                      BGFX_STATE_MSAA | BGFX_STATE_CULL_CCW;
