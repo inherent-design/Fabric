@@ -43,6 +43,7 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -348,21 +349,54 @@ int main(int argc, char* argv[]) {
                 chunkEntities[coord] = ent;
             }
 
-            // Flush all dirty chunks for initial load (unbounded)
-            while (meshManager.dirtyCount() > 0) {
-                meshManager.update();
+            // Flush dirty chunks for initial load with bounded passes.
+            constexpr int kMaxInitialRemeshPasses = 512;
+            constexpr int kMaxInitialNoProgressPasses = 8;
+
+            size_t previousDirty = std::numeric_limits<size_t>::max();
+            int noProgressPasses = 0;
+            int totalRemeshed = 0;
+
+            for (int pass = 0; pass < kMaxInitialRemeshPasses; ++pass) {
+                size_t dirtyBefore = meshManager.dirtyCount();
+                if (dirtyBefore == 0) {
+                    break;
+                }
+
+                int remeshed = meshManager.update();
+                totalRemeshed += remeshed;
+
+                size_t dirtyAfter = meshManager.dirtyCount();
+                if (dirtyAfter >= dirtyBefore || dirtyAfter >= previousDirty) {
+                    ++noProgressPasses;
+                } else {
+                    noProgressPasses = 0;
+                }
+                previousDirty = dirtyAfter;
+
+                if (noProgressPasses >= kMaxInitialNoProgressPasses) {
+                    FABRIC_LOG_WARN(
+                        "Initial terrain remesh made no progress for {} passes; deferring {} chunks to runtime",
+                        noProgressPasses, dirtyAfter);
+                    break;
+                }
             }
 
-            // Upload all initial meshes to GPU
+            // Upload all ready initial meshes to GPU. Any deferred dirty chunks stay queued for runtime sync.
             for (const auto& coord : initLoad.toLoad) {
+                if (meshManager.isDirty(coord)) {
+                    continue;
+                }
+
                 const auto* data = meshManager.meshFor(coord);
                 if (data && !data->vertices.empty()) {
                     gpuMeshes[coord] = uploadChunkMesh(*data);
                 }
             }
 
-            FABRIC_LOG_INFO("Initial terrain: {} chunks loaded, {} GPU meshes", initLoad.toLoad.size(),
-                            gpuMeshes.size());
+            FABRIC_LOG_INFO(
+                "Initial terrain: {} chunks loaded, {} remeshed, {} GPU meshes, {} chunks pending runtime remesh",
+                initLoad.toLoad.size(), totalRemeshed, gpuMeshes.size(), meshManager.dirtyCount());
         }
 
         //----------------------------------------------------------------------
