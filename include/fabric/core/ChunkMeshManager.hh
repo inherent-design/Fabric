@@ -33,6 +33,8 @@ class ChunkMeshManager {
     size_t dirtyCount() const;
     size_t meshCount() const;
 
+    void removeChunk(const ChunkCoord& coord);
+
     // Emit a voxel_changed event (convenience for callers who modify grids)
     static void emitVoxelChanged(EventDispatcher& dispatcher, int cx, int cy, int cz);
 

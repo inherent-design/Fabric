@@ -53,6 +53,11 @@ size_t ChunkMeshManager::meshCount() const {
     return meshes_.size();
 }
 
+void ChunkMeshManager::removeChunk(const ChunkCoord& coord) {
+    dirty_.erase(coord);
+    meshes_.erase(coord);
+}
+
 void ChunkMeshManager::emitVoxelChanged(EventDispatcher& dispatcher, int cx, int cy, int cz) {
     Event e(kVoxelChangedEvent, "ChunkMeshManager");
     e.setData<int>("cx", cx);
