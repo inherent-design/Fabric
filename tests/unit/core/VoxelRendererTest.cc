@@ -17,6 +17,7 @@ TEST(VoxelRendererTest, ShutdownBeforeInitKeepsInvalidState) {
 
 TEST(VoxelRendererTest, SetLightDirectionDoesNotCrashWhenNotInitialized) {
     VoxelRenderer renderer;
+    renderer.setLightDirection(Vector3<float>(1.0f, 1.0f, 1.0f));
     EXPECT_FALSE(renderer.isValid());
 }
 
