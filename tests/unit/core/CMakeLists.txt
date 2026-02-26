@@ -24,9 +24,11 @@ target_sources(UnitTests
   FieldLayerTest.cc
   SimulationTest.cc
   VoxelMesherTest.cc
+  VoxelRendererTest.cc
   VoxelRaycastTest.cc
   ChunkStreamingTest.cc
   ChunkMeshManagerTest.cc
+  FabricRuntimeFlowTest.cc
   MovementFSMTest.cc
   CharacterControllerTest.cc
   CameraControllerTest.cc
@@ -44,6 +46,7 @@ target_sources(UnitTests
   SkinnedRendererTest.cc
   IKSolverTest.cc
   CaveCarverTest.cc
+  Sprint7StubTest.cc
 )
 
 set_source_files_properties(

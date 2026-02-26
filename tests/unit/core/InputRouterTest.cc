@@ -1,7 +1,50 @@
 #include "fabric/core/InputRouter.hh"
+#include "fabric/ui/BgfxRenderInterface.hh"
+#include "fabric/ui/BgfxSystemInterface.hh"
+
 #include <gtest/gtest.h>
+
+#include <RmlUi/Core.h>
+
 #include <string>
 #include <vector>
+
+namespace {
+
+class ScopedRmlContext {
+  public:
+    ScopedRmlContext() {
+        Rml::SetSystemInterface(&system_);
+        Rml::SetRenderInterface(&renderer_);
+        initialized_ = Rml::Initialise();
+        if (initialized_) {
+            context_ = Rml::CreateContext("input-router-test", Rml::Vector2i(320, 240));
+        }
+    }
+
+    ~ScopedRmlContext() {
+        if (initialized_) {
+            if (context_) {
+                Rml::RemoveContext(context_->GetName());
+                context_ = nullptr;
+            }
+            Rml::Shutdown();
+        }
+    }
+
+    ScopedRmlContext(const ScopedRmlContext&) = delete;
+    ScopedRmlContext& operator=(const ScopedRmlContext&) = delete;
+
+    Rml::Context* get() const { return context_; }
+
+  private:
+    fabric::BgfxSystemInterface system_;
+    fabric::BgfxRenderInterface renderer_;
+    bool initialized_ = false;
+    Rml::Context* context_ = nullptr;
+};
+
+} // namespace
 
 using namespace fabric;
 
@@ -11,8 +54,7 @@ class InputRouterTest : public ::testing::Test {
     InputManager inputMgr{dispatcher};
     InputRouter router{inputMgr};
 
-    static SDL_Event makeKeyDown(SDL_Keycode key, SDL_Keymod mod = SDL_KMOD_NONE,
-                                 bool repeat = false) {
+    static SDL_Event makeKeyDown(SDL_Keycode key, SDL_Keymod mod = SDL_KMOD_NONE, bool repeat = false) {
         SDL_Event e = {};
         e.type = SDL_EVENT_KEY_DOWN;
         e.key.key = key;
@@ -316,4 +358,90 @@ TEST_F(InputRouterTest, ModeChangePreservesInputState) {
 
     // W is still "active" in InputManager (key wasn't released)
     EXPECT_TRUE(inputMgr.isActionActive("forward"));
+}
+
+TEST_F(InputRouterTest, UIOnlyWithContextConsumesMouseMotion) {
+    ScopedRmlContext scoped;
+    ASSERT_NE(scoped.get(), nullptr);
+
+    router.setMode(InputMode::UIOnly);
+
+    auto motion = makeMouseMotion(64.0f, 48.0f, 1.0f, 1.0f);
+    EXPECT_TRUE(router.routeEvent(motion, scoped.get()));
+}
+
+TEST_F(InputRouterTest, UIOnlyWithContextConsumesKeyEvents) {
+    ScopedRmlContext scoped;
+    ASSERT_NE(scoped.get(), nullptr);
+
+    router.setMode(InputMode::UIOnly);
+
+    auto keyDown = makeKeyDown(SDLK_A);
+    EXPECT_TRUE(router.routeEvent(keyDown, scoped.get()));
+
+    auto keyUp = makeKeyUp(SDLK_A);
+    EXPECT_TRUE(router.routeEvent(keyUp, scoped.get()));
+}
+
+TEST_F(InputRouterTest, UIOnlyWithContextConsumesTextInput) {
+    ScopedRmlContext scoped;
+    ASSERT_NE(scoped.get(), nullptr);
+
+    router.setMode(InputMode::UIOnly);
+
+    SDL_Event text = {};
+    text.type = SDL_EVENT_TEXT_INPUT;
+    text.text.text = "a";
+    EXPECT_TRUE(router.routeEvent(text, scoped.get()));
+}
+
+TEST_F(InputRouterTest, GameAndUIWithContextRoutesTextInputToUi) {
+    ScopedRmlContext scoped;
+    ASSERT_NE(scoped.get(), nullptr);
+
+    router.setMode(InputMode::GameAndUI);
+
+    SDL_Event text = {};
+    text.type = SDL_EVENT_TEXT_INPUT;
+    text.text.text = "b";
+    EXPECT_TRUE(router.routeEvent(text, scoped.get()));
+}
+
+TEST_F(InputRouterTest, GameAndUIWithContextRoutesKeysToUIWhenContextOwnsFocus) {
+    ScopedRmlContext scoped;
+    ASSERT_NE(scoped.get(), nullptr);
+
+    router.setMode(InputMode::GameAndUI);
+    inputMgr.bindKey("forward", SDLK_W);
+
+    auto keyDown = makeKeyDown(SDLK_W);
+    EXPECT_TRUE(router.routeEvent(keyDown, scoped.get()));
+    EXPECT_FALSE(inputMgr.isActionActive("forward"));
+}
+
+TEST_F(InputRouterTest, UIOnlyWithContextConsumesMouseButtonsAndWheel) {
+    ScopedRmlContext scoped;
+    ASSERT_NE(scoped.get(), nullptr);
+
+    router.setMode(InputMode::UIOnly);
+
+    auto mouseDown = makeMouseButton(SDL_BUTTON_LEFT, true);
+    EXPECT_TRUE(router.routeEvent(mouseDown, scoped.get()));
+
+    auto mouseUp = makeMouseButton(SDL_BUTTON_LEFT, false);
+    EXPECT_TRUE(router.routeEvent(mouseUp, scoped.get()));
+
+    auto wheel = makeMouseWheel(1.0f);
+    EXPECT_TRUE(router.routeEvent(wheel, scoped.get()));
+}
+
+TEST_F(InputRouterTest, EscapeWithContextStillTogglesAndConsumes) {
+    ScopedRmlContext scoped;
+    ASSERT_NE(scoped.get(), nullptr);
+
+    router.setMode(InputMode::GameOnly);
+
+    auto esc = makeKeyDown(SDLK_ESCAPE);
+    EXPECT_TRUE(router.routeEvent(esc, scoped.get()));
+    EXPECT_EQ(router.mode(), InputMode::UIOnly);
 }

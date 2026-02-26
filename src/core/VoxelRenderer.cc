@@ -80,12 +80,12 @@ void VoxelRenderer::initProgram() {
 void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, int chunkX, int chunkY, int chunkZ) {
     FABRIC_ZONE_SCOPED;
 
-    if (!initialized_) {
-        initProgram();
-    }
-
     if (!mesh.valid || mesh.indexCount == 0) {
         return;
+    }
+
+    if (!initialized_) {
+        initProgram();
     }
 
     if (!isValid() || !bgfx::isValid(mesh.vbh) || !bgfx::isValid(mesh.ibh)) {
