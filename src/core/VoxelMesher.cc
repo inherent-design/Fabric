@@ -1,6 +1,6 @@
 #include "fabric/core/VoxelMesher.hh"
 
-#include <unordered_map>
+#include "fabric/core/EssencePalette.hh"
 
 namespace fabric {
 
@@ -36,15 +36,6 @@ constexpr bool kVertUV[6][4][2] = {
     {{true, false}, {false, false}, {false, true}, {true, true}}, // -Z
 };
 
-// Quantize RGBA floats to a uint32 key for palette deduplication
-uint32_t colorKey(float r, float g, float b, float a) {
-    auto toByte = [](float f) -> uint8_t {
-        return static_cast<uint8_t>(f * 255.0f + 0.5f);
-    };
-    return static_cast<uint32_t>(toByte(r)) | (static_cast<uint32_t>(toByte(g)) << 8) |
-           (static_cast<uint32_t>(toByte(b)) << 16) | (static_cast<uint32_t>(toByte(a)) << 24);
-}
-
 } // namespace
 
 bgfx::VertexLayout VoxelMesher::getVertexLayout() {
@@ -61,17 +52,7 @@ ChunkMeshData VoxelMesher::meshChunkData(int cx, int cy, int cz, const ChunkedGr
     ChunkMeshData data;
     int base[3] = {cx * kChunkSize, cy * kChunkSize, cz * kChunkSize};
 
-    std::unordered_map<uint32_t, uint16_t> paletteMap;
-    auto getOrAddPalette = [&](float r, float g, float b, float a) -> uint16_t {
-        uint32_t key = colorKey(r, g, b, a);
-        auto it = paletteMap.find(key);
-        if (it != paletteMap.end())
-            return it->second;
-        auto idx = static_cast<uint16_t>(data.palette.size());
-        data.palette.push_back({r, g, b, a});
-        paletteMap[key] = idx;
-        return idx;
-    };
+    EssencePalette palette;
 
     for (int face = 0; face < 6; ++face) {
         const auto& ax = kFaceAxes[face];
@@ -115,7 +96,7 @@ ChunkMeshData VoxelMesher::meshChunkData(int cx, int cy, int cz, const ChunkedGr
                         b = e.x;
                         a = 1.0f - e.w * 0.5f;
                     }
-                    matIdx[u][v] = getOrAddPalette(r, g, b, a);
+                    matIdx[u][v] = palette.quantize(Vector4<float, Space::World>(r, g, b, a));
                 }
             }
 
@@ -210,6 +191,13 @@ ChunkMeshData VoxelMesher::meshChunkData(int cx, int cy, int cz, const ChunkedGr
                 }
             }
         }
+    }
+
+    // Export palette from EssencePalette to ChunkMeshData format
+    data.palette.reserve(palette.paletteSize());
+    for (size_t i = 0; i < palette.paletteSize(); ++i) {
+        auto e = palette.lookup(static_cast<uint16_t>(i));
+        data.palette.push_back({e.x, e.y, e.z, e.w});
     }
 
     return data;

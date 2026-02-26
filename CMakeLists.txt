@@ -176,6 +176,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/SkinnedRenderer.cc
     src/core/IKSolver.cc
     src/core/CaveCarver.cc
+    src/core/VoxelRenderer.cc
 )
 
 # Utils library components
@@ -263,11 +264,14 @@ fabric_link_tracy(FabricLib)
 # Skinned mesh shaders (vs_skinned, fs_skinned)
 include(FabricSkinnedShaders)
 
-# Add skinned shader output to include path (set by FabricSkinnedShaders module)
-target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT})
+# Voxel mesh shaders (vs_voxel, fs_voxel)
+include(FabricVoxelShaders)
+
+# Add shader output to include path
+target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_VOXEL_SHADER_OUT})
 
 # Shader compilation must finish before FabricLib sources compile
-add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders)
+add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricVoxelShaders)
 
 # Per-target compile options (replaces global CMAKE_CXX_FLAGS_* variables)
 target_compile_options(FabricLib PRIVATE

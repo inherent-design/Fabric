@@ -8,10 +8,14 @@ set -eu
 build_dir="${BUILD_DIR:-build/dev-debug}"
 suite="${TEST_SUITE:-unit}"
 timeout_sec="${TEST_TIMEOUT:-120}"
+run_in_build_dir=0
 
 case "$suite" in
   unit) bin="${build_dir}/bin/UnitTests" ;;
-  e2e)  bin="${build_dir}/bin/E2ETests" ;;
+  e2e)
+    bin="${build_dir}/bin/E2ETests"
+    run_in_build_dir=1
+    ;;
   all)
     for s in unit e2e; do
       TEST_SUITE="$s" sh "$(dirname "$0")/test.sh"
@@ -38,10 +42,21 @@ fi
 
 echo "Running ${suite} tests (timeout: ${timeout_sec}s)"
 
+cmd="$bin"
+if [ "$run_in_build_dir" = "1" ]; then
+  cmd="./bin/E2ETests"
+  old_pwd=$(pwd)
+  cd "$build_dir"
+fi
+
 if command -v timeout >/dev/null 2>&1; then
-  timeout "${timeout_sec}" "$bin" $filter_flag
+  timeout "${timeout_sec}" $cmd $filter_flag
 elif command -v gtimeout >/dev/null 2>&1; then
-  gtimeout "${timeout_sec}" "$bin" $filter_flag
+  gtimeout "${timeout_sec}" $cmd $filter_flag
 else
-  "$bin" $filter_flag
+  $cmd $filter_flag
+fi
+
+if [ "$run_in_build_dir" = "1" ]; then
+  cd "$old_pwd"
 fi
