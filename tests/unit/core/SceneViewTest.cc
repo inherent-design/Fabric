@@ -3,25 +3,21 @@
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/utils/Testing.hh"
-#include <gtest/gtest.h>
 #include <bx/math.h>
 #include <cmath>
+#include <gtest/gtest.h>
 #include <unordered_set>
 
 using namespace fabric;
 
 class FrustumCullerTest : public ::testing::Test {
-protected:
+  protected:
     World ecsWorld;
 
-    void SetUp() override {
-        ecsWorld.registerCoreComponents();
-    }
+    void SetUp() override { ecsWorld.registerCoreComponents(); }
 
     // Helper: create a scene entity with optional BoundingBox
-    flecs::entity createEntity(const char* name) {
-        return ecsWorld.createSceneEntity(name);
-    }
+    flecs::entity createEntity(const char* name) { return ecsWorld.createSceneEntity(name); }
 
     // Helper: create a child scene entity
     flecs::entity createChildEntity(flecs::entity parent, const char* name) {
@@ -29,14 +25,12 @@ protected:
     }
 
     // Helper: set BoundingBox on an entity
-    void setBoundingBox(flecs::entity e, float minX, float minY, float minZ,
-                        float maxX, float maxY, float maxZ) {
+    void setBoundingBox(flecs::entity e, float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
         e.set<BoundingBox>({minX, minY, minZ, maxX, maxY, maxZ});
     }
 
     // Helper: collect visible entity names
-    std::unordered_set<std::string> visibleNames(
-        const std::vector<flecs::entity>& entities) {
+    std::unordered_set<std::string> visibleNames(const std::vector<flecs::entity>& entities) {
         std::unordered_set<std::string> names;
         for (auto e : entities) {
             names.insert(std::string(e.name().c_str()));
@@ -174,8 +168,7 @@ TEST_F(FrustumCullerTest, MixedVisibility) {
 }
 
 TEST_F(FrustumCullerTest, OrthoFrustumCull) {
-    auto ortho = Matrix4x4<float>::orthographic(
-        -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
+    auto ortho = Matrix4x4<float>::orthographic(-10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
 
     auto inside = createEntity("inside");
     setBoundingBox(inside, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f);
@@ -269,8 +262,7 @@ TEST_F(FrustumCullerTest, OnlySceneEntitiesCulled) {
     auto scene = createEntity("scene_entity");
 
     // Non-scene entity with Position but no SceneEntity tag
-    ecsWorld.get().entity("non_scene")
-        .set<Position>({0.0f, 0.0f, 5.0f});
+    ecsWorld.get().entity("non_scene").set<Position>({0.0f, 0.0f, 5.0f});
 
     float vp[16];
     camera.getViewProjection(vp);
@@ -279,6 +271,118 @@ TEST_F(FrustumCullerTest, OnlySceneEntitiesCulled) {
 
     EXPECT_TRUE(names.count("scene_entity"));
     EXPECT_FALSE(names.count("non_scene"));
+}
+
+TEST_F(FrustumCullerTest, ChunkBoundingBoxVisibilityFiltersAsExpected) {
+    Camera camera;
+    camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
+    Transform<float> camTransform;
+    camera.updateView(camTransform);
+
+    auto visibleChunk = createEntity("chunk_visible");
+    setBoundingBox(visibleChunk, -16.0f, -16.0f, 4.0f, 16.0f, 16.0f, 36.0f);
+
+    auto culledChunk = createEntity("chunk_culled");
+    setBoundingBox(culledChunk, 600.0f, 600.0f, 8.0f, 632.0f, 632.0f, 40.0f);
+
+    float vp[16];
+    camera.getViewProjection(vp);
+    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto names = visibleNames(visible);
+
+    EXPECT_TRUE(names.count("chunk_visible"));
+    EXPECT_FALSE(names.count("chunk_culled"));
+}
+
+TEST_F(FrustumCullerTest, ChunkVisibilityChangesWithCameraMovement) {
+    Camera camera;
+    camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
+
+    auto originChunk = createEntity("origin_chunk");
+    setBoundingBox(originChunk, -16.0f, -16.0f, 4.0f, 16.0f, 16.0f, 36.0f);
+
+    auto rightChunk = createEntity("right_chunk");
+    setBoundingBox(rightChunk, 240.0f, -16.0f, 4.0f, 272.0f, 16.0f, 36.0f);
+
+    float vp[16];
+
+    Transform<float> atOrigin;
+    camera.updateView(atOrigin);
+    camera.getViewProjection(vp);
+    auto visibleAtOrigin = FrustumCuller::cull(vp, ecsWorld.get());
+    auto namesAtOrigin = visibleNames(visibleAtOrigin);
+
+    EXPECT_TRUE(namesAtOrigin.count("origin_chunk"));
+    EXPECT_FALSE(namesAtOrigin.count("right_chunk"));
+
+    Transform<float> movedRight;
+    movedRight.setPosition(Vec3f(256.0f, 0.0f, 0.0f));
+    camera.updateView(movedRight);
+    camera.getViewProjection(vp);
+    auto visibleMovedRight = FrustumCuller::cull(vp, ecsWorld.get());
+    auto namesMovedRight = visibleNames(visibleMovedRight);
+
+    EXPECT_FALSE(namesMovedRight.count("origin_chunk"));
+    EXPECT_TRUE(namesMovedRight.count("right_chunk"));
+}
+
+TEST_F(FrustumCullerTest, ChunkEntityMapAndVisibilitySetFilterGpuMeshKeys) {
+    struct ChunkCoord {
+        int cx;
+        int cy;
+        int cz;
+
+        bool operator==(const ChunkCoord&) const = default;
+    };
+
+    struct ChunkCoordHash {
+        size_t operator()(const ChunkCoord& coord) const noexcept {
+            size_t h1 = std::hash<int>{}(coord.cx);
+            size_t h2 = std::hash<int>{}(coord.cy);
+            size_t h3 = std::hash<int>{}(coord.cz);
+            return h1 ^ (h2 << 1) ^ (h3 << 2);
+        }
+    };
+
+    Camera camera;
+    camera.setPerspective(60.0f, 1.0f, 0.1f, 1000.0f, true);
+    Transform<float> camTransform;
+    camera.updateView(camTransform);
+
+    auto nearEntity = createEntity("near_chunk");
+    setBoundingBox(nearEntity, -16.0f, -16.0f, 16.0f, 16.0f, 16.0f, 48.0f);
+
+    auto farEntity = createEntity("far_chunk");
+    setBoundingBox(farEntity, 1000.0f, -16.0f, 16.0f, 1032.0f, 16.0f, 48.0f);
+
+    std::unordered_map<ChunkCoord, flecs::entity, ChunkCoordHash> chunkEntities;
+    chunkEntities[{0, 0, 0}] = nearEntity;
+    chunkEntities[{31, 0, 0}] = farEntity;
+
+    std::vector<ChunkCoord> gpuMeshKeys{{0, 0, 0}, {31, 0, 0}};
+
+    float vp[16];
+    camera.getViewProjection(vp);
+    auto visibleEntities = FrustumCuller::cull(vp, ecsWorld.get());
+
+    std::unordered_set<flecs::entity_t> visibleIds;
+    for (const auto& entity : visibleEntities) {
+        visibleIds.insert(entity.id());
+    }
+
+    std::vector<ChunkCoord> drawList;
+    for (const auto& coord : gpuMeshKeys) {
+        auto it = chunkEntities.find(coord);
+        if (it == chunkEntities.end()) {
+            continue;
+        }
+        if (visibleIds.contains(it->second.id())) {
+            drawList.push_back(coord);
+        }
+    }
+
+    ASSERT_EQ(drawList.size(), 1u);
+    EXPECT_EQ(drawList[0], (ChunkCoord{0, 0, 0}));
 }
 
 // BoundingBox component tests (replacing SceneNodeAABBTest)

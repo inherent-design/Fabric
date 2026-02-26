@@ -121,6 +121,10 @@ void VoxelRenderer::setLightDirection(const Vector3<float, Space::World>& dir) {
         initProgram();
     }
 
+    if (!isValid() || !bgfx::isValid(uniformLightDir_)) {
+        return;
+    }
+
     float lightDir[4] = {dir.x, dir.y, dir.z, 0.0f};
     bgfx::setUniform(uniformLightDir_, lightDir);
 }
