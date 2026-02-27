@@ -15,6 +15,7 @@ struct RagdollHandle {
 
 struct RagdollConfig {
     float jointRadius = 0.05f;
+    float jointMass = 1.0f;
     float blendDuration = 0.2f;
 };
 

@@ -1,4 +1,5 @@
 #include "fabric/core/PhysicsWorld.hh"
+#include "fabric/core/Log.hh"
 
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Physics/Body/Body.h>
@@ -12,6 +13,10 @@
 #include <mutex>
 
 namespace fabric {
+
+namespace {
+std::once_flag sJoltInitFlag;
+} // namespace
 
 // Contact listener forwards collision events to user callback
 class PhysicsWorld::ContactListenerImpl final : public JPH::ContactListener {
@@ -44,16 +49,12 @@ class PhysicsWorld::ContactListenerImpl final : public JPH::ContactListener {
     ContactCallback callback_;
 };
 
-// Track whether Jolt global state has been initialized in this process
-static bool sJoltGlobalInit = false;
-
 static void ensureJoltGlobalInit() {
-    if (sJoltGlobalInit)
-        return;
-    JPH::RegisterDefaultAllocator();
-    JPH::Factory::sInstance = new JPH::Factory();
-    JPH::RegisterTypes();
-    sJoltGlobalInit = true;
+    std::call_once(sJoltInitFlag, [] {
+        JPH::RegisterDefaultAllocator();
+        JPH::Factory::sInstance = new JPH::Factory();
+        JPH::RegisterTypes();
+    });
 }
 
 PhysicsWorld::PhysicsWorld() = default;
@@ -87,11 +88,13 @@ void PhysicsWorld::init(uint32_t maxBodies, int numThreads) {
     physicsSystem_->SetContactListener(contactListener_.get());
 
     initialized_ = true;
+    FABRIC_LOG_INFO("PhysicsWorld initialized (maxBodies={}, threads={})", maxBodies, threads);
 }
 
 void PhysicsWorld::shutdown() {
     if (!initialized_)
         return;
+    FABRIC_LOG_INFO("PhysicsWorld shutting down");
 
     // Remove constraints first (they reference bodies)
     for (auto& [id, constraint] : constraints_)

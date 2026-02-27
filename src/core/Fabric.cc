@@ -1,5 +1,8 @@
+#include "fabric/core/AnimationEvents.hh"
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Async.hh"
+#include "fabric/core/AudioSystem.hh"
+#include "fabric/core/BehaviorAI.hh"
 #include "fabric/core/Camera.hh"
 #include "fabric/core/CameraController.hh"
 #include "fabric/core/CaveCarver.hh"
@@ -16,6 +19,9 @@
 #include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/MovementFSM.hh"
+#include "fabric/core/Pathfinding.hh"
+#include "fabric/core/PhysicsWorld.hh"
+#include "fabric/core/Ragdoll.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/ResourceHub.hh"
 #include "fabric/core/SceneView.hh"
@@ -315,13 +321,21 @@ int main(int argc, char* argv[]) {
         // Flecs entities per chunk (BoundingBox + SceneEntity tag for frustum culling)
         std::unordered_map<fabric::ChunkCoord, flecs::entity, fabric::ChunkCoordHash> chunkEntities;
 
-        // Invalidate GPU mesh when voxel data changes
-        dispatcher.addEventListener(fabric::kVoxelChangedEvent, [&gpuUploadQueue](fabric::Event& e) {
-            int cx = e.getData<int>("cx");
-            int cy = e.getData<int>("cy");
-            int cz = e.getData<int>("cz");
-            gpuUploadQueue.insert({cx, cy, cz});
-        });
+        //----------------------------------------------------------------------
+        // Physics (must precede VoxelChanged handler)
+        //----------------------------------------------------------------------
+        fabric::PhysicsWorld physicsWorld;
+        physicsWorld.init(4096, 0);
+
+        // Invalidate GPU mesh and physics collision when voxel data changes
+        dispatcher.addEventListener(fabric::kVoxelChangedEvent,
+                                    [&gpuUploadQueue, &physicsWorld, &density](fabric::Event& e) {
+                                        int cx = e.getData<int>("cx");
+                                        int cy = e.getData<int>("cy");
+                                        int cz = e.getData<int>("cz");
+                                        gpuUploadQueue.insert({cx, cy, cz});
+                                        physicsWorld.rebuildChunkCollision(density.grid(), cx, cy, cz);
+                                    });
 
         //----------------------------------------------------------------------
         // Initial terrain generation + meshing
@@ -429,6 +443,25 @@ int main(int argc, char* argv[]) {
             float len = std::sqrt(lightDir.x * lightDir.x + lightDir.y * lightDir.y + lightDir.z * lightDir.z);
             lightDir = fabric::Vec3f(lightDir.x / len, lightDir.y / len, lightDir.z / len);
         }
+
+        //----------------------------------------------------------------------
+        // Sprint 7 systems: ragdoll, AI, audio
+        //----------------------------------------------------------------------
+        fabric::Ragdoll ragdoll;
+        ragdoll.init(&physicsWorld);
+
+        fabric::AudioSystem audioSystem;
+        audioSystem.init();
+        audioSystem.setDensityGrid(&density.grid());
+
+        fabric::BehaviorAI behaviorAI;
+        behaviorAI.init(ecsWorld.get());
+
+        fabric::Pathfinding pathfinding;
+        pathfinding.init();
+
+        fabric::AnimationEvents animEvents;
+        animEvents.init();
 
         //----------------------------------------------------------------------
         // Debug HUD
@@ -552,6 +585,7 @@ int main(int argc, char* argv[]) {
                 for (const auto& coord : streamUpdate.toUnload) {
                     gpuUploadQueue.erase(coord);
                     meshManager.removeChunk(coord);
+                    physicsWorld.removeChunkCollision(coord.cx, coord.cy, coord.cz);
 
                     if (auto it = chunkEntities.find(coord); it != chunkEntities.end()) {
                         it->second.destruct();
@@ -669,6 +703,10 @@ int main(int argc, char* argv[]) {
                     }
                 }
 
+                // Physics and AI step at fixed rate
+                physicsWorld.step(dt);
+                behaviorAI.update(dt);
+
                 // Mesh manager: budgeted CPU re-meshing of dirty chunks
                 meshManager.update();
 
@@ -702,6 +740,11 @@ int main(int argc, char* argv[]) {
 
             // Camera tracks player position (spring arm collision for 3P mode)
             cameraCtrl.update(playerPos, static_cast<float>(frameTime), &density.grid());
+
+            // Audio listener follows camera, update per frame for smooth spatial audio
+            audioSystem.setListenerPosition(cameraCtrl.position());
+            audioSystem.setListenerDirection(cameraCtrl.forward(), cameraCtrl.up());
+            audioSystem.update(static_cast<float>(frameTime));
 
             // Per-frame resets (InputRouter delegates to InputManager)
             inputRouter.beginFrame();
@@ -770,11 +813,18 @@ int main(int argc, char* argv[]) {
         }
 
         //----------------------------------------------------------------------
-        // Shutdown
+        // Shutdown (reverse initialization order)
         //----------------------------------------------------------------------
         FABRIC_LOG_INFO("Shutting down");
 
         debugHUD.shutdown();
+
+        animEvents.shutdown();
+        pathfinding.shutdown();
+        behaviorAI.shutdown();
+        audioSystem.shutdown();
+        ragdoll.shutdown();
+        physicsWorld.shutdown();
 
         for (auto& [_, mesh] : gpuMeshes) {
             fabric::VoxelMesher::destroyMesh(mesh);
