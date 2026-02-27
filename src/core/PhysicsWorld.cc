@@ -57,7 +57,9 @@ static void ensureJoltGlobalInit() {
     });
 }
 
-PhysicsWorld::PhysicsWorld() = default;
+PhysicsWorld::PhysicsWorld() {
+    ensureJoltGlobalInit();
+}
 
 PhysicsWorld::~PhysicsWorld() {
     if (initialized_)
