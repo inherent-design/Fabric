@@ -219,7 +219,28 @@ void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx,
     // Remove existing collision for this chunk
     removeChunkCollision(cx, cy, cz);
 
-    // Iterate 8^3 sub-tiles within the 32^3 chunk
+    // Neighbor offsets for 6 faces: +X, -X, +Y, -Y, +Z, -Z
+    constexpr int kNeighborOff[6][3] = {
+        {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
+    };
+    // Thin box half-extents per face direction (face-normal axis gets thin, others full)
+    constexpr float kHalf = 0.5f;
+    constexpr float kSkin = 0.025f;
+    // halfExtents[face] = {hx, hy, hz}
+    const JPH::Vec3 kFaceHalfExtent[6] = {
+        {kSkin, kHalf, kHalf}, // +X
+        {kSkin, kHalf, kHalf}, // -X
+        {kHalf, kSkin, kHalf}, // +Y
+        {kHalf, kSkin, kHalf}, // -Y
+        {kHalf, kHalf, kSkin}, // +Z
+        {kHalf, kHalf, kSkin}, // -Z
+    };
+    // Face center offset from voxel center (0.5 unit along face normal)
+    const float kFaceOffset[6][3] = {
+        {kHalf, 0.0f, 0.0f},  {-kHalf, 0.0f, 0.0f}, {0.0f, kHalf, 0.0f},
+        {0.0f, -kHalf, 0.0f}, {0.0f, 0.0f, kHalf},  {0.0f, 0.0f, -kHalf},
+    };
+
     int baseX = cx * kChunkSize;
     int baseY = cy * kChunkSize;
     int baseZ = cz * kChunkSize;
@@ -235,9 +256,8 @@ void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx,
                 int tileBaseZ = baseZ + tz * physics::kPhysTileSize;
 
                 JPH::StaticCompoundShapeSettings compound;
-                bool hasSolid = false;
+                bool hasShape = false;
 
-                // Scan voxels in this 8^3 tile
                 for (int lz = 0; lz < physics::kPhysTileSize; ++lz) {
                     for (int ly = 0; ly < physics::kPhysTileSize; ++ly) {
                         for (int lx = 0; lx < physics::kPhysTileSize; ++lx) {
@@ -249,20 +269,29 @@ void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx,
                             if (density < densityThreshold)
                                 continue;
 
-                            // Each solid voxel becomes a unit box (1x1x1) at its center
-                            JPH::Vec3 halfExtent(0.5f, 0.5f, 0.5f);
-                            auto boxSettings = new JPH::BoxShapeSettings(halfExtent, 0.0f);
+                            // Only emit thin collision quads for exposed faces
+                            for (int face = 0; face < 6; ++face) {
+                                int nx = wx + kNeighborOff[face][0];
+                                int ny = wy + kNeighborOff[face][1];
+                                int nz = wz + kNeighborOff[face][2];
 
-                            // Position relative to tile origin
-                            JPH::Vec3 localPos(static_cast<float>(lx) + 0.5f, static_cast<float>(ly) + 0.5f,
-                                               static_cast<float>(lz) + 0.5f);
-                            compound.AddShape(localPos, JPH::Quat::sIdentity(), boxSettings);
-                            hasSolid = true;
+                                if (grid.get(nx, ny, nz) >= densityThreshold)
+                                    continue;
+
+                                auto* boxSettings = new JPH::BoxShapeSettings(kFaceHalfExtent[face], 0.0f);
+
+                                // Position: voxel center + face offset, relative to tile origin
+                                JPH::Vec3 localPos(static_cast<float>(lx) + 0.5f + kFaceOffset[face][0],
+                                                   static_cast<float>(ly) + 0.5f + kFaceOffset[face][1],
+                                                   static_cast<float>(lz) + 0.5f + kFaceOffset[face][2]);
+                                compound.AddShape(localPos, JPH::Quat::sIdentity(), boxSettings);
+                                hasShape = true;
+                            }
                         }
                     }
                 }
 
-                if (!hasSolid)
+                if (!hasShape)
                     continue;
 
                 auto result = compound.Create(*tempAllocator_);
@@ -306,6 +335,28 @@ void PhysicsWorld::removeChunkCollision(int cx, int cy, int cz) {
         bi.DestroyBody(bodyId);
     }
     chunkBodies_.erase(it);
+}
+
+uint32_t PhysicsWorld::chunkCollisionShapeCount(int cx, int cy, int cz) const {
+    if (!initialized_)
+        return 0;
+
+    ChunkKey key{cx, cy, cz};
+    auto it = chunkBodies_.find(key);
+    if (it == chunkBodies_.end())
+        return 0;
+
+    uint32_t total = 0;
+    auto& lockIface = physicsSystem_->GetBodyLockInterface();
+    for (const auto& bodyId : it->second) {
+        JPH::BodyLockRead lock(lockIface, bodyId);
+        if (!lock.Succeeded())
+            continue;
+        const JPH::Shape* shape = lock.GetBody().GetShape();
+        if (shape->GetType() == JPH::EShapeType::Compound)
+            total += static_cast<const JPH::StaticCompoundShape*>(shape)->GetNumSubShapes();
+    }
+    return total;
 }
 
 void PhysicsWorld::setContactCallback(ContactCallback cb) {

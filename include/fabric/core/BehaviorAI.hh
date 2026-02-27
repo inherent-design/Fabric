@@ -1,12 +1,16 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <behaviortree_cpp/bt_factory.h>
 #include <flecs.h>
 
 #include "fabric/core/Animation.hh"
+#include "fabric/core/ChunkedGrid.hh"
+#include "fabric/core/Rendering.hh"
 
 namespace fabric {
 
@@ -44,6 +48,17 @@ struct AIAnimationState {
     AIState previousState = AIState::Idle;
     float blendTimer = 0.0f;
     bool blending = false;
+};
+
+struct PerceptionConfig {
+    float sightRange = 20.0f;
+    float hearingRange = 10.0f;
+    float sightAngle = 120.0f; // degrees, forward cone
+};
+
+struct PerceptionComponent {
+    PerceptionConfig config;
+    Vec3f forward = {0.0f, 0.0f, 1.0f};
 };
 
 // BT action nodes: set AIState via output port, return SUCCESS
@@ -99,6 +114,20 @@ class HasTarget : public BT::ConditionNode {
     BT::NodeStatus tick() override;
 };
 
+class CanSeeTarget : public BT::ConditionNode {
+  public:
+    CanSeeTarget(const std::string& name, const BT::NodeConfig& config);
+    static BT::PortsList providedPorts();
+    BT::NodeStatus tick() override;
+};
+
+class CanHearTarget : public BT::ConditionNode {
+  public:
+    CanHearTarget(const std::string& name, const BT::NodeConfig& config);
+    static BT::PortsList providedPorts();
+    BT::NodeStatus tick() override;
+};
+
 // Manages NPC entities with behavior trees for decision-making.
 // Wraps BehaviorTree.CPP factory and provides Flecs ECS integration.
 class BehaviorAI {
@@ -114,10 +143,19 @@ class BehaviorAI {
     void setAnimationMapping(flecs::entity npc, const AIAnimationMapping& mapping);
     std::string getClipNameForState(const AIAnimationMapping& mapping, AIState state);
 
+    void setPerceptionConfig(flecs::entity npc, const PerceptionConfig& config);
+    std::vector<Vec3f> getEntitiesInRange(const Vec3f& pos, float range);
+    static bool hasLineOfSight(const ChunkedGrid<float>& grid, const Vec3f& from, const Vec3f& to);
+
   private:
     BT::BehaviorTreeFactory factory_;
     flecs::world* world_ = nullptr;
     bool initialized_ = false;
+
+    // Cached queries (built once in init, avoid per-frame rebuild).
+    // Wrapped in optional to safely reset without touching dead world.
+    std::optional<flecs::query<BehaviorTreeComponent, AIStateComponent>> btQuery_;
+    std::optional<flecs::query<AIStateComponent, AIAnimationMapping, AIAnimationState>> animQuery_;
 };
 
 } // namespace fabric

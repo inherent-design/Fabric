@@ -123,4 +123,52 @@ PathResult Pathfinding::findPath(const ChunkedGrid<float>& grid, int sx, int sy,
     return result;
 }
 
+Vec3f Pathfinding::seek(const Vec3f& current, const Vec3f& target, float maxSpeed) {
+    Vec3f dir = target - current;
+    float len = dir.length();
+    if (len < 1e-6f)
+        return Vec3f(0.0f, 0.0f, 0.0f);
+    return (dir / len) * maxSpeed;
+}
+
+Vec3f Pathfinding::arrive(const Vec3f& current, const Vec3f& target, float maxSpeed, float slowRadius) {
+    Vec3f dir = target - current;
+    float dist = dir.length();
+    if (dist < 1e-6f)
+        return Vec3f(0.0f, 0.0f, 0.0f);
+
+    float speed = maxSpeed;
+    if (dist < slowRadius) {
+        speed = maxSpeed * (dist / slowRadius);
+    }
+
+    return (dir / dist) * speed;
+}
+
+void Pathfinding::advancePathFollower(PathFollower& follower, const Vec3f& currentPos) {
+    if (follower.complete)
+        return;
+    if (follower.waypoints.empty()) {
+        follower.complete = true;
+        return;
+    }
+
+    int idx = follower.currentWaypoint;
+    if (idx >= static_cast<int>(follower.waypoints.size())) {
+        follower.complete = true;
+        return;
+    }
+
+    const auto& wp = follower.waypoints[idx];
+    Vec3f target(static_cast<float>(wp.x), static_cast<float>(wp.y), static_cast<float>(wp.z));
+    Vec3f diff = target - currentPos;
+
+    if (diff.length() <= follower.arrivalThreshold) {
+        follower.currentWaypoint++;
+        if (follower.currentWaypoint >= static_cast<int>(follower.waypoints.size())) {
+            follower.complete = true;
+        }
+    }
+}
+
 } // namespace fabric

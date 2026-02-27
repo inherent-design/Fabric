@@ -665,6 +665,92 @@ TEST(PhysicsWorldTest, FixedConstraintKeepsBodiesTogether) {
     pw.shutdown();
 }
 
+// Internal edge ghost prevention
+
+TEST(PhysicsWorldTest, SingleVoxelProduces6Faces) {
+    PhysicsWorld pw;
+    pw.init();
+
+    ChunkedGrid<float> grid;
+    grid.set(4, 4, 4, 1.0f);
+
+    pw.rebuildChunkCollision(grid, 0, 0, 0);
+
+    // One voxel surrounded by air => 6 exposed faces
+    EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 6u);
+
+    pw.shutdown();
+}
+
+TEST(PhysicsWorldTest, TwoAdjacentVoxelsProduce10Faces) {
+    PhysicsWorld pw;
+    pw.init();
+
+    ChunkedGrid<float> grid;
+    grid.set(4, 4, 4, 1.0f);
+    grid.set(5, 4, 4, 1.0f); // adjacent along +X
+
+    pw.rebuildChunkCollision(grid, 0, 0, 0);
+
+    // 2 voxels * 6 faces = 12, minus 2 shared internal faces = 10
+    EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 10u);
+
+    pw.shutdown();
+}
+
+TEST(PhysicsWorldTest, SolidBlockExteriorFacesOnly) {
+    PhysicsWorld pw;
+    pw.init();
+
+    ChunkedGrid<float> grid;
+    // Fill a 2x2x2 block
+    for (int z = 0; z < 2; ++z)
+        for (int y = 0; y < 2; ++y)
+            for (int x = 0; x < 2; ++x)
+                grid.set(x, y, z, 1.0f);
+
+    pw.rebuildChunkCollision(grid, 0, 0, 0);
+
+    // 2x2x2 cube: 6 faces * 4 exposed cells per face = 24 face shapes
+    // Each face of the cube is 2x2 = 4 quads, 6 sides = 24
+    EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 24u);
+
+    pw.shutdown();
+}
+
+TEST(PhysicsWorldTest, FullyEnclosedVoxelNoShapes) {
+    PhysicsWorld pw;
+    pw.init();
+
+    ChunkedGrid<float> grid;
+    // 3x3x3 block: center voxel at (1,1,1) is fully enclosed
+    for (int z = 0; z < 3; ++z)
+        for (int y = 0; y < 3; ++y)
+            for (int x = 0; x < 3; ++x)
+                grid.set(x, y, z, 1.0f);
+
+    pw.rebuildChunkCollision(grid, 0, 0, 0);
+
+    // 3x3x3 cube exterior: 6 faces * 9 quads per face = 54
+    // But inner faces are culled. Only the 6 exposed faces of the cube.
+    // Each face is 3x3 = 9 face quads. 6 * 9 = 54.
+    EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 54u);
+
+    pw.shutdown();
+}
+
+TEST(PhysicsWorldTest, EmptyChunkNoShapes) {
+    PhysicsWorld pw;
+    pw.init();
+
+    ChunkedGrid<float> grid;
+    pw.rebuildChunkCollision(grid, 0, 0, 0);
+
+    EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 0u);
+
+    pw.shutdown();
+}
+
 // Edge cases for new APIs
 
 TEST(PhysicsWorldTest, ForceOnInvalidHandle) {
