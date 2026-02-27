@@ -9,6 +9,7 @@ CPMAddPackage(
     GITHUB_REPOSITORY jrouwe/JoltPhysics
     GIT_TAG v5.5.0
     SOURCE_SUBDIR "Build"
+    OPTIONS "CPP_RTTI_ENABLED ON"
     SYSTEM
     EXCLUDE_FROM_ALL
 )
