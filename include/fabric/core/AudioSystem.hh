@@ -187,6 +187,8 @@ class AudioSystem {
 
     Vec3f listenerPos_{};
 
+    AttenuationModel attenuationModel_ = AttenuationModel::Inverse;
+
     const ChunkedGrid<float>* densityGrid_ = nullptr;
     bool occlusionEnabled_ = false;
 

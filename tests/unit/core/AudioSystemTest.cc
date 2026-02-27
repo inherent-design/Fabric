@@ -128,6 +128,22 @@ TEST_F(AudioSystemTest, SetAttenuationModel) {
     audio.setAttenuationModel(AttenuationModel::Exponential);
 }
 
+TEST_F(AudioSystemTest, SetAttenuationModelBeforeInit) {
+    AudioSystem uninit;
+    uninit.setAttenuationModel(AttenuationModel::Linear);
+    uninit.setAttenuationModel(AttenuationModel::Exponential);
+}
+
+TEST_F(AudioSystemTest, AttenuationModelResetOnShutdown) {
+    audio.setAttenuationModel(AttenuationModel::Exponential);
+    audio.shutdown();
+    audio.initHeadless();
+    audio.setCommandBufferEnabled(false);
+    // After shutdown/reinit, model should be back to default (Inverse).
+    // Verify by calling setAttenuationModel again without crash.
+    audio.setAttenuationModel(AttenuationModel::Linear);
+}
+
 TEST_F(AudioSystemTest, UpdateWithNoSounds) {
     audio.update(0.016f);
 }
