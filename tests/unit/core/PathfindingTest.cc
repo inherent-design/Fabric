@@ -156,3 +156,123 @@ TEST(PathfindingTest, DiagonalAvoidance) {
 
     pf.shutdown();
 }
+
+// Steering: seek
+
+TEST(PathfindingTest, SeekTowardsTarget) {
+    Vec3f current(0.0f, 0.0f, 0.0f);
+    Vec3f target(10.0f, 0.0f, 0.0f);
+    Vec3f vel = Pathfinding::seek(current, target, 5.0f);
+
+    EXPECT_FLOAT_EQ(vel.x, 5.0f);
+    EXPECT_FLOAT_EQ(vel.y, 0.0f);
+    EXPECT_FLOAT_EQ(vel.z, 0.0f);
+}
+
+TEST(PathfindingTest, SeekNormalizesDirection) {
+    Vec3f current(0.0f, 0.0f, 0.0f);
+    Vec3f target(3.0f, 4.0f, 0.0f);
+    Vec3f vel = Pathfinding::seek(current, target, 10.0f);
+
+    float speed = vel.length();
+    EXPECT_NEAR(speed, 10.0f, 0.001f);
+}
+
+TEST(PathfindingTest, SeekAtTargetReturnsZero) {
+    Vec3f pos(5.0f, 5.0f, 5.0f);
+    Vec3f vel = Pathfinding::seek(pos, pos, 5.0f);
+
+    EXPECT_FLOAT_EQ(vel.x, 0.0f);
+    EXPECT_FLOAT_EQ(vel.y, 0.0f);
+    EXPECT_FLOAT_EQ(vel.z, 0.0f);
+}
+
+// Steering: arrive
+
+TEST(PathfindingTest, ArriveFullSpeedOutsideSlowRadius) {
+    Vec3f current(0.0f, 0.0f, 0.0f);
+    Vec3f target(20.0f, 0.0f, 0.0f);
+    Vec3f vel = Pathfinding::arrive(current, target, 10.0f, 5.0f);
+
+    EXPECT_NEAR(vel.length(), 10.0f, 0.001f);
+}
+
+TEST(PathfindingTest, ArriveDeceleratesInsideSlowRadius) {
+    Vec3f current(0.0f, 0.0f, 0.0f);
+    Vec3f target(2.5f, 0.0f, 0.0f);
+    Vec3f vel = Pathfinding::arrive(current, target, 10.0f, 5.0f);
+
+    // At half the slow radius, speed should be half max
+    EXPECT_NEAR(vel.length(), 5.0f, 0.001f);
+}
+
+TEST(PathfindingTest, ArriveAtTargetReturnsZero) {
+    Vec3f pos(3.0f, 3.0f, 3.0f);
+    Vec3f vel = Pathfinding::arrive(pos, pos, 10.0f, 5.0f);
+
+    EXPECT_FLOAT_EQ(vel.x, 0.0f);
+    EXPECT_FLOAT_EQ(vel.y, 0.0f);
+    EXPECT_FLOAT_EQ(vel.z, 0.0f);
+}
+
+// PathFollower
+
+TEST(PathfindingTest, PathFollowerAdvancesWaypoint) {
+    PathFollower follower;
+    follower.waypoints = {{0, 0, 0}, {5, 0, 0}, {10, 0, 0}};
+    follower.arrivalThreshold = 1.5f;
+
+    // Start near first waypoint
+    Pathfinding::advancePathFollower(follower, Vec3f(0.5f, 0.0f, 0.0f));
+    EXPECT_EQ(follower.currentWaypoint, 1);
+    EXPECT_FALSE(follower.complete);
+}
+
+TEST(PathfindingTest, PathFollowerDoesNotAdvanceWhenFar) {
+    PathFollower follower;
+    follower.waypoints = {{0, 0, 0}, {10, 0, 0}};
+    follower.arrivalThreshold = 1.5f;
+
+    Pathfinding::advancePathFollower(follower, Vec3f(5.0f, 0.0f, 0.0f));
+    EXPECT_EQ(follower.currentWaypoint, 0);
+    EXPECT_FALSE(follower.complete);
+}
+
+TEST(PathfindingTest, PathFollowerCompletesAtEnd) {
+    PathFollower follower;
+    follower.waypoints = {{0, 0, 0}, {5, 0, 0}};
+    follower.arrivalThreshold = 2.0f;
+
+    // Advance past first waypoint
+    Pathfinding::advancePathFollower(follower, Vec3f(0.0f, 0.0f, 0.0f));
+    EXPECT_EQ(follower.currentWaypoint, 1);
+
+    // Advance past last waypoint
+    Pathfinding::advancePathFollower(follower, Vec3f(5.0f, 0.0f, 0.0f));
+    EXPECT_TRUE(follower.complete);
+}
+
+TEST(PathfindingTest, PathFollowerEmptyWaypointsIsComplete) {
+    PathFollower follower;
+    Pathfinding::advancePathFollower(follower, Vec3f(0.0f, 0.0f, 0.0f));
+    EXPECT_TRUE(follower.complete);
+}
+
+TEST(PathfindingTest, PathFollowerStaysCompleteAfterDone) {
+    PathFollower follower;
+    follower.complete = true;
+    follower.waypoints = {{0, 0, 0}};
+
+    Pathfinding::advancePathFollower(follower, Vec3f(0.0f, 0.0f, 0.0f));
+    EXPECT_TRUE(follower.complete);
+    EXPECT_EQ(follower.currentWaypoint, 0);
+}
+
+TEST(PathfindingTest, PathFollowerComponentWrapsFollower) {
+    PathFollowerComponent comp;
+    comp.follower.waypoints = {{1, 2, 3}};
+    comp.follower.arrivalThreshold = 2.0f;
+
+    EXPECT_EQ(comp.follower.waypoints.size(), 1u);
+    EXPECT_FLOAT_EQ(comp.follower.arrivalThreshold, 2.0f);
+}

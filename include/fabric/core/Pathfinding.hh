@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/ChunkedGrid.hh"
+#include "fabric/core/Rendering.hh"
 
 #include <vector>
 
@@ -18,6 +19,17 @@ struct PathResult {
     int nodesExpanded = 0;
 };
 
+struct PathFollower {
+    std::vector<PathNode> waypoints;
+    int currentWaypoint = 0;
+    float arrivalThreshold = 1.5f;
+    bool complete = false;
+};
+
+struct PathFollowerComponent {
+    PathFollower follower;
+};
+
 class Pathfinding {
   public:
     void init();
@@ -27,6 +39,10 @@ class Pathfinding {
                         float threshold = 0.5f, int maxNodes = 4096);
 
     static bool isWalkable(const ChunkedGrid<float>& grid, int x, int y, int z, float threshold = 0.5f);
+
+    static Vec3f seek(const Vec3f& current, const Vec3f& target, float maxSpeed);
+    static Vec3f arrive(const Vec3f& current, const Vec3f& target, float maxSpeed, float slowRadius);
+    static void advancePathFollower(PathFollower& follower, const Vec3f& currentPos);
 
   private:
     static float heuristic(int x, int y, int z, int gx, int gy, int gz);
