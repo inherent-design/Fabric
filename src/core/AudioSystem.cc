@@ -335,11 +335,22 @@ bool AudioSystem::isOcclusionEnabled() const {
 }
 
 void AudioSystem::cleanupFinishedSounds() {
-    // TODO(human): Implement the sound cleanup strategy
-    //
-    // Iterate activeSounds_, find non-looping sounds that have finished
-    // playing (ma_sound_at_end returns true), uninit and remove them.
-    // Consider: should we clean all at once or batch N per frame?
+    std::vector<SoundHandle> finished;
+    for (auto& [handle, sound] : activeSounds_) {
+        if (ma_sound_at_end(sound) && !ma_sound_is_looping(sound)) {
+            finished.push_back(handle);
+        }
+    }
+    for (auto handle : finished) {
+        auto it = activeSounds_.find(handle);
+        if (it != activeSounds_.end()) {
+            ma_sound_uninit(it->second);
+            delete it->second;
+            activeSounds_.erase(it);
+            soundPositions_.erase(handle);
+            baseVolumes_.erase(handle);
+        }
+    }
 }
 
 } // namespace fabric

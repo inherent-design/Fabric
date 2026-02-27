@@ -1,4 +1,5 @@
 #include "fabric/core/BehaviorAI.hh"
+#include "fabric/core/Log.hh"
 
 namespace fabric {
 
@@ -115,9 +116,11 @@ void BehaviorAI::init(flecs::world& world) {
     factory_.registerNodeType<HasTarget>("HasTarget");
 
     initialized_ = true;
+    FABRIC_LOG_INFO("BehaviorAI initialized (7 node types registered)");
 }
 
 void BehaviorAI::shutdown() {
+    FABRIC_LOG_INFO("BehaviorAI shutting down");
     world_ = nullptr;
     initialized_ = false;
 }

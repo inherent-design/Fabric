@@ -1,12 +1,16 @@
 #include "fabric/core/AnimationEvents.hh"
+#include "fabric/core/Log.hh"
 
 #include <algorithm>
 
 namespace fabric {
 
-void AnimationEvents::init() {}
+void AnimationEvents::init() {
+    FABRIC_LOG_INFO("AnimationEvents initialized");
+}
 
 void AnimationEvents::shutdown() {
+    FABRIC_LOG_INFO("AnimationEvents shutting down ({} clips registered)", clips_.size());
     clips_.clear();
     callback_ = nullptr;
 }
