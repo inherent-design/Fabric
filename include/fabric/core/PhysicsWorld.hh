@@ -138,6 +138,7 @@ class PhysicsWorld {
 
     void rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx, int cy, int cz, float densityThreshold = 0.5f);
     void removeChunkCollision(int cx, int cy, int cz);
+    uint32_t chunkCollisionShapeCount(int cx, int cy, int cz) const;
 
     void setContactCallback(ContactCallback cb);
 

@@ -1,4 +1,5 @@
 #include "fabric/core/BehaviorAI.hh"
+#include "fabric/core/ECS.hh"
 
 #include <gtest/gtest.h>
 
@@ -419,6 +420,8 @@ TEST_F(BehaviorAITest, FactoryHasRegisteredNodes) {
     bool hasPatrol = false;
     bool hasChase = false;
     bool hasIsPlayerNearby = false;
+    bool hasCanSee = false;
+    bool hasCanHear = false;
     for (const auto& [id, manifest] : manifests) {
         if (id == "PatrolAction")
             hasPatrol = true;
@@ -426,10 +429,16 @@ TEST_F(BehaviorAITest, FactoryHasRegisteredNodes) {
             hasChase = true;
         if (id == "IsPlayerNearby")
             hasIsPlayerNearby = true;
+        if (id == "CanSeeTarget")
+            hasCanSee = true;
+        if (id == "CanHearTarget")
+            hasCanHear = true;
     }
     EXPECT_TRUE(hasPatrol);
     EXPECT_TRUE(hasChase);
     EXPECT_TRUE(hasIsPlayerNearby);
+    EXPECT_TRUE(hasCanSee);
+    EXPECT_TRUE(hasCanHear);
 }
 
 // Animation bridge tests
@@ -531,4 +540,202 @@ TEST_F(BehaviorAITest, NoMappingDoesNotCrash) {
     EXPECT_FALSE(npc.has<AIAnimationMapping>());
     ai.update(0.016f);
     ai.update(0.016f);
+}
+
+// Perception tests
+
+TEST_F(BehaviorAITest, SetPerceptionConfig) {
+    auto npc = ai.createNPC("");
+    PerceptionConfig cfg;
+    cfg.sightRange = 30.0f;
+    cfg.hearingRange = 15.0f;
+    cfg.sightAngle = 90.0f;
+    ai.setPerceptionConfig(npc, cfg);
+
+    EXPECT_TRUE(npc.has<PerceptionComponent>());
+    const auto& pc = npc.get<PerceptionComponent>();
+    EXPECT_FLOAT_EQ(pc.config.sightRange, 30.0f);
+    EXPECT_FLOAT_EQ(pc.config.hearingRange, 15.0f);
+    EXPECT_FLOAT_EQ(pc.config.sightAngle, 90.0f);
+}
+
+TEST_F(BehaviorAITest, PerceptionConfigDefaults) {
+    PerceptionConfig cfg;
+    EXPECT_FLOAT_EQ(cfg.sightRange, 20.0f);
+    EXPECT_FLOAT_EQ(cfg.hearingRange, 10.0f);
+    EXPECT_FLOAT_EQ(cfg.sightAngle, 120.0f);
+}
+
+TEST_F(BehaviorAITest, GetEntitiesInRangeFindsNearby) {
+    world.component<Position>();
+    auto npc1 = ai.createNPC("");
+    npc1.set<Position>({5.0f, 0.0f, 0.0f});
+
+    auto npc2 = ai.createNPC("");
+    npc2.set<Position>({100.0f, 0.0f, 0.0f});
+
+    auto results = ai.getEntitiesInRange(Vec3f(0.0f, 0.0f, 0.0f), 10.0f);
+    EXPECT_EQ(results.size(), 1u);
+    EXPECT_FLOAT_EQ(results[0].x, 5.0f);
+}
+
+TEST_F(BehaviorAITest, GetEntitiesInRangeEmptyWhenNoneClose) {
+    world.component<Position>();
+    auto npc = ai.createNPC("");
+    npc.set<Position>({50.0f, 50.0f, 50.0f});
+
+    auto results = ai.getEntitiesInRange(Vec3f(0.0f, 0.0f, 0.0f), 5.0f);
+    EXPECT_TRUE(results.empty());
+}
+
+TEST_F(BehaviorAITest, HasLineOfSightClearPath) {
+    ChunkedGrid<float> grid;
+    Vec3f from(0.0f, 0.0f, 0.0f);
+    Vec3f to(5.0f, 0.0f, 0.0f);
+    EXPECT_TRUE(BehaviorAI::hasLineOfSight(grid, from, to));
+}
+
+TEST_F(BehaviorAITest, HasLineOfSightBlockedByDensity) {
+    ChunkedGrid<float> grid;
+    grid.set(3, 0, 0, 1.0f);
+
+    Vec3f from(0.0f, 0.0f, 0.0f);
+    Vec3f to(5.0f, 0.0f, 0.0f);
+    EXPECT_FALSE(BehaviorAI::hasLineOfSight(grid, from, to));
+}
+
+TEST_F(BehaviorAITest, HasLineOfSightSamePoint) {
+    ChunkedGrid<float> grid;
+    Vec3f pos(3.0f, 3.0f, 3.0f);
+    EXPECT_TRUE(BehaviorAI::hasLineOfSight(grid, pos, pos));
+}
+
+// CanSeeTarget condition node
+
+TEST_F(BehaviorAITest, CanSeeTargetInRangeAndAngleAndLOS) {
+    const char* xml = R"(
+        <root BTCPP_format="4">
+            <BehaviorTree ID="Tree">
+                <Sequence>
+                    <CanSeeTarget target_distance="{target_distance}" target_angle="{target_angle}"
+                                  sight_range="20.0" sight_angle="120.0" has_los="{has_los}"/>
+                    <ChaseAction ai_state="{ai_state}"/>
+                </Sequence>
+            </BehaviorTree>
+        </root>
+    )";
+    auto npc = ai.createNPC(xml);
+    auto& btc = npc.get_mut<BehaviorTreeComponent>();
+    btc.tree.rootBlackboard()->set("target_distance", 10.0f);
+    btc.tree.rootBlackboard()->set("target_angle", 30.0f);
+    btc.tree.rootBlackboard()->set("has_los", true);
+
+    ai.update(0.016f);
+    EXPECT_EQ(npc.get<AIStateComponent>().state, AIState::Chase);
+}
+
+TEST_F(BehaviorAITest, CanSeeTargetOutOfRange) {
+    const char* xml = R"(
+        <root BTCPP_format="4">
+            <BehaviorTree ID="Tree">
+                <Sequence>
+                    <CanSeeTarget target_distance="{target_distance}" target_angle="{target_angle}"
+                                  sight_range="20.0" sight_angle="120.0" has_los="{has_los}"/>
+                    <ChaseAction ai_state="{ai_state}"/>
+                </Sequence>
+            </BehaviorTree>
+        </root>
+    )";
+    auto npc = ai.createNPC(xml);
+    auto& btc = npc.get_mut<BehaviorTreeComponent>();
+    btc.tree.rootBlackboard()->set("target_distance", 30.0f);
+    btc.tree.rootBlackboard()->set("target_angle", 30.0f);
+    btc.tree.rootBlackboard()->set("has_los", true);
+
+    ai.update(0.016f);
+    EXPECT_EQ(npc.get<AIStateComponent>().state, AIState::Idle);
+}
+
+TEST_F(BehaviorAITest, CanSeeTargetOutOfAngle) {
+    const char* xml = R"(
+        <root BTCPP_format="4">
+            <BehaviorTree ID="Tree">
+                <Sequence>
+                    <CanSeeTarget target_distance="{target_distance}" target_angle="{target_angle}"
+                                  sight_range="20.0" sight_angle="120.0" has_los="{has_los}"/>
+                    <ChaseAction ai_state="{ai_state}"/>
+                </Sequence>
+            </BehaviorTree>
+        </root>
+    )";
+    auto npc = ai.createNPC(xml);
+    auto& btc = npc.get_mut<BehaviorTreeComponent>();
+    btc.tree.rootBlackboard()->set("target_distance", 10.0f);
+    btc.tree.rootBlackboard()->set("target_angle", 90.0f);
+    btc.tree.rootBlackboard()->set("has_los", true);
+
+    ai.update(0.016f);
+    EXPECT_EQ(npc.get<AIStateComponent>().state, AIState::Idle);
+}
+
+TEST_F(BehaviorAITest, CanSeeTargetNoLOS) {
+    const char* xml = R"(
+        <root BTCPP_format="4">
+            <BehaviorTree ID="Tree">
+                <Sequence>
+                    <CanSeeTarget target_distance="{target_distance}" target_angle="{target_angle}"
+                                  sight_range="20.0" sight_angle="120.0" has_los="{has_los}"/>
+                    <ChaseAction ai_state="{ai_state}"/>
+                </Sequence>
+            </BehaviorTree>
+        </root>
+    )";
+    auto npc = ai.createNPC(xml);
+    auto& btc = npc.get_mut<BehaviorTreeComponent>();
+    btc.tree.rootBlackboard()->set("target_distance", 10.0f);
+    btc.tree.rootBlackboard()->set("target_angle", 30.0f);
+    btc.tree.rootBlackboard()->set("has_los", false);
+
+    ai.update(0.016f);
+    EXPECT_EQ(npc.get<AIStateComponent>().state, AIState::Idle);
+}
+
+// CanHearTarget condition node
+
+TEST_F(BehaviorAITest, CanHearTargetInRange) {
+    const char* xml = R"(
+        <root BTCPP_format="4">
+            <BehaviorTree ID="Tree">
+                <Sequence>
+                    <CanHearTarget target_distance="{target_distance}" hearing_range="10.0"/>
+                    <ChaseAction ai_state="{ai_state}"/>
+                </Sequence>
+            </BehaviorTree>
+        </root>
+    )";
+    auto npc = ai.createNPC(xml);
+    auto& btc = npc.get_mut<BehaviorTreeComponent>();
+    btc.tree.rootBlackboard()->set("target_distance", 5.0f);
+
+    ai.update(0.016f);
+    EXPECT_EQ(npc.get<AIStateComponent>().state, AIState::Chase);
+}
+
+TEST_F(BehaviorAITest, CanHearTargetOutOfRange) {
+    const char* xml = R"(
+        <root BTCPP_format="4">
+            <BehaviorTree ID="Tree">
+                <Sequence>
+                    <CanHearTarget target_distance="{target_distance}" hearing_range="10.0"/>
+                    <ChaseAction ai_state="{ai_state}"/>
+                </Sequence>
+            </BehaviorTree>
+        </root>
+    )";
+    auto npc = ai.createNPC(xml);
+    auto& btc = npc.get_mut<BehaviorTreeComponent>();
+    btc.tree.rootBlackboard()->set("target_distance", 15.0f);
+
+    ai.update(0.016f);
+    EXPECT_EQ(npc.get<AIStateComponent>().state, AIState::Idle);
 }
