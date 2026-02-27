@@ -105,6 +105,7 @@ void AudioSystem::shutdown() {
     soundCategories_.clear();
     densityGrid_ = nullptr;
     occlusionEnabled_ = false;
+    attenuationModel_ = AttenuationModel::Inverse;
     categoryVolumes_.fill(1.0f);
     masterVolume_ = 1.0f;
     FABRIC_LOG_INFO("AudioSystem shut down");
@@ -321,7 +322,13 @@ void AudioSystem::setMasterVolume(float volume) {
 }
 
 void AudioSystem::setAttenuationModel(AttenuationModel model) {
-    (void)model;
+    attenuationModel_ = model;
+    if (initialized_) {
+        ma_attenuation_model maModel = toMaModel(model);
+        for (auto& [handle, sound] : activeSounds_) {
+            ma_sound_set_attenuation_model(sound, maModel);
+        }
+    }
     FABRIC_LOG_DEBUG("Attenuation model set to {}", static_cast<int>(model));
 }
 
@@ -499,6 +506,7 @@ SoundHandle AudioSystem::executePlay(const std::string& path, const Vec3f& posit
 
     ma_sound_set_position(sound, position.x, position.y, position.z);
     ma_sound_set_spatialization_enabled(sound, MA_TRUE);
+    ma_sound_set_attenuation_model(sound, toMaModel(attenuationModel_));
     if (looped) {
         ma_sound_set_looping(sound, MA_TRUE);
     }
