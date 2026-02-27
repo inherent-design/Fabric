@@ -99,6 +99,15 @@ include(FabricFastgltf)
 # ozz-animation - SoA SIMD skeletal animation runtime
 include(FabricOzzAnimation)
 
+# Jolt Physics - rigid body dynamics
+include(FabricJolt)
+
+# BehaviorTree.CPP v4 - behavior tree AI
+include(FabricBehaviorTree)
+
+# miniaudio - single-header audio library
+include(FabricMiniaudio)
+
 # SDL3 Configuration
 set(SDL_SHARED OFF)
 set(SDL_STATIC ON)
@@ -177,6 +186,12 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/IKSolver.cc
     src/core/CaveCarver.cc
     src/core/VoxelRenderer.cc
+    src/core/PhysicsWorld.cc
+    src/core/Ragdoll.cc
+    src/core/BehaviorAI.cc
+    src/core/Pathfinding.cc
+    src/core/AudioSystem.cc
+    src/core/AnimationEvents.cc
 )
 
 # Utils library components
@@ -245,6 +260,9 @@ target_link_libraries(FabricLib
         ozz_animation
         ozz_base
         ozz_geometry
+        Jolt
+        behaviortree_cpp
+        miniaudio
 )
 
 target_compile_definitions(FabricLib
