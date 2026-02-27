@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 
 namespace fabric {
 
@@ -496,6 +497,13 @@ void AudioSystem::recalculateVolume(SoundHandle handle) {
 
 SoundHandle AudioSystem::executePlay(const std::string& path, const Vec3f& position, bool looped,
                                      SoundCategory category, SoundHandle preAllocHandle) {
+    // Pre-validate: miniaudio's resource manager has a use-after-free on
+    // missing files in headless mode (v0.11.22). Check existence first.
+    if (!std::filesystem::exists(path)) {
+        FABRIC_LOG_ERROR("Sound file not found: '{}'", path);
+        return InvalidSoundHandle;
+    }
+
     auto* sound = new ma_sound;
     ma_result result = ma_sound_init_from_file(engine_, path.c_str(), 0, nullptr, nullptr, sound);
     if (result != MA_SUCCESS) {
