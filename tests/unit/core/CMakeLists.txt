@@ -47,6 +47,12 @@ target_sources(UnitTests
   IKSolverTest.cc
   CaveCarverTest.cc
   Sprint7StubTest.cc
+  PhysicsWorldTest.cc
+  RagdollTest.cc
+  BehaviorAITest.cc
+  PathfindingTest.cc
+  AudioSystemTest.cc
+  AnimationEventsTest.cc
 )
 
 set_source_files_properties(
