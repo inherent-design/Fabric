@@ -1,4 +1,5 @@
 #include "fabric/core/Ragdoll.hh"
+#include "fabric/core/Log.hh"
 
 #include <Jolt/Jolt.h>
 
@@ -11,6 +12,7 @@ namespace fabric {
 
 void Ragdoll::init(PhysicsWorld* physics) {
     physics_ = physics;
+    FABRIC_LOG_INFO("Ragdoll system initialized");
 }
 
 void Ragdoll::shutdown() {
@@ -38,7 +40,7 @@ RagdollHandle Ragdoll::createRagdoll(int jointCount, const float* bindPoseMatric
         float py = m[13];
         float pz = m[14];
 
-        BodyHandle body = physics_->createStaticBody(shape.GetPtr(), px, py, pz);
+        BodyHandle body = physics_->createDynamicBody(shape.GetPtr(), px, py, pz, config_.jointMass);
         inst.bodies.push_back(body);
     }
 
