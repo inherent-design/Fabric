@@ -19,6 +19,14 @@
 
     <div class="section-title">State</div>
     <div class="row"><span class="label">FSM: </span><span class="value">{{ current_state }}</span></div>
+
+    <div class="section-title">Profiler</div>
+    <div class="row"><span class="label">Draw Calls: </span><span class="value">{{ draw_call_count }}</span></div>
+    <div class="row"><span class="label">GPU: </span><span class="value">{{ gpu_time_ms | format(2) }} ms</span></div>
+    <div class="row"><span class="label">Memory: </span><span class="value">{{ memory_usage_mb | format(1) }} MB</span></div>
+    <div class="row"><span class="label">Physics: </span><span class="value">{{ physics_body_count }} bodies</span></div>
+    <div class="row"><span class="label">Audio: </span><span class="value">{{ audio_voice_count }} voices</span></div>
+    <div class="row"><span class="label">Mesh Queue: </span><span class="value">{{ chunk_mesh_queue_size }}</span></div>
 </div>
 </body>
 </rml>

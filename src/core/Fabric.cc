@@ -807,6 +807,27 @@ int main(int argc, char* argv[]) {
                     triCount += static_cast<int>(m.indexCount / 3);
                 debugData.triangleCount = triCount;
 
+                // Profiler metrics from engine subsystems
+                const bgfx::Stats* bgfxStats = bgfx::getStats();
+                debugData.drawCallCount = static_cast<int>(bgfxStats->numDraw);
+                double gpuBegin = static_cast<double>(bgfxStats->gpuTimeBegin);
+                double gpuEnd = static_cast<double>(bgfxStats->gpuTimeEnd);
+                double gpuFreq = static_cast<double>(bgfxStats->gpuTimerFreq);
+                debugData.gpuTimeMs =
+                    (gpuFreq > 0.0) ? static_cast<float>((gpuEnd - gpuBegin) * 1000.0 / gpuFreq) : 0.0f;
+                debugData.memoryUsageMB = static_cast<float>(bgfxStats->gpuMemoryUsed) / (1024.0f * 1024.0f);
+                debugData.physicsBodyCount = static_cast<int>(physicsWorld.debrisCount());
+                debugData.audioVoiceCount = static_cast<int>(audioSystem.activeSoundCount());
+                debugData.chunkMeshQueueSize = static_cast<int>(meshManager.dirtyCount());
+
+                // Emit to Tracy for external profiler viewing
+                FABRIC_PLOT("Draw Calls", static_cast<int64_t>(debugData.drawCallCount));
+                FABRIC_PLOT("GPU Time (ms)", static_cast<double>(debugData.gpuTimeMs));
+                FABRIC_PLOT("Memory (MB)", static_cast<double>(debugData.memoryUsageMB));
+                FABRIC_PLOT("Physics Bodies", static_cast<int64_t>(debugData.physicsBodyCount));
+                FABRIC_PLOT("Audio Voices", static_cast<int64_t>(debugData.audioVoiceCount));
+                FABRIC_PLOT("Mesh Queue", static_cast<int64_t>(debugData.chunkMeshQueueSize));
+
                 debugHUD.update(debugData);
             }
 

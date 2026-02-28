@@ -33,6 +33,14 @@ void DebugHUD::init(Rml::Context* context) {
     constructor.Bind("current_radius", &currentRadius_);
     constructor.Bind("current_state", &currentState_);
 
+    // Profiler metrics
+    constructor.Bind("draw_call_count", &drawCallCount_);
+    constructor.Bind("gpu_time_ms", &gpuTimeMs_);
+    constructor.Bind("memory_usage_mb", &memoryUsageMB_);
+    constructor.Bind("physics_body_count", &physicsBodyCount_);
+    constructor.Bind("audio_voice_count", &audioVoiceCount_);
+    constructor.Bind("chunk_mesh_queue_size", &chunkMeshQueueSize_);
+
     modelHandle_ = constructor.GetModelHandle();
 
     document_ = context_->LoadDocument("assets/ui/debug_hud.rml");
@@ -62,6 +70,13 @@ void DebugHUD::update(const DebugData& data) {
     camZ_ = data.cameraPosition.z;
     currentRadius_ = data.currentRadius;
     currentState_ = data.currentState;
+
+    drawCallCount_ = data.drawCallCount;
+    gpuTimeMs_ = data.gpuTimeMs;
+    memoryUsageMB_ = data.memoryUsageMB;
+    physicsBodyCount_ = data.physicsBodyCount;
+    audioVoiceCount_ = data.audioVoiceCount;
+    chunkMeshQueueSize_ = data.chunkMeshQueueSize;
 
     if (modelHandle_) {
         modelHandle_.DirtyAllVariables();
