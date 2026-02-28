@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -52,8 +53,8 @@ class StructuralIntegrity {
             z |= ~0x1FFFFF;
     }
 
-    bool floodFillChunk(int cx, int cy, int cz, const ChunkedGrid<float>& grid, FloodFillState& state,
-                        float timeBudgetNs);
+    void floodFillGlobal(const ChunkedGrid<float>& grid, const std::vector<std::tuple<int, int, int>>& chunks,
+                         FloodFillState& state);
 
     void processFloodFillResults(const ChunkedGrid<float>& grid, FloodFillState& state);
 

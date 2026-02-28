@@ -120,3 +120,40 @@ TEST_F(StructuralIntegrityTest, DensityThresholdFiltersLowDensity) {
 
     EXPECT_EQ(eventCount, 1);
 }
+
+TEST_F(StructuralIntegrityTest, CrossChunkPillarSupportingBeamProducesNoDebris) {
+    si.setPerFrameBudgetMs(100.0f);
+
+    int eventCount = 0;
+    si.setDebrisCallback([&](const DebrisEvent&) { ++eventCount; });
+
+    // Pillar in chunk (0,0,0): x=31, y=0..4
+    for (int y = 0; y <= 4; ++y) {
+        grid.set(31, y, 0, 1.0f);
+    }
+
+    // Beam in chunk (1,0,0): x=32..34, y=4
+    for (int x = 32; x <= 34; ++x) {
+        grid.set(x, 4, 0, 1.0f);
+    }
+
+    si.update(grid, 0.016f);
+
+    EXPECT_EQ(eventCount, 0);
+}
+
+TEST_F(StructuralIntegrityTest, UnsupportedCrossChunkBeamProducesDebris) {
+    si.setPerFrameBudgetMs(100.0f);
+
+    std::vector<DebrisEvent> events;
+    si.setDebrisCallback([&](const DebrisEvent& e) { events.push_back(e); });
+
+    // Beam at y=4 spanning chunk boundary, no ground connection
+    for (int x = 32; x <= 34; ++x) {
+        grid.set(x, 4, 0, 1.0f);
+    }
+
+    si.update(grid, 0.016f);
+
+    EXPECT_EQ(static_cast<int>(events.size()), 3);
+}
