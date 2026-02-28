@@ -23,17 +23,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # NOTE: apt clang-tidy (18.x) may differ from local Homebrew LLVM (21.x).
+      # .clang-tidy config is shared. WarningsAsErrors is empty (advisory mode).
+      # Revisit version gap when WarningsAsErrors is tightened.
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang clang-tidy ninja-build cmake pkg-config \
-            libwebkit2gtk-4.1-dev libvulkan-dev libfreetype-dev \
-            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
-            libxfixes-dev libxi-dev libxss-dev \
-            libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev \
-            libgl-dev libegl-dev \
-            libasound2-dev libpulse-dev libpipewire-0.3-dev \
-            libdbus-1-dev libudev-dev
+        run: sh tasks/ci-deps-linux.sh clang clang-tidy cmake
 
       - name: Cache CPM dependencies
         uses: actions/cache@v5

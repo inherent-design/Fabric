@@ -43,15 +43,4 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y cppcheck
 
       - name: Run cppcheck
-        run: |
-          cppcheck \
-            --enable=warning,performance,portability \
-            --error-exitcode=1 \
-            --suppress=missingInclude \
-            --suppress=unmatchedSuppression \
-            --suppress=toomanyconfigs \
-            --suppress=syntaxError:include/fabric/core/DebugDraw.hh \
-            --suppress=uninitMemberVar:src/core/ParticleSystem.cc \
-            --suppress=invalidPointerCast:src/core/ParticleSystem.cc \
-            -I include/ \
-            src/ include/
+        run: sh tasks/cppcheck.sh

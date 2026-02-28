@@ -23,16 +23,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build clang llvm pkg-config \
-            libwebkit2gtk-4.1-dev libvulkan-dev libfreetype-dev \
-            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
-            libxfixes-dev libxi-dev libxss-dev \
-            libwayland-dev libxkbcommon-dev libdrm-dev libgbm-dev \
-            libgl-dev libegl-dev \
-            libasound2-dev libpulse-dev libpipewire-0.3-dev \
-            libdbus-1-dev libudev-dev
+        run: sh tasks/ci-deps-linux.sh clang llvm
 
       - name: Cache CPM dependencies
         uses: actions/cache@v5
