@@ -810,6 +810,24 @@ int main(int argc, char* argv[]) {
                     triCount += static_cast<int>(m.indexCount / 3);
                 debugData.triangleCount = triCount;
 
+                // Perf overlay (EF-18): bgfx stats (called after bgfx::frame())
+                const bgfx::Stats* stats = bgfx::getStats();
+                debugData.drawCallCount = static_cast<int>(stats->numDraw);
+                if (stats->gpuTimerFreq > 0) {
+                    double gpuMs = 1000.0 * static_cast<double>(stats->gpuTimeEnd - stats->gpuTimeBegin) /
+                                   static_cast<double>(stats->gpuTimerFreq);
+                    debugData.gpuTimeMs = static_cast<float>(gpuMs);
+                }
+                debugData.memoryUsageMB =
+                    static_cast<float>(stats->textureMemoryUsed + stats->rtMemoryUsed) / (1024.0f * 1024.0f);
+
+                // Subsystem counts
+                if (auto* jolt = physicsWorld.joltSystem()) {
+                    debugData.physicsBodyCount = static_cast<int>(jolt->GetNumBodies());
+                }
+                debugData.audioVoiceCount = static_cast<int>(audioSystem.activeSoundCount());
+                debugData.chunkMeshQueueSize = static_cast<int>(meshManager.dirtyCount());
+
                 debugHUD.update(debugData);
             }
 
