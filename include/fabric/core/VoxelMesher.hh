@@ -29,13 +29,16 @@ class VoxelMesher {
     static bgfx::VertexLayout getVertexLayout();
 
     // Generate raw mesh data (no bgfx, testable without GPU)
+    // lodLevel: 0=1:1, 1=2x stride, 2=4x stride
     static ChunkMeshData meshChunkData(int cx, int cy, int cz, const ChunkedGrid<float>& density,
-                                       const ChunkedGrid<Vector4<float, Space::World>>& essence,
-                                       float threshold = 0.5f);
+                                       const ChunkedGrid<Vector4<float, Space::World>>& essence, float threshold = 0.5f,
+                                       int lodLevel = 0);
 
     // Generate bgfx mesh (requires bgfx initialized)
+    // lodLevel: 0=1:1, 1=2x stride, 2=4x stride
     static ChunkMesh meshChunk(int cx, int cy, int cz, const ChunkedGrid<float>& density,
-                               const ChunkedGrid<Vector4<float, Space::World>>& essence, float threshold = 0.5f);
+                               const ChunkedGrid<Vector4<float, Space::World>>& essence, float threshold = 0.5f,
+                               int lodLevel = 0);
 
     static void destroyMesh(ChunkMesh& mesh);
 };

@@ -61,6 +61,8 @@ target_sources(UnitTests
   DebrisPoolTest.cc
   WaterSimulationTest.cc
   DataLoaderTest.cc
+  DebugDrawTest.cc
+  VoxelMesherLODTest.cc
 )
 
 set_source_files_properties(

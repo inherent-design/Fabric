@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 
 namespace fabric {
 
@@ -114,34 +115,78 @@ const std::vector<Debris>& DebrisPool::getDebris() const {
     return debris_;
 }
 
+DebrisPool::CellKey DebrisPool::toCell(const Vector3<float, Space::World>& pos, float invCellSize) {
+    return {static_cast<int32_t>(std::floor(pos.x * invCellSize)),
+            static_cast<int32_t>(std::floor(pos.y * invCellSize)),
+            static_cast<int32_t>(std::floor(pos.z * invCellSize))};
+}
+
 void DebrisPool::mergeNearby() {
-    for (size_t i = 0; i < debris_.size();) {
-        if (debris_[i].sleeping) {
-            ++i;
-            continue;
-        }
+    const size_t count = debris_.size();
+    if (count < 2)
+        return;
 
-        bool merged = false;
-        for (size_t j = i + 1; j < debris_.size();) {
-            if (debris_[j].sleeping) {
-                ++j;
-                continue;
-            }
-
-            if (shouldMerge(debris_[i], debris_[j])) {
-                debris_[i] = merge(debris_[i], debris_[j]);
-                debris_.erase(debris_.begin() + static_cast<ptrdiff_t>(j));
-                merged = true;
-            } else {
-                ++j;
-            }
-        }
-
-        if (merged) {
-            continue;
-        }
-        ++i;
+    float maxRadius = 0.0f;
+    for (const auto& d : debris_) {
+        if (d.radius > maxRadius)
+            maxRadius = d.radius;
     }
+
+    const float cellSize = mergeDistance_ + 2.0f * maxRadius;
+    if (cellSize <= 0.0f)
+        return;
+    const float invCellSize = 1.0f / cellSize;
+
+    std::unordered_map<CellKey, std::vector<size_t>, CellKeyHash> grid;
+    grid.reserve(count);
+
+    for (size_t i = 0; i < count; ++i) {
+        if (!debris_[i].sleeping) {
+            grid[toCell(debris_[i].position, invCellSize)].push_back(i);
+        }
+    }
+
+    std::vector<bool> dead(count, false);
+
+    for (size_t i = 0; i < count; ++i) {
+        if (dead[i] || debris_[i].sleeping)
+            continue;
+
+        CellKey base = toCell(debris_[i].position, invCellSize);
+
+        for (int32_t dx = -1; dx <= 1; ++dx) {
+            for (int32_t dy = -1; dy <= 1; ++dy) {
+                for (int32_t dz = -1; dz <= 1; ++dz) {
+                    CellKey neighbor{base.x + dx, base.y + dy, base.z + dz};
+                    auto it = grid.find(neighbor);
+                    if (it == grid.end())
+                        continue;
+
+                    for (size_t j : it->second) {
+                        if (j <= i || dead[j] || debris_[j].sleeping)
+                            continue;
+
+                        if (shouldMerge(debris_[i], debris_[j])) {
+                            debris_[i] = merge(debris_[i], debris_[j]);
+                            dead[j] = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Compact dead entries (replaces erase with O(n) single-pass)
+    size_t write = 0;
+    for (size_t read = 0; read < debris_.size(); ++read) {
+        if (!dead[read]) {
+            if (write != read) {
+                debris_[write] = std::move(debris_[read]);
+            }
+            ++write;
+        }
+    }
+    debris_.resize(write);
 }
 
 void DebrisPool::updateSleeping(float dt) {
@@ -184,8 +229,9 @@ void DebrisPool::convertToParticles() {
 }
 
 bool DebrisPool::shouldMerge(const Debris& a, const Debris& b) const {
-    float dist = (a.position - b.position).length();
-    return dist < (a.radius + b.radius + mergeDistance_);
+    float distSq = (a.position - b.position).lengthSquared();
+    float threshold = a.radius + b.radius + mergeDistance_;
+    return distSq < threshold * threshold;
 }
 
 Debris DebrisPool::merge(const Debris& a, const Debris& b) const {
