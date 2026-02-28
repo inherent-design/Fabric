@@ -1,0 +1,10 @@
+CompileFlags:
+  Add:
+    - -xc++
+    - -std=c++17
+    - -I/private/var/folders/n7/4xcmk9z14d1fy52_g051hzk80000gn/T/vibe-kanban/worktrees/65cd-ef-9-toml-data-l/fabric/include
+    - -I/private/var/folders/n7/4xcmk9z14d1fy52_g051hzk80000gn/T/vibe-kanban/worktrees/65cd-ef-9-toml-data-l/fabric/3rdparty
+    - -I/private/var/folders/n7/4xcmk9z14d1fy52_g051hzk80000gn/T/vibe-kanban/worktrees/65cd-ef-9-toml-data-l/fabric/3rdparty/minitrace
+    - -I/private/var/folders/n7/4xcmk9z14d1fy52_g051hzk80000gn/T/vibe-kanban/worktrees/65cd-ef-9-toml-data-l/fabric/3rdparty/tinyxml2
+    - -I/private/var/folders/n7/4xcmk9z14d1fy52_g051hzk80000gn/T/vibe-kanban/worktrees/65cd-ef-9-toml-data-l/fabric/3rdparty/minicoro
+    - -I/private/var/folders/n7/4xcmk9z14d1fy52_g051hzk80000gn/T/vibe-kanban/worktrees/65cd-ef-9-toml-data-l/fabric/3rdparty/lexy/include
