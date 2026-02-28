@@ -46,14 +46,14 @@ class SkinnedRenderer {
     bgfx::ProgramHandle program_;
     bgfx::UniformHandle uniformJointMatrices_;
 
-    // Cache: static vertex/index buffers per mesh pointer (geometry is immutable)
+    // Cache: static vertex/index buffers per mesh ID (geometry is immutable)
     struct MeshBufferCache {
         bgfx::VertexBufferHandle vbh = BGFX_INVALID_HANDLE;
         bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
         size_t vertexCount = 0;
         size_t indexCount = 0;
     };
-    std::unordered_map<const void*, MeshBufferCache> meshBufferCache_;
+    std::unordered_map<uint64_t, MeshBufferCache> meshBufferCache_;
 };
 
 } // namespace fabric

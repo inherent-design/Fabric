@@ -84,7 +84,7 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
         return;
     }
 
-    const auto* cacheKey = static_cast<const void*>(&mesh);
+    const auto cacheKey = mesh.id;
     auto it = meshBufferCache_.find(cacheKey);
 
     if (it == meshBufferCache_.end()) {
