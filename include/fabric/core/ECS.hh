@@ -58,6 +58,12 @@ class World {
     // Register Position, Rotation, Scale, BoundingBox, LocalToWorld, SceneEntity, Renderable
     void registerCoreComponents();
 
+#ifdef FABRIC_ECS_INSPECTOR
+    // Enable Flecs REST API + stats for web-based entity inspection.
+    // Starts HTTP server on port 27750, browsable at https://www.flecs.dev/explorer
+    void enableInspector();
+#endif
+
     // Propagate Position/Rotation/Scale through ChildOf hierarchy into LocalToWorld
     void updateTransforms();
 

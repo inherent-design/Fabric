@@ -22,6 +22,33 @@ TEST_F(MeshLoaderTest, MeshDataDefaultsAreEmpty) {
     EXPECT_TRUE(data.skeleton.empty());
 }
 
+TEST_F(MeshLoaderTest, MeshDataIdIsNonZero) {
+    MeshData data;
+    EXPECT_NE(data.id, 0u);
+}
+
+TEST_F(MeshLoaderTest, TwoMeshDataGetDistinctIds) {
+    MeshData a;
+    MeshData b;
+    EXPECT_NE(a.id, b.id);
+}
+
+TEST_F(MeshLoaderTest, MeshDataIdSurvivesMove) {
+    MeshData original;
+    original.positions.resize(10);
+    const auto expectedId = original.id;
+    MeshData moved(std::move(original));
+    EXPECT_EQ(moved.id, expectedId);
+}
+
+TEST_F(MeshLoaderTest, MeshDataIdSurvivesMoveAssignment) {
+    MeshData original;
+    const auto expectedId = original.id;
+    MeshData target;
+    target = std::move(original);
+    EXPECT_EQ(target.id, expectedId);
+}
+
 TEST_F(MeshLoaderTest, JointInfoDefaultValues) {
     JointInfo joint;
     EXPECT_TRUE(joint.name.empty());

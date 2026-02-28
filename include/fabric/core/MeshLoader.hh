@@ -2,6 +2,7 @@
 
 #include "fabric/core/Spatial.hh"
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -12,6 +13,13 @@
 
 namespace fabric {
 
+// Monotonically increasing ID for mesh identity (cache keys, lookup).
+// Each call returns a unique non-zero value, safe across translation units.
+inline uint64_t nextMeshId() {
+    static std::atomic<uint64_t> counter{0};
+    return ++counter;
+}
+
 // Joint hierarchy entry for skeleton data
 struct JointInfo {
     std::string name;
@@ -21,6 +29,9 @@ struct JointInfo {
 
 // Loaded mesh data from glTF 2.0 file
 struct MeshData {
+    // Stable identity for cache keying (survives moves/reallocs)
+    uint64_t id = nextMeshId();
+
     // Geometry
     std::vector<Vector3<float, Space::Local>> positions;
     std::vector<Vector3<float, Space::Local>> normals;

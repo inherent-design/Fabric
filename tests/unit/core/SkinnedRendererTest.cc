@@ -46,3 +46,17 @@ TEST_F(SkinnedRendererTest, SkinningDataCanHoldMaxJoints) {
     data.jointMatrices.resize(kMaxGpuJoints);
     EXPECT_EQ(data.jointMatrices.size(), static_cast<size_t>(kMaxGpuJoints));
 }
+
+TEST_F(SkinnedRendererTest, MeshDataHasStableId) {
+    MeshData a;
+    MeshData b;
+    EXPECT_NE(a.id, b.id) << "Each MeshData must get a unique cache key";
+    EXPECT_NE(a.id, 0u);
+    EXPECT_NE(b.id, 0u);
+}
+
+TEST_F(SkinnedRendererTest, MeshBufferCacheKeyIsUint64) {
+    // Verify the cache uses uint64_t by checking MeshData.id type
+    MeshData mesh;
+    static_assert(std::is_same_v<decltype(mesh.id), uint64_t>, "MeshData.id must be uint64_t for cache keying");
+}
