@@ -523,6 +523,13 @@ void registerAnimationSystem(flecs::world& world) {
             ozz::vector<ozz::math::SoaTransform> locals;
             sampler.sample(clip, skeleton, ratio, locals);
 
+            // IK pipeline: each stage modifies local-space transforms, then calls
+            // localToModel internally to obtain model-space joint positions for its
+            // own solver (raycasting, FABRIK). The final localToModel below converts
+            // the fully-adjusted locals into model space for skinning. Three total
+            // passes when both IK systems are active; each operates on a different
+            // local-space state so none are redundant.
+
             // Foot IK: adjust foot placement on voxel terrain
             if (entity.has<FootIKConfig>()) {
                 processFootIK(sampler, skeleton, locals, entity.get<FootIKConfig>());
@@ -533,6 +540,7 @@ void registerAnimationSystem(flecs::world& world) {
                 processSpineIK(sampler, skeleton, locals, entity.get<SpineIKConfig>());
             }
 
+            // Final localToModel: locals now reflect foot IK + spine IK adjustments
             ozz::vector<ozz::math::Float4x4> models;
             sampler.localToModel(skeleton, locals, models);
 
@@ -615,6 +623,12 @@ void registerAnimationSystem(flecs::world& world) {
                 skeleton, ozz::span<const ozz::animation::BlendingJob::Layer>(blendLayers.data(), blendLayers.size()),
                 blended);
 
+            // IK pipeline: each stage modifies local-space transforms, then calls
+            // localToModel internally to obtain model-space joint positions for its
+            // own solver. The final localToModel below converts the fully-adjusted
+            // locals into model space for skinning. See single-layer system above
+            // for the full rationale.
+
             // Foot IK: adjust foot placement on voxel terrain
             if (entity.has<FootIKConfig>()) {
                 processFootIK(sampler, skeleton, blended, entity.get<FootIKConfig>());
@@ -625,7 +639,7 @@ void registerAnimationSystem(flecs::world& world) {
                 processSpineIK(sampler, skeleton, blended, entity.get<SpineIKConfig>());
             }
 
-            // Convert to model space and compute skinning matrices
+            // Final localToModel: locals now reflect foot IK + spine IK adjustments
             ozz::vector<ozz::math::Float4x4> models;
             sampler.localToModel(skeleton, blended, models);
 
