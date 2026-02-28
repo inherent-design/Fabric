@@ -124,7 +124,10 @@ bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
     for (const auto& voxel : floodFillState_.allDenseVoxels) {
         const int64_t key = packKey(voxel[0], voxel[1], voxel[2]);
         if (floodFillState_.supported.count(key) == 0) {
-            debrisCallback_(DebrisEvent{voxel[0], voxel[1], voxel[2], grid.get(voxel[0], voxel[1], voxel[2])});
+            const float density = grid.get(voxel[0], voxel[1], voxel[2]);
+            if (density > 0.0f) {
+                debrisCallback_(DebrisEvent{voxel[0], voxel[1], voxel[2], density});
+            }
         }
     }
 
