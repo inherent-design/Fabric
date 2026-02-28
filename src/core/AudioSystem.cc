@@ -113,7 +113,6 @@ void AudioSystem::shutdown() {
         FABRIC_LOG_INFO("Audio thread joined");
     }
 
-    std::lock_guard<std::mutex> lock(soundsMutex_);
     drainCommandBuffer();
     executeStopAll();
 
@@ -516,7 +515,7 @@ void AudioSystem::executeCommand(AudioCommand& cmd) {
 }
 
 void AudioSystem::recalculateVolume(SoundHandle handle) {
-    std::lock_guard<std::mutex> lock(soundsMutex_);
+    // Caller must hold soundsMutex_
     auto it = activeSounds_.find(handle);
     if (it == activeSounds_.end())
         return;
