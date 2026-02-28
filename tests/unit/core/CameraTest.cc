@@ -1,11 +1,11 @@
 #include "fabric/core/Camera.hh"
-#include <gtest/gtest.h>
 #include <cmath>
+#include <gtest/gtest.h>
 
 using namespace fabric;
 
 class CameraTest : public ::testing::Test {
-protected:
+  protected:
     Camera camera;
 };
 
@@ -139,9 +139,11 @@ TEST_F(CameraTest, ViewProjectionMultiplication) {
     bool allZero = true;
     bool isIdentity = true;
     for (int i = 0; i < 16; ++i) {
-        if (vp[i] != 0.0f) allZero = false;
+        if (vp[i] != 0.0f)
+            allZero = false;
         float expected = (i % 5 == 0) ? 1.0f : 0.0f;
-        if (std::abs(vp[i] - expected) > 1e-5f) isIdentity = false;
+        if (std::abs(vp[i] - expected) > 1e-5f)
+            isIdentity = false;
     }
     EXPECT_FALSE(allZero);
     EXPECT_FALSE(isIdentity);

@@ -6,7 +6,7 @@
 using namespace fabric;
 
 class InputManagerTest : public ::testing::Test {
-protected:
+  protected:
     EventDispatcher dispatcher;
     InputManager input{dispatcher};
 
@@ -60,9 +60,7 @@ TEST_F(InputManagerTest, UnboundKeyIsNotConsumed) {
 
 TEST_F(InputManagerTest, BoundKeyDispatchesAction) {
     std::string dispatched;
-    dispatcher.addEventListener("move_forward", [&](Event& ev) {
-        dispatched = ev.getType();
-    });
+    dispatcher.addEventListener("move_forward", [&](Event& ev) { dispatched = ev.getType(); });
 
     input.bindKey("move_forward", SDLK_W);
     auto e = makeKeyDown(SDLK_W);
@@ -72,9 +70,7 @@ TEST_F(InputManagerTest, BoundKeyDispatchesAction) {
 
 TEST_F(InputManagerTest, KeyUpDispatchesReleasedAction) {
     std::string dispatched;
-    dispatcher.addEventListener("move_forward:released", [&](Event& ev) {
-        dispatched = ev.getType();
-    });
+    dispatcher.addEventListener("move_forward:released", [&](Event& ev) { dispatched = ev.getType(); });
 
     input.bindKey("move_forward", SDLK_W);
 

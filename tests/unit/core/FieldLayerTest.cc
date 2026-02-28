@@ -1,6 +1,6 @@
 #include "fabric/core/FieldLayer.hh"
-#include <gtest/gtest.h>
 #include <cmath>
+#include <gtest/gtest.h>
 
 using namespace fabric;
 

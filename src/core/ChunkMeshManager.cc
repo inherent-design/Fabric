@@ -6,7 +6,8 @@
 namespace fabric {
 
 ChunkMeshManager::ChunkMeshManager(EventDispatcher& dispatcher, const ChunkedGrid<float>& density,
-                                   const ChunkedGrid<Vector4<float, Space::World>>& essence, ChunkMeshConfig config)
+                                   const ChunkedGrid<Vector4<float, Space::World>>& essence,
+                                   const ChunkMeshConfig& config)
     : dispatcher_(dispatcher), density_(density), essence_(essence), config_(config) {
     handlerId_ = dispatcher_.addEventListener(kVoxelChangedEvent, [this](Event& e) {
         int cx = e.getData<int>("cx");

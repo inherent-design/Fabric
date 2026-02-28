@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include "fabric/core/Simulation.hh"
+#include <gtest/gtest.h>
 
 using namespace fabric;
 
@@ -30,7 +30,8 @@ TEST(SimulationTest, RuleSetsValue) {
     SimulationHarness sim;
     sim.density().write(0, 0, 0, 0.0f);
     sim.registerRule("setter", [](DensityField& d, EssenceField&, int x, int y, int z, double) {
-        if (x == 0 && y == 0 && z == 0) d.write(0, 0, 0, 1.0f);
+        if (x == 0 && y == 0 && z == 0)
+            d.write(0, 0, 0, 1.0f);
     });
     sim.tick(1.0);
     EXPECT_FLOAT_EQ(sim.density().read(0, 0, 0), 1.0f);
@@ -40,7 +41,8 @@ TEST(SimulationTest, RulesExecuteInOrder) {
     SimulationHarness sim;
     sim.density().write(0, 0, 0, 0.0f);
     sim.registerRule("half", [](DensityField& d, EssenceField&, int x, int y, int z, double) {
-        if (x == 0 && y == 0 && z == 0) d.write(0, 0, 0, 0.5f);
+        if (x == 0 && y == 0 && z == 0)
+            d.write(0, 0, 0, 0.5f);
     });
     sim.registerRule("double", [](DensityField& d, EssenceField&, int x, int y, int z, double) {
         if (x == 0 && y == 0 && z == 0) {
@@ -55,9 +57,7 @@ TEST(SimulationTest, RulesExecuteInOrder) {
 TEST(SimulationTest, TickNoActiveChunks) {
     SimulationHarness sim;
     int callCount = 0;
-    sim.registerRule("counter", [&](DensityField&, EssenceField&, int, int, int, double) {
-        ++callCount;
-    });
+    sim.registerRule("counter", [&](DensityField&, EssenceField&, int, int, int, double) { ++callCount; });
     sim.tick(1.0);
     EXPECT_EQ(callCount, 0);
 }
@@ -69,13 +69,12 @@ TEST(SimulationTest, NeighborAccess) {
     sim.density().write(4, 5, 5, 3.0f);
 
     float neighborSum = 0.0f;
-    sim.registerRule("read_neighbors",
-        [&](DensityField& d, EssenceField&, int x, int y, int z, double) {
-            if (x == 5 && y == 5 && z == 5) {
-                auto n = d.grid().getNeighbors6(5, 5, 5);
-                neighborSum = n[0] + n[1]; // +x and -x
-            }
-        });
+    sim.registerRule("read_neighbors", [&](DensityField& d, EssenceField&, int x, int y, int z, double) {
+        if (x == 5 && y == 5 && z == 5) {
+            auto n = d.grid().getNeighbors6(5, 5, 5);
+            neighborSum = n[0] + n[1]; // +x and -x
+        }
+    });
     sim.tick(1.0);
     EXPECT_FLOAT_EQ(neighborSum, 5.0f); // 2.0 + 3.0
 }
@@ -86,10 +85,10 @@ TEST(SimulationTest, EssenceOnlyChunksProcessed) {
     sim.essence().write(10, 10, 10, V4(1, 0, 0, 0));
 
     bool called = false;
-    sim.registerRule("detect",
-        [&](DensityField&, EssenceField&, int x, int y, int z, double) {
-            if (x == 10 && y == 10 && z == 10) called = true;
-        });
+    sim.registerRule("detect", [&](DensityField&, EssenceField&, int x, int y, int z, double) {
+        if (x == 10 && y == 10 && z == 10)
+            called = true;
+    });
     sim.tick(1.0);
     EXPECT_TRUE(called);
 }
@@ -112,7 +111,8 @@ TEST(SimulationTest, Gravity) {
     sim.density().write(0, 5, 0, 1.0f);
     sim.registerRule("gravity", makeGravityRule());
 
-    for (int i = 0; i < 5; ++i) sim.tick(1.0);
+    for (int i = 0; i < 5; ++i)
+        sim.tick(1.0);
 
     // After 5 ticks, density should have fallen from y=5 toward y=0
     // With a correct gravity rule, density at (0,5,0) should be 0

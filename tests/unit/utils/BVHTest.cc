@@ -1,15 +1,12 @@
 #include "fabric/utils/BVH.hh"
-#include <gtest/gtest.h>
 #include <chrono>
+#include <gtest/gtest.h>
 #include <set>
 
 using namespace fabric;
 
 static AABB makeBox(float x, float y, float z, float half) {
-    return AABB(
-        Vec3f(x - half, y - half, z - half),
-        Vec3f(x + half, y + half, z + half)
-    );
+    return AABB(Vec3f(x - half, y - half, z - half), Vec3f(x + half, y + half, z + half));
 }
 
 TEST(BVHTest, EmptyBVH) {
@@ -102,21 +99,16 @@ TEST(BVHTest, BuildQueryConsistency) {
 TEST(BVHTest, FrustumQuery) {
     BVH<int> bvh;
     // Items in front of camera (negative z in view space with lookAt down -z)
-    bvh.insert(makeBox(0, 0, -5, 1), 1);   // visible
-    bvh.insert(makeBox(0, 0, -15, 1), 2);  // visible
-    bvh.insert(makeBox(0, 0, 50, 1), 3);   // behind camera
+    bvh.insert(makeBox(0, 0, -5, 1), 1);  // visible
+    bvh.insert(makeBox(0, 0, -15, 1), 2); // visible
+    bvh.insert(makeBox(0, 0, 50, 1), 3);  // behind camera
 
     // Build a view-projection matrix: camera at origin looking down -z
-    auto view = Matrix4x4<float>::lookAt(
-        Vec3f(0, 0, 0),
-        Vec3f(0, 0, -1),
-        Vec3f(0, 1, 0)
-    );
-    auto proj = Matrix4x4<float>::perspective(
-        1.5708f, // ~90 degrees FOV
-        1.0f,    // aspect ratio
-        0.1f,    // near
-        100.0f   // far
+    auto view = Matrix4x4<float>::lookAt(Vec3f(0, 0, 0), Vec3f(0, 0, -1), Vec3f(0, 1, 0));
+    auto proj = Matrix4x4<float>::perspective(1.5708f, // ~90 degrees FOV
+                                              1.0f,    // aspect ratio
+                                              0.1f,    // near
+                                              100.0f   // far
     );
     auto vp = proj * view;
 
