@@ -39,3 +39,6 @@ CMakeUserPresets.json
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/c_cpp_properties.json
+
+.cache/
+.clangd
