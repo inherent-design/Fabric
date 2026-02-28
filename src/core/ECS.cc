@@ -1,4 +1,5 @@
 #include "fabric/core/ECS.hh"
+#include "fabric/core/Log.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/utils/Profiler.hh"
 
@@ -47,6 +48,14 @@ void World::registerCoreComponents() {
     world_->component<SceneEntity>("SceneEntity");
     world_->component<Renderable>("Renderable");
 }
+
+#ifdef FABRIC_ECS_INSPECTOR
+void World::enableInspector() {
+    world_->import<flecs::stats>();
+    world_->set<flecs::Rest>({});
+    FABRIC_LOG_INFO("Flecs Explorer available at http://localhost:27750");
+}
+#endif
 
 void World::updateTransforms() {
     FABRIC_ZONE_SCOPED_N("ECS::updateTransforms");

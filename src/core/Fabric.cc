@@ -271,6 +271,9 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         fabric::World ecsWorld;
         ecsWorld.registerCoreComponents();
+#ifdef FABRIC_ECS_INSPECTOR
+        ecsWorld.enableInspector();
+#endif
         fabric::SceneView sceneView(0, camera, ecsWorld.get());
 
         fabric::ResourceHub resourceHub;

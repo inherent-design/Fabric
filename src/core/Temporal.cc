@@ -11,12 +11,6 @@ double TimeState::getTimestamp() const {
     return timestamp_;
 }
 
-std::unique_ptr<TimeState> TimeState::clone() const {
-    auto clone = std::make_unique<TimeState>(timestamp_);
-    clone->entityStates_ = entityStates_;
-    return clone;
-}
-
 TimeRegion::TimeRegion() : timeScale_(1.0), localTime_(0.0) {}
 
 TimeRegion::TimeRegion(double timeScale) : timeScale_(timeScale), localTime_(0.0) {}
@@ -62,10 +56,10 @@ void Timeline::update(double deltaTime) {
     if (automaticSnapshots_) {
         snapshotCounter_ += deltaTime;
         while (snapshotCounter_ >= snapshotInterval_) {
-            history_.push_back(createSnapshot());
+            history_.push_back(createSnapshotLocked());
             snapshotCounter_ -= snapshotInterval_;
 
-            if (history_.size() > 100) {
+            if (history_.size() > kMaxHistorySize) {
                 history_.pop_front();
             }
         }
@@ -95,6 +89,11 @@ void Timeline::removeRegion(TimeRegion* region) {
 }
 
 TimeState Timeline::createSnapshot() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return createSnapshotLocked();
+}
+
+TimeState Timeline::createSnapshotLocked() const {
     return TimeState(currentTime_);
 }
 
@@ -111,6 +110,7 @@ void Timeline::restoreSnapshotLocked(const TimeState& state) {
 }
 
 double Timeline::getCurrentTime() const {
+    std::lock_guard<std::mutex> lock(mutex_);
     return currentTime_;
 }
 
@@ -120,6 +120,7 @@ void Timeline::setGlobalTimeScale(double scale) {
 }
 
 double Timeline::getGlobalTimeScale() const {
+    std::lock_guard<std::mutex> lock(mutex_);
     return globalTimeScale_;
 }
 
@@ -134,6 +135,7 @@ void Timeline::resume() {
 }
 
 bool Timeline::isPaused() const {
+    std::lock_guard<std::mutex> lock(mutex_);
     return isPaused_;
 }
 
@@ -145,6 +147,7 @@ void Timeline::setAutomaticSnapshots(bool enable, double interval) {
 }
 
 const std::deque<TimeState>& Timeline::getHistory() const {
+    std::lock_guard<std::mutex> lock(mutex_);
     return history_;
 }
 
