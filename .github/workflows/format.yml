@@ -49,5 +49,6 @@ jobs:
             --error-exitcode=1 \
             --suppress=missingInclude \
             --suppress=unmatchedSuppression \
+            --suppress=toomanyconfigs \
             -I include/ \
             src/ include/
