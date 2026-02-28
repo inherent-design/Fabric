@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/core/RenderCaps.hh"
 #include "fabric/core/Spatial.hh"
 #include <algorithm>
 #include <array>
@@ -91,5 +92,8 @@ class FrustumCuller {
   public:
     static std::vector<flecs::entity> cull(const float* viewProjection, flecs::world& world);
 };
+
+// Global render capabilities, populated after bgfx::init().
+const RenderCaps& renderCaps();
 
 } // namespace fabric

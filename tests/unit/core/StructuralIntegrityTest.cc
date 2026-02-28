@@ -156,3 +156,64 @@ TEST_F(StructuralIntegrityTest, DensityThresholdFiltersLowDensity) {
 
     EXPECT_EQ(eventCount, 1);
 }
+
+TEST_F(StructuralIntegrityTest, BudgetLimitsBFSAcrossFrames) {
+    si.setPerFrameBudgetMs(0.001f);
+
+    // Dense 32x32x32 chunk on the ground
+    for (int z = 0; z < 32; ++z) {
+        for (int y = 0; y < 32; ++y) {
+            for (int x = 0; x < 32; ++x) {
+                grid.set(x, y, z, 1.0f);
+            }
+        }
+    }
+
+    // Floating cluster far from ground-connected voxels
+    grid.set(100, 50, 100, 1.0f);
+    grid.set(101, 50, 100, 1.0f);
+
+    int debrisCount = 0;
+    si.setDebrisCallback([&](const DebrisEvent&) { ++debrisCount; });
+
+    int iterations = 0;
+    constexpr int kMaxIterations = 100000;
+    while (debrisCount == 0 && iterations < kMaxIterations) {
+        si.update(grid, 0.016f);
+        ++iterations;
+    }
+
+    // With 1us budget and 32K+ voxels, BFS must span multiple frames
+    EXPECT_GT(iterations, 1) << "Budget should split BFS across multiple frames";
+
+    // Floating cluster detected as debris
+    EXPECT_EQ(debrisCount, 2);
+}
+
+TEST_F(StructuralIntegrityTest, ProcessedCellsIncrements) {
+    si.setPerFrameBudgetMs(0.001f);
+
+    // Dense 32x32x32 chunk on the ground
+    for (int z = 0; z < 32; ++z) {
+        for (int y = 0; y < 32; ++y) {
+            for (int x = 0; x < 32; ++x) {
+                grid.set(x, y, z, 1.0f);
+            }
+        }
+    }
+
+    si.setDebrisCallback([](const DebrisEvent&) {});
+    EXPECT_EQ(si.getProcessedCells(), 0u);
+
+    si.update(grid, 0.016f);
+    const uint64_t afterFirst = si.getProcessedCells();
+    EXPECT_GT(afterFirst, 0u) << "processedCells should increment after first update";
+
+    si.update(grid, 0.016f);
+    const uint64_t afterSecond = si.getProcessedCells();
+    EXPECT_GT(afterSecond, afterFirst) << "processedCells should continue incrementing";
+}
+
+TEST_F(StructuralIntegrityTest, GetProcessedCellsDefaultsToZero) {
+    EXPECT_EQ(si.getProcessedCells(), 0u);
+}
