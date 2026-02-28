@@ -1,0 +1,34 @@
+# Item Definition Schema
+# Each [[item]] entry defines a game item with its properties.
+
+[[item]]
+id = "sword_iron"
+name = "Iron Sword"
+category = "weapon"
+stackable = false
+max_stack = 1
+weight = 3.5
+damage = 12
+description = "A sturdy iron blade, reliable in combat."
+tags = ["melee", "metal"]
+
+[[item]]
+id = "potion_health"
+name = "Health Potion"
+category = "consumable"
+stackable = true
+max_stack = 64
+weight = 0.5
+heal_amount = 50
+description = "Restores 50 health points on use."
+tags = ["healing", "potion"]
+
+[[item]]
+id = "ore_iron"
+name = "Iron Ore"
+category = "material"
+stackable = true
+max_stack = 128
+weight = 2.0
+description = "Raw iron ore, ready for smelting."
+tags = ["ore", "metal", "craftable"]

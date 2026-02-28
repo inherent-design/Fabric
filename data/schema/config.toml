@@ -1,0 +1,27 @@
+# Engine Configuration
+# Flat structure: one section per subsystem.
+
+[window]
+title = "Fabric Engine"
+width = 1920
+height = 1080
+fullscreen = false
+vsync = true
+
+[render]
+backend = "metal"
+msaa_samples = 4
+shadow_map_size = 2048
+draw_distance = 256.0
+fov = 75.0
+
+[audio]
+master_volume = 0.8
+music_volume = 0.6
+sfx_volume = 1.0
+max_channels = 32
+
+[debug]
+show_fps = true
+show_wireframe = false
+log_level = "info"

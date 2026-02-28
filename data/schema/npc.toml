@@ -1,0 +1,53 @@
+# NPC Definition Schema
+# Each [[npc]] entry defines an NPC with stats and behavior configuration.
+
+[[npc]]
+id = "guard_town"
+name = "Town Guard"
+behavior_tree = "patrol_and_engage"
+faction = "town"
+hostile = false
+
+[npc.stats]
+health = 100
+attack = 15
+defense = 20
+speed = 4.0
+
+[npc.spawn]
+region = "town_square"
+max_count = 4
+
+[[npc]]
+id = "skeleton_basic"
+name = "Skeleton Warrior"
+behavior_tree = "aggressive_melee"
+faction = "undead"
+hostile = true
+
+[npc.stats]
+health = 60
+attack = 12
+defense = 8
+speed = 3.0
+
+[npc.spawn]
+region = "catacombs"
+max_count = 8
+
+[[npc]]
+id = "merchant_general"
+name = "General Merchant"
+behavior_tree = "shopkeeper"
+faction = "town"
+hostile = false
+
+[npc.stats]
+health = 50
+attack = 0
+defense = 5
+speed = 2.0
+
+[npc.spawn]
+region = "market"
+max_count = 1
