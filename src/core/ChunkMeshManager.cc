@@ -194,16 +194,32 @@ void ChunkMeshManager::updateLOD(float cameraX, float cameraY, float cameraZ) {
     }
 }
 
+// Generate vertical quads ("skirts") along chunk boundaries where the neighbor
+// chunk uses a different LOD level. Without skirts, LOD transitions expose gaps
+// because the coarser mesh samples fewer surface voxels at the boundary.
+//
+// Algorithm:
+//   1. For each of the four vertical boundary faces (+X, -X, +Z, -Z), look up
+//      the adjacent chunk's LOD. Skip if same LOD or neighbor absent.
+//   2. Walk the boundary column at this chunk's LOD resolution.
+//   3. For each solid boundary voxel, emit a quad that drops vertically by the
+//      larger of the two strides (max(own, neighbor)). This hides the seam
+//      regardless of which side is coarser.
+//   4. Vertex winding per face matches VoxelMesher conventions so normals and
+//      lighting remain consistent.
 void ChunkMeshManager::appendSkirtGeometry(ChunkMeshData& data, const ChunkCoord& coord, int lod) {
+    // stride = voxel step for this LOD; lodSize = boundary cells per axis
     const int stride = 1 << lod;
     const int lodSize = kChunkSize / stride;
 
-    // Only handle X and Z boundary faces (vertical skirts dropping in -Y)
+    // Only handle X and Z boundary faces (vertical skirts dropping in -Y).
+    // Y boundaries don't need skirts because chunks stack vertically with
+    // matching resolution along the horizon.
     struct SkirtFace {
-        int face;
-        int normalAxis;
-        int uAxis;
-        bool positive;
+        int face;       // VoxelMesher face index (0=+X, 1=-X, 4=+Z, 5=-Z)
+        int normalAxis; // 0 = X, 2 = Z
+        int uAxis;      // tangent axis along the boundary edge
+        bool positive;  // true = boundary at +axis end of chunk
     };
     constexpr SkirtFace kSkirtFaces[] = {
         {0, 0, 2, true},  // +X boundary
@@ -213,6 +229,7 @@ void ChunkMeshManager::appendSkirtGeometry(ChunkMeshData& data, const ChunkCoord
     };
 
     for (const auto& sf : kSkirtFaces) {
+        // Find the neighbor chunk across this boundary face
         ChunkCoord neighbor = coord;
         if (sf.normalAxis == 0) {
             neighbor.cx += sf.positive ? 1 : -1;
@@ -220,33 +237,44 @@ void ChunkMeshManager::appendSkirtGeometry(ChunkMeshData& data, const ChunkCoord
             neighbor.cz += sf.positive ? 1 : -1;
         }
 
+        // Skip if neighbor is absent or at the same LOD (no seam to hide)
         auto nit = chunkLODs_.find(neighbor);
         if (nit == chunkLODs_.end() || nit->second == lod)
             continue;
 
+        // skirtDrop: vertical extent of each quad. Use the coarser stride so the
+        // skirt covers the maximum possible gap between the two LOD meshes.
         int neighborStride = 1 << nit->second;
         int skirtDrop = std::max(stride, neighborStride);
+
+        // boundaryLocal: local-space coordinate fixed along the normal axis
         int boundaryLocal = sf.positive ? kChunkSize : 0;
 
+        // Walk boundary cells at this chunk's LOD resolution
         for (int vy = 0; vy < lodSize; ++vy) {
             for (int vu = 0; vu < lodSize; ++vu) {
+                // Map (vy, vu) to a 3D cell position on the boundary face
                 int cell[3];
                 cell[sf.normalAxis] = sf.positive ? (kChunkSize - stride) : 0;
                 cell[1] = vy * stride;
                 cell[sf.uAxis] = vu * stride;
 
+                // Convert to world coordinates for density lookup
                 int wx = coord.cx * kChunkSize + cell[0];
                 int wy = coord.cy * kChunkSize + cell[1];
                 int wz = coord.cz * kChunkSize + cell[2];
 
+                // Only emit skirt geometry where the boundary voxel is solid
                 if (density_.get(wx, wy, wz) <= config_.threshold)
                     continue;
 
+                // Compute vertical extent of the skirt quad
                 int yTop = cell[1];
                 int yBot = std::max(0, yTop - skirtDrop);
                 if (yBot >= yTop)
                     continue;
 
+                // Tangent span along the boundary edge
                 int u0 = cell[sf.uAxis];
                 int u1 = u0 + stride;
 
@@ -260,16 +288,17 @@ void ChunkMeshManager::appendSkirtGeometry(ChunkMeshData& data, const ChunkCoord
                 auto cu0 = static_cast<uint8_t>(u0);
                 auto cu1 = static_cast<uint8_t>(u1);
 
-                // Vertex winding matches VoxelMesher per-face convention
+                // Emit 4 vertices per quad. Winding order matches VoxelMesher
+                // per-face convention so face normals point outward.
                 if (sf.normalAxis == 0) {
                     if (sf.positive) {
-                        // +X (face 0): kVertUV ordering
+                        // +X (face 0): CCW when viewed from +X
                         data.vertices.push_back(VoxelVertex::pack(bv, yb, cu1, fn, 0, pi));
                         data.vertices.push_back(VoxelVertex::pack(bv, yb, cu0, fn, 0, pi));
                         data.vertices.push_back(VoxelVertex::pack(bv, yt, cu0, fn, 0, pi));
                         data.vertices.push_back(VoxelVertex::pack(bv, yt, cu1, fn, 0, pi));
                     } else {
-                        // -X (face 1)
+                        // -X (face 1): CCW when viewed from -X
                         data.vertices.push_back(VoxelVertex::pack(bv, yb, cu0, fn, 0, pi));
                         data.vertices.push_back(VoxelVertex::pack(bv, yb, cu1, fn, 0, pi));
                         data.vertices.push_back(VoxelVertex::pack(bv, yt, cu1, fn, 0, pi));
@@ -277,13 +306,13 @@ void ChunkMeshManager::appendSkirtGeometry(ChunkMeshData& data, const ChunkCoord
                     }
                 } else {
                     if (sf.positive) {
-                        // +Z (face 4)
+                        // +Z (face 4): CCW when viewed from +Z
                         data.vertices.push_back(VoxelVertex::pack(cu0, yb, bv, fn, 0, pi));
                         data.vertices.push_back(VoxelVertex::pack(cu1, yb, bv, fn, 0, pi));
                         data.vertices.push_back(VoxelVertex::pack(cu1, yt, bv, fn, 0, pi));
                         data.vertices.push_back(VoxelVertex::pack(cu0, yt, bv, fn, 0, pi));
                     } else {
-                        // -Z (face 5)
+                        // -Z (face 5): CCW when viewed from -Z
                         data.vertices.push_back(VoxelVertex::pack(cu1, yb, bv, fn, 0, pi));
                         data.vertices.push_back(VoxelVertex::pack(cu0, yb, bv, fn, 0, pi));
                         data.vertices.push_back(VoxelVertex::pack(cu0, yt, bv, fn, 0, pi));
@@ -291,6 +320,7 @@ void ChunkMeshManager::appendSkirtGeometry(ChunkMeshData& data, const ChunkCoord
                     }
                 }
 
+                // Two triangles per quad (0-1-2, 0-2-3)
                 data.indices.push_back(bi + 0);
                 data.indices.push_back(bi + 1);
                 data.indices.push_back(bi + 2);
