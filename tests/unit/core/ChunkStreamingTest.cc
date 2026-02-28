@@ -7,7 +7,8 @@ using namespace fabric;
 class ChunkStreamingTest : public ::testing::Test {
   protected:
     StreamingConfig smallConfig() {
-        return {.baseRadius = 2, .maxRadius = 4, .speedScale = 0.5f, .maxLoadsPerTick = 1000, .maxUnloadsPerTick = 1000};
+        return {
+            .baseRadius = 2, .maxRadius = 4, .speedScale = 0.5f, .maxLoadsPerTick = 1000, .maxUnloadsPerTick = 1000};
     }
 };
 

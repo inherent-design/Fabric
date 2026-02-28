@@ -1,17 +1,16 @@
 #include "fabric/core/Rendering.hh"
 #include "fabric/utils/Testing.hh"
-#include <gtest/gtest.h>
 #include <cmath>
+#include <gtest/gtest.h>
 
 using namespace fabric;
 
-template <typename T>
-bool almostEq(T a, T b, T epsilon = static_cast<T>(1e-5)) {
+template <typename T> bool almostEq(T a, T b, T epsilon = static_cast<T>(1e-5)) {
     return std::abs(a - b) <= epsilon;
 }
 
 class RenderingTest : public ::testing::Test {
-protected:
+  protected:
     void SetUp() override {}
 };
 

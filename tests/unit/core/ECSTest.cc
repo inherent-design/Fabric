@@ -1,9 +1,9 @@
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Spatial.hh"
 
-#include <gtest/gtest.h>
 #include <algorithm>
 #include <cmath>
+#include <gtest/gtest.h>
 #include <numbers>
 #include <vector>
 
@@ -18,8 +18,7 @@ TEST(ECSTest, WorldCreation) {
 TEST(ECSTest, WorldMoveConstruction) {
     World original;
     original.registerCoreComponents();
-    auto entity = original.get().entity("test_entity")
-        .set<Position>({1.0f, 2.0f, 3.0f});
+    auto entity = original.get().entity("test_entity").set<Position>({1.0f, 2.0f, 3.0f});
 
     World moved(std::move(original));
     // Moved-to world should have the entity
@@ -65,10 +64,11 @@ TEST(ECSTest, EntityCreationWithComponents) {
     World world;
     world.registerCoreComponents();
 
-    auto entity = world.get().entity("cube")
-        .set<Position>({1.0f, 2.0f, 3.0f})
-        .set<Rotation>({0.0f, 0.0f, 0.0f, 1.0f})
-        .set<Scale>({1.0f, 1.0f, 1.0f});
+    auto entity = world.get()
+                      .entity("cube")
+                      .set<Position>({1.0f, 2.0f, 3.0f})
+                      .set<Rotation>({0.0f, 0.0f, 0.0f, 1.0f})
+                      .set<Scale>({1.0f, 1.0f, 1.0f});
 
     EXPECT_TRUE(entity.has<Position>());
     EXPECT_TRUE(entity.has<Rotation>());
@@ -89,9 +89,10 @@ TEST(ECSTest, EntityWithBoundingBox) {
     World world;
     world.registerCoreComponents();
 
-    auto entity = world.get().entity()
-        .set<Position>({0.0f, 0.0f, 0.0f})
-        .set<BoundingBox>({-1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f});
+    auto entity = world.get()
+                      .entity()
+                      .set<Position>({0.0f, 0.0f, 0.0f})
+                      .set<BoundingBox>({-1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f});
 
     const auto* bb = entity.try_get<BoundingBox>();
     ASSERT_NE(bb, nullptr);
@@ -103,12 +104,9 @@ TEST(ECSTest, ChildOfRelationship) {
     World world;
     world.registerCoreComponents();
 
-    auto parent = world.get().entity("parent")
-        .set<Position>({10.0f, 0.0f, 0.0f});
+    auto parent = world.get().entity("parent").set<Position>({10.0f, 0.0f, 0.0f});
 
-    auto child = world.get().entity("child")
-        .child_of(parent)
-        .set<Position>({1.0f, 0.0f, 0.0f});
+    auto child = world.get().entity("child").child_of(parent).set<Position>({1.0f, 0.0f, 0.0f});
 
     // Child should have ChildOf relationship to parent
     EXPECT_TRUE(child.has(flecs::ChildOf, parent));
@@ -132,8 +130,7 @@ TEST(ECSTest, QueryIteration) {
 
     // Create several entities with Position
     for (int i = 0; i < 10; i++) {
-        world.get().entity()
-            .set<Position>({static_cast<float>(i), 0.0f, 0.0f});
+        world.get().entity().set<Position>({static_cast<float>(i), 0.0f, 0.0f});
     }
 
     // Query all entities with Position
@@ -152,26 +149,18 @@ TEST(ECSTest, CascadeHierarchyOrdering) {
     World world;
     world.registerCoreComponents();
 
-    auto root = world.get().entity("root")
-        .set<Position>({0.0f, 0.0f, 0.0f});
+    auto root = world.get().entity("root").set<Position>({0.0f, 0.0f, 0.0f});
 
-    auto childA = world.get().entity("childA")
-        .child_of(root)
-        .set<Position>({1.0f, 0.0f, 0.0f});
+    auto childA = world.get().entity("childA").child_of(root).set<Position>({1.0f, 0.0f, 0.0f});
 
-    auto grandchild = world.get().entity("grandchild")
-        .child_of(childA)
-        .set<Position>({2.0f, 0.0f, 0.0f});
+    auto grandchild = world.get().entity("grandchild").child_of(childA).set<Position>({2.0f, 0.0f, 0.0f});
 
     // CASCADE query ensures parents are processed before children
-    auto query = world.get().query_builder<const Position>()
-        .with(flecs::ChildOf, flecs::Wildcard).cascade().optional()
-        .build();
+    auto query =
+        world.get().query_builder<const Position>().with(flecs::ChildOf, flecs::Wildcard).cascade().optional().build();
 
     std::vector<std::string> order;
-    query.each([&](flecs::entity e, const Position&) {
-        order.push_back(std::string(e.name().c_str()));
-    });
+    query.each([&](flecs::entity e, const Position&) { order.push_back(std::string(e.name().c_str())); });
 
     // Root should appear before childA, childA before grandchild
     auto rootIdx = std::find(order.begin(), order.end(), "root");
@@ -189,8 +178,7 @@ TEST(ECSTest, EntityDeletion) {
     World world;
     world.registerCoreComponents();
 
-    auto entity = world.get().entity("doomed")
-        .set<Position>({1.0f, 2.0f, 3.0f});
+    auto entity = world.get().entity("doomed").set<Position>({1.0f, 2.0f, 3.0f});
 
     EXPECT_TRUE(entity.is_alive());
 
@@ -203,9 +191,7 @@ TEST(ECSTest, ComponentRemoval) {
     World world;
     world.registerCoreComponents();
 
-    auto entity = world.get().entity()
-        .set<Position>({1.0f, 2.0f, 3.0f})
-        .set<Scale>({1.0f, 1.0f, 1.0f});
+    auto entity = world.get().entity().set<Position>({1.0f, 2.0f, 3.0f}).set<Scale>({1.0f, 1.0f, 1.0f});
 
     EXPECT_TRUE(entity.has<Position>());
     EXPECT_TRUE(entity.has<Scale>());
@@ -220,16 +206,11 @@ TEST(ECSTest, CascadeParentDeletion) {
     World world;
     world.registerCoreComponents();
 
-    auto parent = world.get().entity("parent")
-        .set<Position>({0.0f, 0.0f, 0.0f});
+    auto parent = world.get().entity("parent").set<Position>({0.0f, 0.0f, 0.0f});
 
-    auto child = world.get().entity("child")
-        .child_of(parent)
-        .set<Position>({1.0f, 0.0f, 0.0f});
+    auto child = world.get().entity("child").child_of(parent).set<Position>({1.0f, 0.0f, 0.0f});
 
-    auto grandchild = world.get().entity("gchild")
-        .child_of(child)
-        .set<Position>({2.0f, 0.0f, 0.0f});
+    auto grandchild = world.get().entity("gchild").child_of(child).set<Position>({2.0f, 0.0f, 0.0f});
 
     // Deleting parent should cascade to children
     parent.destruct();
@@ -244,15 +225,13 @@ TEST(ECSTest, Progress) {
     world.registerCoreComponents();
 
     // Create entity and a system that modifies position
-    world.get().entity()
-        .set<Position>({0.0f, 0.0f, 0.0f});
+    world.get().entity().set<Position>({0.0f, 0.0f, 0.0f});
 
     int systemRan = 0;
-    world.get().system<Position>("MoveSystem")
-        .each([&](Position& pos) {
-            pos.x += 1.0f;
-            systemRan++;
-        });
+    world.get().system<Position>("MoveSystem").each([&](Position& pos) {
+        pos.x += 1.0f;
+        systemRan++;
+    });
 
     world.progress(1.0f / 60.0f);
     EXPECT_EQ(systemRan, 1);
@@ -411,9 +390,8 @@ TEST(ECSTest, UpdateTransformsRotationPropagation) {
 
     // Parent rotated 90 degrees around Y axis
     auto parent = world.createSceneEntity("parent");
-    auto q = Quaternion<float>::fromAxisAngle(
-        Vector3<float, Space::World>(0.0f, 1.0f, 0.0f),
-        static_cast<float>(std::numbers::pi / 2.0));
+    auto q = Quaternion<float>::fromAxisAngle(Vector3<float, Space::World>(0.0f, 1.0f, 0.0f),
+                                              static_cast<float>(std::numbers::pi / 2.0));
     parent.set<Rotation>({q.x, q.y, q.z, q.w});
 
     // Child at local position (1, 0, 0)

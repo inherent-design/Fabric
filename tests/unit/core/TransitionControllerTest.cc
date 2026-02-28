@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
 #include "fabric/core/TransitionController.hh"
 #include <cmath>
+#include <gtest/gtest.h>
 
 using namespace fabric;
 

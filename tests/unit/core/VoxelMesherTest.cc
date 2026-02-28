@@ -1,11 +1,11 @@
-#include <gtest/gtest.h>
 #include "fabric/core/VoxelMesher.hh"
+#include <gtest/gtest.h>
 
 using namespace fabric;
 using Essence = Vector4<float, Space::World>;
 
 class VoxelMesherTest : public ::testing::Test {
-protected:
+  protected:
     ChunkedGrid<float> density;
     ChunkedGrid<Essence> essence;
 };
@@ -44,8 +44,8 @@ TEST_F(VoxelMesherTest, Solid2x2x2BlockExposedFaces) {
 
     auto data = VoxelMesher::meshChunkData(0, 0, 0, density, essence);
     // Each of the 6 cube faces (2x2) merges into 1 quad
-    EXPECT_EQ(data.vertices.size(), 6u * 4);   // 24
-    EXPECT_EQ(data.indices.size(), 6u * 6);     // 36
+    EXPECT_EQ(data.vertices.size(), 6u * 4); // 24
+    EXPECT_EQ(data.indices.size(), 6u * 6);  // 36
 }
 
 TEST_F(VoxelMesherTest, NormalsAreCorrect) {
@@ -96,7 +96,7 @@ TEST_F(VoxelMesherTest, ZeroEssenceUsesDefaultGray) {
 }
 
 TEST_F(VoxelMesherTest, ThresholdExcludesLowDensity) {
-    density.set(0, 0, 0, 0.3f);  // below default threshold 0.5
+    density.set(0, 0, 0, 0.3f); // below default threshold 0.5
     auto data = VoxelMesher::meshChunkData(0, 0, 0, density, essence);
     EXPECT_EQ(data.vertices.size(), 0u);
     EXPECT_EQ(data.indices.size(), 0u);
@@ -112,10 +112,10 @@ TEST_F(VoxelMesherTest, DecayAffectsAlpha) {
     ASSERT_GT(data.palette.size(), 0u);
 
     auto& c = data.palette[data.vertices[0].paletteIndex()];
-    EXPECT_FLOAT_EQ(c[0], 0.3f);   // Chaos
-    EXPECT_FLOAT_EQ(c[1], 0.7f);   // Life
-    EXPECT_FLOAT_EQ(c[2], 0.5f);   // Order
-    EXPECT_FLOAT_EQ(c[3], 0.6f);   // 1.0 - 0.8*0.5
+    EXPECT_FLOAT_EQ(c[0], 0.3f); // Chaos
+    EXPECT_FLOAT_EQ(c[1], 0.7f); // Life
+    EXPECT_FLOAT_EQ(c[2], 0.5f); // Order
+    EXPECT_FLOAT_EQ(c[3], 0.6f); // 1.0 - 0.8*0.5
 }
 
 TEST_F(VoxelMesherTest, GreedyMergesFlatWall) {
