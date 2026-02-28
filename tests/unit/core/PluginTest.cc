@@ -393,3 +393,16 @@ TEST_F(PluginTest, ReloadPluginFailsWhenNotLoaded) {
 TEST_F(PluginTest, ReloadPluginFailsWhenNotRegistered) {
     EXPECT_FALSE(manager.reloadPlugin("NonexistentPlugin"));
 }
+
+TEST_F(PluginTest, FileWatcherAccessible) {
+    auto& watcher = manager.getFileWatcher();
+    EXPECT_FALSE(watcher.isValid());
+}
+
+TEST_F(PluginTest, FileWatcherInitViaHotReload) {
+    // enableHotReload initializes the file watcher
+    manager.enableHotReload("/tmp");
+    auto& watcher = manager.getFileWatcher();
+    EXPECT_TRUE(watcher.isValid());
+    watcher.shutdown();
+}
