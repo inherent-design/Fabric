@@ -63,7 +63,7 @@ template <typename T> class Result {
         return *value_;
     }
 
-    T valueOr(T defaultValue) const {
+    T valueOr(const T& defaultValue) const {
         if (isOk())
             return *value_;
         return defaultValue;
