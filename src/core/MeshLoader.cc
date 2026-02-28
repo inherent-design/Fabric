@@ -8,12 +8,17 @@
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
 
+#include <atomic>
 #include <functional>
 #include <ozz/animation/offline/raw_skeleton.h>
 #include <ozz/animation/offline/skeleton_builder.h>
 #include <ozz/base/memory/allocator.h>
 
 namespace fabric {
+
+namespace {
+std::atomic<uint64_t> s_nextMeshId{1};
+} // namespace
 
 MeshData MeshLoader::load(const std::filesystem::path& path) {
     FABRIC_ZONE_SCOPED;
@@ -170,6 +175,8 @@ MeshData MeshLoader::load(const std::filesystem::path& path) {
                 });
         }
     }
+
+    result.id = s_nextMeshId.fetch_add(1, std::memory_order_relaxed);
 
     return result;
 }

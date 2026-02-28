@@ -13,6 +13,7 @@ class MeshLoaderTest : public ::testing::Test {
 
 TEST_F(MeshLoaderTest, MeshDataDefaultsAreEmpty) {
     MeshData data;
+    EXPECT_EQ(data.id, 0u);
     EXPECT_TRUE(data.positions.empty());
     EXPECT_TRUE(data.normals.empty());
     EXPECT_TRUE(data.uvs.empty());
@@ -20,6 +21,32 @@ TEST_F(MeshLoaderTest, MeshDataDefaultsAreEmpty) {
     EXPECT_TRUE(data.jointIndices.empty());
     EXPECT_TRUE(data.jointWeights.empty());
     EXPECT_TRUE(data.skeleton.empty());
+}
+
+TEST_F(MeshLoaderTest, MeshDataIdDistinct) {
+    MeshData a;
+    a.id = 1;
+    MeshData b;
+    b.id = 2;
+    EXPECT_NE(a.id, b.id);
+}
+
+TEST_F(MeshLoaderTest, MeshDataIdSurvivesMove) {
+    MeshData original;
+    original.id = 42;
+    original.positions.resize(10);
+
+    MeshData moved = std::move(original);
+    EXPECT_EQ(moved.id, 42u);
+}
+
+TEST_F(MeshLoaderTest, MeshDataIdSurvivesCopy) {
+    MeshData original;
+    original.id = 99;
+    original.positions.resize(5);
+
+    MeshData copied = original;
+    EXPECT_EQ(copied.id, original.id);
 }
 
 TEST_F(MeshLoaderTest, JointInfoDefaultValues) {

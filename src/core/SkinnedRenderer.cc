@@ -84,8 +84,7 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
         return;
     }
 
-    const auto* cacheKey = static_cast<const void*>(&mesh);
-    auto it = meshBufferCache_.find(cacheKey);
+    auto it = meshBufferCache_.find(mesh.id);
 
     if (it == meshBufferCache_.end()) {
         // Cache miss: pack vertex data and create static buffers
@@ -153,7 +152,7 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
         cache.vertexCount = vertexCount;
         cache.indexCount = mesh.indices.size();
 
-        it = meshBufferCache_.emplace(cacheKey, cache).first;
+        it = meshBufferCache_.emplace(mesh.id, cache).first;
     }
 
     const auto& cache = it->second;

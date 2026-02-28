@@ -21,6 +21,10 @@ struct JointInfo {
 
 // Loaded mesh data from glTF 2.0 file
 struct MeshData {
+    // Stable identity for cache keying (survives moves/copies).
+    // Assigned by MeshLoader::load(); default 0 for test-constructed instances.
+    uint64_t id = 0;
+
     // Geometry
     std::vector<Vector3<float, Space::Local>> positions;
     std::vector<Vector3<float, Space::Local>> normals;
