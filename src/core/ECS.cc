@@ -51,7 +51,9 @@ void World::registerCoreComponents() {
 
 #ifdef FABRIC_ECS_INSPECTOR
 void World::enableInspector() {
-    world_->import<flecs::stats>();
+    // clang-format off
+    world_->import<flecs::stats>();  // v21 misparses import as C++20 keyword
+    // clang-format on
     world_->set<flecs::Rest>({});
     FABRIC_LOG_INFO("Flecs Explorer available at http://localhost:27750");
 }
