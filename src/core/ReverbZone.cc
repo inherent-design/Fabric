@@ -83,8 +83,7 @@ void ReverbZoneEstimator::advanceBFS(const ChunkedGrid<float>& density, float th
             } else {
                 // Air neighbor: enqueue if not visited.
                 int64_t key = packCoord(nx, ny, nz);
-                if (visited_.find(key) == visited_.end()) {
-                    visited_.insert(key);
+                if (visited_.insert(key).second) {
                     queue_.push_back({nx, ny, nz});
                 }
             }
