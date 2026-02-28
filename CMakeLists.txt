@@ -111,6 +111,9 @@ include(FabricMiniaudio)
 # toml++ - header-only TOML v1.0 parser for data files
 include(FabricToml)
 
+# efsw - cross-platform file system watcher for hot-reload
+include(FabricEfsw)
+
 # SDL3 Configuration
 set(SDL_SHARED OFF)
 set(SDL_STATIC ON)
@@ -202,6 +205,9 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/WaterSimulation.cc
     src/core/DataLoader.cc
     src/core/DebugDraw.cc
+    src/core/SkyRenderer.cc
+    src/core/VertexPool.cc
+    src/core/FileWatcher.cc
 )
 
 # Utils library components
@@ -282,6 +288,7 @@ target_link_libraries(FabricLib
         behaviortree_cpp
         miniaudio
         tomlplusplus::tomlplusplus
+        efsw
 )
 
 target_compile_definitions(FabricLib
@@ -305,11 +312,14 @@ include(FabricSkinnedShaders)
 # Voxel mesh shaders (vs_voxel, fs_voxel)
 include(FabricVoxelShaders)
 
+# Sky shaders (vs_sky, fs_sky)
+include(FabricSkyShaders)
+
 # Add shader output to include path
-target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_VOXEL_SHADER_OUT})
+target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_VOXEL_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT})
 
 # Shader compilation must finish before FabricLib sources compile
-add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricVoxelShaders)
+add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricVoxelShaders FabricSkyShaders)
 
 # Per-target compile options (replaces global CMAKE_CXX_FLAGS_* variables)
 target_compile_options(FabricLib PRIVATE

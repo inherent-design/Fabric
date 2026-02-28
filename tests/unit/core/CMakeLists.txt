@@ -63,6 +63,9 @@ target_sources(UnitTests
   DataLoaderTest.cc
   DebugDrawTest.cc
   VoxelMesherLODTest.cc
+  SkyRendererTest.cc
+  VertexPoolTest.cc
+  FileWatcherTest.cc
 )
 
 set_source_files_properties(

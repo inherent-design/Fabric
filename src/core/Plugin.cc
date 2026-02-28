@@ -2,6 +2,7 @@
 #include "fabric/core/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <algorithm>
+#include <filesystem>
 #include <queue>
 
 namespace fabric {
@@ -392,6 +393,29 @@ void PluginManager::shutdownAll() {
             FABRIC_LOG_ERROR("Exception shutting down plugin '{}': {}", name, e.what());
         } catch (...) {
             FABRIC_LOG_ERROR("Unknown exception shutting down plugin '{}'", name);
+        }
+    }
+}
+
+FileWatcher& PluginManager::getFileWatcher() {
+    return fileWatcher_;
+}
+
+void PluginManager::enableHotReload(const std::string& watchDir) {
+    if (!fileWatcher_.isValid()) {
+        fileWatcher_.init();
+    }
+    fileWatcher_.setExtensionFilter({".so", ".dylib", ".dll"});
+    fileWatcher_.watchDirectory(watchDir);
+
+    // Register each loaded plugin with a library path for hot-reload
+    std::lock_guard<std::mutex> lock(pluginMutex);
+    for (auto& [name, info] : plugins) {
+        if (info.isLoaded && info.libraryPath.has_value()) {
+            std::string pluginName = name;
+            fileWatcher_.registerResource(
+                *info.libraryPath, [](const std::string& path) { return std::filesystem::exists(path); },
+                [this, pluginName](const std::string& /*path*/) { reloadPlugin(pluginName); });
         }
     }
 }

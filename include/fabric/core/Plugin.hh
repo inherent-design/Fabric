@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/Component.hh"
+#include "fabric/core/FileWatcher.hh"
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -56,6 +57,10 @@ class PluginManager {
     bool hasDependencyCycle() const;
     std::vector<std::string> getInitializationOrder() const;
 
+    // File watcher for hot-reload support
+    FileWatcher& getFileWatcher();
+    void enableHotReload(const std::string& watchDir);
+
     PluginManager(const PluginManager&) = delete;
     PluginManager& operator=(const PluginManager&) = delete;
 
@@ -75,6 +80,7 @@ class PluginManager {
 
     mutable std::mutex pluginMutex;
     std::unordered_map<std::string, PluginInfo> plugins;
+    FileWatcher fileWatcher_;
 };
 
 #define FABRIC_REGISTER_PLUGIN(manager, PluginClass)                                                                   \

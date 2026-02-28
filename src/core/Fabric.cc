@@ -795,11 +795,11 @@ int main(int argc, char* argv[]) {
                         continue;
                     if (visibleEntityIds.find(entIt->second.id()) == visibleEntityIds.end())
                         continue;
-                    voxelRenderer.render(0, mesh, coord.cx, coord.cy, coord.cz);
+                    voxelRenderer.render(sceneView.geometryViewId(), mesh, coord.cx, coord.cy, coord.cz);
                 }
 
-                // Debug draw overlay (lines, shapes) on main view
-                debugDraw.begin(0);
+                // Debug draw overlay (lines, shapes) on geometry view
+                debugDraw.begin(sceneView.geometryViewId());
                 debugDraw.end();
 
                 // RmlUi overlay (view 255, after 3D scene, before frame flip)
@@ -880,6 +880,7 @@ int main(int argc, char* argv[]) {
         rmlRenderer.shutdown();
 
         voxelRenderer.shutdown();
+        sceneView.skyRenderer().shutdown();
         debugDraw.shutdown();
         bgfx::shutdown();
         SDL_DestroyWindow(window);
