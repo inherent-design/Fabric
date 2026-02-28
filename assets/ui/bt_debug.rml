@@ -1,0 +1,30 @@
+<rml>
+<head>
+    <link type="text/rcss" href="debug_hud.rcss" />
+    <style>
+        #bt-debug-panel {
+            position: fixed;
+            top: 8dp;
+            right: 8dp;
+            padding: 8dp 12dp;
+            background-color: #00000099;
+            border: 1dp #ffffff33;
+            width: 360dp;
+            max-height: 600dp;
+            overflow: auto;
+        }
+        .bt-nodes {
+            font-size: 12dp;
+            white-space: pre;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body data-model="bt_debug">
+<div id="bt-debug-panel">
+    <div class="section-title">Behavior Tree</div>
+    <div class="row"><span class="label">NPC: </span><span class="value">{{ selected_npc }}</span></div>
+    <div class="bt-nodes">{{ node_list }}</div>
+</div>
+</body>
+</rml>

@@ -53,6 +53,7 @@ target_sources(UnitTests
   CCDTest.cc
   RagdollTest.cc
   BehaviorAITest.cc
+  BTDebugPanelTest.cc
   PathfindingTest.cc
   AudioSystemTest.cc
   AnimationEventsTest.cc
@@ -77,6 +78,7 @@ target_sources(UnitTests
   InputRecorderTest.cc
   WaterRendererTest.cc
   MaterialSoundsTest.cc
+  SaveManagerTest.cc
 )
 
 set_source_files_properties(

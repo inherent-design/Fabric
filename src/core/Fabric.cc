@@ -3,6 +3,7 @@
 #include "fabric/core/Async.hh"
 #include "fabric/core/AudioSystem.hh"
 #include "fabric/core/BehaviorAI.hh"
+#include "fabric/core/BTDebugPanel.hh"
 #include "fabric/core/Camera.hh"
 #include "fabric/core/CameraController.hh"
 #include "fabric/core/CaveCarver.hh"
@@ -28,6 +29,7 @@
 #include "fabric/core/Ragdoll.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/ResourceHub.hh"
+#include "fabric/core/SaveManager.hh"
 #include "fabric/core/SceneView.hh"
 #include "fabric/core/ShadowSystem.hh"
 #include "fabric/core/Spatial.hh"
@@ -236,6 +238,9 @@ int main(int argc, char* argv[]) {
         inputManager.bindKey("toggle_camera", SDLK_V);
         inputManager.bindKey("toggle_collision_debug", SDLK_F5);
         inputManager.bindKey("toggle_bvh_debug", SDLK_F6);
+        inputManager.bindKey("toggle_bt_debug", SDLK_F7);
+        inputManager.bindKey("cycle_bt_npc", SDLK_F8);
+        inputManager.bindKey("quicksave", SDLK_F9);
 
         //----------------------------------------------------------------------
         // Timeline
@@ -486,6 +491,13 @@ int main(int argc, char* argv[]) {
         debugHUD.init(rmlContext);
 
         //----------------------------------------------------------------------
+        // BT Debug Panel
+        //----------------------------------------------------------------------
+        fabric::BTDebugPanel btDebugPanel;
+        btDebugPanel.init(rmlContext);
+        flecs::entity btDebugSelectedNpc;
+
+        //----------------------------------------------------------------------
         // Developer Console
         //----------------------------------------------------------------------
         fabric::DevConsole devConsole;
@@ -500,6 +512,12 @@ int main(int argc, char* argv[]) {
                 inputRouter.setMode(fabric::InputMode::GameOnly);
             }
         });
+
+        //----------------------------------------------------------------------
+        // Save system
+        //----------------------------------------------------------------------
+        fabric::SaveManager saveManager("saves");
+        fabric::SceneSerializer saveSerializer;
 
         //----------------------------------------------------------------------
         // Particle system + DebrisPool emitter wiring
@@ -552,6 +570,28 @@ int main(int argc, char* argv[]) {
         dispatcher.addEventListener("toggle_bvh_debug", [&](fabric::Event&) {
             debugDraw.toggleFlag(fabric::DebugDrawFlags::BVHOverlay);
             FABRIC_LOG_INFO("BVH overlay: {}", debugDraw.hasFlag(fabric::DebugDrawFlags::BVHOverlay) ? "on" : "off");
+        });
+
+        dispatcher.addEventListener("toggle_bt_debug", [&](fabric::Event&) {
+            btDebugPanel.toggle();
+            FABRIC_LOG_INFO("BT Debug: {}", btDebugPanel.isVisible() ? "on" : "off");
+        });
+
+        dispatcher.addEventListener("cycle_bt_npc", [&](fabric::Event&) {
+            btDebugPanel.selectNextNPC(behaviorAI, ecsWorld.get());
+            btDebugSelectedNpc = btDebugPanel.selectedNpc();
+        });
+
+        dispatcher.addEventListener("quicksave", [&](fabric::Event&) {
+            fabric::SceneSerializer qsSerializer;
+            if (saveManager.save(
+                    "quicksave", qsSerializer, ecsWorld, density, essence, timeline,
+                    std::optional<fabric::Position>(fabric::Position{playerPos.x, playerPos.y, playerPos.z}),
+                    std::optional<fabric::Position>(fabric::Position{playerVel.x, playerVel.y, playerVel.z}))) {
+                FABRIC_LOG_INFO("Quick save complete");
+            } else {
+                FABRIC_LOG_ERROR("Quick save failed");
+            }
         });
 
         // Jump on space press (grounded only; in flight, move_up is continuous)
@@ -621,6 +661,11 @@ int main(int argc, char* argv[]) {
 
                 fabric::async::poll();
                 timeline.update(kFixedDt);
+
+                saveManager.tickAutosave(
+                    dt, saveSerializer, ecsWorld, density, essence, timeline,
+                    std::optional<fabric::Position>(fabric::Position{playerPos.x, playerPos.y, playerPos.z}),
+                    std::optional<fabric::Position>(fabric::Position{playerVel.x, playerVel.y, playerVel.z}));
 
                 // Streaming: load/unload chunks around player
                 float speed =
@@ -963,6 +1008,10 @@ int main(int argc, char* argv[]) {
                 debugHUD.update(debugData);
             }
 
+            if (btDebugPanel.isVisible()) {
+                btDebugPanel.update(behaviorAI, btDebugSelectedNpc);
+            }
+
             FABRIC_FRAME_MARK;
         }
 
@@ -971,7 +1020,10 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         FABRIC_LOG_INFO("Shutting down");
 
+        // saveManager has no shutdown (value type, RAII)
+
         devConsole.shutdown();
+        btDebugPanel.shutdown();
         debugHUD.shutdown();
 
         animEvents.shutdown();

@@ -199,6 +199,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/PhysicsWorld.cc
     src/core/Ragdoll.cc
     src/core/BehaviorAI.cc
+    src/core/BTDebugPanel.cc
     src/core/Pathfinding.cc
     src/core/AudioSystem.cc
     src/core/AnimationEvents.cc
@@ -217,6 +218,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/InputRecorder.cc
     src/core/WaterRenderer.cc
     src/core/MaterialSounds.cc
+    src/core/SaveManager.cc
 )
 
 # Utils library components
