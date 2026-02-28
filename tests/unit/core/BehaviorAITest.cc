@@ -574,8 +574,9 @@ TEST_F(BehaviorAITest, GetEntitiesInRangeFindsNearby) {
     auto npc2 = ai.createNPC("");
     npc2.set<Position>({100.0f, 0.0f, 0.0f});
 
+    ai.update(0.0f);
     auto results = ai.getEntitiesInRange(Vec3f(0.0f, 0.0f, 0.0f), 10.0f);
-    EXPECT_EQ(results.size(), 1u);
+    ASSERT_EQ(results.size(), 1u);
     EXPECT_FLOAT_EQ(results[0].x, 5.0f);
 }
 
