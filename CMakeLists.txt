@@ -211,6 +211,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/PostProcess.cc
     src/core/DevConsole.cc
     src/core/ParticleSystem.cc
+    src/core/ReverbZone.cc
 )
 
 # Utils library components
