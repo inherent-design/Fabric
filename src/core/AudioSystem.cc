@@ -27,6 +27,15 @@ ma_attenuation_model toMaModel(AttenuationModel model) {
     return ma_attenuation_model_inverse;
 }
 
+// Casting helpers for void* reverb node members (miniaudio uses C-style typedefs,
+// preventing forward-declaration in the header).
+ma_delay_node* asDelayNode(void* p) {
+    return static_cast<ma_delay_node*>(p);
+}
+ma_lpf_node* asLpfNode(void* p) {
+    return static_cast<ma_lpf_node*>(p);
+}
+
 } // namespace
 
 AudioSystem::AudioSystem() {
@@ -59,6 +68,8 @@ void AudioSystem::init() {
 
     commandBufferEnabled_ = true;
     initialized_ = true;
+
+    initReverbNodes();
 
     if (threadedMode_) {
         audioThreadRunning_.store(true, std::memory_order_release);
@@ -93,6 +104,8 @@ void AudioSystem::initHeadless() {
     commandBufferEnabled_ = true;
     initialized_ = true;
 
+    initReverbNodes();
+
     if (threadedMode_) {
         audioThreadRunning_.store(true, std::memory_order_release);
         audioThread_ = std::thread(&AudioSystem::audioThreadLoop, this);
@@ -116,6 +129,8 @@ void AudioSystem::shutdown() {
     drainCommandBuffer();
     executeStopAll();
 
+    uninitReverbNodes();
+
     ma_engine_uninit(engine_);
     delete engine_;
     engine_ = nullptr;
@@ -127,6 +142,9 @@ void AudioSystem::shutdown() {
     soundCategories_.clear();
     densityGrid_ = nullptr;
     occlusionEnabled_ = false;
+    reverbDecayTime_ = 0.5f;
+    reverbDamping_ = 0.5f;
+    reverbWetMix_ = 0.3f;
     attenuationModel_ = AttenuationModel::Inverse;
     categoryVolumes_.fill(1.0f);
     masterVolume_ = 1.0f;
@@ -511,6 +529,9 @@ void AudioSystem::executeCommand(AudioCommand& cmd) {
         case AudioCommandType::SetListenerDirection:
             executeSetListenerDirection(cmd.direction, cmd.up);
             break;
+        case AudioCommandType::SetReverbParams:
+            executeSetReverbParams(cmd.decayTime, cmd.damping, cmd.wetMix);
+            break;
     }
 }
 
@@ -557,6 +578,11 @@ SoundHandle AudioSystem::executePlay(const std::string& path, const Vec3f& posit
     ma_sound_set_attenuation_model(sound, toMaModel(attenuationModel_));
     if (looped) {
         ma_sound_set_looping(sound, MA_TRUE);
+    }
+
+    // Route spatial sounds through reverb chain; UI sounds bypass reverb
+    if (reverbInitialized_ && category != SoundCategory::UI) {
+        ma_node_attach_output_bus(sound, 0, asLpfNode(lpfNode_), 0);
     }
 
     {
@@ -668,6 +694,151 @@ void AudioSystem::executeSetListenerDirection(const Vec3f& forward, const Vec3f&
         return;
     ma_engine_listener_set_direction(engine_, 0, forward.x, forward.y, forward.z);
     ma_engine_listener_set_world_up(engine_, 0, up.x, up.y, up.z);
+}
+
+// --- Reverb ---
+
+void AudioSystem::setReverbParameters(float decayTime, float damping, float wetMix) {
+    // Clamp parameters to valid ranges
+    decayTime = std::clamp(decayTime, 0.1f, 3.0f);
+    damping = std::clamp(damping, 0.1f, 0.9f);
+    wetMix = std::clamp(wetMix, 0.0f, 1.0f);
+
+    reverbDecayTime_ = decayTime;
+    reverbDamping_ = damping;
+    reverbWetMix_ = wetMix;
+
+    if (!initialized_)
+        return;
+
+    if (commandBufferEnabled_) {
+        AudioCommand cmd;
+        cmd.type = AudioCommandType::SetReverbParams;
+        cmd.decayTime = decayTime;
+        cmd.damping = damping;
+        cmd.wetMix = wetMix;
+        if (!commandBuffer_.tryPush(std::move(cmd))) {
+            FABRIC_LOG_WARN("Audio command buffer full, dropping SetReverbParams");
+        }
+        return;
+    }
+    executeSetReverbParams(decayTime, damping, wetMix);
+}
+
+float AudioSystem::getReverbDecayTime() const {
+    return reverbDecayTime_;
+}
+
+float AudioSystem::getReverbDamping() const {
+    return reverbDamping_;
+}
+
+float AudioSystem::getReverbWetMix() const {
+    return reverbWetMix_;
+}
+
+bool AudioSystem::isReverbInitialized() const {
+    return reverbInitialized_;
+}
+
+void AudioSystem::executeSetReverbParams(float decayTime, float damping, float wetMix) {
+    if (!reverbInitialized_)
+        return;
+
+    // Map decayTime to delay length and feedback decay coefficient.
+    // Longer decay -> higher feedback. delay_node decay is feedback per echo.
+    // For a Schroeder-style reverb approximation:
+    //   feedback = exp(-3 * delayTime / decayTime)  [from RT60 definition]
+    // We use a fixed delay time of ~40ms (typical early reflection spacing).
+    constexpr float kDelaySeconds = 0.04f;
+    float feedback = std::exp(-3.0f * kDelaySeconds / std::max(decayTime, 0.1f));
+    feedback = std::clamp(feedback, 0.0f, 0.95f);
+
+    ma_delay_node_set_decay(asDelayNode(delayNode_), feedback);
+    ma_delay_node_set_wet(asDelayNode(delayNode_), wetMix);
+    ma_delay_node_set_dry(asDelayNode(delayNode_), 1.0f - wetMix * 0.5f);
+
+    // Map damping to LPF cutoff frequency.
+    // Higher damping -> lower cutoff (more high-frequency absorption).
+    // Range: damping 0.1 -> 12kHz, damping 0.9 -> 800Hz
+    double cutoff = 12000.0 * std::exp(-3.0 * static_cast<double>(damping));
+    cutoff = std::clamp(cutoff, 200.0, 16000.0);
+
+    ma_lpf_config lpfConfig = ma_lpf_config_init(ma_format_f32, 2, 48000, cutoff, 2);
+    ma_lpf_node_reinit(&lpfConfig, asLpfNode(lpfNode_));
+
+    FABRIC_LOG_DEBUG("Reverb params: decayTime={}, damping={}, wetMix={}, feedback={}, cutoff={}", decayTime, damping,
+                     wetMix, feedback, cutoff);
+}
+
+void AudioSystem::initReverbNodes() {
+    if (!engine_)
+        return;
+
+    ma_node_graph* nodeGraph = ma_engine_get_node_graph(engine_);
+    ma_node* endpoint = ma_engine_get_endpoint(engine_);
+
+    // Create LPF node for damping (sounds -> lpf -> delay -> endpoint)
+    auto* lpf = new ma_lpf_node;
+    double initialCutoff = 12000.0 * std::exp(-3.0 * static_cast<double>(reverbDamping_));
+    initialCutoff = std::clamp(initialCutoff, 200.0, 16000.0);
+    ma_lpf_node_config lpfConfig = ma_lpf_node_config_init(2, 48000, initialCutoff, 2);
+    ma_result result = ma_lpf_node_init(nodeGraph, &lpfConfig, nullptr, lpf);
+    if (result != MA_SUCCESS) {
+        FABRIC_LOG_ERROR("Failed to initialize reverb LPF node: {}", static_cast<int>(result));
+        delete lpf;
+        return;
+    }
+    lpfNode_ = lpf;
+
+    // Create delay node for the reverb tail
+    auto* delay = new ma_delay_node;
+    constexpr float kDelaySeconds = 0.04f;
+    ma_uint32 delayFrames = static_cast<ma_uint32>(48000 * kDelaySeconds);
+    float initialFeedback = std::exp(-3.0f * kDelaySeconds / std::max(reverbDecayTime_, 0.1f));
+    initialFeedback = std::clamp(initialFeedback, 0.0f, 0.95f);
+    ma_delay_node_config delayConfig = ma_delay_node_config_init(2, 48000, delayFrames, initialFeedback);
+    result = ma_delay_node_init(nodeGraph, &delayConfig, nullptr, delay);
+    if (result != MA_SUCCESS) {
+        FABRIC_LOG_ERROR("Failed to initialize reverb delay node: {}", static_cast<int>(result));
+        ma_lpf_node_uninit(lpf, nullptr);
+        delete lpf;
+        lpfNode_ = nullptr;
+        delete delay;
+        return;
+    }
+    delayNode_ = delay;
+
+    // Set initial wet/dry
+    ma_delay_node_set_wet(delay, reverbWetMix_);
+    ma_delay_node_set_dry(delay, 1.0f - reverbWetMix_ * 0.5f);
+
+    // Wire the chain: lpf -> delay -> endpoint
+    ma_node_attach_output_bus(lpf, 0, delay, 0);
+    ma_node_attach_output_bus(delay, 0, endpoint, 0);
+
+    reverbInitialized_ = true;
+    FABRIC_LOG_INFO("Reverb nodes initialized (decayTime={}, damping={}, wetMix={})", reverbDecayTime_, reverbDamping_,
+                    reverbWetMix_);
+}
+
+void AudioSystem::uninitReverbNodes() {
+    if (!reverbInitialized_)
+        return;
+
+    if (delayNode_) {
+        ma_delay_node_uninit(asDelayNode(delayNode_), nullptr);
+        delete asDelayNode(delayNode_);
+        delayNode_ = nullptr;
+    }
+
+    if (lpfNode_) {
+        ma_lpf_node_uninit(asLpfNode(lpfNode_), nullptr);
+        delete asLpfNode(lpfNode_);
+        lpfNode_ = nullptr;
+    }
+
+    reverbInitialized_ = false;
 }
 
 void AudioSystem::audioThreadLoop() {
