@@ -24,10 +24,11 @@ void SceneView::render() {
     visibleEntities_ = FrustumCuller::cull(vp, world_);
 
     // 3. Build render list from visible entities
+    uint8_t geoView = geometryViewId();
     renderList_.clear();
     for (auto entity : visibleEntities_) {
         DrawCall dc;
-        dc.viewId = viewId_;
+        dc.viewId = geoView;
 
         // Read pre-computed world transform from CASCADE system
         const auto* ltw = entity.try_get<LocalToWorld>();
@@ -51,20 +52,33 @@ void SceneView::render() {
         renderList_.addDrawCall(dc);
     }
 
-    // 4. Set bgfx view transform and clear
+    // 4. Sky view (viewId_): clear framebuffer and render atmospheric sky
     bgfx::setViewTransform(viewId_, camera_.viewMatrix(), camera_.projectionMatrix());
     bgfx::setViewClear(viewId_, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, clearColor_, 1.0f, 0);
-
-    // 5. Ensure view is submitted even with no draw calls
+    skyRenderer_.init();
+    skyRenderer_.render(viewId_);
     bgfx::touch(viewId_);
+
+    // 5. Geometry view (viewId_ + 1): no clear, inherits depth from sky view
+    bgfx::setViewTransform(geoView, camera_.viewMatrix(), camera_.projectionMatrix());
+    bgfx::setViewClear(geoView, BGFX_CLEAR_NONE);
+    bgfx::touch(geoView);
 }
 
 uint8_t SceneView::viewId() const {
     return viewId_;
 }
 
+uint8_t SceneView::geometryViewId() const {
+    return viewId_ + 1;
+}
+
 Camera& SceneView::camera() {
     return camera_;
+}
+
+SkyRenderer& SceneView::skyRenderer() {
+    return skyRenderer_;
 }
 
 const std::vector<flecs::entity>& SceneView::visibleEntities() const {

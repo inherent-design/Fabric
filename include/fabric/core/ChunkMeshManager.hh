@@ -2,6 +2,7 @@
 
 #include "fabric/core/ChunkStreaming.hh"
 #include "fabric/core/Event.hh"
+#include "fabric/core/VertexPool.hh"
 #include "fabric/core/VoxelMesher.hh"
 
 #include <unordered_map>
@@ -35,6 +36,14 @@ class ChunkMeshManager {
 
     void removeChunk(const ChunkCoord& coord);
 
+    // Pool-based GPU buffer management
+    void initPool();
+    void initPool(const VertexPool::Config& config);
+    void shutdownPool();
+    VertexPool* pool();
+    const VertexPool* pool() const;
+    const PoolSlot* slotFor(const ChunkCoord& coord) const;
+
     // Emit a voxel_changed event (convenience for callers who modify grids)
     static void emitVoxelChanged(EventDispatcher& dispatcher, int cx, int cy, int cz);
 
@@ -47,6 +56,9 @@ class ChunkMeshManager {
 
     std::unordered_set<ChunkCoord, ChunkCoordHash> dirty_;
     std::unordered_map<ChunkCoord, ChunkMeshData, ChunkCoordHash> meshes_;
+
+    VertexPool pool_;
+    std::unordered_map<ChunkCoord, PoolSlot, ChunkCoordHash> slots_;
 };
 
 } // namespace fabric
