@@ -2,6 +2,8 @@
 
 #include "fabric/core/EssencePalette.hh"
 
+#include <algorithm>
+
 namespace fabric {
 
 namespace {
@@ -48,42 +50,90 @@ bgfx::VertexLayout VoxelMesher::getVertexLayout() {
 }
 
 ChunkMeshData VoxelMesher::meshChunkData(int cx, int cy, int cz, const ChunkedGrid<float>& density,
-                                         const ChunkedGrid<Vector4<float, Space::World>>& essence, float threshold) {
+                                         const ChunkedGrid<Vector4<float, Space::World>>& essence, float threshold,
+                                         int lodLevel) {
     ChunkMeshData data;
     int base[3] = {cx * kChunkSize, cy * kChunkSize, cz * kChunkSize};
+    const int stride = 1 << lodLevel;
+    const int lodSize = kChunkSize / stride; // cells per axis at this LOD
 
     EssencePalette palette;
+
+    // Sample density: max over stride-sized cell
+    auto sampleDensity = [&](int bx, int by, int bz) -> float {
+        float maxD = 0.0f;
+        for (int dz = 0; dz < stride; ++dz)
+            for (int dy = 0; dy < stride; ++dy)
+                for (int dx = 0; dx < stride; ++dx)
+                    maxD = std::max(maxD, density.get(bx + dx, by + dy, bz + dz));
+        return maxD;
+    };
+
+    // Sample essence: majority-vote over stride-sized cell
+    auto sampleEssence = [&](int bx, int by, int bz) -> Vector4<float, Space::World> {
+        if (stride == 1)
+            return essence.get(bx, by, bz);
+        // Accumulate and average non-zero essences
+        float sx = 0, sy = 0, sz = 0, sw = 0;
+        int count = 0;
+        for (int dz = 0; dz < stride; ++dz)
+            for (int dy = 0; dy < stride; ++dy)
+                for (int dx = 0; dx < stride; ++dx) {
+                    auto e = essence.get(bx + dx, by + dy, bz + dz);
+                    if (e.x != 0.0f || e.y != 0.0f || e.z != 0.0f || e.w != 0.0f) {
+                        sx += e.x;
+                        sy += e.y;
+                        sz += e.z;
+                        sw += e.w;
+                        ++count;
+                    }
+                }
+        if (count == 0)
+            return Vector4<float, Space::World>(0.0f, 0.0f, 0.0f, 0.0f);
+        return Vector4<float, Space::World>(sx / count, sy / count, sz / count, sw / count);
+    };
+
+    // Sample AO: max over stride-sized neighborhood
+    auto sampleSolidLOD = [&](int wx, int wy, int wz) -> bool {
+        for (int dz = 0; dz < stride; ++dz)
+            for (int dy = 0; dy < stride; ++dy)
+                for (int dx = 0; dx < stride; ++dx)
+                    if (density.get(wx + dx, wy + dy, wz + dz) > threshold)
+                        return true;
+        return false;
+    };
 
     for (int face = 0; face < 6; ++face) {
         const auto& ax = kFaceAxes[face];
 
-        for (int slice = 0; slice < kChunkSize; ++slice) {
+        for (int slice = 0; slice < lodSize; ++slice) {
             bool mask[kChunkSize][kChunkSize] = {};
             uint16_t matIdx[kChunkSize][kChunkSize] = {};
 
-            for (int v = 0; v < kChunkSize; ++v) {
-                for (int u = 0; u < kChunkSize; ++u) {
+            for (int v = 0; v < lodSize; ++v) {
+                for (int u = 0; u < lodSize; ++u) {
                     int local[3];
-                    local[ax.normalAxis] = slice;
-                    local[ax.uAxis] = u;
-                    local[ax.vAxis] = v;
+                    local[ax.normalAxis] = slice * stride;
+                    local[ax.uAxis] = u * stride;
+                    local[ax.vAxis] = v * stride;
 
                     int wx = base[0] + local[0];
                     int wy = base[1] + local[1];
                     int wz = base[2] + local[2];
 
-                    if (density.get(wx, wy, wz) <= threshold)
+                    if (sampleDensity(wx, wy, wz) <= threshold)
                         continue;
 
-                    int nx = wx + kNeighborOff[face][0];
-                    int ny = wy + kNeighborOff[face][1];
-                    int nz = wz + kNeighborOff[face][2];
+                    // Neighbor check: sample the stride-sized cell adjacent in face direction
+                    int nx = wx + kNeighborOff[face][0] * stride;
+                    int ny = wy + kNeighborOff[face][1] * stride;
+                    int nz = wz + kNeighborOff[face][2] * stride;
 
-                    if (density.get(nx, ny, nz) > threshold)
+                    if (sampleDensity(nx, ny, nz) > threshold)
                         continue;
 
                     mask[u][v] = true;
-                    auto e = essence.get(wx, wy, wz);
+                    auto e = sampleEssence(wx, wy, wz);
                     float r, g, b, a;
                     if (e.x == 0.0f && e.y == 0.0f && e.z == 0.0f && e.w == 0.0f) {
                         r = 0.5f;
@@ -100,29 +150,30 @@ ChunkMeshData VoxelMesher::meshChunkData(int cx, int cy, int cz, const ChunkedGr
                 }
             }
 
-            int normalWorld = base[ax.normalAxis] + slice + ax.normalDir;
+            int normalLocal = slice * stride + (ax.normalDir > 0 ? stride : 0);
+            int normalWorld = base[ax.normalAxis] + normalLocal;
 
             auto checkSolid = [&](int cu, int cv) -> int {
                 int world[3];
                 world[ax.normalAxis] = normalWorld;
-                world[ax.uAxis] = base[ax.uAxis] + cu;
-                world[ax.vAxis] = base[ax.vAxis] + cv;
-                return density.get(world[0], world[1], world[2]) > threshold ? 1 : 0;
+                world[ax.uAxis] = base[ax.uAxis] + cu * stride;
+                world[ax.vAxis] = base[ax.vAxis] + cv * stride;
+                return sampleSolidLOD(world[0], world[1], world[2]) ? 1 : 0;
             };
 
-            for (int v = 0; v < kChunkSize; ++v) {
-                for (int u = 0; u < kChunkSize; ++u) {
+            for (int v = 0; v < lodSize; ++v) {
+                for (int u = 0; u < lodSize; ++u) {
                     if (!mask[u][v])
                         continue;
 
                     auto palIdx = matIdx[u][v];
 
                     int w = 1;
-                    while (u + w < kChunkSize && mask[u + w][v] && matIdx[u + w][v] == palIdx)
+                    while (u + w < lodSize && mask[u + w][v] && matIdx[u + w][v] == palIdx)
                         ++w;
 
                     int h = 1;
-                    while (v + h < kChunkSize) {
+                    while (v + h < lodSize) {
                         bool rowOk = true;
                         for (int du = 0; du < w; ++du) {
                             if (!mask[u + du][v + h] || matIdx[u + du][v + h] != palIdx) {
@@ -139,11 +190,11 @@ ChunkMeshData VoxelMesher::meshChunkData(int cx, int cy, int cz, const ChunkedGr
                         for (int du = 0; du < w; ++du)
                             mask[u + du][v + dv] = false;
 
-                    int nd = slice + (ax.normalDir > 0 ? 1 : 0);
-                    int u0 = u;
-                    int u1 = u + w;
-                    int v0 = v;
-                    int v1 = v + h;
+                    int nd = slice * stride + (ax.normalDir > 0 ? stride : 0);
+                    int u0 = u * stride;
+                    int u1 = (u + w) * stride;
+                    int v0 = v * stride;
+                    int v1 = (v + h) * stride;
 
                     auto baseIdx = static_cast<uint32_t>(data.vertices.size());
                     uint8_t aoVals[4];
@@ -204,8 +255,9 @@ ChunkMeshData VoxelMesher::meshChunkData(int cx, int cy, int cz, const ChunkedGr
 }
 
 ChunkMesh VoxelMesher::meshChunk(int cx, int cy, int cz, const ChunkedGrid<float>& density,
-                                 const ChunkedGrid<Vector4<float, Space::World>>& essence, float threshold) {
-    auto data = meshChunkData(cx, cy, cz, density, essence, threshold);
+                                 const ChunkedGrid<Vector4<float, Space::World>>& essence, float threshold,
+                                 int lodLevel) {
+    auto data = meshChunkData(cx, cy, cz, density, essence, threshold, lodLevel);
     if (data.vertices.empty())
         return ChunkMesh{};
 

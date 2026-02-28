@@ -201,6 +201,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/AnimationEvents.cc
     src/core/WaterSimulation.cc
     src/core/DataLoader.cc
+    src/core/DebugDraw.cc
 )
 
 # Utils library components
@@ -231,6 +232,11 @@ set(FABRIC_UI_SOURCE_FILES
     src/ui/DebugHUD.cc
 )
 
+# bgfx debugdraw (extracted from examples/common for debug overlays)
+set(FABRIC_BGFX_DEBUGDRAW_SOURCE
+    ${bgfx_SOURCE_DIR}/bgfx/examples/common/debugdraw/debugdraw.cpp
+)
+
 # Create internal static library (compile sources once, link into all targets)
 add_library(FabricLib STATIC
     ${FABRIC_CORE_SOURCE_FILES}
@@ -238,6 +244,7 @@ add_library(FabricLib STATIC
     ${FABRIC_PARSER_SOURCE_FILES}
     ${FABRIC_CODEC_SOURCE_FILES}
     ${FABRIC_UI_SOURCE_FILES}
+    ${FABRIC_BGFX_DEBUGDRAW_SOURCE}
 )
 
 # Build dir first so generated Constants.g.hh takes precedence over any stale source copy
@@ -248,6 +255,8 @@ target_include_directories(FabricLib
     PRIVATE
         ${FABRIC_RMLUI_SHADER_OUT}
         ${bgfx_SOURCE_DIR}/bimg/3rdparty/stb
+        ${bgfx_SOURCE_DIR}/bgfx/examples/common
+        ${bgfx_SOURCE_DIR}/bgfx/examples/common/debugdraw
 )
 
 target_link_libraries(FabricLib
