@@ -1,4 +1,5 @@
 [tools]
+ccache = "latest"
 cmake = "latest"
 codeql = { version = "latest", bin_path = "codeql", platforms = """
 [linux-x64]
@@ -24,6 +25,8 @@ CXX = "clang++"
 CPPFLAGS = "-I/opt/homebrew/opt/llvm/include"
 LDFLAGS = "-L/opt/homebrew/opt/llvm/lib"
 CPM_SOURCE_CACHE = "~/.cache/CPM"
+CMAKE_C_COMPILER_LAUNCHER = "ccache"
+CMAKE_CXX_COMPILER_LAUNCHER = "ccache"
 
 #
 # Build
