@@ -8,7 +8,7 @@
 
 namespace fabric {
 
-namespace {
+namespace detail {
 
 // Compute the angle at vertex B in triangle ABC using the law of cosines.
 // Returns clamped angle in radians.
@@ -50,7 +50,10 @@ Quatf rotationBetween(const Vec3f& from, const Vec3f& to) {
     return Quatf(axis.x, axis.y, axis.z, w).normalized();
 }
 
-} // namespace
+} // namespace detail
+
+using detail::rotationBetween;
+using detail::triangleAngle;
 
 TwoBoneIKResult solveTwoBone(const Vec3f& root, const Vec3f& mid, const Vec3f& tip, const Vec3f& target,
                              const Vec3f& poleVector) {
@@ -213,6 +216,36 @@ FABRIKResult solveFABRIK(const std::vector<Vec3f>& chain, const Vec3f& target, f
     }
 
     return result;
+}
+
+std::vector<Quatf> computeRotationsFromPositions(const std::vector<Vec3f>& oldPositions,
+                                                 const std::vector<Vec3f>& newPositions) {
+    FABRIC_ZONE_SCOPED;
+
+    std::vector<Quatf> rotations;
+    if (oldPositions.size() < 2 || oldPositions.size() != newPositions.size()) {
+        return rotations;
+    }
+
+    const size_t boneCount = oldPositions.size() - 1;
+    rotations.reserve(boneCount);
+
+    for (size_t i = 0; i < boneCount; ++i) {
+        Vec3f oldDir = oldPositions[i + 1] - oldPositions[i];
+        Vec3f newDir = newPositions[i + 1] - newPositions[i];
+
+        float oldLen = oldDir.length();
+        float newLen = newDir.length();
+
+        if (oldLen < 1e-8f || newLen < 1e-8f) {
+            rotations.push_back(Quatf()); // identity
+            continue;
+        }
+
+        rotations.push_back(rotationBetween(oldDir, newDir));
+    }
+
+    return rotations;
 }
 
 void applyIKToSkeleton(ozz::vector<ozz::math::SoaTransform>& locals, int jointIndex, const Quatf& rotation) {

@@ -60,6 +60,42 @@ TEST(DebugDrawTest, FlagsReturnsCurrentValue) {
     EXPECT_EQ(dd.flags(), DebugDrawFlags::None);
 }
 
+TEST(DebugDrawTest, CollisionShapesFlagToggles) {
+    DebugDraw dd;
+    EXPECT_FALSE(dd.hasFlag(DebugDrawFlags::CollisionShapes));
+
+    dd.setFlag(DebugDrawFlags::CollisionShapes, true);
+    EXPECT_TRUE(dd.hasFlag(DebugDrawFlags::CollisionShapes));
+
+    dd.toggleFlag(DebugDrawFlags::CollisionShapes);
+    EXPECT_FALSE(dd.hasFlag(DebugDrawFlags::CollisionShapes));
+}
+
+TEST(DebugDrawTest, BVHOverlayFlagToggles) {
+    DebugDraw dd;
+    EXPECT_FALSE(dd.hasFlag(DebugDrawFlags::BVHOverlay));
+
+    dd.setFlag(DebugDrawFlags::BVHOverlay, true);
+    EXPECT_TRUE(dd.hasFlag(DebugDrawFlags::BVHOverlay));
+
+    dd.toggleFlag(DebugDrawFlags::BVHOverlay);
+    EXPECT_FALSE(dd.hasFlag(DebugDrawFlags::BVHOverlay));
+}
+
+TEST(DebugDrawTest, MultipleFlagsIndependent) {
+    DebugDraw dd;
+    dd.setFlag(DebugDrawFlags::Wireframe, true);
+    dd.setFlag(DebugDrawFlags::CollisionShapes, true);
+
+    EXPECT_TRUE(dd.hasFlag(DebugDrawFlags::Wireframe));
+    EXPECT_TRUE(dd.hasFlag(DebugDrawFlags::CollisionShapes));
+    EXPECT_FALSE(dd.hasFlag(DebugDrawFlags::BVHOverlay));
+
+    dd.setFlag(DebugDrawFlags::Wireframe, false);
+    EXPECT_FALSE(dd.hasFlag(DebugDrawFlags::Wireframe));
+    EXPECT_TRUE(dd.hasFlag(DebugDrawFlags::CollisionShapes));
+}
+
 // Bitwise operator tests
 
 TEST(DebugDrawFlagsTest, BitwiseOr) {

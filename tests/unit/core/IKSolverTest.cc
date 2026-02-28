@@ -480,3 +480,295 @@ TEST_F(FootIKTest, NoConfigPassthrough) {
         }
     }
 }
+
+// --- Spine IK / computeRotationsFromPositions Tests ---
+
+class ComputeRotationsTest : public ::testing::Test {
+  protected:
+    // Straight vertical chain: 4 joints at (0,0,0), (0,1,0), (0,2,0), (0,3,0)
+    std::vector<Vec3f> straightChain = {
+        Vec3f(0.0f, 0.0f, 0.0f),
+        Vec3f(0.0f, 1.0f, 0.0f),
+        Vec3f(0.0f, 2.0f, 0.0f),
+        Vec3f(0.0f, 3.0f, 0.0f),
+    };
+};
+
+TEST_F(ComputeRotationsTest, IdenticalPositionsProduceIdentityRotations) {
+    auto rotations = computeRotationsFromPositions(straightChain, straightChain);
+
+    ASSERT_EQ(rotations.size(), 3u);
+    for (const auto& q : rotations) {
+        EXPECT_NEAR(q.w, 1.0f, 0.01f) << "Identity quaternion expected for unchanged positions";
+    }
+}
+
+TEST_F(ComputeRotationsTest, PreservesBoneLengths) {
+    // Solve FABRIK to move end effector, then check that rotations preserve lengths
+    Vec3f target(2.0f, 1.0f, 0.0f);
+    auto fabrikResult = solveFABRIK(straightChain, target, 0.01f, 20);
+    auto rotations = computeRotationsFromPositions(straightChain, fabrikResult.positions);
+
+    ASSERT_EQ(rotations.size(), 3u);
+
+    // Verify each rotation is unit quaternion (preserves length when applied)
+    for (size_t i = 0; i < rotations.size(); ++i) {
+        EXPECT_NEAR(rotations[i].length(), 1.0f, 0.01f) << "Rotation " << i << " should be unit quaternion";
+    }
+
+    // Verify original bone lengths match solved bone lengths
+    for (size_t i = 0; i < straightChain.size() - 1; ++i) {
+        float origLen = (straightChain[i + 1] - straightChain[i]).length();
+        float solvedLen = (fabrikResult.positions[i + 1] - fabrikResult.positions[i]).length();
+        EXPECT_NEAR(solvedLen, origLen, 0.01f) << "Bone " << i << " length should be preserved";
+    }
+}
+
+TEST_F(ComputeRotationsTest, SizeMismatchReturnsEmpty) {
+    std::vector<Vec3f> shorter = {Vec3f(0.0f, 0.0f, 0.0f), Vec3f(0.0f, 1.0f, 0.0f)};
+    auto rotations = computeRotationsFromPositions(straightChain, shorter);
+    EXPECT_TRUE(rotations.empty());
+}
+
+TEST_F(ComputeRotationsTest, SingleJointReturnsEmpty) {
+    std::vector<Vec3f> single = {Vec3f(0.0f, 0.0f, 0.0f)};
+    auto rotations = computeRotationsFromPositions(single, single);
+    EXPECT_TRUE(rotations.empty());
+}
+
+TEST_F(ComputeRotationsTest, CorrectRotationCount) {
+    Vec3f target(1.0f, 2.0f, 0.0f);
+    auto fabrikResult = solveFABRIK(straightChain, target, 0.01f, 20);
+    auto rotations = computeRotationsFromPositions(straightChain, fabrikResult.positions);
+    // N joints -> N-1 bones -> N-1 rotations
+    EXPECT_EQ(rotations.size(), straightChain.size() - 1);
+}
+
+// --- SpineIKConfig Tests ---
+
+TEST(SpineIKConfigTest, DefaultConstruction) {
+    fabric::SpineIKConfig config;
+    EXPECT_TRUE(config.jointIndices.empty());
+    EXPECT_FLOAT_EQ(config.weight, 1.0f);
+    EXPECT_GT(config.maxAnglePerJoint, 0.0f);
+    EXPECT_FLOAT_EQ(config.tolerance, 0.001f);
+    EXPECT_EQ(config.maxIterations, 10);
+}
+
+TEST(SpineIKConfigTest, CustomConfiguration) {
+    fabric::SpineIKConfig config;
+    config.jointIndices = {1, 2, 3, 4};
+    config.target = Vec3f(5.0f, 5.0f, 0.0f);
+    config.weight = 0.75f;
+    config.maxAnglePerJoint = 0.3f;
+
+    EXPECT_EQ(config.jointIndices.size(), 4u);
+    EXPECT_FLOAT_EQ(config.weight, 0.75f);
+    EXPECT_FLOAT_EQ(config.maxAnglePerJoint, 0.3f);
+}
+
+// --- processSpineIK Tests ---
+
+class SpineIKTest : public ::testing::Test {
+  protected:
+    struct OzzSkeletonDeleter {
+        void operator()(ozz::animation::Skeleton* p) const { ozz::Delete(p); }
+    };
+
+    std::shared_ptr<ozz::animation::Skeleton> skeleton_;
+    std::vector<int> spineIndices_;
+
+    void SetUp() override {
+        // Build a spine skeleton: root -> spine1 -> spine2 -> spine3 -> head
+        // Each joint is 1 unit above the previous in Y
+        ozz::animation::offline::RawSkeleton raw;
+        raw.roots.resize(1);
+        auto& root = raw.roots[0];
+        root.name = "root";
+        root.transform = ozz::math::Transform::identity();
+
+        root.children.resize(1);
+        auto& spine1 = root.children[0];
+        spine1.name = "spine1";
+        spine1.transform = ozz::math::Transform::identity();
+        spine1.transform.translation.y = 1.0f;
+
+        spine1.children.resize(1);
+        auto& spine2 = spine1.children[0];
+        spine2.name = "spine2";
+        spine2.transform = ozz::math::Transform::identity();
+        spine2.transform.translation.y = 1.0f;
+
+        spine2.children.resize(1);
+        auto& spine3 = spine2.children[0];
+        spine3.name = "spine3";
+        spine3.transform = ozz::math::Transform::identity();
+        spine3.transform.translation.y = 1.0f;
+
+        spine3.children.resize(1);
+        auto& head = spine3.children[0];
+        head.name = "head";
+        head.transform = ozz::math::Transform::identity();
+        head.transform.translation.y = 1.0f;
+
+        ozz::animation::offline::SkeletonBuilder builder;
+        auto skel = builder(raw);
+        skeleton_ = std::shared_ptr<ozz::animation::Skeleton>(skel.release(), OzzSkeletonDeleter{});
+
+        // Map joint names to indices
+        const auto names = skeleton_->joint_names();
+        for (int i = 0; i < skeleton_->num_joints(); ++i) {
+            std::string name(names[i]);
+            if (name != "root") {
+                spineIndices_.push_back(i);
+            }
+        }
+    }
+
+    Vec3f extractPosition(const ozz::vector<ozz::math::Float4x4>& models, int joint) {
+        alignas(16) float col3[4];
+        ozz::math::StorePtrU(models[static_cast<size_t>(joint)].cols[3], col3);
+        return Vec3f(col3[0], col3[1], col3[2]);
+    }
+};
+
+TEST_F(SpineIKTest, WeightZeroProducesNoChange) {
+    ozz::vector<ozz::math::SoaTransform> locals(skeleton_->joint_rest_poses().begin(),
+                                                skeleton_->joint_rest_poses().end());
+    ozz::vector<ozz::math::SoaTransform> original(locals.begin(), locals.end());
+
+    fabric::SpineIKConfig config;
+    config.jointIndices = spineIndices_;
+    config.target = Vec3f(5.0f, 2.0f, 0.0f);
+    config.weight = 0.0f;
+
+    fabric::AnimationSampler sampler;
+    fabric::processSpineIK(sampler, *skeleton_, locals, config);
+
+    // Verify locals unchanged
+    for (size_t i = 0; i < locals.size(); ++i) {
+        alignas(16) float origQx[4], origQy[4], origQz[4], origQw[4];
+        alignas(16) float newQx[4], newQy[4], newQz[4], newQw[4];
+        ozz::math::StorePtrU(original[i].rotation.x, origQx);
+        ozz::math::StorePtrU(original[i].rotation.y, origQy);
+        ozz::math::StorePtrU(original[i].rotation.z, origQz);
+        ozz::math::StorePtrU(original[i].rotation.w, origQw);
+        ozz::math::StorePtrU(locals[i].rotation.x, newQx);
+        ozz::math::StorePtrU(locals[i].rotation.y, newQy);
+        ozz::math::StorePtrU(locals[i].rotation.z, newQz);
+        ozz::math::StorePtrU(locals[i].rotation.w, newQw);
+        for (int j = 0; j < 4; ++j) {
+            EXPECT_NEAR(origQx[j], newQx[j], 1e-5f);
+            EXPECT_NEAR(origQy[j], newQy[j], 1e-5f);
+            EXPECT_NEAR(origQz[j], newQz[j], 1e-5f);
+            EXPECT_NEAR(origQw[j], newQw[j], 1e-5f);
+        }
+    }
+}
+
+TEST_F(SpineIKTest, WeightOneProducesFullCorrection) {
+    ozz::vector<ozz::math::SoaTransform> locals(skeleton_->joint_rest_poses().begin(),
+                                                skeleton_->joint_rest_poses().end());
+
+    fabric::SpineIKConfig config;
+    config.jointIndices = spineIndices_;
+    config.target = Vec3f(3.0f, 2.0f, 0.0f);
+    config.weight = 1.0f;
+    config.maxAnglePerJoint = 3.14159f; // large clamp to allow full correction
+
+    fabric::AnimationSampler sampler;
+    fabric::processSpineIK(sampler, *skeleton_, locals, config);
+
+    // After applying spine IK, the head should have moved toward the target.
+    // Build model-space to check.
+    ozz::vector<ozz::math::Float4x4> models;
+    sampler.localToModel(*skeleton_, locals, models);
+
+    Vec3f headPos = extractPosition(models, spineIndices_.back());
+
+    // Head should have moved to the right (positive X) toward target
+    EXPECT_GT(headPos.x, 0.1f) << "Head should orient toward target in X";
+}
+
+TEST_F(SpineIKTest, PerJointClampingLimitsRotation) {
+    ozz::vector<ozz::math::SoaTransform> localsSmall(skeleton_->joint_rest_poses().begin(),
+                                                     skeleton_->joint_rest_poses().end());
+    ozz::vector<ozz::math::SoaTransform> localsLarge(skeleton_->joint_rest_poses().begin(),
+                                                     skeleton_->joint_rest_poses().end());
+
+    Vec3f target(5.0f, 2.0f, 0.0f); // far to the side
+
+    fabric::SpineIKConfig configSmall;
+    configSmall.jointIndices = spineIndices_;
+    configSmall.target = target;
+    configSmall.weight = 1.0f;
+    configSmall.maxAnglePerJoint = 0.05f; // very small clamp (~3 degrees)
+
+    fabric::SpineIKConfig configLarge;
+    configLarge.jointIndices = spineIndices_;
+    configLarge.target = target;
+    configLarge.weight = 1.0f;
+    configLarge.maxAnglePerJoint = 3.14159f; // essentially unclamped
+
+    fabric::AnimationSampler sampler;
+    fabric::processSpineIK(sampler, *skeleton_, localsSmall, configSmall);
+    fabric::processSpineIK(sampler, *skeleton_, localsLarge, configLarge);
+
+    ozz::vector<ozz::math::Float4x4> modelsSmall, modelsLarge;
+    sampler.localToModel(*skeleton_, localsSmall, modelsSmall);
+    sampler.localToModel(*skeleton_, localsLarge, modelsLarge);
+
+    Vec3f headSmall = extractPosition(modelsSmall, spineIndices_.back());
+    Vec3f headLarge = extractPosition(modelsLarge, spineIndices_.back());
+
+    // Small clamp should result in less movement than large clamp
+    EXPECT_LT(headSmall.x, headLarge.x) << "Tight clamping should produce less lateral movement than unclamped";
+}
+
+TEST_F(SpineIKTest, EmptyJointIndicesSkips) {
+    ozz::vector<ozz::math::SoaTransform> locals(skeleton_->joint_rest_poses().begin(),
+                                                skeleton_->joint_rest_poses().end());
+    ozz::vector<ozz::math::SoaTransform> original(locals.begin(), locals.end());
+
+    fabric::SpineIKConfig config;
+    // jointIndices empty
+    config.target = Vec3f(5.0f, 2.0f, 0.0f);
+    config.weight = 1.0f;
+
+    fabric::AnimationSampler sampler;
+    fabric::processSpineIK(sampler, *skeleton_, locals, config);
+
+    // Should be unchanged
+    for (size_t i = 0; i < locals.size(); ++i) {
+        alignas(16) float origQw[4], newQw[4];
+        ozz::math::StorePtrU(original[i].rotation.w, origQw);
+        ozz::math::StorePtrU(locals[i].rotation.w, newQw);
+        for (int j = 0; j < 4; ++j) {
+            EXPECT_FLOAT_EQ(origQw[j], newQw[j]);
+        }
+    }
+}
+
+TEST_F(SpineIKTest, InvalidJointIndexSkips) {
+    ozz::vector<ozz::math::SoaTransform> locals(skeleton_->joint_rest_poses().begin(),
+                                                skeleton_->joint_rest_poses().end());
+    ozz::vector<ozz::math::SoaTransform> original(locals.begin(), locals.end());
+
+    fabric::SpineIKConfig config;
+    config.jointIndices = {0, 1, 999}; // 999 is out of range
+    config.target = Vec3f(5.0f, 2.0f, 0.0f);
+    config.weight = 1.0f;
+
+    fabric::AnimationSampler sampler;
+    fabric::processSpineIK(sampler, *skeleton_, locals, config);
+
+    // Should be unchanged (invalid index causes early return)
+    for (size_t i = 0; i < locals.size(); ++i) {
+        alignas(16) float origQw[4], newQw[4];
+        ozz::math::StorePtrU(original[i].rotation.w, origQw);
+        ozz::math::StorePtrU(locals[i].rotation.w, newQw);
+        for (int j = 0; j < 4; ++j) {
+            EXPECT_FLOAT_EQ(origQw[j], newQw[j]);
+        }
+    }
+}

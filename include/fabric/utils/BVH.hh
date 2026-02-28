@@ -83,6 +83,16 @@ template <typename T> class BVH {
     size_t size() const { return items_.size(); }
     bool empty() const { return items_.empty(); }
 
+    /// Traverse all nodes, calling callback(bounds, depth, isLeaf) for each.
+    template <typename Callback> void visitNodes(const Callback& callback) const {
+        if (dirty_) {
+            const_cast<BVH*>(this)->build();
+        }
+        if (root_ >= 0) {
+            visitNodesRecursive(root_, 0, callback);
+        }
+    }
+
   private:
     struct Item {
         AABB bounds;
@@ -188,6 +198,18 @@ template <typename T> class BVH {
             queryFrustumRecursive(node.left, frustum, results);
         if (node.right >= 0)
             queryFrustumRecursive(node.right, frustum, results);
+    }
+
+    template <typename Callback> void visitNodesRecursive(int nodeIndex, int depth, const Callback& callback) const {
+        const auto& node = nodes_[nodeIndex];
+        bool isLeaf = (node.itemIndex >= 0);
+        callback(node.bounds, depth, isLeaf);
+        if (!isLeaf) {
+            if (node.left >= 0)
+                visitNodesRecursive(node.left, depth + 1, callback);
+            if (node.right >= 0)
+                visitNodesRecursive(node.right, depth + 1, callback);
+        }
     }
 
     static AABB unionAABB(const AABB& a, const AABB& b) {

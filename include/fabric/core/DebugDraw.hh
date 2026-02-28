@@ -8,6 +8,8 @@ namespace fabric {
 enum class DebugDrawFlags : uint32_t {
     None = 0,
     Wireframe = 1 << 0,
+    CollisionShapes = 1 << 1,
+    BVHOverlay = 1 << 2,
 };
 
 constexpr DebugDrawFlags operator|(DebugDrawFlags a, DebugDrawFlags b) {
@@ -69,6 +71,11 @@ class DebugDraw {
 
     /// End the current debug draw pass.
     void end();
+
+    /// Drawing primitives (call between begin/end).
+    void setColor(uint32_t abgr);
+    void setWireframe(bool enabled);
+    void drawWireBox(float minX, float minY, float minZ, float maxX, float maxY, float maxZ);
 
   private:
     DebugDrawFlags flags_ = DebugDrawFlags::None;

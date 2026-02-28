@@ -78,6 +78,19 @@ struct AnimationLayerConfig {
     std::vector<AnimationLayer> layers;
 };
 
+// ECS component: spine IK configuration for upper-body aiming via FABRIK.
+// Entities with this component orient their spine chain toward a target via
+// iterative FABRIK solving, converting position changes to rotation corrections.
+// Runs after foot IK in the animation pipeline: sample -> foot IK -> spine IK -> localToModel.
+struct SpineIKConfig {
+    std::vector<int> jointIndices;                         // Spine chain joints (root-to-tip order, 3-5 joints)
+    Vector3<float, Space::World> target{0.0f, 0.0f, 0.0f}; // World-space aim point
+    float weight = 1.0f;                                   // Blend factor [0,1]: 0 = no IK, 1 = full IK
+    float maxAnglePerJoint = 0.5f;                         // Per-joint rotation clamp (radians, ~28 degrees)
+    float tolerance = 0.001f;
+    int maxIterations = 10;
+};
+
 // ECS component: final skinning matrices for GPU submission
 struct SkinningData {
     std::vector<std::array<float, 16>> jointMatrices;
@@ -163,6 +176,13 @@ struct AnimationSamplerComponent {
 // Inserted between blending output and localToModel in the animation pipeline.
 void processFootIK(AnimationSampler& sampler, const ozz::animation::Skeleton& skeleton,
                    ozz::vector<ozz::math::SoaTransform>& locals, const FootIKConfig& config);
+
+// Apply spine IK corrections to local-space transforms.
+// Extracts spine joint model-space positions, runs FABRIK toward target,
+// converts position deltas to rotation corrections with weight blending
+// and per-joint angle clamping. Inserted after foot IK in the animation pipeline.
+void processSpineIK(AnimationSampler& sampler, const ozz::animation::Skeleton& skeleton,
+                    ozz::vector<ozz::math::SoaTransform>& locals, const SpineIKConfig& config);
 
 // Flecs system that queries entities with (Skeleton, AnimationState, SkinningData)
 // and samples animation each frame.

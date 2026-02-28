@@ -41,6 +41,13 @@ TwoBoneIKResult solveTwoBone(const Vec3f& root, const Vec3f& mid, const Vec3f& t
 FABRIKResult solveFABRIK(const std::vector<Vec3f>& chain, const Vec3f& target, float tolerance = 0.001f,
                          int maxIterations = 10);
 
+// Derive rotation corrections from FABRIK position changes.
+// Compares direction vectors between original and solved chains to produce
+// per-joint quaternion corrections. The returned vector has (boneCount - 1)
+// entries corresponding to joints 0..N-2 (the last joint has no child bone).
+std::vector<Quatf> computeRotationsFromPositions(const std::vector<Vec3f>& oldPositions,
+                                                 const std::vector<Vec3f>& newPositions);
+
 // Apply an IK rotation correction to a specific joint in the ozz SoA
 // local-space transform buffer. The jointIndex is the AoS joint index
 // (not the SoA element index).
