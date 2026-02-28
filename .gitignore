@@ -42,3 +42,4 @@ CMakeUserPresets.json
 
 .cache/
 .clangd
+cmake_test_discovery_*.json
