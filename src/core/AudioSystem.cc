@@ -7,6 +7,7 @@
 #include "fabric/utils/ErrorHandling.hh"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <filesystem>
 
@@ -58,7 +59,14 @@ void AudioSystem::init() {
 
     commandBufferEnabled_ = true;
     initialized_ = true;
-    FABRIC_LOG_INFO("AudioSystem initialized with device audio");
+
+    if (threadedMode_) {
+        audioThreadRunning_.store(true, std::memory_order_release);
+        audioThread_ = std::thread(&AudioSystem::audioThreadLoop, this);
+        FABRIC_LOG_INFO("AudioSystem initialized with device audio (threaded mode)");
+    } else {
+        FABRIC_LOG_INFO("AudioSystem initialized with device audio");
+    }
 }
 
 void AudioSystem::initHeadless() {
@@ -84,7 +92,14 @@ void AudioSystem::initHeadless() {
 
     commandBufferEnabled_ = true;
     initialized_ = true;
-    FABRIC_LOG_INFO("AudioSystem initialized in headless mode");
+
+    if (threadedMode_) {
+        audioThreadRunning_.store(true, std::memory_order_release);
+        audioThread_ = std::thread(&AudioSystem::audioThreadLoop, this);
+        FABRIC_LOG_INFO("AudioSystem initialized in headless mode (threaded)");
+    } else {
+        FABRIC_LOG_INFO("AudioSystem initialized in headless mode");
+    }
 }
 
 void AudioSystem::shutdown() {
@@ -92,6 +107,13 @@ void AudioSystem::shutdown() {
         return;
     }
 
+    audioThreadRunning_.store(false, std::memory_order_release);
+    if (audioThread_.joinable()) {
+        audioThread_.join();
+        FABRIC_LOG_INFO("Audio thread joined");
+    }
+
+    std::lock_guard<std::mutex> lock(soundsMutex_);
     drainCommandBuffer();
     executeStopAll();
 
@@ -118,30 +140,33 @@ void AudioSystem::update(float dt) {
         return;
     }
 
-    drainCommandBuffer();
-    cleanupFinishedSounds();
+    if (!threadedMode_) {
+        drainCommandBuffer();
+        cleanupFinishedSounds();
 
-    if (occlusionEnabled_ && densityGrid_) {
-        for (auto& [handle, sound] : activeSounds_) {
-            auto posIt = soundPositions_.find(handle);
-            if (posIt == soundPositions_.end())
-                continue;
+        if (occlusionEnabled_ && densityGrid_) {
+            std::lock_guard<std::mutex> lock(soundsMutex_);
+            for (auto& [handle, sound] : activeSounds_) {
+                auto posIt = soundPositions_.find(handle);
+                if (posIt == soundPositions_.end())
+                    continue;
 
-            auto occ = computeOcclusion(posIt->second, listenerPos_);
-            float baseVol = 1.0f;
-            auto volIt = baseVolumes_.find(handle);
-            if (volIt != baseVolumes_.end()) {
-                baseVol = volIt->second;
+                auto occ = computeOcclusion(posIt->second, listenerPos_);
+                float baseVol = 1.0f;
+                auto volIt = baseVolumes_.find(handle);
+                if (volIt != baseVolumes_.end()) {
+                    baseVol = volIt->second;
+                }
+
+                float catVol = 1.0f;
+                auto catIt = soundCategories_.find(handle);
+                if (catIt != soundCategories_.end()) {
+                    catVol = categoryVolumes_[static_cast<size_t>(catIt->second)];
+                }
+
+                float effective = catVol * baseVol * (1.0f - occ.factor * 0.8f);
+                ma_sound_set_volume(sound, effective);
             }
-
-            float catVol = 1.0f;
-            auto catIt = soundCategories_.find(handle);
-            if (catIt != soundCategories_.end()) {
-                catVol = categoryVolumes_[static_cast<size_t>(catIt->second)];
-            }
-
-            float effective = catVol * baseVol * (1.0f - occ.factor * 0.8f);
-            ma_sound_set_volume(sound, effective);
         }
     }
 }
@@ -156,6 +181,14 @@ void AudioSystem::setCommandBufferEnabled(bool enabled) {
 
 bool AudioSystem::isCommandBufferEnabled() const {
     return commandBufferEnabled_;
+}
+
+void AudioSystem::setThreadedMode(bool enabled) {
+    threadedMode_ = enabled;
+}
+
+bool AudioSystem::isThreadedMode() const {
+    return threadedMode_;
 }
 
 // --- Listener ---
@@ -307,6 +340,7 @@ void AudioSystem::setSoundVolume(SoundHandle handle, float volume) {
 }
 
 bool AudioSystem::isSoundPlaying(SoundHandle handle) const {
+    std::lock_guard<std::mutex> lock(soundsMutex_);
     auto it = activeSounds_.find(handle);
     if (it == activeSounds_.end())
         return false;
@@ -326,6 +360,7 @@ void AudioSystem::setAttenuationModel(AttenuationModel model) {
     attenuationModel_ = model;
     if (initialized_) {
         ma_attenuation_model maModel = toMaModel(model);
+        std::lock_guard<std::mutex> lock(soundsMutex_);
         for (auto& [handle, sound] : activeSounds_) {
             ma_sound_set_attenuation_model(sound, maModel);
         }
@@ -345,6 +380,7 @@ void AudioSystem::setCategoryVolume(SoundCategory category, float volume) {
     }
 
     categoryVolumes_[static_cast<size_t>(category)] = volume;
+    std::lock_guard<std::mutex> lock(soundsMutex_);
     for (auto& [handle, cat] : soundCategories_) {
         if (cat == category) {
             recalculateVolume(handle);
@@ -406,6 +442,7 @@ bool AudioSystem::isOcclusionEnabled() const {
 // --- Stats ---
 
 uint32_t AudioSystem::activeSoundCount() const {
+    std::lock_guard<std::mutex> lock(soundsMutex_);
     return static_cast<uint32_t>(activeSounds_.size());
 }
 
@@ -421,20 +458,23 @@ SoundHandle AudioSystem::nextHandle() {
 
 void AudioSystem::cleanupFinishedSounds() {
     std::vector<SoundHandle> finished;
-    for (auto& [handle, sound] : activeSounds_) {
-        if (ma_sound_at_end(sound) && !ma_sound_is_looping(sound)) {
-            finished.push_back(handle);
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        for (auto& [handle, sound] : activeSounds_) {
+            if (ma_sound_at_end(sound) && !ma_sound_is_looping(sound)) {
+                finished.push_back(handle);
+            }
         }
-    }
-    for (auto handle : finished) {
-        auto it = activeSounds_.find(handle);
-        if (it != activeSounds_.end()) {
-            ma_sound_uninit(it->second);
-            delete it->second;
-            activeSounds_.erase(it);
-            soundPositions_.erase(handle);
-            baseVolumes_.erase(handle);
-            soundCategories_.erase(handle);
+        for (auto handle : finished) {
+            auto it = activeSounds_.find(handle);
+            if (it != activeSounds_.end()) {
+                ma_sound_uninit(it->second);
+                delete it->second;
+                activeSounds_.erase(it);
+                soundPositions_.erase(handle);
+                baseVolumes_.erase(handle);
+                soundCategories_.erase(handle);
+            }
         }
     }
 }
@@ -476,6 +516,7 @@ void AudioSystem::executeCommand(AudioCommand& cmd) {
 }
 
 void AudioSystem::recalculateVolume(SoundHandle handle) {
+    std::lock_guard<std::mutex> lock(soundsMutex_);
     auto it = activeSounds_.find(handle);
     if (it == activeSounds_.end())
         return;
@@ -519,10 +560,13 @@ SoundHandle AudioSystem::executePlay(const std::string& path, const Vec3f& posit
         ma_sound_set_looping(sound, MA_TRUE);
     }
 
-    activeSounds_[preAllocHandle] = sound;
-    soundPositions_[preAllocHandle] = position;
-    baseVolumes_[preAllocHandle] = 1.0f;
-    soundCategories_[preAllocHandle] = category;
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        activeSounds_[preAllocHandle] = sound;
+        soundPositions_[preAllocHandle] = position;
+        baseVolumes_[preAllocHandle] = 1.0f;
+        soundCategories_[preAllocHandle] = category;
+    }
 
     float catVol = categoryVolumes_[static_cast<size_t>(category)];
     ma_sound_set_volume(sound, catVol);
@@ -531,10 +575,13 @@ SoundHandle AudioSystem::executePlay(const std::string& path, const Vec3f& posit
     if (result != MA_SUCCESS) {
         ma_sound_uninit(sound);
         delete sound;
-        activeSounds_.erase(preAllocHandle);
-        soundPositions_.erase(preAllocHandle);
-        baseVolumes_.erase(preAllocHandle);
-        soundCategories_.erase(preAllocHandle);
+        {
+            std::lock_guard<std::mutex> lock(soundsMutex_);
+            activeSounds_.erase(preAllocHandle);
+            soundPositions_.erase(preAllocHandle);
+            baseVolumes_.erase(preAllocHandle);
+            soundCategories_.erase(preAllocHandle);
+        }
         FABRIC_LOG_ERROR("Failed to start sound '{}': {}", path, static_cast<int>(result));
         return InvalidSoundHandle;
     }
@@ -545,49 +592,73 @@ SoundHandle AudioSystem::executePlay(const std::string& path, const Vec3f& posit
 }
 
 void AudioSystem::executeStop(SoundHandle handle) {
-    auto it = activeSounds_.find(handle);
-    if (it == activeSounds_.end())
-        return;
+    ma_sound* sound = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        auto it = activeSounds_.find(handle);
+        if (it == activeSounds_.end())
+            return;
 
-    ma_sound_stop(it->second);
-    ma_sound_uninit(it->second);
-    delete it->second;
-    soundPositions_.erase(handle);
-    baseVolumes_.erase(handle);
-    soundCategories_.erase(handle);
-    activeSounds_.erase(it);
+        sound = it->second;
+        soundPositions_.erase(handle);
+        baseVolumes_.erase(handle);
+        soundCategories_.erase(handle);
+        activeSounds_.erase(it);
+    }
+
+    ma_sound_stop(sound);
+    ma_sound_uninit(sound);
+    delete sound;
 }
 
 void AudioSystem::executeStopAll() {
-    for (auto& [handle, sound] : activeSounds_) {
-        ma_sound_stop(sound);
-        ma_sound_uninit(sound);
+    std::vector<ma_sound*> toDelete;
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        for (auto& [handle, sound] : activeSounds_) {
+            ma_sound_stop(sound);
+            ma_sound_uninit(sound);
+            toDelete.push_back(sound);
+        }
+        activeSounds_.clear();
+        soundPositions_.clear();
+        baseVolumes_.clear();
+        soundCategories_.clear();
+    }
+    for (auto* sound : toDelete) {
         delete sound;
     }
-    activeSounds_.clear();
-    soundPositions_.clear();
-    baseVolumes_.clear();
-    soundCategories_.clear();
 }
 
 void AudioSystem::executeSetPosition(SoundHandle handle, const Vec3f& pos) {
-    auto it = activeSounds_.find(handle);
-    if (it == activeSounds_.end())
-        return;
-    ma_sound_set_position(it->second, pos.x, pos.y, pos.z);
-    soundPositions_[handle] = pos;
+    ma_sound* sound = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        auto it = activeSounds_.find(handle);
+        if (it == activeSounds_.end())
+            return;
+        sound = it->second;
+        soundPositions_[handle] = pos;
+    }
+    ma_sound_set_position(sound, pos.x, pos.y, pos.z);
 }
 
 void AudioSystem::executeSetVolume(SoundHandle handle, float volume) {
-    auto it = activeSounds_.find(handle);
-    if (it == activeSounds_.end())
-        return;
-    baseVolumes_[handle] = volume;
-    recalculateVolume(handle);
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        auto it = activeSounds_.find(handle);
+        if (it == activeSounds_.end())
+            return;
+        baseVolumes_[handle] = volume;
+        recalculateVolume(handle);
+    }
 }
 
 void AudioSystem::executeSetListenerPosition(const Vec3f& pos) {
-    listenerPos_ = pos;
+    {
+        std::lock_guard<std::mutex> lock(listenerMutex_);
+        listenerPos_ = pos;
+    }
     if (!initialized_)
         return;
     ma_engine_listener_set_position(engine_, 0, pos.x, pos.y, pos.z);
@@ -598,6 +669,56 @@ void AudioSystem::executeSetListenerDirection(const Vec3f& forward, const Vec3f&
         return;
     ma_engine_listener_set_direction(engine_, 0, forward.x, forward.y, forward.z);
     ma_engine_listener_set_world_up(engine_, 0, up.x, up.y, up.z);
+}
+
+void AudioSystem::audioThreadLoop() {
+    FABRIC_LOG_INFO("Audio thread started");
+
+    constexpr float kThreadUpdateRate = 0.016f;
+    auto lastTime = std::chrono::high_resolution_clock::now();
+
+    while (audioThreadRunning_.load(std::memory_order_acquire)) {
+        auto now = std::chrono::high_resolution_clock::now();
+        double elapsed = std::chrono::duration<double>(now - lastTime).count();
+
+        if (elapsed >= kThreadUpdateRate) {
+            drainCommandBuffer();
+            cleanupFinishedSounds();
+
+            if (occlusionEnabled_ && densityGrid_) {
+                std::lock_guard<std::mutex> lock(soundsMutex_);
+                std::lock_guard<std::mutex> listenerLock(listenerMutex_);
+
+                for (auto& [handle, sound] : activeSounds_) {
+                    auto posIt = soundPositions_.find(handle);
+                    if (posIt == soundPositions_.end())
+                        continue;
+
+                    auto occ = computeOcclusion(posIt->second, listenerPos_);
+                    float baseVol = 1.0f;
+                    auto volIt = baseVolumes_.find(handle);
+                    if (volIt != baseVolumes_.end()) {
+                        baseVol = volIt->second;
+                    }
+
+                    float catVol = 1.0f;
+                    auto catIt = soundCategories_.find(handle);
+                    if (catIt != soundCategories_.end()) {
+                        catVol = categoryVolumes_[static_cast<size_t>(catIt->second)];
+                    }
+
+                    float effective = catVol * baseVol * (1.0f - occ.factor * 0.8f);
+                    ma_sound_set_volume(sound, effective);
+                }
+            }
+
+            lastTime = now;
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+
+    FABRIC_LOG_INFO("Audio thread stopped");
 }
 
 } // namespace fabric

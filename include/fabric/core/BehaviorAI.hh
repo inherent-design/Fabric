@@ -11,6 +11,7 @@
 #include "fabric/core/Animation.hh"
 #include "fabric/core/ChunkedGrid.hh"
 #include "fabric/core/Rendering.hh"
+#include "fabric/utils/BVH.hh"
 
 namespace fabric {
 
@@ -156,6 +157,12 @@ class BehaviorAI {
     // Wrapped in optional to safely reset without touching dead world.
     std::optional<flecs::query<BehaviorTreeComponent, AIStateComponent>> btQuery_;
     std::optional<flecs::query<AIStateComponent, AIAnimationMapping, AIAnimationState>> animQuery_;
+
+    // Spatial index for O(log n) perception queries.
+    // Rebuilt per-update to track entity position changes.
+    BVH<flecs::entity> spatialIndex_;
+
+    void rebuildSpatialIndex();
 };
 
 } // namespace fabric

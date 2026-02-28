@@ -186,6 +186,8 @@ void BehaviorAI::update(float dt) {
     if (!btQuery_ || !animQuery_)
         return;
 
+    rebuildSpatialIndex();
+
     btQuery_->each([](BehaviorTreeComponent& btc, AIStateComponent& aiState) {
         if (!btc.tree.rootNode())
             return;
@@ -267,21 +269,27 @@ void BehaviorAI::setPerceptionConfig(flecs::entity npc, const PerceptionConfig& 
 
 std::vector<Vec3f> BehaviorAI::getEntitiesInRange(const Vec3f& pos, float range) {
     std::vector<Vec3f> results;
-    if (!initialized_ || !world_)
+    if (!initialized_ || !world_ || spatialIndex_.empty())
         return results;
 
+    // Create AABB for query region (enclosing the sphere)
+    AABB queryRegion(Vec3f(pos.x - range, pos.y - range, pos.z - range),
+                     Vec3f(pos.x + range, pos.y + range, pos.z + range));
+
+    // Query BVH for entities in region
+    auto entities = spatialIndex_.query(queryRegion);
     float rangeSq = range * range;
-    auto q = world_->query_builder<const NPCTag, const AIStateComponent>().with<Position>().build();
-    q.each([&](flecs::entity e, const NPCTag&, const AIStateComponent&) {
-        if (!e.has<Position>())
-            return;
-        const auto& p = e.get<Position>();
-        Vec3f epos(p.x, p.y, p.z);
-        Vec3f diff = epos - pos;
-        if (diff.lengthSquared() <= rangeSq) {
-            results.push_back(epos);
+
+    for (auto& e : entities) {
+        if (e.is_alive() && e.has<Position>()) {
+            const auto& p = e.get<Position>();
+            Vec3f epos(p.x, p.y, p.z);
+            Vec3f diff = epos - pos;
+            if (diff.lengthSquared() <= rangeSq) {
+                results.push_back(epos);
+            }
         }
-    });
+    }
     return results;
 }
 
@@ -294,6 +302,29 @@ bool BehaviorAI::hasLineOfSight(const ChunkedGrid<float>& grid, const Vec3f& fro
     Vec3f d = dir / dist;
     auto hit = castRay(grid, from.x, from.y, from.z, d.x, d.y, d.z, dist);
     return !hit.has_value();
+}
+
+void BehaviorAI::rebuildSpatialIndex() {
+    if (!world_)
+        return;
+
+    spatialIndex_.clear();
+
+    // Insert all NPCs with Position into BVH
+    auto q = world_->query_builder<const NPCTag>().with<Position>().build();
+    q.each([&](flecs::entity e, const NPCTag&) {
+        if (!e.has<Position>())
+            return;
+        const auto& p = e.get<Position>();
+        Vec3f epos(p.x, p.y, p.z);
+        // Small radius around entity position (0.1f for point-like entities)
+        AABB bounds(Vec3f(epos.x - 0.1f, epos.y - 0.1f, epos.z - 0.1f),
+                    Vec3f(epos.x + 0.1f, epos.y + 0.1f, epos.z + 0.1f));
+        spatialIndex_.insert(bounds, e);
+    });
+
+    // Build BVH tree for O(log n) queries
+    spatialIndex_.build();
 }
 
 } // namespace fabric
