@@ -195,6 +195,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/Pathfinding.cc
     src/core/AudioSystem.cc
     src/core/AnimationEvents.cc
+    src/core/WaterSimulation.cc
 )
 
 # Utils library components

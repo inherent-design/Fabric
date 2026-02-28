@@ -57,6 +57,7 @@ target_sources(UnitTests
   SceneSerializerTest.cc
   StructuralIntegrityTest.cc
   DebrisPoolTest.cc
+  WaterSimulationTest.cc
 )
 
 set_source_files_properties(
