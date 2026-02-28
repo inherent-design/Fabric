@@ -273,16 +273,7 @@ void PostProcess::initPrograms() {
 
     auto vs = bgfx::createEmbeddedShader(s_postShaders, type, "vs_fullscreen");
 
-    brightProgram_ = bgfx::createProgram(vs, bgfx::createEmbeddedShader(s_postShaders, type, "fs_bright"), false);
-    blurProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_postShaders, type, "vs_fullscreen"),
-                                       bgfx::createEmbeddedShader(s_postShaders, type, "fs_blur"), true);
-    tonemapProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_postShaders, type, "vs_fullscreen"),
-                                          bgfx::createEmbeddedShader(s_postShaders, type, "fs_tonemap"), true);
-
-    // The first program shares vs; destroy vs separately only if bright fails
-    if (!bgfx::isValid(brightProgram_)) {
-        bgfx::destroy(vs);
-    }
+    brightProgram_ = bgfx::createProgram(vs, bgfx::createEmbeddedShader(s_postShaders, type, "fs_bright"), true);
 
     uniformBloomParams_ = bgfx::createUniform("u_bloomParams", bgfx::UniformType::Vec4);
     uniformTexelSize_ = bgfx::createUniform("u_texelSize", bgfx::UniformType::Vec4);
