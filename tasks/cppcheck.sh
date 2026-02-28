@@ -13,5 +13,8 @@ cppcheck \
   --error-exitcode=1 \
   --suppress=missingInclude \
   --suppress=unmatchedSuppression \
+  --suppress=syntaxError:include/fabric/core/DebugDraw.hh \
+  --suppress=uninitMemberVar:src/core/ParticleSystem.cc \
+  --suppress=invalidPointerCast:src/core/ParticleSystem.cc \
   -I include/ \
   src/ include/

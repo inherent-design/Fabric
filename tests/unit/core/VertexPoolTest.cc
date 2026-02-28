@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 #include "fabric/core/VertexPool.hh"
 
 using namespace fabric;
