@@ -12,6 +12,7 @@
 #include "fabric/core/ChunkStreaming.hh"
 #include "fabric/core/Constants.g.hh"
 #include "fabric/core/DebugDraw.hh"
+#include "fabric/core/DevConsole.hh"
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/FieldLayer.hh"
@@ -480,6 +481,22 @@ int main(int argc, char* argv[]) {
         debugHUD.init(rmlContext);
 
         //----------------------------------------------------------------------
+        // Developer Console
+        //----------------------------------------------------------------------
+        fabric::DevConsole devConsole;
+        devConsole.init(rmlContext);
+
+        // Backtick toggles console and switches input mode
+        inputRouter.setConsoleToggleCallback([&devConsole, &inputRouter]() {
+            devConsole.toggle();
+            if (devConsole.isVisible()) {
+                inputRouter.setMode(fabric::InputMode::UIOnly);
+            } else {
+                inputRouter.setMode(fabric::InputMode::GameOnly);
+            }
+        });
+
+        //----------------------------------------------------------------------
         // Toggle event handlers
         //----------------------------------------------------------------------
         dispatcher.addEventListener("toggle_fly", [&](fabric::Event&) {
@@ -528,6 +545,7 @@ int main(int argc, char* argv[]) {
         double accumulator = 0.0;
         auto lastTime = std::chrono::high_resolution_clock::now();
         bool running = true;
+        devConsole.setQuitCallback([&running]() { running = false; });
 
         FABRIC_LOG_INFO("Entering main loop");
 
@@ -857,6 +875,7 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         FABRIC_LOG_INFO("Shutting down");
 
+        devConsole.shutdown();
         debugHUD.shutdown();
 
         animEvents.shutdown();

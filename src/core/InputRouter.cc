@@ -22,6 +22,14 @@ InputMode InputRouter::mode() const {
 }
 
 bool InputRouter::routeEvent(const SDL_Event& event, Rml::Context* rmlContext) {
+    // Backtick toggles developer console (intercept before any other routing)
+    if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && event.key.key == SDLK_GRAVE) {
+        if (consoleToggleCallback_) {
+            consoleToggleCallback_();
+            return true;
+        }
+    }
+
     // Escape toggles GameOnly <-> UIOnly before any other routing
     if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && event.key.key == SDLK_ESCAPE) {
         toggleUIMode();

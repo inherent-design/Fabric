@@ -66,6 +66,8 @@ target_sources(UnitTests
   SkyRendererTest.cc
   VertexPoolTest.cc
   FileWatcherTest.cc
+  PostProcessTest.cc
+  DevConsoleTest.cc
 )
 
 set_source_files_properties(

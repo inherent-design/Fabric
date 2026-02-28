@@ -208,6 +208,8 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/SkyRenderer.cc
     src/core/VertexPool.cc
     src/core/FileWatcher.cc
+    src/core/PostProcess.cc
+    src/core/DevConsole.cc
 )
 
 # Utils library components
@@ -315,11 +317,14 @@ include(FabricVoxelShaders)
 # Sky shaders (vs_sky, fs_sky)
 include(FabricSkyShaders)
 
+# Post-process shaders (vs_fullscreen, fs_bright, fs_blur, fs_tonemap)
+include(FabricPostShaders)
+
 # Add shader output to include path
-target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_VOXEL_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT})
+target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_VOXEL_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT} ${FABRIC_POST_SHADER_OUT})
 
 # Shader compilation must finish before FabricLib sources compile
-add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricVoxelShaders FabricSkyShaders)
+add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricVoxelShaders FabricSkyShaders FabricPostShaders)
 
 # Per-target compile options (replaces global CMAKE_CXX_FLAGS_* variables)
 target_compile_options(FabricLib PRIVATE
