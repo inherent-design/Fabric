@@ -406,6 +406,73 @@ void processFootIK(AnimationSampler& sampler, const ozz::animation::Skeleton& sk
     }
 }
 
+// --- Spine IK ---
+
+void processSpineIK(AnimationSampler& sampler, const ozz::animation::Skeleton& skeleton,
+                    ozz::vector<ozz::math::SoaTransform>& locals, const SpineIKConfig& config) {
+    FABRIC_ZONE_SCOPED;
+
+    if (config.jointIndices.size() < 2 || config.weight <= 0.0f) {
+        return;
+    }
+
+    const int numJoints = skeleton.num_joints();
+    for (int idx : config.jointIndices) {
+        if (idx < 0 || idx >= numJoints) {
+            return;
+        }
+    }
+
+    // Build model-space transforms to extract spine joint positions
+    ozz::vector<ozz::math::Float4x4> models;
+    sampler.localToModel(skeleton, locals, models);
+
+    using Vec3f = Vector3<float, Space::World>;
+
+    auto extractPos = [](const ozz::math::Float4x4& m) -> Vec3f {
+        alignas(16) float col3[4];
+        ozz::math::StorePtrU(m.cols[3], col3);
+        return Vec3f(col3[0], col3[1], col3[2]);
+    };
+
+    // Extract spine chain positions from model-space
+    std::vector<Vec3f> chainPositions;
+    chainPositions.reserve(config.jointIndices.size());
+    for (int idx : config.jointIndices) {
+        chainPositions.push_back(extractPos(models[static_cast<size_t>(idx)]));
+    }
+
+    // Run FABRIK solver
+    auto fabrikResult = solveFABRIK(chainPositions, config.target, config.tolerance, config.maxIterations);
+
+    // Convert position deltas to rotation corrections
+    auto rotations = computeRotationsFromPositions(chainPositions, fabrikResult.positions);
+
+    // Apply weighted, clamped rotation corrections to each joint
+    Quatf identity;
+    for (size_t i = 0; i < rotations.size(); ++i) {
+        Quatf correction = rotations[i];
+
+        // Per-joint angle clamping: limit the rotation magnitude
+        if (config.maxAnglePerJoint > 0.0f) {
+            // Extract rotation angle from quaternion (angle = 2 * acos(|w|))
+            float halfAngle = std::acos(std::clamp(std::abs(correction.w), 0.0f, 1.0f));
+            float angle = 2.0f * halfAngle;
+
+            if (angle > config.maxAnglePerJoint) {
+                // Scale down the rotation to the max angle
+                float scale = config.maxAnglePerJoint / angle;
+                correction = Quatf::slerp(identity, correction, scale);
+            }
+        }
+
+        // Weight blending: slerp(identity, correction, weight)
+        correction = Quatf::slerp(identity, correction, config.weight);
+
+        applyIKToSkeleton(locals, config.jointIndices[i], correction);
+    }
+}
+
 // --- AnimationSystem (Flecs) ---
 
 void registerAnimationSystem(flecs::world& world) {
@@ -459,6 +526,11 @@ void registerAnimationSystem(flecs::world& world) {
             // Foot IK: adjust foot placement on voxel terrain
             if (entity.has<FootIKConfig>()) {
                 processFootIK(sampler, skeleton, locals, entity.get<FootIKConfig>());
+            }
+
+            // Spine IK: orient upper body toward aim target
+            if (entity.has<SpineIKConfig>()) {
+                processSpineIK(sampler, skeleton, locals, entity.get<SpineIKConfig>());
             }
 
             ozz::vector<ozz::math::Float4x4> models;
@@ -546,6 +618,11 @@ void registerAnimationSystem(flecs::world& world) {
             // Foot IK: adjust foot placement on voxel terrain
             if (entity.has<FootIKConfig>()) {
                 processFootIK(sampler, skeleton, blended, entity.get<FootIKConfig>());
+            }
+
+            // Spine IK: orient upper body toward aim target
+            if (entity.has<SpineIKConfig>()) {
+                processSpineIK(sampler, skeleton, blended, entity.get<SpineIKConfig>());
             }
 
             // Convert to model space and compute skinning matrices

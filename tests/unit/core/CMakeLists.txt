@@ -70,6 +70,7 @@ target_sources(UnitTests
   DevConsoleTest.cc
   ParticleSystemTest.cc
   WaterMeshTest.cc
+  BVHVisitorTest.cc
 )
 
 set_source_files_properties(
