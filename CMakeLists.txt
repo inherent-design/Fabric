@@ -189,6 +189,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/IKSolver.cc
     src/core/CaveCarver.cc
     src/core/VoxelRenderer.cc
+    src/core/RenderCaps.cc
     src/core/PhysicsWorld.cc
     src/core/Ragdoll.cc
     src/core/BehaviorAI.cc

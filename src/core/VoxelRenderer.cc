@@ -56,10 +56,16 @@ void VoxelRenderer::shutdown() {
     uniformLightDir_ = BGFX_INVALID_HANDLE;
     uniformPalette_ = BGFX_INVALID_HANDLE;
     program_ = BGFX_INVALID_HANDLE;
+    caps_.reset();
     initialized_ = false;
 }
 
 void VoxelRenderer::initProgram() {
+    // Detect GPU capabilities before shader creation
+    caps_.emplace(RenderCaps::fromDevice());
+
+    FABRIC_LOG_INFO("VoxelRenderer: backend={}, tier={}", caps_->rendererName(), renderTierToString(caps_->tier()));
+
     bgfx::RendererType::Enum type = bgfx::getRendererType();
     program_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_voxelShaders, type, "vs_voxel"),
                                    bgfx::createEmbeddedShader(s_voxelShaders, type, "fs_voxel"), true);
@@ -110,7 +116,13 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, int chunkX,
     bgfx::setIndexBuffer(mesh.ibh);
 
     uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
-                     BGFX_STATE_MSAA | BGFX_STATE_CULL_CCW;
+                     BGFX_STATE_CULL_CCW;
+
+    // Only request MSAA if the backend supports it
+    if (caps_ && caps_->supportsMSAA()) {
+        state |= BGFX_STATE_MSAA;
+    }
+
     bgfx::setState(state);
 
     bgfx::submit(view, program_);
@@ -131,6 +143,13 @@ void VoxelRenderer::setLightDirection(const Vector3<float, Space::World>& dir) {
 
 bool VoxelRenderer::isValid() const {
     return bgfx::isValid(program_);
+}
+
+const RenderCaps* VoxelRenderer::caps() const {
+    if (caps_.has_value()) {
+        return &caps_.value();
+    }
+    return nullptr;
 }
 
 } // namespace fabric

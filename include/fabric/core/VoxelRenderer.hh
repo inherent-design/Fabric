@@ -1,8 +1,10 @@
 #pragma once
 
+#include "fabric/core/RenderCaps.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/VoxelMesher.hh"
 #include <bgfx/bgfx.h>
+#include <optional>
 
 namespace fabric {
 
@@ -30,12 +32,16 @@ class VoxelRenderer {
     // Check if the shader program handle is valid
     bool isValid() const;
 
+    // Access detected render capabilities (valid after first render/init)
+    const RenderCaps* caps() const;
+
   private:
     void initProgram();
 
     bgfx::ProgramHandle program_;
     bgfx::UniformHandle uniformPalette_;
     bgfx::UniformHandle uniformLightDir_;
+    std::optional<RenderCaps> caps_;
     bool initialized_ = false;
 };
 

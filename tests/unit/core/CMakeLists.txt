@@ -58,6 +58,7 @@ target_sources(UnitTests
   StructuralIntegrityTest.cc
   DebrisPoolTest.cc
   WaterSimulationTest.cc
+  RenderCapsTest.cc
 )
 
 set_source_files_properties(
