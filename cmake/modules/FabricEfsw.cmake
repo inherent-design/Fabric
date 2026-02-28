@@ -8,7 +8,7 @@ set(BUILD_SHARED_LIBS OFF)
 CPMAddPackage(
     NAME efsw
     GITHUB_REPOSITORY SpartanJ/efsw
-    GIT_TAG master
+    GIT_TAG 1.5.1
     OPTIONS
         "BUILD_STATIC_LIBS ON"
         "BUILD_SHARED_LIBS OFF"
