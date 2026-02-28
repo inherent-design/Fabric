@@ -28,7 +28,7 @@ class Plugin {
 
     virtual std::vector<std::string> getDependencies() const { return {}; }
 
-    virtual std::optional<std::string> getLibraryPath() const { return std::nullopt; }
+    virtual std::optional<std::string> getLibraryPath() const { return libraryPath_; }
 
     void setLibraryPath(const std::string& path) { libraryPath_ = path; }
 
