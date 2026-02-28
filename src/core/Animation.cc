@@ -1,6 +1,8 @@
 #include "fabric/core/Animation.hh"
 
+#include "fabric/core/IKSolver.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/core/VoxelRaycast.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "fabric/utils/Profiler.hh"
 #include <algorithm>
@@ -270,6 +272,140 @@ void AnimationSampler::blendLayered(const ozz::animation::Skeleton& skeleton,
     }
 }
 
+// --- Foot IK ---
+
+void processFootIK(AnimationSampler& sampler, const ozz::animation::Skeleton& skeleton,
+                   ozz::vector<ozz::math::SoaTransform>& locals, const FootIKConfig& config) {
+    FABRIC_ZONE_SCOPED;
+
+    if (!config.grounded || !config.grid) {
+        return;
+    }
+
+    const int numJoints = skeleton.num_joints();
+
+    auto validLeg = [numJoints](const FootIKLeg& leg) -> bool {
+        return leg.hipJoint >= 0 && leg.hipJoint < numJoints && leg.kneeJoint >= 0 && leg.kneeJoint < numJoints &&
+               leg.ankleJoint >= 0 && leg.ankleJoint < numJoints;
+    };
+
+    const bool hasLeft = validLeg(config.leftLeg);
+    const bool hasRight = validLeg(config.rightLeg);
+    if (!hasLeft && !hasRight) {
+        return;
+    }
+
+    // Intermediate localToModel to get model-space joint positions
+    ozz::vector<ozz::math::Float4x4> models;
+    sampler.localToModel(skeleton, locals, models);
+
+    using Vec3f = Vector3<float, Space::World>;
+
+    auto extractPos = [](const ozz::math::Float4x4& m) -> Vec3f {
+        alignas(16) float col3[4];
+        ozz::math::StorePtrU(m.cols[3], col3);
+        return Vec3f(col3[0], col3[1], col3[2]);
+    };
+
+    struct LegResult {
+        Vec3f hip, knee, ankle;
+        float groundModelY = 0.0f;
+        bool hasGround = false;
+    };
+
+    auto castLeg = [&](const FootIKLeg& leg) -> LegResult {
+        LegResult r;
+        r.hip = extractPos(models[static_cast<size_t>(leg.hipJoint)]);
+        r.knee = extractPos(models[static_cast<size_t>(leg.kneeJoint)]);
+        r.ankle = extractPos(models[static_cast<size_t>(leg.ankleJoint)]);
+
+        Vec3f ankleWorld = r.ankle + config.worldOffset;
+        float rayOriginY = ankleWorld.y + config.raycastHeight;
+
+        auto hit = castRay(*config.grid, ankleWorld.x, rayOriginY, ankleWorld.z, 0.0f, -1.0f, 0.0f,
+                           config.raycastHeight + config.maxCorrectionDist);
+
+        if (hit) {
+            float groundWorldY = static_cast<float>(hit->y) + 1.0f;
+            float groundModelY = groundWorldY - config.worldOffset.y;
+            float correction = std::abs(r.ankle.y - (groundModelY + config.footHeightOffset));
+            if (correction <= config.maxCorrectionDist) {
+                r.groundModelY = groundModelY;
+                r.hasGround = true;
+            }
+        }
+
+        return r;
+    };
+
+    LegResult left{}, right{};
+    if (hasLeft) {
+        left = castLeg(config.leftLeg);
+    }
+    if (hasRight) {
+        right = castLeg(config.rightLeg);
+    }
+
+    if (!left.hasGround && !right.hasGround) {
+        return;
+    }
+
+    // Pelvis height adjustment: lower pelvis so lowest foot touches ground
+    float pelvisOffset = 0.0f;
+    if (left.hasGround && right.hasGround) {
+        float leftDiff = (left.groundModelY + config.footHeightOffset) - left.ankle.y;
+        float rightDiff = (right.groundModelY + config.footHeightOffset) - right.ankle.y;
+        pelvisOffset = std::min(leftDiff, rightDiff);
+    } else if (left.hasGround) {
+        pelvisOffset = (left.groundModelY + config.footHeightOffset) - left.ankle.y;
+    } else {
+        pelvisOffset = (right.groundModelY + config.footHeightOffset) - right.ankle.y;
+    }
+
+    pelvisOffset = std::clamp(pelvisOffset, -config.maxCorrectionDist, config.maxCorrectionDist);
+
+    // Apply pelvis offset to pelvis joint local Y translation
+    {
+        int soaIdx = config.pelvisJoint / 4;
+        int lane = config.pelvisJoint % 4;
+
+        if (static_cast<size_t>(soaIdx) < locals.size()) {
+            alignas(16) float ty[4];
+            ozz::math::StorePtrU(locals[static_cast<size_t>(soaIdx)].translation.y, ty);
+            ty[lane] += pelvisOffset;
+            locals[static_cast<size_t>(soaIdx)].translation.y =
+                ozz::math::simd_float4::Load(ty[0], ty[1], ty[2], ty[3]);
+        }
+    }
+
+    // Two-bone IK per leg
+    Vec3f pelvisAdj(0.0f, pelvisOffset, 0.0f);
+
+    auto applyLegIK = [&](const LegResult& leg, const FootIKLeg& legConfig) {
+        if (!leg.hasGround) {
+            return;
+        }
+
+        Vec3f adjHip = leg.hip + pelvisAdj;
+        Vec3f adjKnee = leg.knee + pelvisAdj;
+        Vec3f adjAnkle = leg.ankle + pelvisAdj;
+
+        Vec3f target(adjAnkle.x, leg.groundModelY + config.footHeightOffset, adjAnkle.z);
+        Vec3f poleVector = adjKnee + Vec3f(0.0f, 0.0f, 1.0f);
+
+        auto ikResult = solveTwoBone(adjHip, adjKnee, adjAnkle, target, poleVector);
+        applyIKToSkeleton(locals, legConfig.hipJoint, ikResult.rootCorrection);
+        applyIKToSkeleton(locals, legConfig.kneeJoint, ikResult.midCorrection);
+    };
+
+    if (hasLeft) {
+        applyLegIK(left, config.leftLeg);
+    }
+    if (hasRight) {
+        applyLegIK(right, config.rightLeg);
+    }
+}
+
 // --- AnimationSystem (Flecs) ---
 
 void registerAnimationSystem(flecs::world& world) {
@@ -319,6 +455,11 @@ void registerAnimationSystem(flecs::world& world) {
             auto& sampler = samplerComp.sampler;
             ozz::vector<ozz::math::SoaTransform> locals;
             sampler.sample(clip, skeleton, ratio, locals);
+
+            // Foot IK: adjust foot placement on voxel terrain
+            if (entity.has<FootIKConfig>()) {
+                processFootIK(sampler, skeleton, locals, entity.get<FootIKConfig>());
+            }
 
             ozz::vector<ozz::math::Float4x4> models;
             sampler.localToModel(skeleton, locals, models);
@@ -401,6 +542,11 @@ void registerAnimationSystem(flecs::world& world) {
             sampler.blendLayered(
                 skeleton, ozz::span<const ozz::animation::BlendingJob::Layer>(blendLayers.data(), blendLayers.size()),
                 blended);
+
+            // Foot IK: adjust foot placement on voxel terrain
+            if (entity.has<FootIKConfig>()) {
+                processFootIK(sampler, skeleton, blended, entity.get<FootIKConfig>());
+            }
 
             // Convert to model space and compute skinning matrices
             ozz::vector<ozz::math::Float4x4> models;
