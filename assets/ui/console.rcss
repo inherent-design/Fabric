@@ -1,0 +1,46 @@
+body {
+    font-family: monospace;
+    font-size: 14dp;
+    color: #e0e0e0;
+}
+
+#console-panel {
+    position: fixed;
+    bottom: 0dp;
+    left: 0dp;
+    right: 0dp;
+    height: 50%;
+    background-color: #000000cc;
+    border-top: 2dp #44ff4488;
+    padding: 8dp;
+    display: block;
+}
+
+#console-output {
+    height: 90%;
+    overflow: scroll;
+    padding: 4dp;
+    color: #cccccc;
+    white-space: pre;
+}
+
+#console-input-row {
+    height: 24dp;
+    border-top: 1dp #ffffff33;
+    padding-top: 4dp;
+    display: block;
+}
+
+.prompt {
+    color: #44ff44;
+    display: inline;
+    margin-right: 4dp;
+}
+
+#console-input {
+    display: inline;
+    width: 95%;
+    background-color: #00000000;
+    color: #ffffff;
+    border: 0dp;
+}
