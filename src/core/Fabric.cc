@@ -755,6 +755,12 @@ int main(int argc, char* argv[]) {
                 physicsWorld.step(dt);
                 behaviorAI.update(dt);
 
+                // LOD: compute per-chunk LOD from camera distance (marks dirty on change)
+                {
+                    auto camPos = cameraCtrl.position();
+                    meshManager.updateLOD(camPos.x, camPos.y, camPos.z);
+                }
+
                 // Mesh manager: budgeted CPU re-meshing of dirty chunks
                 meshManager.update();
 

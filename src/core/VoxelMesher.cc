@@ -3,6 +3,7 @@
 #include "fabric/core/EssencePalette.hh"
 
 #include <algorithm>
+#include <cmath>
 
 namespace fabric {
 
@@ -288,6 +289,206 @@ void VoxelMesher::destroyMesh(ChunkMesh& mesh) {
     }
     mesh.indexCount = 0;
     mesh.palette.clear();
+    mesh.valid = false;
+}
+
+// --- Water mesh generation ---
+
+bgfx::VertexLayout VoxelMesher::getWaterVertexLayout() {
+    bgfx::VertexLayout layout;
+    layout.begin()
+        .add(bgfx::Attrib::TexCoord0, 4, bgfx::AttribType::Uint8, false, false) // posNormalAO
+        .add(bgfx::Attrib::TexCoord1, 4, bgfx::AttribType::Uint8, false, false) // material
+        .add(bgfx::Attrib::TexCoord2, 2, bgfx::AttribType::Uint8, false,
+             false) // flowDx, flowDz (reinterpret as signed in shader)
+        .end();
+    return layout;
+}
+
+namespace {
+
+constexpr float kMinWaterForMesh = 0.001f;
+
+// Emit a quad (4 vertices, 6 indices) for a water face
+void emitWaterQuad(WaterChunkMeshData& data, uint8_t x0, uint8_t y0, uint8_t z0, uint8_t x1, uint8_t y1, uint8_t z1,
+                   uint8_t x2, uint8_t y2, uint8_t z2, uint8_t x3, uint8_t y3, uint8_t z3, uint8_t faceIdx,
+                   int8_t flowDx, int8_t flowDz) {
+    auto baseIdx = static_cast<uint32_t>(data.vertices.size());
+
+    auto makeWV = [&](uint8_t px, uint8_t py, uint8_t pz) {
+        WaterVertex wv;
+        wv.base = VoxelVertex::pack(px, py, pz, faceIdx, 3, 0);
+        wv.flowDx = flowDx;
+        wv.flowDz = flowDz;
+        return wv;
+    };
+
+    data.vertices.push_back(makeWV(x0, y0, z0));
+    data.vertices.push_back(makeWV(x1, y1, z1));
+    data.vertices.push_back(makeWV(x2, y2, z2));
+    data.vertices.push_back(makeWV(x3, y3, z3));
+
+    data.indices.push_back(baseIdx + 0);
+    data.indices.push_back(baseIdx + 1);
+    data.indices.push_back(baseIdx + 2);
+    data.indices.push_back(baseIdx + 0);
+    data.indices.push_back(baseIdx + 2);
+    data.indices.push_back(baseIdx + 3);
+}
+
+int8_t clampFlow(float diff) {
+    float scaled = diff * 127.0f;
+    return static_cast<int8_t>(std::clamp(scaled, -127.0f, 127.0f));
+}
+
+} // namespace
+
+WaterChunkMeshData VoxelMesher::meshWaterChunkData(int cx, int cy, int cz, const FieldLayer<float>& waterField,
+                                                   const ChunkedGrid<float>& density, float solidThreshold) {
+    WaterChunkMeshData data;
+    int baseX = cx * kChunkSize;
+    int baseY = cy * kChunkSize;
+    int baseZ = cz * kChunkSize;
+
+    for (int lz = 0; lz < kChunkSize; ++lz) {
+        for (int ly = 0; ly < kChunkSize; ++ly) {
+            for (int lx = 0; lx < kChunkSize; ++lx) {
+                int wx = baseX + lx;
+                int wy = baseY + ly;
+                int wz = baseZ + lz;
+
+                float level = waterField.read(wx, wy, wz);
+                if (level <= kMinWaterForMesh)
+                    continue;
+
+                // Skip if cell is solid
+                if (density.get(wx, wy, wz) >= solidThreshold)
+                    continue;
+
+                // Compute flow direction from horizontal neighbor level differences
+                float levelPx = waterField.read(wx + 1, wy, wz);
+                float levelMx = waterField.read(wx - 1, wy, wz);
+                float levelPz = waterField.read(wx, wy, wz + 1);
+                float levelMz = waterField.read(wx, wy, wz - 1);
+
+                // Flow goes from high to low: negative gradient
+                float flowX = levelMx - levelPx;
+                float flowZ = levelMz - levelPz;
+                int8_t fdx = clampFlow(flowX);
+                int8_t fdz = clampFlow(flowZ);
+
+                // Local coords within chunk (uint8_t range: 0..31)
+                auto px = static_cast<uint8_t>(lx);
+                auto pz = static_cast<uint8_t>(lz);
+                auto py0 = static_cast<uint8_t>(ly);
+
+                // Top face Y: fractional based on water level
+                // Water level 1.0 = full cell, 0.5 = half cell
+                // We quantize to uint8_t: ly + level maps to sub-cell position
+                // Since positions are in local chunk coords (0-32), top = ly + 1 when full
+                // For fractional, we use the nearest uint8_t value
+                uint8_t topY;
+                if (level >= 1.0f) {
+                    topY = static_cast<uint8_t>(ly + 1);
+                } else {
+                    // Scale level within the cell: ly + level
+                    float fracY = static_cast<float>(ly) + level;
+                    topY = static_cast<uint8_t>(std::clamp(static_cast<int>(std::round(fracY)), ly, ly + 1));
+                }
+
+                // Check each face for exposure
+                // +X face (face 0): exposed if neighbor +X has no water at same level or is solid
+                auto neighborExposed = [&](int nx, int ny, int nz) -> bool {
+                    if (density.get(nx, ny, nz) >= solidThreshold)
+                        return false; // solid neighbor blocks the face from view
+                    float nLevel = waterField.read(nx, ny, nz);
+                    if (nLevel <= kMinWaterForMesh)
+                        return true; // no water neighbor = exposed
+                    // Suppress face between cells with same water level
+                    if (std::fabs(nLevel - level) < kMinWaterForMesh)
+                        return false;
+                    return true;
+                };
+
+                // +X face (face 0)
+                if (neighborExposed(wx + 1, wy, wz)) {
+                    emitWaterQuad(data, px + 1, py0, pz + 1, px + 1, py0, pz, px + 1, topY, pz, px + 1, topY, pz + 1, 0,
+                                  fdx, fdz);
+                }
+
+                // -X face (face 1)
+                if (neighborExposed(wx - 1, wy, wz)) {
+                    emitWaterQuad(data, px, py0, pz, px, py0, pz + 1, px, topY, pz + 1, px, topY, pz, 1, fdx, fdz);
+                }
+
+                // +Y face (face 2) -- top face, always exposed unless water above
+                {
+                    float aboveLevel = waterField.read(wx, wy + 1, wz);
+                    bool aboveSolid = density.get(wx, wy + 1, wz) >= solidThreshold;
+                    if (!aboveSolid && aboveLevel <= kMinWaterForMesh) {
+                        emitWaterQuad(data, px, topY, pz + 1, px + 1, topY, pz + 1, px + 1, topY, pz, px, topY, pz, 2,
+                                      fdx, fdz);
+                    }
+                }
+
+                // -Y face (face 3) -- bottom face
+                {
+                    float belowLevel = waterField.read(wx, wy - 1, wz);
+                    bool belowSolid = density.get(wx, wy - 1, wz) >= solidThreshold;
+                    if (!belowSolid && belowLevel <= kMinWaterForMesh) {
+                        emitWaterQuad(data, px, py0, pz, px + 1, py0, pz, px + 1, py0, pz + 1, px, py0, pz + 1, 3, fdx,
+                                      fdz);
+                    }
+                }
+
+                // +Z face (face 4)
+                if (neighborExposed(wx, wy, wz + 1)) {
+                    emitWaterQuad(data, px, py0, pz + 1, px + 1, py0, pz + 1, px + 1, topY, pz + 1, px, topY, pz + 1, 4,
+                                  fdx, fdz);
+                }
+
+                // -Z face (face 5)
+                if (neighborExposed(wx, wy, wz - 1)) {
+                    emitWaterQuad(data, px + 1, py0, pz, px, py0, pz, px, topY, pz, px + 1, topY, pz, 5, fdx, fdz);
+                }
+            }
+        }
+    }
+
+    return data;
+}
+
+WaterChunkMesh VoxelMesher::meshWaterChunk(int cx, int cy, int cz, const FieldLayer<float>& waterField,
+                                           const ChunkedGrid<float>& density, float solidThreshold) {
+    auto data = meshWaterChunkData(cx, cy, cz, waterField, density, solidThreshold);
+    if (data.vertices.empty())
+        return WaterChunkMesh{};
+
+    WaterChunkMesh mesh;
+    auto layout = getWaterVertexLayout();
+
+    mesh.vbh = bgfx::createVertexBuffer(
+        bgfx::copy(data.vertices.data(), static_cast<uint32_t>(data.vertices.size() * sizeof(WaterVertex))), layout);
+
+    mesh.ibh = bgfx::createIndexBuffer(
+        bgfx::copy(data.indices.data(), static_cast<uint32_t>(data.indices.size() * sizeof(uint32_t))),
+        BGFX_BUFFER_INDEX32);
+
+    mesh.indexCount = static_cast<uint32_t>(data.indices.size());
+    mesh.valid = true;
+    return mesh;
+}
+
+void VoxelMesher::destroyWaterMesh(WaterChunkMesh& mesh) {
+    if (bgfx::isValid(mesh.vbh)) {
+        bgfx::destroy(mesh.vbh);
+        mesh.vbh = BGFX_INVALID_HANDLE;
+    }
+    if (bgfx::isValid(mesh.ibh)) {
+        bgfx::destroy(mesh.ibh);
+        mesh.ibh = BGFX_INVALID_HANDLE;
+    }
+    mesh.indexCount = 0;
     mesh.valid = false;
 }
 

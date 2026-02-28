@@ -83,6 +83,32 @@ struct SkinningData {
     std::vector<std::array<float, 16>> jointMatrices;
 };
 
+// Forward declaration for foot IK voxel raycasting
+template <typename T> class ChunkedGrid;
+
+// Per-leg joint indices for two-bone IK chain (hip-knee-ankle)
+struct FootIKLeg {
+    int hipJoint = -1;
+    int kneeJoint = -1;
+    int ankleJoint = -1;
+};
+
+// ECS component: foot IK configuration for terrain-adaptive foot placement.
+// Entities with this component have feet adjusted to conform to voxel terrain
+// via downward DDA raycasting and two-bone IK on hip/knee/ankle chains.
+// Entities without this component skip foot IK entirely.
+struct FootIKConfig {
+    FootIKLeg leftLeg;
+    FootIKLeg rightLeg;
+    int pelvisJoint = 0;
+    float footHeightOffset = 0.05f;
+    float maxCorrectionDist = 0.5f;
+    float raycastHeight = 2.0f;
+    bool grounded = true;
+    const ChunkedGrid<float>* grid = nullptr;
+    Vector3<float, Space::World> worldOffset{0.0f, 0.0f, 0.0f};
+};
+
 // Samples, blends, and converts ozz animation data.
 // Uses ozz SoA layout internally; all ozz::vector allocations are SIMD-aligned.
 class AnimationSampler {
@@ -130,6 +156,13 @@ class AnimationSampler {
 struct AnimationSamplerComponent {
     AnimationSampler sampler;
 };
+
+// Apply foot IK corrections to local-space transforms.
+// Casts downward DDA rays from ankle positions via VoxelRaycast, computes ground
+// contact points, adjusts pelvis height, and applies solveTwoBone() per leg.
+// Inserted between blending output and localToModel in the animation pipeline.
+void processFootIK(AnimationSampler& sampler, const ozz::animation::Skeleton& skeleton,
+                   ozz::vector<ozz::math::SoaTransform>& locals, const FootIKConfig& config);
 
 // Flecs system that queries entities with (Skeleton, AnimationState, SkinningData)
 // and samples animation each frame.

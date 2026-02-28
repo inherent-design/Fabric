@@ -69,6 +69,7 @@ target_sources(UnitTests
   PostProcessTest.cc
   DevConsoleTest.cc
   ParticleSystemTest.cc
+  WaterMeshTest.cc
 )
 
 set_source_files_properties(
