@@ -2,6 +2,7 @@
 
 #include "fabric/core/ChunkedGrid.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/core/Rendering.hh"
 #include "fabric/utils/Profiler.hh"
 
 #include <bx/math.h>
@@ -74,7 +75,12 @@ void VoxelRenderer::initProgram() {
     }
 
     initialized_ = true;
-    FABRIC_LOG_INFO("VoxelRenderer shader program initialized");
+
+    const auto& caps = renderCaps();
+    FABRIC_LOG_INFO("VoxelRenderer initialized: backend={}, tier={}", caps.rendererName, static_cast<int>(caps.tier));
+    if (!caps.index32) {
+        FABRIC_LOG_WARN("VoxelRenderer: 32-bit indices unavailable; chunk meshes limited to 65535 vertices");
+    }
 }
 
 void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, int chunkX, int chunkY, int chunkZ) {

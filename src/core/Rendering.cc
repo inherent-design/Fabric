@@ -5,6 +5,18 @@
 
 namespace fabric {
 
+// Global RenderCaps singleton
+static RenderCaps s_renderCaps;
+static bool s_renderCapsInitialized = false;
+
+const RenderCaps& renderCaps() {
+    if (!s_renderCapsInitialized) {
+        s_renderCaps.initFromBgfx();
+        s_renderCapsInitialized = true;
+    }
+    return s_renderCaps;
+}
+
 // AABB
 
 AABB::AABB() : min(Vec3f(0.0f, 0.0f, 0.0f)), max(Vec3f(0.0f, 0.0f, 0.0f)) {}

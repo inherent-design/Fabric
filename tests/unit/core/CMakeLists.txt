@@ -15,6 +15,7 @@ target_sources(UnitTests
   JsonTypesTest.cc
   PipelineTest.cc
   RenderingTest.cc
+  RenderCapsTest.cc
   CameraTest.cc
   InputManagerTest.cc
   InputRouterTest.cc
