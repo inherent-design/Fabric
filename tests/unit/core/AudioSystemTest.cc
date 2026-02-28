@@ -1,5 +1,6 @@
 #include "fabric/core/AudioSystem.hh"
 #include "fabric/core/ChunkedGrid.hh"
+#include "fabric/core/ReverbZone.hh"
 
 #include <gtest/gtest.h>
 
@@ -526,4 +527,150 @@ TEST_F(AudioSystemTest, DefaultPlaySoundUseSFXCategory) {
     EXPECT_EQ(handle, InvalidSoundHandle);
     handle = audio.playSoundLooped("nonexistent.wav", pos);
     EXPECT_EQ(handle, InvalidSoundHandle);
+}
+
+// --- Reverb Tests ---
+
+TEST_F(AudioSystemTest, ReverbInitializedAfterInit) {
+    EXPECT_TRUE(audio.isReverbInitialized());
+}
+
+TEST_F(AudioSystemTest, ReverbDefaultParameters) {
+    EXPECT_FLOAT_EQ(audio.getReverbDecayTime(), 0.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbDamping(), 0.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbWetMix(), 0.3f);
+}
+
+TEST_F(AudioSystemTest, SetReverbParameters) {
+    audio.setReverbParameters(1.5f, 0.7f, 0.6f);
+    EXPECT_FLOAT_EQ(audio.getReverbDecayTime(), 1.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbDamping(), 0.7f);
+    EXPECT_FLOAT_EQ(audio.getReverbWetMix(), 0.6f);
+}
+
+TEST_F(AudioSystemTest, SetReverbParametersClampsDecayTime) {
+    // Below minimum
+    audio.setReverbParameters(0.01f, 0.5f, 0.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbDecayTime(), 0.1f);
+
+    // Above maximum
+    audio.setReverbParameters(10.0f, 0.5f, 0.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbDecayTime(), 3.0f);
+}
+
+TEST_F(AudioSystemTest, SetReverbParametersClampsDamping) {
+    // Below minimum
+    audio.setReverbParameters(0.5f, 0.01f, 0.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbDamping(), 0.1f);
+
+    // Above maximum
+    audio.setReverbParameters(0.5f, 1.0f, 0.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbDamping(), 0.9f);
+}
+
+TEST_F(AudioSystemTest, SetReverbParametersClampsWetMix) {
+    // Below minimum
+    audio.setReverbParameters(0.5f, 0.5f, -0.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbWetMix(), 0.0f);
+
+    // Above maximum
+    audio.setReverbParameters(0.5f, 0.5f, 2.0f);
+    EXPECT_FLOAT_EQ(audio.getReverbWetMix(), 1.0f);
+}
+
+TEST_F(AudioSystemTest, MultipleSetReverbParametersLastWins) {
+    audio.setReverbParameters(0.3f, 0.2f, 0.1f);
+    audio.setReverbParameters(1.0f, 0.5f, 0.4f);
+    audio.setReverbParameters(2.5f, 0.8f, 0.9f);
+    EXPECT_FLOAT_EQ(audio.getReverbDecayTime(), 2.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbDamping(), 0.8f);
+    EXPECT_FLOAT_EQ(audio.getReverbWetMix(), 0.9f);
+}
+
+TEST_F(AudioSystemTest, ReverbResetOnShutdown) {
+    audio.setReverbParameters(2.0f, 0.8f, 0.7f);
+    audio.shutdown();
+    audio.initHeadless();
+    audio.setCommandBufferEnabled(false);
+    // After shutdown/reinit, reverb params should be back to defaults
+    EXPECT_FLOAT_EQ(audio.getReverbDecayTime(), 0.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbDamping(), 0.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbWetMix(), 0.3f);
+    EXPECT_TRUE(audio.isReverbInitialized());
+}
+
+TEST_F(AudioSystemTest, ReverbNotInitializedBeforeInit) {
+    AudioSystem uninit;
+    EXPECT_FALSE(uninit.isReverbInitialized());
+}
+
+TEST_F(AudioSystemTest, SetReverbParametersBeforeInit) {
+    AudioSystem uninit;
+    // Should not crash, just store params
+    uninit.setReverbParameters(1.0f, 0.5f, 0.4f);
+    EXPECT_FLOAT_EQ(uninit.getReverbDecayTime(), 1.0f);
+    EXPECT_FLOAT_EQ(uninit.getReverbDamping(), 0.5f);
+    EXPECT_FLOAT_EQ(uninit.getReverbWetMix(), 0.4f);
+}
+
+TEST_F(AudioSystemTest, ReverbInitShutdownCycles) {
+    EXPECT_TRUE(audio.isReverbInitialized());
+    audio.shutdown();
+    EXPECT_FALSE(audio.isReverbInitialized());
+
+    audio.initHeadless();
+    audio.setCommandBufferEnabled(false);
+    EXPECT_TRUE(audio.isReverbInitialized());
+
+    audio.shutdown();
+    EXPECT_FALSE(audio.isReverbInitialized());
+}
+
+TEST_F(AudioSystemTest, ReverbWithMapToReverbParams) {
+    // Integration: use ReverbZone's mapToReverbParams output
+    ZoneEstimate zone;
+    zone.volume = 500;
+    zone.surfaceArea = 200;
+    zone.openness = 0.2f;
+    zone.complete = false;
+
+    ReverbParams params = mapToReverbParams(zone);
+    audio.setReverbParameters(params.decayTime, params.damping, params.wetMix);
+
+    // Verify clamped values are in valid ranges
+    EXPECT_GE(audio.getReverbDecayTime(), 0.1f);
+    EXPECT_LE(audio.getReverbDecayTime(), 3.0f);
+    EXPECT_GE(audio.getReverbDamping(), 0.1f);
+    EXPECT_LE(audio.getReverbDamping(), 0.9f);
+    EXPECT_GE(audio.getReverbWetMix(), 0.0f);
+    EXPECT_LE(audio.getReverbWetMix(), 1.0f);
+}
+
+// --- Reverb Command Buffer Tests ---
+
+TEST_F(AudioCommandBufferTest, SetReverbParamsQueuesCommand) {
+    audio.setReverbParameters(1.5f, 0.6f, 0.5f);
+    audio.update(0.016f);
+    // Should not crash; params stored immediately
+    EXPECT_FLOAT_EQ(audio.getReverbDecayTime(), 1.5f);
+    EXPECT_FLOAT_EQ(audio.getReverbDamping(), 0.6f);
+    EXPECT_FLOAT_EQ(audio.getReverbWetMix(), 0.5f);
+}
+
+TEST_F(AudioCommandBufferTest, MultipleReverbParamsQueued) {
+    audio.setReverbParameters(0.3f, 0.2f, 0.1f);
+    audio.setReverbParameters(2.0f, 0.8f, 0.9f);
+    audio.update(0.016f);
+    // Last params should win after drain
+    EXPECT_FLOAT_EQ(audio.getReverbDecayTime(), 2.0f);
+    EXPECT_FLOAT_EQ(audio.getReverbDamping(), 0.8f);
+    EXPECT_FLOAT_EQ(audio.getReverbWetMix(), 0.9f);
+}
+
+TEST_F(AudioCommandBufferTest, ReverbParamsClampedBeforeQueue) {
+    audio.setReverbParameters(-1.0f, 5.0f, -2.0f);
+    EXPECT_FLOAT_EQ(audio.getReverbDecayTime(), 0.1f);
+    EXPECT_FLOAT_EQ(audio.getReverbDamping(), 0.9f);
+    EXPECT_FLOAT_EQ(audio.getReverbWetMix(), 0.0f);
+    audio.update(0.016f);
 }

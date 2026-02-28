@@ -75,6 +75,8 @@ target_sources(UnitTests
   LSystemVegetationTest.cc
   WFCGeneratorTest.cc
   InputRecorderTest.cc
+  WaterRendererTest.cc
+  MaterialSoundsTest.cc
 )
 
 set_source_files_properties(
