@@ -73,9 +73,7 @@ TEST_F(MeleeSystemTest, HitDetectionTargetInside) {
 
     auto attack = ms.createAttack(Vec3f(0, 0, 0), Vec3f(0, 0, 1), config);
 
-    std::vector<AABB> targets = {
-        AABB(Vec3f(-0.5f, -0.5f, 1.5f), Vec3f(0.5f, 0.5f, 2.5f))
-    };
+    std::vector<AABB> targets = {AABB(Vec3f(-0.5f, -0.5f, 1.5f), Vec3f(0.5f, 0.5f, 2.5f))};
 
     auto hits = ms.checkHits(attack, targets);
     ASSERT_EQ(hits.size(), 1u);
@@ -91,9 +89,7 @@ TEST_F(MeleeSystemTest, MissDetectionTargetOutside) {
 
     auto attack = ms.createAttack(Vec3f(0, 0, 0), Vec3f(0, 0, 1), config);
 
-    std::vector<AABB> targets = {
-        AABB(Vec3f(10.0f, 10.0f, 10.0f), Vec3f(11.0f, 11.0f, 11.0f))
-    };
+    std::vector<AABB> targets = {AABB(Vec3f(10.0f, 10.0f, 10.0f), Vec3f(11.0f, 11.0f, 11.0f))};
 
     auto hits = ms.checkHits(attack, targets);
     EXPECT_TRUE(hits.empty());
@@ -108,11 +104,9 @@ TEST_F(MeleeSystemTest, MultipleTargetsHitsAll) {
 
     auto attack = ms.createAttack(Vec3f(0, 0, 0), Vec3f(0, 0, 1), config);
 
-    std::vector<AABB> targets = {
-        AABB(Vec3f(-0.5f, -0.5f, 1.0f), Vec3f(0.5f, 0.5f, 2.0f)),
-        AABB(Vec3f(-0.5f, -0.5f, 3.0f), Vec3f(0.5f, 0.5f, 3.5f)),
-        AABB(Vec3f(20.0f, 20.0f, 20.0f), Vec3f(21.0f, 21.0f, 21.0f))
-    };
+    std::vector<AABB> targets = {AABB(Vec3f(-0.5f, -0.5f, 1.0f), Vec3f(0.5f, 0.5f, 2.0f)),
+                                 AABB(Vec3f(-0.5f, -0.5f, 3.0f), Vec3f(0.5f, 0.5f, 3.5f)),
+                                 AABB(Vec3f(20.0f, 20.0f, 20.0f), Vec3f(21.0f, 21.0f, 21.0f))};
 
     auto hits = ms.checkHits(attack, targets);
     ASSERT_EQ(hits.size(), 2u);
@@ -142,9 +136,7 @@ TEST_F(MeleeSystemTest, CooldownUpdateClampsToZero) {
 TEST_F(MeleeSystemTest, DamageEventDispatched) {
     MeleeSystem ms(dispatcher);
     float receivedDamage = 0.0f;
-    dispatcher.addEventListener("melee_damage", [&](Event& e) {
-        receivedDamage = e.getData<float>("damage");
-    });
+    dispatcher.addEventListener("melee_damage", [&](Event& e) { receivedDamage = e.getData<float>("damage"); });
 
     ms.emitDamageEvent(Vec3f(1, 2, 3), 25.0f, Vec3f(0, 0, 1));
     EXPECT_FLOAT_EQ(receivedDamage, 25.0f);
@@ -156,10 +148,8 @@ TEST_F(MeleeSystemTest, AttackDirectionNormalized) {
     Vec3f facing(3.0f, 0.0f, 4.0f); // length = 5
     auto attack = ms.createAttack(Vec3f(0, 0, 0), facing, config);
 
-    float len = std::sqrt(
-        attack.direction.x * attack.direction.x +
-        attack.direction.y * attack.direction.y +
-        attack.direction.z * attack.direction.z);
+    float len = std::sqrt(attack.direction.x * attack.direction.x + attack.direction.y * attack.direction.y +
+                          attack.direction.z * attack.direction.z);
     EXPECT_NEAR(len, 1.0f, 0.001f);
     EXPECT_NEAR(attack.direction.x, 0.6f, 0.001f);
     EXPECT_NEAR(attack.direction.z, 0.8f, 0.001f);

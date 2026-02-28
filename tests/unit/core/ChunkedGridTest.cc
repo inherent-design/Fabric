@@ -7,7 +7,7 @@
 using namespace fabric;
 
 class ChunkedGridTest : public ::testing::Test {
-protected:
+  protected:
     ChunkedGrid<float> grid;
 };
 
@@ -124,11 +124,11 @@ TEST_F(ChunkedGridTest, WorldToChunkNegativeFloorDivision) {
 
 TEST_F(ChunkedGridTest, ActiveChunksOrderIsDeterministic) {
     // Insert chunks in scattered order
-    grid.set(3 * 32, 0, 0, 1.0f);   // chunk (3,0,0)
-    grid.set(0, 0, 0, 1.0f);        // chunk (0,0,0)
-    grid.set(1 * 32, 0, 0, 1.0f);   // chunk (1,0,0)
-    grid.set(-1 * 32, 0, 0, 1.0f);  // chunk (-1,0,0)
-    grid.set(0, 2 * 32, 0, 1.0f);   // chunk (0,2,0)
+    grid.set(3 * 32, 0, 0, 1.0f);  // chunk (3,0,0)
+    grid.set(0, 0, 0, 1.0f);       // chunk (0,0,0)
+    grid.set(1 * 32, 0, 0, 1.0f);  // chunk (1,0,0)
+    grid.set(-1 * 32, 0, 0, 1.0f); // chunk (-1,0,0)
+    grid.set(0, 2 * 32, 0, 1.0f);  // chunk (0,2,0)
 
     auto first = grid.activeChunks();
     auto second = grid.activeChunks();

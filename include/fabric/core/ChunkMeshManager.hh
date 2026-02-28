@@ -23,7 +23,7 @@ struct ChunkMeshConfig {
 class ChunkMeshManager {
   public:
     ChunkMeshManager(EventDispatcher& dispatcher, const ChunkedGrid<float>& density,
-                     const ChunkedGrid<Vector4<float, Space::World>>& essence, ChunkMeshConfig config = {});
+                     const ChunkedGrid<Vector4<float, Space::World>>& essence, const ChunkMeshConfig& config = {});
     ~ChunkMeshManager();
 
     // Mark a chunk as needing re-mesh (by chunk coordinates)

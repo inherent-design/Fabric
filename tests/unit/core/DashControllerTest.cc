@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
 #include "fabric/core/DashController.hh"
 #include <cmath>
+#include <gtest/gtest.h>
 
 using namespace fabric;
 

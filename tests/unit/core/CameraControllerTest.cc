@@ -9,9 +9,7 @@ class CameraControllerTest : public ::testing::Test {
   protected:
     Camera camera;
 
-    void SetUp() override {
-        camera.setPerspective(60.0f, 16.0f / 9.0f, 0.1f, 1000.0f, true);
-    }
+    void SetUp() override { camera.setPerspective(60.0f, 16.0f / 9.0f, 0.1f, 1000.0f, true); }
 };
 
 // -- First person tests --
@@ -71,7 +69,7 @@ TEST_F(CameraControllerTest, ThirdPersonCameraBehindPlayer) {
     // At yaw=0, pitch=0, forward = +Z, so camera should be behind = -Z
     EXPECT_NEAR(pos.x, 0.0f, 0.1f);
     EXPECT_NEAR(pos.y, 1.6f, 0.1f);
-    EXPECT_LT(pos.z, 0.0f); // Behind the player
+    EXPECT_LT(pos.z, 0.0f);                        // Behind the player
     EXPECT_NEAR(pos.z, -8.0f + 1.6f * 0.0f, 1.0f); // Roughly at -orbitDistance on Z
 }
 

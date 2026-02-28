@@ -1,11 +1,11 @@
-#include <gtest/gtest.h>
 #include "fabric/core/ChunkMeshManager.hh"
+#include <gtest/gtest.h>
 
 using namespace fabric;
 using Essence = Vector4<float, Space::World>;
 
 class ChunkMeshManagerTest : public ::testing::Test {
-protected:
+  protected:
     EventDispatcher dispatcher;
     ChunkedGrid<float> density;
     ChunkedGrid<Essence> essence;

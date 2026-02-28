@@ -1,0 +1,22 @@
+{
+  "tests": 2,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "FabricE2ETest",
+      "tests": 2,
+      "testsuite": [
+        {
+          "name": "HelpFlag",
+          "file": "\/Users\/zer0cell\/production\/fabric\/tests\/e2e\/FabricE2ETest.cc",
+          "line": 64
+        },
+        {
+          "name": "VersionFlag",
+          "file": "\/Users\/zer0cell\/production\/fabric\/tests\/e2e\/FabricE2ETest.cc",
+          "line": 75
+        }
+      ]
+    }
+  ]
+}

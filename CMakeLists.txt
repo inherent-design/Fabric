@@ -406,8 +406,8 @@ if(FABRIC_BUILD_TESTS)
 
     # Register tests with ctest via GoogleTest discovery
     include(GoogleTest)
-    gtest_discover_tests(UnitTests)
-    gtest_discover_tests(E2ETests)
+    gtest_discover_tests(UnitTests WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+    gtest_discover_tests(E2ETests WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endif()
 
 #------------------------------------------------------------------------------

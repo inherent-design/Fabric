@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include "fabric/core/MovementFSM.hh"
+#include <gtest/gtest.h>
 
 using namespace fabric;
 
