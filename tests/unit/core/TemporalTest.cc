@@ -1,9 +1,6 @@
 #include "fabric/core/Temporal.hh"
-#include "fabric/utils/ErrorHandling.hh"
+#include <cmath>
 #include <gtest/gtest.h>
-#include <memory>
-#include <string>
-#include <vector>
 
 using namespace fabric;
 
@@ -36,33 +33,33 @@ TEST_F(TemporalTest, TimeStateBasics) {
     EXPECT_FALSE(missingState.has_value());
 }
 
-TEST_F(TemporalTest, TimeStateClone) {
+TEST_F(TemporalTest, TimeStateCopy) {
     TimeState state(10.0);
 
     state.setEntityState("entity1", 42);
 
-    std::unique_ptr<TimeState> clone = state.clone();
+    TimeState copy = state;
 
-    EXPECT_DOUBLE_EQ(clone->getTimestamp(), 10.0);
+    EXPECT_DOUBLE_EQ(copy.getTimestamp(), 10.0);
 
-    auto value = clone->getEntityState<int>("entity1");
+    auto value = copy.getEntityState<int>("entity1");
     EXPECT_TRUE(value.has_value());
     EXPECT_EQ(value.value(), 42);
 }
 
-TEST_F(TemporalTest, TimeStateClone独立性) {
+TEST_F(TemporalTest, TimeStateCopyIndependence) {
     TimeState state(10.0);
     state.setEntityState("entity1", 42);
 
-    auto clone = state.clone();
+    TimeState copy = state;
 
-    clone->setEntityState("entity1", 100);
+    copy.setEntityState("entity1", 100);
 
     auto originalValue = state.getEntityState<int>("entity1");
     EXPECT_EQ(originalValue.value(), 42);
 
-    auto cloneValue = clone->getEntityState<int>("entity1");
-    EXPECT_EQ(cloneValue.value(), 100);
+    auto copyValue = copy.getEntityState<int>("entity1");
+    EXPECT_EQ(copyValue.value(), 100);
 }
 
 TEST_F(TemporalTest, TimeRegionBasics) {
@@ -176,7 +173,23 @@ TEST_F(TemporalTest, TimelineSnapshotHistoryBounds) {
         timeline.update(1.0);
     }
 
-    EXPECT_LE(timeline.getHistory().size(), 100);
+    EXPECT_LE(timeline.getHistory().size(), Timeline::kDefaultMaxHistorySize);
+}
+
+TEST_F(TemporalTest, TimelineConfigurableHistorySize) {
+    Timeline timeline;
+
+    EXPECT_EQ(timeline.getMaxHistorySize(), Timeline::kDefaultMaxHistorySize);
+
+    timeline.setMaxHistorySize(10);
+    EXPECT_EQ(timeline.getMaxHistorySize(), 10);
+
+    timeline.setAutomaticSnapshots(true, 1.0);
+    for (int i = 0; i < 20; ++i) {
+        timeline.update(1.0);
+    }
+
+    EXPECT_LE(timeline.getHistory().size(), 10);
 }
 
 TEST_F(TemporalTest, TimelineJumpToSnapshotEdgeCases) {

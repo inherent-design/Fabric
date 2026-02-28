@@ -1,13 +1,13 @@
 #ifndef FABRIC_CORE_TEMPORAL_HH
 #define FABRIC_CORE_TEMPORAL_HH
 
-#include <chrono>
 #include <cstring>
 #include <deque>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -21,12 +21,16 @@ class TimeState {
     explicit TimeState(double timestamp);
 
     template <typename StateType> void setEntityState(const EntityID& entityId, const StateType& state) {
+        static_assert(std::is_trivially_copyable_v<StateType>,
+                      "StateType must be trivially copyable for memcpy serialization");
         std::vector<uint8_t> buffer(sizeof(StateType));
         std::memcpy(buffer.data(), &state, sizeof(StateType));
         entityStates_[entityId] = std::move(buffer);
     }
 
     template <typename StateType> std::optional<StateType> getEntityState(const EntityID& entityId) const {
+        static_assert(std::is_trivially_copyable_v<StateType>,
+                      "StateType must be trivially copyable for memcpy serialization");
         auto it = entityStates_.find(entityId);
         if (it == entityStates_.end() || it->second.size() < sizeof(StateType)) {
             return std::nullopt;
@@ -37,7 +41,11 @@ class TimeState {
     }
 
     double getTimestamp() const;
-    std::unique_ptr<TimeState> clone() const;
+
+    TimeState(const TimeState&) = default;
+    TimeState& operator=(const TimeState&) = default;
+    TimeState(TimeState&&) = default;
+    TimeState& operator=(TimeState&&) = default;
 
   private:
     double timestamp_;
@@ -85,10 +93,16 @@ class Timeline {
     void clearHistory();
     bool jumpToSnapshot(size_t index);
 
+    void setMaxHistorySize(size_t maxSize);
+    size_t getMaxHistorySize() const;
+
+    static constexpr size_t kDefaultMaxHistorySize = 100;
+
     Timeline(const Timeline&) = delete;
     Timeline& operator=(const Timeline&) = delete;
 
   private:
+    TimeState createSnapshotLocked() const;
     void restoreSnapshotLocked(const TimeState& state);
     double currentTime_;
     double globalTimeScale_;
@@ -98,6 +112,7 @@ class Timeline {
     double snapshotInterval_;
     double snapshotCounter_;
     std::deque<TimeState> history_;
+    size_t maxHistorySize_;
 
     std::vector<std::unique_ptr<TimeRegion>> regions_;
     mutable std::mutex mutex_;
