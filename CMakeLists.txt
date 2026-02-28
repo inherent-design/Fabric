@@ -316,6 +316,15 @@ if(FABRIC_USE_WEBVIEW)
     target_compile_definitions(FabricLib PUBLIC FABRIC_USE_WEBVIEW)
 endif()
 
+# ECS Inspector: enable Flecs REST + stats modules for runtime entity inspection.
+# Defaults to ON for Debug/RelWithDebInfo builds, OFF for Release.
+option(FABRIC_ECS_INSPECTOR "Enable Flecs REST API for entity inspection" ON)
+if(FABRIC_ECS_INSPECTOR)
+    target_compile_definitions(FabricLib PUBLIC
+        $<$<NOT:$<CONFIG:Release>>:FABRIC_ECS_INSPECTOR>
+    )
+endif()
+
 # Mark public API source files
 set_source_files_properties(
     ${FABRIC_CORE_SOURCE_FILES}

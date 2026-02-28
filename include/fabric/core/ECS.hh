@@ -3,6 +3,7 @@
 #include <flecs.h>
 
 #include <array>
+#include <cstdint>
 
 namespace fabric {
 
@@ -57,6 +58,14 @@ class World {
 
     // Register Position, Rotation, Scale, BoundingBox, LocalToWorld, SceneEntity, Renderable
     void registerCoreComponents();
+
+    // Enable Flecs REST API and stats module for runtime entity inspection.
+    // Requires FABRIC_ECS_INSPECTOR; no-op in release builds.
+    // Returns the port the REST server is listening on, or 0 if disabled.
+    uint16_t enableInspector(uint16_t port = 0);
+
+    // True if the REST inspector singleton has been set on this world
+    bool isInspectorEnabled() const;
 
     // Propagate Position/Rotation/Scale through ChildOf hierarchy into LocalToWorld
     void updateTransforms();

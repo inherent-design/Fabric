@@ -20,6 +20,7 @@ target_sources(UnitTests
   InputRouterTest.cc
   SceneViewTest.cc
   ECSTest.cc
+  ECSRestTest.cc
   ChunkedGridTest.cc
   FieldLayerTest.cc
   SimulationTest.cc

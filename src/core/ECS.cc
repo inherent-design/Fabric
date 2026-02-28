@@ -1,4 +1,5 @@
 #include "fabric/core/ECS.hh"
+#include "fabric/core/Log.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/utils/Profiler.hh"
 
@@ -46,6 +47,36 @@ void World::registerCoreComponents() {
     world_->component<LocalToWorld>("LocalToWorld");
     world_->component<SceneEntity>("SceneEntity");
     world_->component<Renderable>("Renderable");
+}
+
+uint16_t World::enableInspector(uint16_t port) {
+#ifdef FABRIC_ECS_INSPECTOR
+    // Import stats module (entity counts, system timings, memory usage)
+    world_->import<flecs::stats>();
+
+    // Start the REST server (default port 27750 when port == 0)
+    flecs::Rest rest = {};
+    if (port != 0) {
+        rest.port = port;
+    }
+    world_->set<flecs::Rest>(rest);
+
+    uint16_t actualPort = (port != 0) ? port : ECS_REST_DEFAULT_PORT;
+    FABRIC_LOG_INFO("Flecs REST inspector enabled on port {}", actualPort);
+    return actualPort;
+#else
+    (void)port;
+    FABRIC_LOG_DEBUG("Flecs REST inspector disabled (FABRIC_ECS_INSPECTOR not defined)");
+    return 0;
+#endif
+}
+
+bool World::isInspectorEnabled() const {
+#ifdef FABRIC_ECS_INSPECTOR
+    return world_->has<flecs::Rest>();
+#else
+    return false;
+#endif
 }
 
 void World::updateTransforms() {

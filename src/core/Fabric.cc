@@ -271,6 +271,12 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         fabric::World ecsWorld;
         ecsWorld.registerCoreComponents();
+
+        if (uint16_t restPort = ecsWorld.enableInspector(); restPort != 0) {
+            FABRIC_LOG_INFO("Flecs Explorer available at https://flecs.dev/explorer?remote=true&host=localhost:{}",
+                            restPort);
+        }
+
         fabric::SceneView sceneView(0, camera, ecsWorld.get());
 
         fabric::ResourceHub resourceHub;
