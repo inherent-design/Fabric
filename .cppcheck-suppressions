@@ -1,0 +1,25 @@
+// Fabric cppcheck suppressions
+// Used by: tasks/cppcheck.sh, .github/workflows/format.yml
+// Both local and CI read this file via --suppressions-list
+
+// Parser can't resolve third-party headers (CPM dependencies)
+missingInclude
+
+// File-targeted suppressions may not match if cppcheck version
+// doesn't flag the specific check; suppress the warning about that
+unmatchedSuppression
+
+// Large files trigger multi-config expansion; not useful
+toomanyconfigs
+
+// cppcheck parser bug: can't handle enum class with bitshift initializers
+// DebugDraw.hh: enum class DebugDrawFlags : uint8_t { ... = 1 << N }
+syntaxError:include/fabric/core/DebugDraw.hh
+
+// Pool pattern: std::array<Particle, 10000> intentionally uninitialized.
+// Write-before-read gated by activeCount_. Zeroing 600KB is wasteful.
+uninitMemberVar:src/core/ParticleSystem.cc
+
+// bgfx instance buffer pattern: reinterpret_cast<float*>(data) on void*.
+// Standard graphics API usage. memcpy alternative exists but unnecessary.
+invalidPointerCast:src/core/ParticleSystem.cc
