@@ -154,6 +154,9 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/Pipeline.cc
     src/core/Plugin.cc
     src/core/Resource.cc
+    src/core/SceneSerializer.cc
+    src/core/StructuralIntegrity.cc
+    src/core/DebrisPool.cc
     src/core/Spatial.cc
     src/core/Temporal.cc
     src/core/ResourceHub.cc
