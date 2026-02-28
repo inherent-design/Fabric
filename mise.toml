@@ -18,6 +18,14 @@ ninja = "latest"
 
 # LLVM: Homebrew manages install (macOS ABI compatibility),
 # mise scopes the environment per-project via [env] below.
+#
+# Tool version contract (CI targets):
+#   clang-format: v21 (jidicula/clang-format-action)
+#   cppcheck: Ubuntu 24.04 apt (~2.12). Suppressions in .cppcheck-suppressions.
+#   clang-tidy: Ubuntu 24.04 apt (18.x). Advisory mode (.clang-tidy shared).
+#   cmake/ninja/ccache: latest (mise locally, apt/action in CI)
+# Local Homebrew LLVM may be ahead of CI. Known gaps documented in
+# .github/workflows/ comments and ~/.atlas/plans/fabric/ci-unification-*.md.
 [env]
 _.path = ["/opt/homebrew/opt/llvm/bin"]
 CC = "clang"
