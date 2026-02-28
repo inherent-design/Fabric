@@ -152,23 +152,28 @@ void FileWatcher::poll() {
         lastEventTime_[event.fullPath] = event.timestamp;
 
         // Look up registered resource and fire callbacks
-        std::lock_guard<std::mutex> lock(resourceMutex_);
-        auto resIt = resources_.find(event.fullPath);
-        if (resIt == resources_.end()) {
-            continue;
+        // Look up registered resource and copy callbacks
+        ValidateCallback validateCb;
+        SwapCallback swapCb;
+        {
+            std::lock_guard<std::mutex> lock(resourceMutex_);
+            auto resIt = resources_.find(event.fullPath);
+            if (resIt == resources_.end()) {
+                continue;
+            }
+            validateCb = resIt->second.validate;
+            swapCb = resIt->second.swap;
         }
 
-        const auto& resource = resIt->second;
-
         // Validate first; skip swap if validation fails
-        if (resource.validate && !resource.validate(event.fullPath)) {
+        if (validateCb && !validateCb(event.fullPath)) {
             FABRIC_LOG_WARN("Hot-reload validation failed for: {}", event.fullPath);
             continue;
         }
 
-        if (resource.swap) {
+        if (swapCb) {
             FABRIC_LOG_INFO("Hot-reloading: {}", event.fullPath);
-            resource.swap(event.fullPath);
+            swapCb(event.fullPath);
         }
     }
 }
