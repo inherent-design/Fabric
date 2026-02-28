@@ -1,0 +1,15 @@
+<rml>
+<head>
+    <link type="text/rcss" href="console.rcss" />
+</head>
+<body>
+<div id="console-panel">
+    <div id="console-output">
+    </div>
+    <div id="console-input-row">
+        <span class="prompt">&gt;</span>
+        <input id="console-input" type="text" />
+    </div>
+</div>
+</body>
+</rml>

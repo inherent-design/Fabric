@@ -53,6 +53,12 @@ void SceneView::render() {
     }
 
     // 4. Sky view (viewId_): clear framebuffer and render atmospheric sky
+    //    When post-process is active, scene renders into the HDR framebuffer.
+    if (postProcess_.isValid()) {
+        bgfx::setViewFrameBuffer(viewId_, postProcess_.hdrFramebuffer());
+        bgfx::setViewFrameBuffer(geoView, postProcess_.hdrFramebuffer());
+    }
+
     bgfx::setViewTransform(viewId_, camera_.viewMatrix(), camera_.projectionMatrix());
     bgfx::setViewClear(viewId_, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, clearColor_, 1.0f, 0);
     skyRenderer_.init();
@@ -63,6 +69,11 @@ void SceneView::render() {
     bgfx::setViewTransform(geoView, camera_.viewMatrix(), camera_.projectionMatrix());
     bgfx::setViewClear(geoView, BGFX_CLEAR_NONE);
     bgfx::touch(geoView);
+
+    // 6. Post-process: bright extract -> blur -> tonemap to backbuffer
+    if (postProcess_.isValid()) {
+        postProcess_.render(200);
+    }
 }
 
 uint8_t SceneView::viewId() const {
@@ -81,8 +92,16 @@ SkyRenderer& SceneView::skyRenderer() {
     return skyRenderer_;
 }
 
+PostProcess& SceneView::postProcess() {
+    return postProcess_;
+}
+
 const std::vector<flecs::entity>& SceneView::visibleEntities() const {
     return visibleEntities_;
+}
+
+void SceneView::enablePostProcess(uint16_t width, uint16_t height) {
+    postProcess_.init(width, height);
 }
 
 } // namespace fabric
