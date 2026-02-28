@@ -11,6 +11,7 @@
 #include "fabric/core/ChunkMeshManager.hh"
 #include "fabric/core/ChunkStreaming.hh"
 #include "fabric/core/Constants.g.hh"
+#include "fabric/core/DebrisPool.hh"
 #include "fabric/core/DebugDraw.hh"
 #include "fabric/core/DevConsole.hh"
 #include "fabric/core/ECS.hh"
@@ -21,6 +22,7 @@
 #include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/MovementFSM.hh"
+#include "fabric/core/ParticleSystem.hh"
 #include "fabric/core/Pathfinding.hh"
 #include "fabric/core/PhysicsWorld.hh"
 #include "fabric/core/Ragdoll.hh"
@@ -497,6 +499,19 @@ int main(int argc, char* argv[]) {
         });
 
         //----------------------------------------------------------------------
+        // Particle system + DebrisPool emitter wiring
+        //----------------------------------------------------------------------
+        fabric::ParticleSystem particleSystem;
+        particleSystem.init();
+
+        fabric::DebrisPool debrisPool;
+        debrisPool.enableParticleConversion(true);
+        debrisPool.setParticleEmitter(
+            [&particleSystem](const fabric::Vector3<float, fabric::Space::World>& pos, float radius, int count) {
+                particleSystem.emit(pos, radius, count, fabric::ParticleType::DebrisPuff);
+            });
+
+        //----------------------------------------------------------------------
         // Toggle event handlers
         //----------------------------------------------------------------------
         dispatcher.addEventListener("toggle_fly", [&](fabric::Event&) {
@@ -743,6 +758,10 @@ int main(int argc, char* argv[]) {
                 // Mesh manager: budgeted CPU re-meshing of dirty chunks
                 meshManager.update();
 
+                // Particle simulation + debris-to-particle conversion
+                debrisPool.update(dt);
+                particleSystem.update(dt);
+
                 // GPU mesh sync: upload re-meshed chunks
                 {
                     auto it = gpuUploadQueue.begin();
@@ -814,6 +833,14 @@ int main(int argc, char* argv[]) {
                     if (visibleEntityIds.find(entIt->second.id()) == visibleEntityIds.end())
                         continue;
                     voxelRenderer.render(sceneView.geometryViewId(), mesh, coord.cx, coord.cy, coord.cz);
+                }
+
+                // Particle billboard rendering (dedicated view, alpha blended)
+                {
+                    int curPW, curPH;
+                    SDL_GetWindowSizeInPixels(window, &curPW, &curPH);
+                    particleSystem.render(camera.viewMatrix(), camera.projectionMatrix(), static_cast<uint16_t>(curPW),
+                                          static_cast<uint16_t>(curPH));
                 }
 
                 // Debug draw overlay (lines, shapes) on geometry view
@@ -898,6 +925,7 @@ int main(int argc, char* argv[]) {
         Rml::Shutdown();
         rmlRenderer.shutdown();
 
+        particleSystem.shutdown();
         voxelRenderer.shutdown();
         sceneView.skyRenderer().shutdown();
         debugDraw.shutdown();

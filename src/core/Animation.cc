@@ -3,6 +3,9 @@
 #include "fabric/core/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "fabric/utils/Profiler.hh"
+#include <algorithm>
+#include <cctype>
+#include <cstring>
 #include <ozz/base/maths/simd_math.h>
 
 namespace fabric {
@@ -37,6 +40,70 @@ ozz::math::Float4x4 matrix4x4ToOzz(const Matrix4x4<float>& src) {
     ozz::math::Float4x4 result;
     fabricToOzzMatrix(src.elements.data(), result);
     return result;
+}
+
+// --- JointMask ---
+
+JointMask JointMask::createUpperBody(const ozz::animation::Skeleton& skeleton) {
+    const int numJoints = skeleton.num_joints();
+    const int numSoaJoints = skeleton.num_soa_joints();
+    const auto names = skeleton.joint_names();
+    const auto parents = skeleton.joint_parents();
+
+    // AoS weights, then convert to SoA
+    std::vector<float> perJoint(static_cast<size_t>(numJoints), 0.0f);
+
+    // Find first joint containing "spine" (case-insensitive)
+    int spineIndex = -1;
+    for (int i = 0; i < numJoints; ++i) {
+        std::string name(names[i]);
+        std::string lower(name.size(), '\0');
+        std::transform(name.begin(), name.end(), lower.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (lower.find("spine") != std::string::npos) {
+            spineIndex = i;
+            break;
+        }
+    }
+
+    if (spineIndex >= 0) {
+        // Mark spine and all descendants (parent < child in ozz ordering)
+        std::vector<bool> upper(static_cast<size_t>(numJoints), false);
+        upper[static_cast<size_t>(spineIndex)] = true;
+        for (int i = spineIndex + 1; i < numJoints; ++i) {
+            const int parent = parents[i];
+            if (parent >= 0 && upper[static_cast<size_t>(parent)]) {
+                upper[static_cast<size_t>(i)] = true;
+            }
+        }
+        for (int i = 0; i < numJoints; ++i) {
+            perJoint[static_cast<size_t>(i)] = upper[static_cast<size_t>(i)] ? 1.0f : 0.0f;
+        }
+    }
+
+    // Convert AoS to SoA
+    JointMask mask;
+    mask.weights.resize(static_cast<size_t>(numSoaJoints));
+    for (int i = 0; i < numSoaJoints; ++i) {
+        const int base = i * 4;
+        const float w0 = (base + 0 < numJoints) ? perJoint[static_cast<size_t>(base + 0)] : 0.0f;
+        const float w1 = (base + 1 < numJoints) ? perJoint[static_cast<size_t>(base + 1)] : 0.0f;
+        const float w2 = (base + 2 < numJoints) ? perJoint[static_cast<size_t>(base + 2)] : 0.0f;
+        const float w3 = (base + 3 < numJoints) ? perJoint[static_cast<size_t>(base + 3)] : 0.0f;
+        mask.weights[static_cast<size_t>(i)] = ozz::math::simd_float4::Load(w0, w1, w2, w3);
+    }
+
+    return mask;
+}
+
+JointMask JointMask::createFullBody(const ozz::animation::Skeleton& skeleton) {
+    JointMask mask;
+    const int numSoaJoints = skeleton.num_soa_joints();
+    mask.weights.resize(static_cast<size_t>(numSoaJoints));
+    for (int i = 0; i < numSoaJoints; ++i) {
+        mask.weights[static_cast<size_t>(i)] = ozz::math::simd_float4::one();
+    }
+    return mask;
 }
 
 // --- AnimationSampler ---
@@ -149,10 +216,65 @@ AnimationSampler::computeSkinningMatrices(const ozz::animation::Skeleton& skelet
     return skinning;
 }
 
+void AnimationSampler::sampleLayer(int layerIndex, const ozz::animation::Animation& clip,
+                                   const ozz::animation::Skeleton& skeleton, float time,
+                                   ozz::vector<ozz::math::SoaTransform>& locals) {
+    FABRIC_ZONE_SCOPED;
+
+    if (layerIndex < 0) {
+        throwError("AnimationSampler::sampleLayer: negative layer index");
+    }
+
+    if (static_cast<size_t>(layerIndex) >= layerContexts_.size()) {
+        layerContexts_.resize(static_cast<size_t>(layerIndex) + 1);
+    }
+    if (!layerContexts_[static_cast<size_t>(layerIndex)]) {
+        layerContexts_[static_cast<size_t>(layerIndex)] = std::make_unique<ozz::animation::SamplingJob::Context>();
+    }
+
+    auto& ctx = *layerContexts_[static_cast<size_t>(layerIndex)];
+    const int numSoaJoints = skeleton.num_soa_joints();
+    locals.resize(static_cast<size_t>(numSoaJoints));
+
+    if (ctx.max_tracks() < skeleton.num_joints()) {
+        ctx.Resize(skeleton.num_joints());
+    }
+
+    ozz::animation::SamplingJob samplingJob;
+    samplingJob.animation = &clip;
+    samplingJob.context = &ctx;
+    samplingJob.ratio = time;
+    samplingJob.output = ozz::make_span(locals);
+
+    if (!samplingJob.Run()) {
+        throwError("AnimationSampler::sampleLayer: SamplingJob failed");
+    }
+}
+
+void AnimationSampler::blendLayered(const ozz::animation::Skeleton& skeleton,
+                                    ozz::span<const ozz::animation::BlendingJob::Layer> layers,
+                                    ozz::vector<ozz::math::SoaTransform>& output) {
+    FABRIC_ZONE_SCOPED;
+
+    const int numSoaJoints = skeleton.num_soa_joints();
+    output.resize(static_cast<size_t>(numSoaJoints));
+
+    ozz::animation::BlendingJob blendJob;
+    blendJob.layers = layers;
+    blendJob.rest_pose = skeleton.joint_rest_poses();
+    blendJob.output = ozz::make_span(output);
+    blendJob.threshold = 0.1f;
+
+    if (!blendJob.Run()) {
+        throwError("AnimationSampler::blendLayered: BlendingJob failed");
+    }
+}
+
 // --- AnimationSystem (Flecs) ---
 
 void registerAnimationSystem(flecs::world& world) {
     world.system<Skeleton, AnimationState, SkinningData, AnimationSamplerComponent>("AnimationSystem")
+        .without<AnimationLayerConfig>()
         .each([](flecs::entity entity, Skeleton& skel, AnimationState& state, SkinningData& skinning,
                  AnimationSamplerComponent& samplerComp) {
             if (!skel.skeleton || !state.clip || !state.playing) {
@@ -204,6 +326,87 @@ void registerAnimationSystem(flecs::world& world) {
             auto matrices = sampler.computeSkinningMatrices(skeleton, models);
 
             // Write to SkinningData component
+            skinning.jointMatrices.resize(matrices.size());
+            for (size_t i = 0; i < matrices.size(); ++i) {
+                std::copy(matrices[i].elements.begin(), matrices[i].elements.end(), skinning.jointMatrices[i].begin());
+            }
+        });
+
+    // Multi-layer system: layered blending with optional per-joint masks
+    world.system<Skeleton, AnimationLayerConfig, SkinningData, AnimationSamplerComponent>("AnimationLayerSystem")
+        .each([](flecs::entity entity, Skeleton& skel, AnimationLayerConfig& config, SkinningData& skinning,
+                 AnimationSamplerComponent& samplerComp) {
+            if (!skel.skeleton || config.layers.empty()) {
+                return;
+            }
+
+            const auto& skeleton = *skel.skeleton;
+            auto& sampler = samplerComp.sampler;
+
+            float dt = entity.world().delta_time();
+            if (dt <= 0.0f) {
+                dt = 1.0f / 60.0f;
+            }
+
+            // Sample each layer and build BlendingJob layers
+            const size_t numLayers = config.layers.size();
+            std::vector<ozz::vector<ozz::math::SoaTransform>> layerLocals(numLayers);
+            std::vector<ozz::animation::BlendingJob::Layer> blendLayers(numLayers);
+
+            for (size_t i = 0; i < numLayers; ++i) {
+                auto& layer = config.layers[i];
+
+                if (!layer.state.clip || !layer.state.playing) {
+                    blendLayers[i].weight = 0.0f;
+                    blendLayers[i].transform = skeleton.joint_rest_poses();
+                    continue;
+                }
+
+                // Advance time
+                auto& state = layer.state;
+                const float duration = state.clip->duration();
+                if (duration > 0.0f) {
+                    state.time += dt * state.speed;
+                    if (state.loop) {
+                        while (state.time > duration) {
+                            state.time -= duration;
+                        }
+                        while (state.time < 0.0f) {
+                            state.time += duration;
+                        }
+                    } else {
+                        if (state.time >= duration) {
+                            state.time = duration;
+                            state.playing = false;
+                        }
+                        if (state.time < 0.0f) {
+                            state.time = 0.0f;
+                            state.playing = false;
+                        }
+                    }
+                }
+
+                const float ratio = (duration > 0.0f) ? (state.time / duration) : 0.0f;
+                sampler.sampleLayer(static_cast<int>(i), *state.clip, skeleton, ratio, layerLocals[i]);
+
+                blendLayers[i].weight = layer.weight;
+                blendLayers[i].transform = ozz::make_span(layerLocals[i]);
+                if (layer.mask) {
+                    blendLayers[i].joint_weights = ozz::make_span(layer.mask->weights);
+                }
+            }
+
+            // Blend all layers
+            ozz::vector<ozz::math::SoaTransform> blended;
+            sampler.blendLayered(
+                skeleton, ozz::span<const ozz::animation::BlendingJob::Layer>(blendLayers.data(), blendLayers.size()),
+                blended);
+
+            // Convert to model space and compute skinning matrices
+            ozz::vector<ozz::math::Float4x4> models;
+            sampler.localToModel(skeleton, blended, models);
+
+            auto matrices = sampler.computeSkinningMatrices(skeleton, models);
             skinning.jointMatrices.resize(matrices.size());
             for (size_t i = 0; i < matrices.size(); ++i) {
                 std::copy(matrices[i].elements.begin(), matrices[i].elements.end(), skinning.jointMatrices[i].begin());

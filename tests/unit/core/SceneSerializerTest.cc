@@ -396,3 +396,102 @@ TEST_F(SceneSerializerTest, TimelinePausedSerialization) {
 
     EXPECT_TRUE(newTimeline.isPaused());
 }
+
+TEST_F(SceneSerializerTest, PhysicsBodyRoundTrip) {
+    auto entity = world.createSceneEntity("physics_entity");
+    entity.set<PhysicsBodyConfig>(PhysicsBodyConfig{PhysicsShapeType::Sphere, 5.0f, 0.8f, 0.2f, 1.0f, -2.0f, 3.0f});
+
+    world.progress(0.0f);
+    nlohmann::json entitiesJson = serializer.serializeEntities(world);
+    ASSERT_EQ(entitiesJson.size(), 1);
+
+    const auto& physJson = entitiesJson[0]["components"]["PhysicsBody"];
+    EXPECT_EQ(physJson["shapeType"], "sphere");
+    EXPECT_FLOAT_EQ(physJson["mass"], 5.0f);
+    EXPECT_FLOAT_EQ(physJson["restitution"], 0.8f);
+    EXPECT_FLOAT_EQ(physJson["friction"], 0.2f);
+    EXPECT_FLOAT_EQ(physJson["velocity"]["x"], 1.0f);
+    EXPECT_FLOAT_EQ(physJson["velocity"]["y"], -2.0f);
+    EXPECT_FLOAT_EQ(physJson["velocity"]["z"], 3.0f);
+
+    ASSERT_TRUE(serializer.deserializeEntities(entitiesJson, world));
+
+    auto restored = world.get().lookup("physics_entity");
+    ASSERT_TRUE(restored.is_valid());
+
+    const auto* phys = restored.try_get<PhysicsBodyConfig>();
+    ASSERT_TRUE(phys);
+    EXPECT_EQ(phys->shapeType, PhysicsShapeType::Sphere);
+    EXPECT_FLOAT_EQ(phys->mass, 5.0f);
+    EXPECT_FLOAT_EQ(phys->restitution, 0.8f);
+    EXPECT_FLOAT_EQ(phys->friction, 0.2f);
+    EXPECT_FLOAT_EQ(phys->velocityX, 1.0f);
+    EXPECT_FLOAT_EQ(phys->velocityY, -2.0f);
+    EXPECT_FLOAT_EQ(phys->velocityZ, 3.0f);
+}
+
+TEST_F(SceneSerializerTest, AIBehaviorRoundTrip) {
+    auto entity = world.createSceneEntity("ai_entity");
+    AIBehaviorConfig aiConfig;
+    aiConfig.btXmlId = "patrol_tree";
+    aiConfig.currentState = 2; // Chase
+    aiConfig.waypoints = {{0.0f, 0.0f, 0.0f}, {10.0f, 0.0f, 5.0f}, {20.0f, 0.0f, -3.0f}};
+    entity.set<AIBehaviorConfig>(aiConfig);
+
+    world.progress(0.0f);
+    nlohmann::json entitiesJson = serializer.serializeEntities(world);
+    ASSERT_EQ(entitiesJson.size(), 1);
+
+    const auto& aiJson = entitiesJson[0]["components"]["AIBehavior"];
+    EXPECT_EQ(aiJson["btXmlId"], "patrol_tree");
+    EXPECT_EQ(aiJson["currentState"], 2);
+    ASSERT_EQ(aiJson["waypoints"].size(), 3);
+    EXPECT_FLOAT_EQ(aiJson["waypoints"][1]["x"], 10.0f);
+
+    ASSERT_TRUE(serializer.deserializeEntities(entitiesJson, world));
+
+    auto restored = world.get().lookup("ai_entity");
+    ASSERT_TRUE(restored.is_valid());
+
+    const auto* ai = restored.try_get<AIBehaviorConfig>();
+    ASSERT_TRUE(ai);
+    EXPECT_EQ(ai->btXmlId, "patrol_tree");
+    EXPECT_EQ(ai->currentState, 2);
+    ASSERT_EQ(ai->waypoints.size(), 3);
+    EXPECT_FLOAT_EQ(ai->waypoints[0][0], 0.0f);
+    EXPECT_FLOAT_EQ(ai->waypoints[1][0], 10.0f);
+    EXPECT_FLOAT_EQ(ai->waypoints[1][2], 5.0f);
+    EXPECT_FLOAT_EQ(ai->waypoints[2][0], 20.0f);
+    EXPECT_FLOAT_EQ(ai->waypoints[2][2], -3.0f);
+}
+
+TEST_F(SceneSerializerTest, AudioSourceRoundTrip) {
+    auto entity = world.createSceneEntity("audio_entity");
+    entity.set<AudioSourceConfig>(AudioSourceConfig{"sounds/ambient.wav", 0.75f, true, 5.0f, 10.0f, -2.0f});
+
+    world.progress(0.0f);
+    nlohmann::json entitiesJson = serializer.serializeEntities(world);
+    ASSERT_EQ(entitiesJson.size(), 1);
+
+    const auto& audioJson = entitiesJson[0]["components"]["AudioSource"];
+    EXPECT_EQ(audioJson["soundPath"], "sounds/ambient.wav");
+    EXPECT_FLOAT_EQ(audioJson["volume"], 0.75f);
+    EXPECT_TRUE(audioJson["looping"]);
+    EXPECT_FLOAT_EQ(audioJson["position"]["x"], 5.0f);
+    EXPECT_FLOAT_EQ(audioJson["position"]["y"], 10.0f);
+    EXPECT_FLOAT_EQ(audioJson["position"]["z"], -2.0f);
+
+    ASSERT_TRUE(serializer.deserializeEntities(entitiesJson, world));
+
+    auto restored = world.get().lookup("audio_entity");
+    ASSERT_TRUE(restored.is_valid());
+
+    const auto* audio = restored.try_get<AudioSourceConfig>();
+    ASSERT_TRUE(audio);
+    EXPECT_EQ(audio->soundPath, "sounds/ambient.wav");
+    EXPECT_FLOAT_EQ(audio->volume, 0.75f);
+    EXPECT_TRUE(audio->looping);
+    EXPECT_FLOAT_EQ(audio->positionX, 5.0f);
+    EXPECT_FLOAT_EQ(audio->positionY, 10.0f);
+    EXPECT_FLOAT_EQ(audio->positionZ, -2.0f);
+}

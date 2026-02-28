@@ -68,6 +68,7 @@ target_sources(UnitTests
   FileWatcherTest.cc
   PostProcessTest.cc
   DevConsoleTest.cc
+  ParticleSystemTest.cc
 )
 
 set_source_files_properties(

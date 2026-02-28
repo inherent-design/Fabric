@@ -160,6 +160,55 @@ nlohmann::json SceneSerializer::serializeComponents(flecs::entity entity) {
         componentsJson["Renderable"] = renderable->sortKey;
     }
 
+    auto physBody = entity.get_ref<PhysicsBodyConfig>();
+    if (physBody) {
+        nlohmann::json physJson;
+        switch (physBody->shapeType) {
+            case PhysicsShapeType::Sphere:
+                physJson["shapeType"] = "sphere";
+                break;
+            case PhysicsShapeType::Capsule:
+                physJson["shapeType"] = "capsule";
+                break;
+            case PhysicsShapeType::Mesh:
+                physJson["shapeType"] = "mesh";
+                break;
+            default:
+                physJson["shapeType"] = "box";
+                break;
+        }
+        physJson["mass"] = physBody->mass;
+        physJson["restitution"] = physBody->restitution;
+        physJson["friction"] = physBody->friction;
+        physJson["velocity"] =
+            nlohmann::json{{"x", physBody->velocityX}, {"y", physBody->velocityY}, {"z", physBody->velocityZ}};
+        componentsJson["PhysicsBody"] = physJson;
+    }
+
+    auto aiBehavior = entity.get_ref<AIBehaviorConfig>();
+    if (aiBehavior) {
+        nlohmann::json aiJson;
+        aiJson["btXmlId"] = aiBehavior->btXmlId;
+        aiJson["currentState"] = aiBehavior->currentState;
+        nlohmann::json waypointsJson = nlohmann::json::array();
+        for (const auto& wp : aiBehavior->waypoints) {
+            waypointsJson.push_back(nlohmann::json{{"x", wp[0]}, {"y", wp[1]}, {"z", wp[2]}});
+        }
+        aiJson["waypoints"] = waypointsJson;
+        componentsJson["AIBehavior"] = aiJson;
+    }
+
+    auto audioSource = entity.get_ref<AudioSourceConfig>();
+    if (audioSource) {
+        nlohmann::json audioJson;
+        audioJson["soundPath"] = audioSource->soundPath;
+        audioJson["volume"] = audioSource->volume;
+        audioJson["looping"] = audioSource->looping;
+        audioJson["position"] =
+            nlohmann::json{{"x", audioSource->positionX}, {"y", audioSource->positionY}, {"z", audioSource->positionZ}};
+        componentsJson["AudioSource"] = audioJson;
+    }
+
     return componentsJson;
 }
 
@@ -416,6 +465,60 @@ bool SceneSerializer::restoreComponents(flecs::entity entity, const nlohmann::js
 
     if (componentsJson.contains("Renderable")) {
         entity.set<Renderable>(Renderable{componentsJson["Renderable"]});
+    }
+
+    if (componentsJson.contains("PhysicsBody")) {
+        const auto& physJson = componentsJson["PhysicsBody"];
+        PhysicsBodyConfig config;
+        std::string shapeStr = physJson.value("shapeType", std::string("box"));
+        if (shapeStr == "sphere") {
+            config.shapeType = PhysicsShapeType::Sphere;
+        } else if (shapeStr == "capsule") {
+            config.shapeType = PhysicsShapeType::Capsule;
+        } else if (shapeStr == "mesh") {
+            config.shapeType = PhysicsShapeType::Mesh;
+        } else {
+            config.shapeType = PhysicsShapeType::Box;
+        }
+        config.mass = physJson.value("mass", 1.0f);
+        config.restitution = physJson.value("restitution", 0.3f);
+        config.friction = physJson.value("friction", 0.5f);
+        if (physJson.contains("velocity")) {
+            const auto& velJson = physJson["velocity"];
+            config.velocityX = velJson.value("x", 0.0f);
+            config.velocityY = velJson.value("y", 0.0f);
+            config.velocityZ = velJson.value("z", 0.0f);
+        }
+        entity.set<PhysicsBodyConfig>(config);
+    }
+
+    if (componentsJson.contains("AIBehavior")) {
+        const auto& aiJson = componentsJson["AIBehavior"];
+        AIBehaviorConfig config;
+        config.btXmlId = aiJson.value("btXmlId", std::string(""));
+        config.currentState = aiJson.value("currentState", static_cast<uint8_t>(0));
+        if (aiJson.contains("waypoints") && aiJson["waypoints"].is_array()) {
+            for (const auto& wpJson : aiJson["waypoints"]) {
+                std::array<float, 3> wp = {wpJson.value("x", 0.0f), wpJson.value("y", 0.0f), wpJson.value("z", 0.0f)};
+                config.waypoints.push_back(wp);
+            }
+        }
+        entity.set<AIBehaviorConfig>(config);
+    }
+
+    if (componentsJson.contains("AudioSource")) {
+        const auto& audioJson = componentsJson["AudioSource"];
+        AudioSourceConfig config;
+        config.soundPath = audioJson.value("soundPath", std::string(""));
+        config.volume = audioJson.value("volume", 1.0f);
+        config.looping = audioJson.value("looping", false);
+        if (audioJson.contains("position")) {
+            const auto& posJson = audioJson["position"];
+            config.positionX = posJson.value("x", 0.0f);
+            config.positionY = posJson.value("y", 0.0f);
+            config.positionZ = posJson.value("z", 0.0f);
+        }
+        entity.set<AudioSourceConfig>(config);
     }
 
     return true;
