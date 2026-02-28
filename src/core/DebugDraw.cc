@@ -97,4 +97,52 @@ void DebugDraw::end() {
     static_cast<DebugDrawEncoder*>(encoder_)->end();
 }
 
+void DebugDraw::setColor(uint32_t abgr) {
+    if (!initialized_ || !encoder_) {
+        return;
+    }
+    static_cast<DebugDrawEncoder*>(encoder_)->setColor(abgr);
+}
+
+void DebugDraw::setWireframe(bool enabled) {
+    if (!initialized_ || !encoder_) {
+        return;
+    }
+    static_cast<DebugDrawEncoder*>(encoder_)->setWireframe(enabled);
+}
+
+void DebugDraw::drawWireBox(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
+    if (!initialized_ || !encoder_) {
+        return;
+    }
+    auto* enc = static_cast<DebugDrawEncoder*>(encoder_);
+    // Bottom face
+    enc->moveTo(minX, minY, minZ);
+    enc->lineTo(maxX, minY, minZ);
+    enc->moveTo(maxX, minY, minZ);
+    enc->lineTo(maxX, minY, maxZ);
+    enc->moveTo(maxX, minY, maxZ);
+    enc->lineTo(minX, minY, maxZ);
+    enc->moveTo(minX, minY, maxZ);
+    enc->lineTo(minX, minY, minZ);
+    // Top face
+    enc->moveTo(minX, maxY, minZ);
+    enc->lineTo(maxX, maxY, minZ);
+    enc->moveTo(maxX, maxY, minZ);
+    enc->lineTo(maxX, maxY, maxZ);
+    enc->moveTo(maxX, maxY, maxZ);
+    enc->lineTo(minX, maxY, maxZ);
+    enc->moveTo(minX, maxY, maxZ);
+    enc->lineTo(minX, maxY, minZ);
+    // Vertical edges
+    enc->moveTo(minX, minY, minZ);
+    enc->lineTo(minX, maxY, minZ);
+    enc->moveTo(maxX, minY, minZ);
+    enc->lineTo(maxX, maxY, minZ);
+    enc->moveTo(maxX, minY, maxZ);
+    enc->lineTo(maxX, maxY, maxZ);
+    enc->moveTo(minX, minY, maxZ);
+    enc->lineTo(minX, maxY, maxZ);
+}
+
 } // namespace fabric

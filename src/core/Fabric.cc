@@ -40,6 +40,7 @@
 #include "fabric/ui/BgfxRenderInterface.hh"
 #include "fabric/ui/BgfxSystemInterface.hh"
 #include "fabric/ui/DebugHUD.hh"
+#include "fabric/utils/BVH.hh"
 #include "fabric/utils/Profiler.hh"
 
 #include <RmlUi/Core.h>
@@ -233,6 +234,8 @@ int main(int argc, char* argv[]) {
         inputManager.bindKey("toggle_debug", SDLK_F3);
         inputManager.bindKey("toggle_wireframe", SDLK_F4);
         inputManager.bindKey("toggle_camera", SDLK_V);
+        inputManager.bindKey("toggle_collision_debug", SDLK_F5);
+        inputManager.bindKey("toggle_bvh_debug", SDLK_F6);
 
         //----------------------------------------------------------------------
         // Timeline
@@ -538,6 +541,17 @@ int main(int argc, char* argv[]) {
             } else {
                 cameraCtrl.setMode(fabric::CameraMode::FirstPerson);
             }
+        });
+
+        dispatcher.addEventListener("toggle_collision_debug", [&](fabric::Event&) {
+            debugDraw.toggleFlag(fabric::DebugDrawFlags::CollisionShapes);
+            FABRIC_LOG_INFO("Collision shapes: {}",
+                            debugDraw.hasFlag(fabric::DebugDrawFlags::CollisionShapes) ? "on" : "off");
+        });
+
+        dispatcher.addEventListener("toggle_bvh_debug", [&](fabric::Event&) {
+            debugDraw.toggleFlag(fabric::DebugDrawFlags::BVHOverlay);
+            FABRIC_LOG_INFO("BVH overlay: {}", debugDraw.hasFlag(fabric::DebugDrawFlags::BVHOverlay) ? "on" : "off");
         });
 
         // Jump on space press (grounded only; in flight, move_up is continuous)
@@ -851,6 +865,55 @@ int main(int argc, char* argv[]) {
 
                 // Debug draw overlay (lines, shapes) on geometry view
                 debugDraw.begin(sceneView.geometryViewId());
+
+                // Collision shape overlays (F5)
+                if (debugDraw.hasFlag(fabric::DebugDrawFlags::CollisionShapes)) {
+                    debugDraw.setColor(0xff00ff00); // green (ABGR)
+                    for (const auto& [coord, ent] : chunkEntities) {
+                        if (physicsWorld.chunkCollisionShapeCount(coord.cx, coord.cy, coord.cz) > 0) {
+                            float x0 = static_cast<float>(coord.cx * fabric::kChunkSize);
+                            float y0 = static_cast<float>(coord.cy * fabric::kChunkSize);
+                            float z0 = static_cast<float>(coord.cz * fabric::kChunkSize);
+                            float x1 = x0 + static_cast<float>(fabric::kChunkSize);
+                            float y1 = y0 + static_cast<float>(fabric::kChunkSize);
+                            float z1 = z0 + static_cast<float>(fabric::kChunkSize);
+                            debugDraw.drawWireBox(x0, y0, z0, x1, y1, z1);
+                        }
+                    }
+                }
+
+                // BVH overlay with depth coloring (F6)
+                if (debugDraw.hasFlag(fabric::DebugDrawFlags::BVHOverlay)) {
+                    fabric::BVH<int> chunkBVH;
+                    int idx = 0;
+                    for (const auto& [coord, ent] : chunkEntities) {
+                        float x0 = static_cast<float>(coord.cx * fabric::kChunkSize);
+                        float y0 = static_cast<float>(coord.cy * fabric::kChunkSize);
+                        float z0 = static_cast<float>(coord.cz * fabric::kChunkSize);
+                        float x1 = x0 + static_cast<float>(fabric::kChunkSize);
+                        float y1 = y0 + static_cast<float>(fabric::kChunkSize);
+                        float z1 = z0 + static_cast<float>(fabric::kChunkSize);
+                        chunkBVH.insert(fabric::AABB(fabric::Vec3f(x0, y0, z0), fabric::Vec3f(x1, y1, z1)), idx++);
+                    }
+                    chunkBVH.build();
+
+                    constexpr float kMaxVisDepth = 8.0f;
+                    chunkBVH.visitNodes([&](const fabric::AABB& bounds, int depth, bool isLeaf) {
+                        uint32_t color;
+                        if (isLeaf) {
+                            color = 0xff00ffff; // yellow for leaves (ABGR)
+                        } else {
+                            float t = std::min(1.0f, static_cast<float>(depth) / kMaxVisDepth);
+                            auto r = static_cast<uint8_t>((1.0f - t) * 255);
+                            auto b = static_cast<uint8_t>(t * 255);
+                            color = 0xff000000u | (static_cast<uint32_t>(b) << 16) | static_cast<uint32_t>(r);
+                        }
+                        debugDraw.setColor(color);
+                        debugDraw.drawWireBox(bounds.min.x, bounds.min.y, bounds.min.z, bounds.max.x, bounds.max.y,
+                                              bounds.max.z);
+                    });
+                }
+
                 debugDraw.end();
 
                 // RmlUi overlay (view 255, after 3D scene, before frame flip)
