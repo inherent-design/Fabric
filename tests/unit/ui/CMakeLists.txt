@@ -4,4 +4,5 @@ target_sources(UnitTests
     WebViewTest.cc
     RmlUiBackendTest.cc
     DebugHUDTest.cc
+    DebugHUDPerfTest.cc
 )

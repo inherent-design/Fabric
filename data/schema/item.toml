@@ -1,0 +1,15 @@
+# Item definition schema
+# Used by DataLoader to define game items
+
+[item]
+id = "iron_sword"
+name = "Iron Sword"
+category = "weapon"
+
+[item.stats]
+damage = 12
+durability = 100
+weight = 3.5
+
+[item.tags]
+values = ["melee", "metal", "craftable"]

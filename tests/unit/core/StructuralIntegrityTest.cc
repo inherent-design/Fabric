@@ -109,6 +109,42 @@ TEST_F(StructuralIntegrityTest, CrossChunkFloatingClusterProducesDebris) {
     EXPECT_EQ(eventCount, 2);
 }
 
+TEST_F(StructuralIntegrityTest, CrossChunkPillarSupportsBeamNoDebris) {
+    si.setPerFrameBudgetMs(100.0f);
+
+    int eventCount = 0;
+    si.setDebrisCallback([&](const DebrisEvent&) { ++eventCount; });
+
+    // Pillar at x=31, y=0..4 in chunk (0,0,0)
+    for (int y = 0; y <= 4; ++y) {
+        grid.set(31, y, 0, 1.0f);
+    }
+    // Beam at x=32..34, y=4 in chunk (1,0,0)
+    for (int x = 32; x <= 34; ++x) {
+        grid.set(x, 4, 0, 1.0f);
+    }
+
+    si.update(grid, 0.016f);
+
+    EXPECT_EQ(eventCount, 0);
+}
+
+TEST_F(StructuralIntegrityTest, UnsupportedBeamProducesDebrisForAllVoxels) {
+    si.setPerFrameBudgetMs(100.0f);
+
+    int eventCount = 0;
+    si.setDebrisCallback([&](const DebrisEvent&) { ++eventCount; });
+
+    // Beam at x=32..34, y=4 without any pillar support
+    for (int x = 32; x <= 34; ++x) {
+        grid.set(x, 4, 0, 1.0f);
+    }
+
+    si.update(grid, 0.016f);
+
+    EXPECT_EQ(eventCount, 3);
+}
+
 TEST_F(StructuralIntegrityTest, DensityThresholdFiltersLowDensity) {
     int eventCount = 0;
     si.setDebrisCallback([&](const DebrisEvent&) { ++eventCount; });

@@ -22,6 +22,14 @@ struct DebugData {
     Vector3<float, Space::World> cameraPosition;
     int currentRadius = 0;
     std::string currentState = "None";
+
+    // Perf overlay (EF-18)
+    int drawCallCount = 0;
+    float gpuTimeMs = 0.0f;
+    float memoryUsageMB = 0.0f;
+    int physicsBodyCount = 0;
+    int audioVoiceCount = 0;
+    int chunkMeshQueueSize = 0;
 };
 
 // Debug overlay using RmlUI data binding. Displays engine metrics in a
@@ -54,6 +62,15 @@ class DebugHUD {
     float camZ_ = 0.0f;
     int currentRadius_ = 0;
     Rml::String currentState_;
+
+    // Perf overlay (EF-18)
+    int drawCallCount_ = 0;
+    float gpuTimeMs_ = 0.0f;
+    float memoryUsageMB_ = 0.0f;
+    int physicsBodyCount_ = 0;
+    int audioVoiceCount_ = 0;
+    int chunkMeshQueueSize_ = 0;
+
     Rml::DataModelHandle modelHandle_;
 };
 
