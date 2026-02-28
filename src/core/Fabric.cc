@@ -11,6 +11,7 @@
 #include "fabric/core/ChunkMeshManager.hh"
 #include "fabric/core/ChunkStreaming.hh"
 #include "fabric/core/Constants.g.hh"
+#include "fabric/core/DebugDraw.hh"
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/FieldLayer.hh"
@@ -185,6 +186,10 @@ int main(int argc, char* argv[]) {
 
         FABRIC_LOG_INFO("bgfx renderer: {}", bgfx::getRendererName(bgfx::getRendererType()));
 
+        // Debug draw overlay (F4 wireframe toggle)
+        fabric::DebugDraw debugDraw;
+        debugDraw.init();
+
         // RmlUi backend interfaces
         fabric::BgfxSystemInterface rmlSystem;
         fabric::BgfxRenderInterface rmlRenderer;
@@ -223,6 +228,7 @@ int main(int argc, char* argv[]) {
         // Mode toggles
         inputManager.bindKey("toggle_fly", SDLK_F);
         inputManager.bindKey("toggle_debug", SDLK_F3);
+        inputManager.bindKey("toggle_wireframe", SDLK_F4);
         inputManager.bindKey("toggle_camera", SDLK_V);
 
         //----------------------------------------------------------------------
@@ -488,6 +494,11 @@ int main(int argc, char* argv[]) {
         });
 
         dispatcher.addEventListener("toggle_debug", [&](fabric::Event&) { debugHUD.toggle(); });
+
+        dispatcher.addEventListener("toggle_wireframe", [&](fabric::Event&) {
+            debugDraw.toggleWireframe();
+            FABRIC_LOG_INFO("Wireframe: {}", debugDraw.isWireframeEnabled() ? "on" : "off");
+        });
 
         dispatcher.addEventListener("toggle_camera", [&](fabric::Event&) {
             if (cameraCtrl.mode() == fabric::CameraMode::FirstPerson) {
@@ -765,6 +776,9 @@ int main(int argc, char* argv[]) {
             {
                 FABRIC_ZONE_SCOPED_N("render_submit");
 
+                // Apply debug overlay state (wireframe toggle)
+                debugDraw.applyDebugFlags();
+
                 // ECS entity rendering (SceneView: cull, build render list, submit)
                 sceneView.render();
 
@@ -783,6 +797,10 @@ int main(int argc, char* argv[]) {
                         continue;
                     voxelRenderer.render(0, mesh, coord.cx, coord.cy, coord.cz);
                 }
+
+                // Debug draw overlay (lines, shapes) on main view
+                debugDraw.begin(0);
+                debugDraw.end();
 
                 // RmlUi overlay (view 255, after 3D scene, before frame flip)
                 int curW, curH;
@@ -862,6 +880,7 @@ int main(int argc, char* argv[]) {
         rmlRenderer.shutdown();
 
         voxelRenderer.shutdown();
+        debugDraw.shutdown();
         bgfx::shutdown();
         SDL_DestroyWindow(window);
         SDL_Quit();

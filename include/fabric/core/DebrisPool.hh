@@ -59,6 +59,22 @@ class DebrisPool {
     bool shouldMerge(const Debris& a, const Debris& b) const;
     Debris merge(const Debris& a, const Debris& b) const;
 
+    struct CellKey {
+        int32_t x, y, z;
+        bool operator==(const CellKey& other) const { return x == other.x && y == other.y && z == other.z; }
+    };
+
+    struct CellKeyHash {
+        size_t operator()(const CellKey& k) const {
+            size_t h = std::hash<int32_t>{}(k.x);
+            h ^= std::hash<int32_t>{}(k.y) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            h ^= std::hash<int32_t>{}(k.z) + 0x9e3779b9 + (h << 6) + (h >> 2);
+            return h;
+        }
+    };
+
+    static CellKey toCell(const Vector3<float, Space::World>& pos, float invCellSize);
+
     std::vector<Debris> debris_;
     std::deque<PendingDebris> pending_;
     size_t maxActive_;

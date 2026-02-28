@@ -198,3 +198,51 @@ TEST(DebrisPoolTest, PendingQueueDrainsWhenCapacityRaised) {
 
     EXPECT_EQ(pool.activeCount(), 10u);
 }
+
+TEST(DebrisPoolTest, SpatialHashMerge500DebrisCompletes) {
+    DebrisPool pool(500);
+    using Vec3 = Vector3<float, Space::World>;
+
+    pool.setMergeDistance(-1.0f);
+
+    int count = 0;
+    for (int x = 0; x < 8; ++x) {
+        for (int y = 0; y < 8; ++y) {
+            for (int z = 0; z < 8 && count < 500; ++z) {
+                pool.add(Vec3(static_cast<float>(x) * 0.3f, 5.0f + static_cast<float>(y) * 0.3f,
+                              static_cast<float>(z) * 0.3f),
+                         1.0f, 0.1f);
+                ++count;
+            }
+        }
+    }
+
+    pool.update(0.0f);
+    ASSERT_EQ(pool.activeCount(), 500u);
+
+    pool.setMergeDistance(0.5f);
+    pool.update(0.016f);
+
+    EXPECT_LT(pool.activeCount(), 500u);
+}
+
+TEST(DebrisPoolTest, MergeResultsConsistentWithSpatialHash) {
+    DebrisPool pool;
+    using Vec3 = Vector3<float, Space::World>;
+
+    pool.setMergeDistance(1.0f);
+    pool.add(Vec3(0, 5, 0), 1.0f, 0.3f);
+    pool.add(Vec3(0.5f, 5, 0), 2.0f, 0.3f);
+    pool.add(Vec3(10, 5, 0), 1.0f, 0.3f);
+
+    pool.update(0.0f);
+
+    EXPECT_EQ(pool.activeCount(), 2u);
+
+    const auto& debris = pool.getDebris();
+    float totalDensity = 0.0f;
+    for (const auto& d : debris) {
+        totalDensity += d.density;
+    }
+    EXPECT_FLOAT_EQ(totalDensity, 4.0f);
+}
