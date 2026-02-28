@@ -71,6 +71,7 @@ target_sources(UnitTests
   ParticleSystemTest.cc
   WaterMeshTest.cc
   BVHVisitorTest.cc
+  ReverbZoneTest.cc
 )
 
 set_source_files_properties(
