@@ -15,6 +15,7 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 
 #include "fabric/core/ChunkedGrid.hh"
+#include "fabric/core/VoxelRaycast.hh"
 
 #include <cstdint>
 #include <functional>
@@ -165,6 +166,15 @@ class PhysicsWorld {
 
     JPH::PhysicsSystem* joltSystem();
     bool initialized() const;
+
+    // CCD: grid-based raycast for fast projectiles (DDA)
+    std::optional<VoxelHit> castProjectileRay(const ChunkedGrid<float>& grid, float ox, float oy, float oz, float dx,
+                                              float dy, float dz, float maxDistance, float densityThreshold = 0.5f);
+
+    // CCD: swept AABB for entity-to-entity continuous collision
+    bool sweptAABBIntersect(float ax1, float ay1, float az1, float ax2, float ay2, float az2, float vx, float vy,
+                            float vz, float dt, float bx1, float by1, float bz1, float bx2, float by2, float bz2,
+                            float* outT = nullptr);
 
   private:
     class ContactListenerImpl;

@@ -1,5 +1,7 @@
 #include "fabric/core/PhysicsWorld.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/core/VoxelRaycast.hh"
+#include "fabric/utils/Profiler.hh"
 
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Physics/Body/Body.h>
@@ -516,6 +518,89 @@ void PhysicsWorld::removeConstraint(ConstraintHandle handle) {
 
     physicsSystem_->RemoveConstraint(it->second);
     constraints_.erase(it);
+}
+
+// CCD: grid-based projectile raycast using DDA
+std::optional<VoxelHit> PhysicsWorld::castProjectileRay(const ChunkedGrid<float>& grid, float ox, float oy, float oz,
+                                                        float dx, float dy, float dz, float maxDistance,
+                                                        float densityThreshold) {
+    FABRIC_ZONE_SCOPED_N("castProjectileRay");
+    return castRay(grid, ox, oy, oz, dx, dy, dz, maxDistance, densityThreshold);
+}
+
+// CCD: swept AABB intersection test
+bool PhysicsWorld::sweptAABBIntersect(float ax1, float ay1, float az1, float ax2, float ay2, float az2, float vx,
+                                      float vy, float vz, float dt, float bx1, float by1, float bz1, float bx2,
+                                      float by2, float bz2, float* outT) {
+    FABRIC_ZONE_SCOPED_N("sweptAABBIntersect");
+
+    // Swap min/max to ensure ax1 < ax2, etc.
+    if (ax1 > ax2)
+        std::swap(ax1, ax2);
+    if (ay1 > ay2)
+        std::swap(ay1, ay2);
+    if (az1 > az2)
+        std::swap(az1, az2);
+    if (bx1 > bx2)
+        std::swap(bx1, bx2);
+    if (by1 > by2)
+        std::swap(by1, by2);
+    if (bz1 > bz2)
+        std::swap(bz1, bz2);
+
+    // Swept AABB: check if moving AABB (ax) swept over interval [bx1, bx2] during dt
+    // For each axis, compute when moving AABB enters and exits static AABB
+    float tFirst = 0.0f;
+    float tLast = dt;
+
+    for (int i = 0; i < 3; ++i) {
+        float aMin, aMax, bMin, bMax, v;
+        if (i == 0) {
+            aMin = ax1;
+            aMax = ax2;
+            bMin = bx1;
+            bMax = bx2;
+            v = vx;
+        } else if (i == 1) {
+            aMin = ay1;
+            aMax = ay2;
+            bMin = by1;
+            bMax = by2;
+            v = vy;
+        } else {
+            aMin = az1;
+            aMax = az2;
+            bMin = bz1;
+            bMax = bz2;
+            v = vz;
+        }
+
+        if (v > 0.0f) {
+            // Moving positive: aMax enters bMin, aMin exits bMax
+            float tEnter = (bMin - aMax) / v;
+            float tExit = (bMax - aMin) / v;
+            tFirst = std::max(tFirst, tEnter);
+            tLast = std::min(tLast, tExit);
+        } else if (v < 0.0f) {
+            // Moving negative: aMin enters bMax, aMax exits bMin
+            float tEnter = (bMax - aMin) / v;
+            float tExit = (bMin - aMax) / v;
+            tFirst = std::max(tFirst, tEnter);
+            tLast = std::min(tLast, tExit);
+        } else {
+            // Zero velocity: check static overlap
+            if (aMax < bMin || aMin > bMax)
+                return false;
+        }
+
+        if (tFirst > tLast)
+            return false;
+    }
+
+    if (outT)
+        *outT = tFirst;
+
+    return tFirst <= dt;
 }
 
 } // namespace fabric

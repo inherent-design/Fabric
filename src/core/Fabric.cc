@@ -451,6 +451,7 @@ int main(int argc, char* argv[]) {
         ragdoll.init(&physicsWorld);
 
         fabric::AudioSystem audioSystem;
+        audioSystem.setThreadedMode(true);
         audioSystem.init();
         audioSystem.setDensityGrid(&density.grid());
 

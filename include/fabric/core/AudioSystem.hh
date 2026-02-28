@@ -4,8 +4,11 @@
 #include "fabric/core/Spatial.hh"
 #include <array>
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <unordered_map>
 
 struct ma_engine;
@@ -122,6 +125,10 @@ class AudioSystem {
     void setCommandBufferEnabled(bool enabled);
     bool isCommandBufferEnabled() const;
 
+    // Threaded mode control
+    void setThreadedMode(bool enabled);
+    bool isThreadedMode() const;
+
     // Listener
     void setListenerPosition(const Vec3f& pos);
     void setListenerDirection(const Vec3f& forward, const Vec3f& up);
@@ -172,9 +179,12 @@ class AudioSystem {
     void executeSetListenerPosition(const Vec3f& pos);
     void executeSetListenerDirection(const Vec3f& forward, const Vec3f& up);
 
+    void audioThreadLoop();
+
     ma_engine* engine_ = nullptr;
     bool initialized_ = false;
     bool commandBufferEnabled_ = false;
+    bool threadedMode_ = false;
     SoundHandle handleCounter_ = 0;
 
     std::unordered_map<SoundHandle, ma_sound*> activeSounds_;
@@ -193,6 +203,11 @@ class AudioSystem {
     bool occlusionEnabled_ = false;
 
     SPSCRingBuffer<AudioCommand, kCommandBufferSize> commandBuffer_;
+
+    std::thread audioThread_;
+    std::atomic<bool> audioThreadRunning_{false};
+    mutable std::mutex soundsMutex_;
+    std::mutex listenerMutex_;
 };
 
 } // namespace fabric

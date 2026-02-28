@@ -33,7 +33,15 @@ C++20 cross-platform runtime for building interactive spatial-temporal applicati
 mise install            # Install tooling
 mise run build          # Debug build
 mise run test           # Unit tests
+mise run test:e2e       # E2E tests
+mise run test:all       # Unit + E2E
 ```
+
+## Current Sprint Snapshot
+
+- Branch focus: `sprint-8` (structural primitives + Sprint 7 deferred integration)
+- Status: implementation in progress on this branch
+- Verification: pending for current branch changes (run commands below locally)
 
 Or with CMake presets:
 
@@ -57,7 +65,7 @@ cmake --build --preset dev-debug
 | Standalone Asio | 1.36.0 | Async I/O, C++20 coroutines |
 | fmtquill | 12.1.0 | Format library (bundled via Quill) |
 
-All dependencies are fetched via CMake `FetchContent`. Each library has a dedicated module under `cmake/modules/`.
+All dependencies are fetched via CPM.cmake. Each library has a dedicated module under `cmake/modules/`.
 
 ## Platform Support
 
@@ -81,12 +89,12 @@ fabric/
 │                       # TimeoutLock, Profiler, ErrorHandling, Testing, Utils
 ├── src/                # Implementation files (.cc)
 ├── tests/
-│   ├── unit/           # Per-component unit tests (17 files, 164 tests)
+│   ├── unit/           # Per-component unit tests
 │   └── e2e/            # End-to-end tests
-├── cmake/modules/      # 7 FetchContent modules
+├── cmake/modules/      # Dependency modules (CPM.cmake)
 ├── tasks/              # POSIX shell scripts for mise
 ├── CMakeLists.txt      # Build config (FabricLib static library)
-├── CMakePresets.json    # 7 presets (dev + CI)
+├── CMakePresets.json    # CMake presets (dev + CI)
 └── mise.toml           # Task runner config
 ```
 

@@ -2,9 +2,29 @@
 
 ## Overview
 
-Fabric uses GoogleTest 1.17.0 for all testing. The test suite contains 364 tests across 38 suites, organized into unit and E2E categories. Tests run in approximately 1.7 seconds.
+Fabric uses GoogleTest 1.17.0 for all testing, organized into unit and E2E categories. Exact test counts change by sprint; use `mise run test` and `mise run test:e2e` (or `mise run test:all`) to confirm current totals on your branch.
 
-A custom `TestMain.cc` initializes Quill logging and pauses the ThreadPoolExecutor before test execution, preventing background thread interference.
+A custom `TestMain.cc` initializes Quill logging before test execution.
+
+> Sprint 8 note: current branch verification is pending for in-progress changes. Do not assume previously reported totals apply until re-run locally.
+
+## Verification Commands
+
+```bash
+mise run build
+mise run test
+mise run test:e2e
+mise run test:all
+```
+
+Use `mise run test:filter <Pattern>` for targeted checks while iterating.
+
+```bash
+mise run test:filter SpatialTest
+```
+
+These commands mirror `mise.toml` task definitions and are the source of truth for this repository.
+
 
 ## Test Suites
 
@@ -88,7 +108,7 @@ ThreadPoolExecutor is paused during test execution to prevent background threads
 
 ### Disabled Tests
 
-One test is currently disabled (prefixed with `DISABLED_`). Use `--gtest_also_run_disabled_tests` to include it.
+Some tests may be disabled (prefixed with `DISABLED_`). Use `--gtest_also_run_disabled_tests` to include them when needed.
 
 ## Naming Conventions
 

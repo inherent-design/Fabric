@@ -48,11 +48,15 @@ target_sources(UnitTests
   CaveCarverTest.cc
   Sprint7StubTest.cc
   PhysicsWorldTest.cc
+  CCDTest.cc
   RagdollTest.cc
   BehaviorAITest.cc
   PathfindingTest.cc
   AudioSystemTest.cc
   AnimationEventsTest.cc
+  SceneSerializerTest.cc
+  StructuralIntegrityTest.cc
+  DebrisPoolTest.cc
 )
 
 set_source_files_properties(
