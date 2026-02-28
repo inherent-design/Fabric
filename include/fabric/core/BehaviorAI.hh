@@ -1,11 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <behaviortree_cpp/bt_factory.h>
+#include <behaviortree_cpp/loggers/bt_observer.h>
 #include <flecs.h>
 
 #include "fabric/core/Animation.hh"
@@ -148,6 +151,9 @@ class BehaviorAI {
     std::vector<Vec3f> getEntitiesInRange(const Vec3f& pos, float range);
     static bool hasLineOfSight(const ChunkedGrid<float>& grid, const Vec3f& from, const Vec3f& to);
 
+    // Per-tree observer for debugging. Returns nullptr if no observer attached.
+    BT::TreeObserver* observerFor(flecs::entity npc);
+
   private:
     BT::BehaviorTreeFactory factory_;
     flecs::world* world_ = nullptr;
@@ -157,6 +163,9 @@ class BehaviorAI {
     // Wrapped in optional to safely reset without touching dead world.
     std::optional<flecs::query<BehaviorTreeComponent, AIStateComponent>> btQuery_;
     std::optional<flecs::query<AIStateComponent, AIAnimationMapping, AIAnimationState>> animQuery_;
+
+    // Per-entity tree observers for debugging (entity id -> observer).
+    std::unordered_map<uint64_t, std::unique_ptr<BT::TreeObserver>> observers_;
 
     // Spatial index for O(log n) perception queries.
     // Rebuilt per-update to track entity position changes.

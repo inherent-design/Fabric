@@ -173,6 +173,7 @@ void BehaviorAI::init(flecs::world& world) {
 
 void BehaviorAI::shutdown() {
     FABRIC_LOG_INFO("BehaviorAI shutting down");
+    observers_.clear();
     btQuery_.reset();
     animQuery_.reset();
     world_ = nullptr;
@@ -188,9 +189,13 @@ void BehaviorAI::update(float dt) {
 
     rebuildSpatialIndex();
 
-    btQuery_->each([](BehaviorTreeComponent& btc, AIStateComponent& aiState) {
+    btQuery_->each([this](flecs::entity entity, BehaviorTreeComponent& btc, AIStateComponent& aiState) {
         if (!btc.tree.rootNode())
             return;
+
+        // Attach observer for debugging if not yet created
+        auto eid = entity.id();
+        observers_.try_emplace(eid, std::make_unique<BT::TreeObserver>(btc.tree));
 
         auto status = btc.tree.tickOnce();
 
@@ -261,6 +266,11 @@ std::string BehaviorAI::getClipNameForState(const AIAnimationMapping& mapping, A
             return mapping.fleeClip;
     }
     return mapping.idleClip;
+}
+
+BT::TreeObserver* BehaviorAI::observerFor(flecs::entity npc) {
+    auto it = observers_.find(npc.id());
+    return (it != observers_.end()) ? it->second.get() : nullptr;
 }
 
 void BehaviorAI::setPerceptionConfig(flecs::entity npc, const PerceptionConfig& config) {
