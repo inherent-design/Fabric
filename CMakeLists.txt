@@ -212,6 +212,9 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/DevConsole.cc
     src/core/ParticleSystem.cc
     src/core/ReverbZone.cc
+    src/core/LSystemVegetation.cc
+    src/core/WFCGenerator.cc
+    src/core/InputRecorder.cc
 )
 
 # Utils library components

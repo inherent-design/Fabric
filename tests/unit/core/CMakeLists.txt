@@ -72,6 +72,9 @@ target_sources(UnitTests
   WaterMeshTest.cc
   BVHVisitorTest.cc
   ReverbZoneTest.cc
+  LSystemVegetationTest.cc
+  WFCGeneratorTest.cc
+  InputRecorderTest.cc
 )
 
 set_source_files_properties(
