@@ -42,7 +42,8 @@ enum class AudioCommandType : uint8_t {
     SetPosition,
     SetVolume,
     SetListenerPosition,
-    SetListenerDirection
+    SetListenerDirection,
+    SetReverbParams
 };
 
 enum class SoundCategory : uint8_t {
@@ -63,6 +64,9 @@ struct AudioCommand {
     Vec3f up;
     float volume = 1.0f;
     SoundCategory category = SoundCategory::SFX;
+    float decayTime = 0.0f;
+    float damping = 0.0f;
+    float wetMix = 0.0f;
 };
 
 // Lock-free single-producer single-consumer ring buffer.
@@ -154,6 +158,13 @@ class AudioSystem {
     void setCategoryVolume(SoundCategory category, float volume);
     float getCategoryVolume(SoundCategory category) const;
 
+    // Reverb
+    void setReverbParameters(float decayTime, float damping, float wetMix);
+    float getReverbDecayTime() const;
+    float getReverbDamping() const;
+    float getReverbWetMix() const;
+    bool isReverbInitialized() const;
+
     // Occlusion
     void setDensityGrid(const ChunkedGrid<float>* grid);
     OcclusionResult computeOcclusion(const Vec3f& source, const Vec3f& listener, float threshold = 0.5f) const;
@@ -178,6 +189,10 @@ class AudioSystem {
     void executeSetVolume(SoundHandle handle, float volume);
     void executeSetListenerPosition(const Vec3f& pos);
     void executeSetListenerDirection(const Vec3f& forward, const Vec3f& up);
+    void executeSetReverbParams(float decayTime, float damping, float wetMix);
+
+    void initReverbNodes();
+    void uninitReverbNodes();
 
     void audioThreadLoop();
 
@@ -201,6 +216,15 @@ class AudioSystem {
 
     const ChunkedGrid<float>* densityGrid_ = nullptr;
     bool occlusionEnabled_ = false;
+
+    // Reverb node graph: sounds -> lpfNode_ -> delayNode_ -> endpoint
+    // Stored as void* because miniaudio uses C-style typedefs (cannot forward-declare)
+    void* delayNode_ = nullptr;
+    void* lpfNode_ = nullptr;
+    bool reverbInitialized_ = false;
+    float reverbDecayTime_ = 0.5f;
+    float reverbDamping_ = 0.5f;
+    float reverbWetMix_ = 0.3f;
 
     SPSCRingBuffer<AudioCommand, kCommandBufferSize> commandBuffer_;
 

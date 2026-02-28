@@ -215,6 +215,8 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/LSystemVegetation.cc
     src/core/WFCGenerator.cc
     src/core/InputRecorder.cc
+    src/core/WaterRenderer.cc
+    src/core/MaterialSounds.cc
 )
 
 # Utils library components
@@ -328,11 +330,14 @@ include(FabricPostShaders)
 # Particle shaders (vs_particle, fs_particle)
 include(FabricParticleShaders)
 
+# Water shaders (vs_water, fs_water)
+include(FabricWaterShaders)
+
 # Add shader output to include path
-target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_VOXEL_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT} ${FABRIC_POST_SHADER_OUT} ${FABRIC_PARTICLE_SHADER_OUT})
+target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_VOXEL_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT} ${FABRIC_POST_SHADER_OUT} ${FABRIC_PARTICLE_SHADER_OUT} ${FABRIC_WATER_SHADER_OUT})
 
 # Shader compilation must finish before FabricLib sources compile
-add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricVoxelShaders FabricSkyShaders FabricPostShaders FabricParticleShaders)
+add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricVoxelShaders FabricSkyShaders FabricPostShaders FabricParticleShaders FabricWaterShaders)
 
 # Per-target compile options (replaces global CMAKE_CXX_FLAGS_* variables)
 target_compile_options(FabricLib PRIVATE
