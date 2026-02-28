@@ -3,12 +3,53 @@
 #include "fabric/core/ECS.hh"
 #include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Temporal.hh"
+#include <array>
+#include <cstdint>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <vector>
 
 namespace fabric {
+
+/// Physics shape type for serialization (mirrors Jolt shape kinds)
+enum class PhysicsShapeType : uint8_t {
+    Box,
+    Sphere,
+    Capsule,
+    Mesh
+};
+
+/// Serializable physics body configuration (ECS component).
+/// Stores shape/material config; Jolt runtime handles are reconstructed on load.
+struct PhysicsBodyConfig {
+    PhysicsShapeType shapeType = PhysicsShapeType::Box;
+    float mass = 1.0f;
+    float restitution = 0.3f;
+    float friction = 0.5f;
+    float velocityX = 0.0f;
+    float velocityY = 0.0f;
+    float velocityZ = 0.0f;
+};
+
+/// Serializable AI behavior tree configuration (ECS component).
+/// BT runtime tree is reconstructed from btXmlId on load.
+struct AIBehaviorConfig {
+    std::string btXmlId;
+    uint8_t currentState = 0; // Maps to AIState enum values
+    std::vector<std::array<float, 3>> waypoints;
+};
+
+/// Serializable audio source configuration (ECS component).
+/// miniaudio handles are reconstructed from soundPath on load.
+struct AudioSourceConfig {
+    std::string soundPath;
+    float volume = 1.0f;
+    bool looping = false;
+    float positionX = 0.0f;
+    float positionY = 0.0f;
+    float positionZ = 0.0f;
+};
 
 /// Scene state descriptor for serialization
 struct SceneConfig {

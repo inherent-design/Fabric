@@ -53,6 +53,31 @@ struct AnimationBlendTree {
     std::vector<AnimationBlendEntry> layers;
 };
 
+// Per-joint weight mask for partial animation blending (SoA-aligned).
+// Each SimdFloat4 element covers 4 joints; total elements = num_soa_joints().
+struct JointMask {
+    ozz::vector<ozz::math::SimdFloat4> weights;
+
+    // Create a mask where upper body joints (first joint named "spine"
+    // and all descendants) have weight 1.0, everything else 0.0.
+    static JointMask createUpperBody(const ozz::animation::Skeleton& skeleton);
+
+    // Create a full-body mask (all weights 1.0)
+    static JointMask createFullBody(const ozz::animation::Skeleton& skeleton);
+};
+
+// Single layer in a layered animation blend
+struct AnimationLayer {
+    AnimationState state;
+    float weight = 1.0f;
+    std::shared_ptr<JointMask> mask; // nullptr = full body (no per-joint weighting)
+};
+
+// ECS component: multi-layer animation for partial blending
+struct AnimationLayerConfig {
+    std::vector<AnimationLayer> layers;
+};
+
 // ECS component: final skinning matrices for GPU submission
 struct SkinningData {
     std::vector<std::array<float, 16>> jointMatrices;
@@ -84,11 +109,21 @@ class AnimationSampler {
     std::vector<Matrix4x4<float>> computeSkinningMatrices(const ozz::animation::Skeleton& skeleton,
                                                           const ozz::vector<ozz::math::Float4x4>& models);
 
+    // Sample for a specific layer index (maintains per-layer sampling contexts)
+    void sampleLayer(int layerIndex, const ozz::animation::Animation& clip, const ozz::animation::Skeleton& skeleton,
+                     float time, ozz::vector<ozz::math::SoaTransform>& locals);
+
+    // Blend multiple layers with optional per-joint weight masks
+    void blendLayered(const ozz::animation::Skeleton& skeleton,
+                      ozz::span<const ozz::animation::BlendingJob::Layer> layers,
+                      ozz::vector<ozz::math::SoaTransform>& output);
+
   private:
     ozz::animation::SamplingJob::Context context_;
     // Cache: inverse bind matrices computed once per skeleton
     ozz::vector<ozz::math::Float4x4> cachedInvBindMatrices_;
     int cachedSkeletonJointCount_ = -1; // invalidation key
+    std::vector<std::unique_ptr<ozz::animation::SamplingJob::Context>> layerContexts_;
 };
 
 // ECS component: per-entity animation sampler (caches ozz SamplingJob context)
