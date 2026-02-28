@@ -165,6 +165,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/ResourceHub.cc
     src/core/Async.cc
     src/core/Rendering.cc
+    src/core/RenderCaps.cc
     src/core/Camera.cc
     src/core/InputManager.cc
     src/core/InputRouter.cc
