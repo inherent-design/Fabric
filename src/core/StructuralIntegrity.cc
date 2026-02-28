@@ -2,9 +2,10 @@
 
 #include "fabric/core/ChunkedGrid.hh"
 
-#include <chrono>
+#include <array>
 #include <queue>
 #include <unordered_set>
+#include <vector>
 
 namespace fabric {
 
@@ -31,94 +32,54 @@ void StructuralIntegrity::update(const ChunkedGrid<float>& grid, float dt) {
 
     const auto active = grid.activeChunks();
     if (active.empty()) {
-        checkedChunks_.clear();
         return;
     }
 
-    std::unordered_set<int64_t> activeKeys;
-    activeKeys.reserve(active.size());
-    for (const auto& [cx, cy, cz] : active) {
-        activeKeys.insert(packKey(cx, cy, cz));
-    }
-
-    for (auto it = checkedChunks_.begin(); it != checkedChunks_.end();) {
-        if (activeKeys.count(it->first) == 0) {
-            it = checkedChunks_.erase(it);
-        } else {
-            ++it;
-        }
-    }
-
-    const auto frameStart = std::chrono::high_resolution_clock::now();
-    const int64_t totalBudgetNs = static_cast<int64_t>(perFrameBudgetMs_ * 1'000'000.0f);
-
-    for (const auto& [cx, cy, cz] : active) {
-        const int64_t chunkKey = packKey(cx, cy, cz);
-        if (checkedChunks_.count(chunkKey) != 0) {
-            continue;
-        }
-
-        const auto elapsed = std::chrono::high_resolution_clock::now() - frameStart;
-        const int64_t elapsedNs = std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
-        if (elapsedNs >= totalBudgetNs) {
-            break;
-        }
-
-        FloodFillState state;
-        const int64_t remainingNs = totalBudgetNs - elapsedNs;
-        floodFillChunk(cx, cy, cz, grid, state, static_cast<float>(remainingNs));
-        processFloodFillResults(grid, state);
-        checkedChunks_[chunkKey] = 1;
-    }
-
-    if (checkedChunks_.size() >= activeKeys.size()) {
-        checkedChunks_.clear();
-    }
+    globalFloodFill(grid);
 }
 
-bool StructuralIntegrity::floodFillChunk(int cx, int cy, int cz, const ChunkedGrid<float>& grid, FloodFillState& state,
-                                         float timeBudgetNs) {
-    (void)timeBudgetNs;
-
+void StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
     constexpr float kDensityThreshold = 0.5f;
     constexpr int kNeighborOffsets[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
 
-    const int baseX = cx * kStructuralIntegrityChunkSize;
-    const int baseY = cy * kStructuralIntegrityChunkSize;
-    const int baseZ = cz * kStructuralIntegrityChunkSize;
+    const auto active = grid.activeChunks();
 
-    std::vector<std::array<int, 3>> denseVoxels;
+    // Phase 1: Collect all dense voxels across all chunks, seed BFS from ground
+    std::vector<std::array<int, 3>> allDenseVoxels;
+    std::queue<std::array<int, 3>> queue;
+    std::unordered_set<int64_t> supported;
 
-    for (int lz = 0; lz < kStructuralIntegrityChunkSize; ++lz) {
-        for (int ly = 0; ly < kStructuralIntegrityChunkSize; ++ly) {
-            for (int lx = 0; lx < kStructuralIntegrityChunkSize; ++lx) {
-                const int wx = baseX + lx;
-                const int wy = baseY + ly;
-                const int wz = baseZ + lz;
+    for (const auto& [cx, cy, cz] : active) {
+        const int baseX = cx * kStructuralIntegrityChunkSize;
+        const int baseY = cy * kStructuralIntegrityChunkSize;
+        const int baseZ = cz * kStructuralIntegrityChunkSize;
 
-                if (grid.get(wx, wy, wz) >= kDensityThreshold) {
-                    denseVoxels.push_back({wx, wy, wz});
+        for (int lz = 0; lz < kStructuralIntegrityChunkSize; ++lz) {
+            for (int ly = 0; ly < kStructuralIntegrityChunkSize; ++ly) {
+                for (int lx = 0; lx < kStructuralIntegrityChunkSize; ++lx) {
+                    const int wx = baseX + lx;
+                    const int wy = baseY + ly;
+                    const int wz = baseZ + lz;
+
+                    if (grid.get(wx, wy, wz) >= kDensityThreshold) {
+                        allDenseVoxels.push_back({wx, wy, wz});
+                        if (wy <= 0) {
+                            const int64_t key = packKey(wx, wy, wz);
+                            if (supported.insert(key).second) {
+                                queue.push({wx, wy, wz});
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    if (denseVoxels.empty()) {
-        return true;
+    if (allDenseVoxels.empty()) {
+        return;
     }
 
-    std::queue<std::array<int, 3>> queue;
-    std::unordered_set<int64_t> supported;
-
-    for (const auto& voxel : denseVoxels) {
-        if (voxel[1] <= 0) {
-            const int64_t key = packKey(voxel[0], voxel[1], voxel[2]);
-            if (supported.insert(key).second) {
-                queue.push(voxel);
-            }
-        }
-    }
-
+    // Phase 2: Global BFS -- crosses chunk boundaries via grid.get()
     while (!queue.empty()) {
         const auto current = queue.front();
         queue.pop();
@@ -139,29 +100,11 @@ bool StructuralIntegrity::floodFillChunk(int cx, int cy, int cz, const ChunkedGr
         }
     }
 
-    for (const auto& voxel : denseVoxels) {
+    // Phase 3: Any dense voxel not reached by BFS is disconnected
+    for (const auto& voxel : allDenseVoxels) {
         const int64_t key = packKey(voxel[0], voxel[1], voxel[2]);
         if (supported.count(key) == 0) {
-            state.disconnectedVoxels.push_back(voxel);
-        }
-    }
-
-    return true;
-}
-
-void StructuralIntegrity::processFloodFillResults(const ChunkedGrid<float>& grid, FloodFillState& state) {
-    if (!debrisCallback_) {
-        return;
-    }
-
-    for (const auto& voxel : state.disconnectedVoxels) {
-        const int wx = voxel[0];
-        const int wy = voxel[1];
-        const int wz = voxel[2];
-
-        const float density = grid.get(wx, wy, wz);
-        if (density > 0.0f) {
-            debrisCallback_(DebrisEvent{wx, wy, wz, density});
+            debrisCallback_(DebrisEvent{voxel[0], voxel[1], voxel[2], grid.get(voxel[0], voxel[1], voxel[2])});
         }
     }
 }

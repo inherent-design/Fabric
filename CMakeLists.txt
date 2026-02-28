@@ -108,6 +108,9 @@ include(FabricBehaviorTree)
 # miniaudio - single-header audio library
 include(FabricMiniaudio)
 
+# toml++ - header-only TOML v1.0 parser for data files
+include(FabricToml)
+
 # SDL3 Configuration
 set(SDL_SHARED OFF)
 set(SDL_STATIC ON)
@@ -196,6 +199,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/AudioSystem.cc
     src/core/AnimationEvents.cc
     src/core/WaterSimulation.cc
+    src/core/DataLoader.cc
 )
 
 # Utils library components
@@ -267,6 +271,7 @@ target_link_libraries(FabricLib
         Jolt
         behaviortree_cpp
         miniaudio
+        tomlplusplus::tomlplusplus
 )
 
 target_compile_definitions(FabricLib

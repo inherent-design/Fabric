@@ -1,0 +1,21 @@
+# NPC definition schema
+# Used by DataLoader to define NPC parameters
+
+[npc]
+id = "village_blacksmith"
+name = "Torgen the Smith"
+faction = "village"
+
+[npc.stats]
+health = 150
+speed = 2.0
+aggression = 0.1
+
+[npc.dialogue]
+greeting = "Need something forged?"
+farewell = "Come back when you have more coin."
+
+[npc.position]
+x = 10.5
+y = 0.0
+z = -3.2
