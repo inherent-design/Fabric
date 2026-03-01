@@ -5,4 +5,5 @@ target_sources(UnitTests
     RmlUiBackendTest.cc
     DebugHUDTest.cc
     DebugHUDPerfTest.cc
+    ToastManagerTest.cc
 )
