@@ -1,5 +1,8 @@
 #pragma once
 
+#include "fabric/core/FieldLayer.hh"
+#include "fabric/core/Rendering.hh"
+
 #include <array>
 #include <cstdint>
 #include <random>
@@ -170,5 +173,34 @@ WFCTileSet createDungeonTileSet();
 
 /// Create a building-themed tile set with >= 5 tiles (air, floor, wall, window, roof, etc.).
 WFCTileSet createBuildingTileSet();
+
+// ---------- Terrain integration ----------
+
+/// Configuration for terrain-integrated WFC generation.
+struct WFCTerrainConfig {
+    uint32_t seed = 42;
+    int tilesX = 4;     ///< Number of tiles along X axis.
+    int tilesY = 4;     ///< Number of tiles along Y axis.
+    int tilesZ = 4;     ///< Number of tiles along Z axis.
+    WFCTileSet tileset; ///< Tile set to use (default: dungeon).
+};
+
+/// Generates WFC structures into density/essence fields, matching
+/// the TerrainGenerator/CaveCarver API pattern.
+class WFCTerrainGenerator {
+  public:
+    explicit WFCTerrainGenerator(const WFCTerrainConfig& config);
+
+    /// Generate WFC structure in the given region. Solves WFC grid,
+    /// then copies tile voxel data into density/essence fields.
+    /// Blending: max(existing, tile) for density to preserve terrain.
+    void generate(DensityField& density, EssenceField& essence, const AABB& region);
+
+    const WFCTerrainConfig& config() const;
+    void setConfig(const WFCTerrainConfig& config);
+
+  private:
+    WFCTerrainConfig config_;
+};
 
 } // namespace fabric

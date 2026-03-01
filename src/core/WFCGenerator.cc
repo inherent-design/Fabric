@@ -402,4 +402,99 @@ WFCTileSet createBuildingTileSet() {
     return ts;
 }
 
+// ---------- WFCTerrainGenerator ----------
+
+WFCTerrainGenerator::WFCTerrainGenerator(const WFCTerrainConfig& config) : config_(config) {}
+
+const WFCTerrainConfig& WFCTerrainGenerator::config() const {
+    return config_;
+}
+
+void WFCTerrainGenerator::setConfig(const WFCTerrainConfig& config) {
+    config_ = config;
+}
+
+void WFCTerrainGenerator::generate(DensityField& density, EssenceField& essence, const AABB& region) {
+    // Compute integer bounds from AABB (floor min, ceil max).
+    int minX = static_cast<int>(std::floor(region.min.x));
+    int minY = static_cast<int>(std::floor(region.min.y));
+    int minZ = static_cast<int>(std::floor(region.min.z));
+    int maxX = static_cast<int>(std::ceil(region.max.x));
+    int maxY = static_cast<int>(std::ceil(region.max.y));
+    int maxZ = static_cast<int>(std::ceil(region.max.z));
+
+    if (maxX <= minX || maxY <= minY || maxZ <= minZ) {
+        return;
+    }
+
+    // Build WFCTile entries from WFCTileData entries for the solver.
+    const auto& tileDataVec = config_.tileset.tiles;
+    std::vector<WFCTile> tiles;
+    tiles.reserve(tileDataVec.size());
+    for (int i = 0; i < static_cast<int>(tileDataVec.size()); ++i) {
+        WFCTile tile;
+        tile.index = i;
+        tile.weight = tileDataVec[i].weight;
+        tile.sockets = tileDataVec[i].sockets;
+        tiles.push_back(tile);
+    }
+
+    // Create and solve grid.
+    WFCGrid grid;
+    grid.init(config_.tilesX, config_.tilesY, config_.tilesZ, tiles);
+    wfcSolve(grid, tiles, config_.seed);
+
+    // Copy tile data to fields.
+    // Origin is region.min.
+    for (int tz = 0; tz < config_.tilesZ; ++tz) {
+        for (int ty = 0; ty < config_.tilesY; ++ty) {
+            for (int tx = 0; tx < config_.tilesX; ++tx) {
+                const auto& cell = grid.cellAt(tx, ty, tz);
+                if (!cell.isCollapsed())
+                    continue;
+
+                int tileIdx = cell.collapsedIndex;
+                if (tileIdx < 0 || tileIdx >= static_cast<int>(tileDataVec.size()))
+                    continue;
+
+                const auto& tileData = tileDataVec[tileIdx];
+
+                // World position of this tile's origin.
+                int tileWorldX = minX + tx * kWFCTileSize;
+                int tileWorldY = minY + ty * kWFCTileSize;
+                int tileWorldZ = minZ + tz * kWFCTileSize;
+
+                // Iterate each voxel in the tile (4x4x4).
+                for (int lz = 0; lz < kWFCTileSize; ++lz) {
+                    for (int ly = 0; ly < kWFCTileSize; ++ly) {
+                        for (int lx = 0; lx < kWFCTileSize; ++lx) {
+                            int wx = tileWorldX + lx;
+                            int wy = tileWorldY + ly;
+                            int wz = tileWorldZ + lz;
+
+                            // AABB clipping: skip if outside region bounds.
+                            if (wx < minX || wx >= maxX || wy < minY || wy >= maxY || wz < minZ || wz >= maxZ)
+                                continue;
+
+                            int flatIdx = lx + ly * kWFCTileSize + lz * kWFCTileSize * kWFCTileSize;
+
+                            // Blending: max(existing, tile) for density.
+                            float existing = density.read(wx, wy, wz);
+                            float tileDensity = tileData.density[flatIdx];
+                            density.write(wx, wy, wz, std::max(existing, tileDensity));
+
+                            // Essence: only write where tile has non-zero density.
+                            if (tileDensity > 0.0f) {
+                                float essenceVal = tileData.essence[flatIdx];
+                                essence.write(wx, wy, wz,
+                                              Vector4<float, Space::World>(essenceVal, essenceVal, essenceVal, 1.0f));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 } // namespace fabric
