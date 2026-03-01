@@ -297,7 +297,6 @@ int main(int argc, char* argv[]) {
         fabric::SceneView sceneView(0, camera, ecsWorld.get());
 
         fabric::ResourceHub resourceHub;
-        resourceHub.disableWorkerThreadsForTesting();
 
         fabric::AppContext appContext{ecsWorld, timeline, dispatcher, resourceHub};
         (void)appContext; // threaded through systems in future passes
