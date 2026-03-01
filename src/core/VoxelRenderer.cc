@@ -79,7 +79,8 @@ void VoxelRenderer::initProgram() {
     uniformLightDir_ = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
 
     if (!bgfx::isValid(program_) || !bgfx::isValid(uniformPalette_) || !bgfx::isValid(uniformLightDir_)) {
-        FABRIC_LOG_ERROR("VoxelRenderer shader/uniform init failed for renderer {}", bgfx::getRendererName(type));
+        FABRIC_LOG_RENDER_ERROR("VoxelRenderer shader/uniform init failed for renderer {}",
+                                bgfx::getRendererName(type));
         shutdown();
         return;
     }
@@ -87,22 +88,23 @@ void VoxelRenderer::initProgram() {
     initialized_ = true;
 
     const auto& caps = renderCaps();
-    FABRIC_LOG_INFO("VoxelRenderer initialized: backend={}, tier={}", caps.rendererName, static_cast<int>(caps.tier));
+    FABRIC_LOG_RENDER_INFO("VoxelRenderer initialized: backend={}, tier={}", caps.rendererName,
+                           static_cast<int>(caps.tier));
     if (!caps.index32) {
-        FABRIC_LOG_WARN("VoxelRenderer: 32-bit indices unavailable; chunk meshes limited to 65535 vertices");
+        FABRIC_LOG_RENDER_WARN("VoxelRenderer: 32-bit indices unavailable; chunk meshes limited to 65535 vertices");
     }
 
     mdiSupported_ = caps.drawIndirect;
     if (mdiSupported_) {
         indirectBuffer_ = bgfx::createIndirectBuffer(kMaxIndirectDraws);
         if (!bgfx::isValid(indirectBuffer_)) {
-            FABRIC_LOG_WARN("VoxelRenderer: indirect buffer allocation failed, MDI disabled");
+            FABRIC_LOG_RENDER_WARN("VoxelRenderer: indirect buffer allocation failed, MDI disabled");
             mdiSupported_ = false;
         } else {
-            FABRIC_LOG_INFO("VoxelRenderer: MDI enabled ({} max draws)", kMaxIndirectDraws);
+            FABRIC_LOG_RENDER_INFO("VoxelRenderer: MDI enabled ({} max draws)", kMaxIndirectDraws);
         }
     } else {
-        FABRIC_LOG_INFO("VoxelRenderer: MDI unavailable, per-chunk submit");
+        FABRIC_LOG_RENDER_INFO("VoxelRenderer: MDI unavailable, per-chunk submit");
     }
 }
 
