@@ -13,6 +13,11 @@
 #   mise run test           # Run unit tests
 #   mise run build:release  # Release build
 
+[settings]
+# Use PowerShell instead of cmd.exe for inline task commands.
+# Default is "cmd /c" which mangles PowerShell syntax ($env:, &, etc.)
+windows_default_inline_shell_args = "pwsh -NoProfile -NonInteractive -Command"
+
 [env]
 # No Homebrew paths. MSVC toolchain discovered via Developer Shell env.
 # If using clang-cl instead of MSVC, override CC/CXX here.
