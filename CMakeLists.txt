@@ -247,6 +247,7 @@ set(FABRIC_UI_SOURCE_FILES
     src/ui/BgfxSystemInterface.cc
     src/ui/StbImage.cc
     src/ui/DebugHUD.cc
+    src/ui/ToastManager.cc
 )
 
 # bgfx debugdraw (extracted from examples/common for debug overlays)
