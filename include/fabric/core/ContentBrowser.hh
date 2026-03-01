@@ -33,7 +33,7 @@ class ContentBrowser {
     void navigateUp();
 
     /// Current browsing directory (absolute).
-    std::string currentPath() const;
+    const std::string& currentPath() const;
 
     /// Single directory entry.
     struct Entry {
