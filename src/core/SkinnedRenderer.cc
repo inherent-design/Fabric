@@ -4,10 +4,8 @@
 #include "fabric/utils/ErrorHandling.hh"
 #include "fabric/utils/Profiler.hh"
 
-// Suppress shader profiles we don't compile per-platform.
-#if !defined(_WIN32)
+// Vulkan-only: suppress all non-SPIR-V shader profiles.
 #define BGFX_PLATFORM_SUPPORTS_DXBC 0
-#endif
 #define BGFX_PLATFORM_SUPPORTS_DXIL 0
 #define BGFX_PLATFORM_SUPPORTS_WGSL 0
 #include <bgfx/embedded_shader.h>
