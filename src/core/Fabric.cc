@@ -12,6 +12,7 @@
 #include "fabric/core/ChunkMeshManager.hh"
 #include "fabric/core/ChunkStreaming.hh"
 #include "fabric/core/Constants.g.hh"
+#include "fabric/core/ContentBrowser.hh"
 #include "fabric/core/DebrisPool.hh"
 #include "fabric/core/DebugDraw.hh"
 #include "fabric/core/DevConsole.hh"
@@ -240,7 +241,8 @@ int main(int argc, char* argv[]) {
         inputManager.bindKey("toggle_camera", SDLK_V);
         inputManager.bindKey("toggle_collision_debug", SDLK_F10);
         inputManager.bindKey("toggle_bvh_debug", SDLK_F6);
-        inputManager.bindKey("toggle_bt_debug", SDLK_F7);
+        inputManager.bindKey("toggle_content_browser", SDLK_F7);
+        inputManager.bindKey("toggle_bt_debug", SDLK_F11);
         inputManager.bindKey("cycle_bt_npc", SDLK_F8);
 
         //----------------------------------------------------------------------
@@ -505,6 +507,12 @@ int main(int argc, char* argv[]) {
         flecs::entity btDebugSelectedNpc;
 
         //----------------------------------------------------------------------
+        // Content Browser
+        //----------------------------------------------------------------------
+        fabric::ContentBrowser contentBrowser;
+        contentBrowser.init("assets/");
+
+        //----------------------------------------------------------------------
         // Developer Console
         //----------------------------------------------------------------------
         fabric::DevConsole devConsole;
@@ -613,6 +621,11 @@ int main(int argc, char* argv[]) {
         dispatcher.addEventListener("toggle_bvh_debug", [&](fabric::Event&) {
             debugDraw.toggleFlag(fabric::DebugDrawFlags::BVHOverlay);
             FABRIC_LOG_INFO("BVH overlay: {}", debugDraw.hasFlag(fabric::DebugDrawFlags::BVHOverlay) ? "on" : "off");
+        });
+
+        dispatcher.addEventListener("toggle_content_browser", [&](fabric::Event&) {
+            contentBrowser.toggle();
+            FABRIC_LOG_INFO("Content Browser: {}", contentBrowser.isVisible() ? "on" : "off");
         });
 
         dispatcher.addEventListener("toggle_bt_debug", [&](fabric::Event&) {
@@ -1077,6 +1090,7 @@ int main(int argc, char* argv[]) {
         // saveManager has no shutdown (value type, RAII)
 
         devConsole.shutdown();
+        contentBrowser.shutdown();
         btDebugPanel.shutdown();
         debugHUD.shutdown();
 
