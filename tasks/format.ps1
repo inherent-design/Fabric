@@ -1,6 +1,4 @@
-#Requires -Version 5.1
-# Check or fix clang-format on Fabric source files.
-# Env: FORMAT_FIX - set to "1" to apply fixes (default: check-only)
+# Env: FORMAT_FIX=1 to apply fixes (default: check-only)
 $ErrorActionPreference = 'Stop'
 
 $fixMode = $env:FORMAT_FIX

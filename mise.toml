@@ -1,7 +1,4 @@
 [settings]
-# Route Windows inline task commands through PowerShell instead of cmd.exe.
-# Default "cmd /c" mangles $env: and & syntax, and opens .ps1 in an editor.
-# This setting is Windows-only by name — no effect on macOS/Linux.
 windows_default_inline_shell_args = "pwsh -NoProfile -NonInteractive -Command"
 
 [tools]
@@ -22,16 +19,6 @@ asset_pattern = "codeql-win64.zip"
 """ }
 ninja = "latest"
 
-# LLVM: Homebrew manages install (macOS ABI compatibility),
-# mise scopes the environment per-project via [env] below.
-#
-# Tool version contract (CI targets):
-#   clang-format: v21 (jidicula/clang-format-action)
-#   cppcheck: Ubuntu 24.04 apt (~2.12). Suppressions in .cppcheck-suppressions.
-#   clang-tidy: Ubuntu 24.04 apt (18.x). Advisory mode (.clang-tidy shared).
-#   cmake/ninja/ccache: latest (mise locally, apt/action in CI)
-# Local Homebrew LLVM may be ahead of CI. Known gaps documented in
-# .github/workflows/ comments and ~/.atlas/plans/fabric/ci-unification-*.md.
 [env]
 _.path = ["/opt/homebrew/opt/llvm/bin"]
 CC = "clang"
@@ -42,9 +29,7 @@ CPM_SOURCE_CACHE = "~/.cache/CPM"
 CMAKE_C_COMPILER_LAUNCHER = "ccache"
 CMAKE_CXX_COMPILER_LAUNCHER = "ccache"
 
-#
 # Build
-#
 
 [tasks.clean]
 description = "Remove build artifacts"
@@ -63,9 +48,7 @@ description = "Configure and build (Release)"
 run = "BUILD_PRESET=dev-release sh tasks/build.sh"
 run_windows = "$env:BUILD_PRESET='dev-release'; & .\\tasks\\build.ps1"
 
-#
 # Lint & Format
-#
 
 [tasks.format]
 alias = "fmt"
@@ -99,9 +82,7 @@ description = "Run cppcheck static analysis"
 run = "sh tasks/cppcheck.sh"
 run_windows = "& .\\tasks\\cppcheck.ps1"
 
-#
 # Test
-#
 
 [tasks.test]
 alias = "t"
@@ -130,9 +111,7 @@ usage = 'arg "filter" help="gtest --gtest_filter value"'
 run = "TEST_FILTER=\"{{arg(name='filter')}}\" sh tasks/test.sh"
 run_windows = "$env:TEST_FILTER='{{arg(name=''filter'')}}'; & .\\tasks\\test.ps1"
 
-#
 # Analysis
-#
 
 [tasks.sanitize]
 description = "Build and test with ASan + UBSan"

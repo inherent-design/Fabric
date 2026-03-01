@@ -1,37 +1,12 @@
-# Windows development environment overrides.
-# Activated by: MISE_ENV=windows (set in shell profile or per-session)
-#
-# Prerequisites:
-#   1. Visual Studio 2022 with C++ Desktop workload (provides cl.exe, MSVC)
-#   2. Run from "Developer PowerShell for VS" or source vcvarsall.bat
-#   3. mise install (provides cmake, ninja, ccache, codeql)
-#   4. Optional: scoop install llvm (for clang-format, clang-tidy, cppcheck)
-#
-# Quick start:
-#   $env:MISE_ENV = "windows"
-#   mise run build          # Debug build with MSVC + Ninja
-#   mise run test           # Run unit tests
-#   mise run build:release  # Release build
-
-[settings]
-# Route inline task commands through PowerShell Core instead of cmd.exe.
-# Default is "cmd /c" which mangles PowerShell syntax ($env:, &, etc.)
-#
-# How this works:
-#   mise splits the string via shell_words::split() into an argv vector,
-#   then appends the run_windows string as the final argument:
-#     pwsh.exe -NoProfile -NonInteractive -Command "<run_windows value>"
-#
-# The run_windows strings must therefore be valid PowerShell expressions
-# that pwsh -Command can evaluate (& operator, $env: variables, etc.).
-#
-# pwsh (PowerShell 7+) is required. Windows PowerShell 5.1 (powershell.exe)
-# lacks modern features and has different quoting behavior.
-windows_default_inline_shell_args = "pwsh -NoProfile -NonInteractive -Command"
+# Windows env overrides (MISE_ENV=windows).
+# Requires: VS 2022 C++ Desktop workload, Developer PowerShell for VS
 
 [env]
-# No Homebrew paths. MSVC toolchain discovered via Developer Shell env.
-# If using clang-cl instead of MSVC, override CC/CXX here.
-CPM_SOURCE_CACHE = "{{env.USERPROFILE}}/.cache/CPM"
+_.path = []
+CC = "cl"
+CXX = "cl"
+CPPFLAGS = ""
+LDFLAGS = ""
+CPM_SOURCE_CACHE = "{{ env.USERPROFILE }}/.cache/CPM"
 CMAKE_C_COMPILER_LAUNCHER = "ccache"
 CMAKE_CXX_COMPILER_LAUNCHER = "ccache"

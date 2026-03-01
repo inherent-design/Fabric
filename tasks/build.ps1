@@ -1,7 +1,4 @@
-#Requires -Version 5.1
-# Configure and build Fabric Engine using CMakePresets.
-# Env: BUILD_PRESET - cmake preset name (default: dev-debug)
-# See CMakePresets.json for available presets.
+# Env: BUILD_PRESET (default: dev-debug)
 $ErrorActionPreference = 'Stop'
 
 $preset = if ($env:BUILD_PRESET) { $env:BUILD_PRESET } else { 'dev-debug' }
