@@ -1,0 +1,54 @@
+<rml>
+<head>
+    <link type="text/rcss" href="debug_hud.rcss" />
+    <style>
+        #content-browser {
+            position: fixed;
+            bottom: 8dp;
+            left: 8dp;
+            padding: 8dp 12dp;
+            background-color: #00000099;
+            border: 1dp #ffffff33;
+            width: 400dp;
+            max-height: 500dp;
+            overflow: auto;
+        }
+        .cb-path {
+            font-size: 11dp;
+            color: #888888;
+            margin-bottom: 4dp;
+            word-break: break-all;
+        }
+        .cb-entry {
+            margin-bottom: 1dp;
+            font-size: 12dp;
+        }
+        .cb-dir {
+            color: #4fc3f7;
+        }
+        .cb-file {
+            color: #e0e0e0;
+        }
+        .cb-ext {
+            color: #888888;
+            font-size: 10dp;
+        }
+        .cb-size {
+            color: #666666;
+            font-size: 10dp;
+        }
+        .cb-header {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body data-model="content_browser">
+<div id="content-browser">
+    <div class="section-title">Content Browser</div>
+    <div class="cb-path">{{ current_path }}</div>
+    <div class="cb-entries">{{ entry_list }}</div>
+</div>
+</body>
+</rml>
