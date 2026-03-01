@@ -177,7 +177,7 @@ int main(int argc, char* argv[]) {
         SDL_GetWindowSizeInPixels(window, &pw, &ph);
 
         bgfx::Init bgfxInit;
-        bgfxInit.type = bgfx::RendererType::Count;
+        bgfxInit.type = bgfx::RendererType::Vulkan;
         bgfxInit.platformData = getPlatformData(window);
         bgfxInit.resolution.width = static_cast<uint32_t>(pw);
         bgfxInit.resolution.height = static_cast<uint32_t>(ph);

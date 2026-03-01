@@ -35,6 +35,21 @@ set(CMAKE_CXX_FLAGS "${_bgfx_saved_cxx}")
 set(CMAKE_C_FLAGS   "${_bgfx_saved_c}")
 set(CMAKE_EXE_LINKER_FLAGS "${_bgfx_saved_exe}")
 
+# Vulkan-only: disable all non-Vulkan renderer backends in bgfx.
+# Defining any BGFX_CONFIG_RENDERER_* causes bgfx/src/config.h to skip
+# auto-detection; undefined renderers default to 0.
+if(TARGET bgfx)
+    target_compile_definitions(bgfx PRIVATE
+        BGFX_CONFIG_RENDERER_VULKAN=1
+        BGFX_CONFIG_RENDERER_DIRECT3D11=0
+        BGFX_CONFIG_RENDERER_DIRECT3D12=0
+        BGFX_CONFIG_RENDERER_METAL=0
+        BGFX_CONFIG_RENDERER_OPENGL=0
+        BGFX_CONFIG_RENDERER_OPENGLES=0
+        BGFX_CONFIG_RENDERER_WEBGPU=0
+    )
+endif()
+
 # Xcode 26+ SDK requires ObjC++ for Foundation headers included transitively
 # by bgfx Vulkan (via MoltenVK) and WebGPU renderers. Without this, pure C++
 # compilation fails with "unknown type name 'NSString'" errors.
