@@ -1,8 +1,4 @@
-#Requires -Version 5.1
-# Build with coverage instrumentation and generate report.
-# NOTE: MSVC uses different coverage tooling than Clang.
-# Requires: OpenCppCoverage (https://github.com/OpenCppCoverage/OpenCppCoverage)
-# Install: choco install opencppcoverage / scoop install opencppcoverage
+# Requires: OpenCppCoverage (choco install opencppcoverage)
 $ErrorActionPreference = 'Stop'
 
 $buildDir = 'build/ci-coverage'

@@ -1,9 +1,4 @@
-#Requires -Version 5.1
-# Run CodeQL security analysis locally.
-# Env: CODEQL_LANG  - language to analyze (default: cpp)
-# Env: CODEQL_SUITE - query suite (default: code-scanning)
-# Env: BUILD_DIR    - cmake build directory (default: build)
-# Requires: codeql CLI (mise manages this)
+# Env: CODEQL_LANG (default: cpp), CODEQL_SUITE (default: code-scanning)
 $ErrorActionPreference = 'Stop'
 
 $lang = if ($env:CODEQL_LANG) { $env:CODEQL_LANG } else { 'cpp' }

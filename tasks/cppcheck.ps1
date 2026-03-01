@@ -1,6 +1,3 @@
-#Requires -Version 5.1
-# Run cppcheck static analysis on Fabric source files.
-# Suppressions: .cppcheck-suppressions (shared with CI)
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
