@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstdlib>
 #include <set>
 
 using namespace fabric;
@@ -285,4 +286,180 @@ TEST(LSystemVegetationTest, PushPopRestoresRadius) {
     // seg[2] is after pop: should have original radius restored.
     EXPECT_FLOAT_EQ(segments[0].radius, segments[2].radius);
     EXPECT_GT(segments[0].radius, segments[1].radius);
+}
+
+// ===========================================================================
+// Voxelization tests (EF-15.2)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// 15. Single segment produces non-zero density
+// ---------------------------------------------------------------------------
+TEST(LSystemVegetationTest, VoxelizeSingleSegmentNonZeroDensity) {
+    DensityField density;
+    EssenceField essence;
+
+    TurtleSegment seg;
+    seg.start = glm::vec3(0.0f, 0.0f, 0.0f);
+    seg.end = glm::vec3(5.0f, 0.0f, 0.0f);
+    seg.radius = 1.0f;
+    seg.materialTag = 0; // wood
+
+    voxelizeSegment(seg, density, essence);
+
+    // At least one voxel along the segment should have non-zero density.
+    bool foundNonZero = false;
+    for (int x = 0; x <= 5; ++x) {
+        if (density.read(x, 0, 0) > 0.0f) {
+            foundNonZero = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundNonZero) << "Voxelization should produce non-zero density along segment";
+}
+
+// ---------------------------------------------------------------------------
+// 16. Wood vs leaf produce distinct essence values
+// ---------------------------------------------------------------------------
+TEST(LSystemVegetationTest, VoxelizeWoodVsLeafDistinctEssence) {
+    DensityField densityW, densityL;
+    EssenceField essenceW, essenceL;
+
+    TurtleSegment wood;
+    wood.start = glm::vec3(0.0f);
+    wood.end = glm::vec3(3.0f, 0.0f, 0.0f);
+    wood.radius = 1.0f;
+    wood.materialTag = 0;
+
+    TurtleSegment leaf;
+    leaf.start = glm::vec3(0.0f);
+    leaf.end = glm::vec3(3.0f, 0.0f, 0.0f);
+    leaf.radius = 1.0f;
+    leaf.materialTag = 1;
+
+    voxelizeSegment(wood, densityW, essenceW);
+    voxelizeSegment(leaf, densityL, essenceL);
+
+    auto woodEss = essenceW.read(1, 0, 0);
+    auto leafEss = essenceL.read(1, 0, 0);
+
+    // Wood and leaf should map to different essence values.
+    bool different =
+        (woodEss.x != leafEss.x) || (woodEss.y != leafEss.y) || (woodEss.z != leafEss.z) || (woodEss.w != leafEss.w);
+    EXPECT_TRUE(different) << "Wood and leaf essences must be distinct";
+
+    // Verify they match the constants.
+    EXPECT_FLOAT_EQ(woodEss.x, kWoodEssence.x);
+    EXPECT_FLOAT_EQ(woodEss.y, kWoodEssence.y);
+    EXPECT_FLOAT_EQ(leafEss.x, kLeafEssence.x);
+    EXPECT_FLOAT_EQ(leafEss.y, kLeafEssence.y);
+}
+
+// ---------------------------------------------------------------------------
+// 17. Radius controls voxel width
+// ---------------------------------------------------------------------------
+TEST(LSystemVegetationTest, VoxelizeRadiusControlsWidth) {
+    DensityField densityNarrow, densityWide;
+    EssenceField essenceNarrow, essenceWide;
+
+    TurtleSegment narrow;
+    narrow.start = glm::vec3(0.0f, 0.0f, 0.0f);
+    narrow.end = glm::vec3(10.0f, 0.0f, 0.0f);
+    narrow.radius = 1.0f;
+    narrow.materialTag = 0;
+
+    TurtleSegment wide;
+    wide.start = glm::vec3(0.0f, 0.0f, 0.0f);
+    wide.end = glm::vec3(10.0f, 0.0f, 0.0f);
+    wide.radius = 3.0f;
+    wide.materialTag = 0;
+
+    voxelizeSegment(narrow, densityNarrow, essenceNarrow);
+    voxelizeSegment(wide, densityWide, essenceWide);
+
+    // Count non-zero voxels in a cross-section at x=5.
+    int narrowCount = 0;
+    int wideCount = 0;
+    for (int dy = -4; dy <= 4; ++dy) {
+        for (int dz = -4; dz <= 4; ++dz) {
+            if (densityNarrow.read(5, dy, dz) > 0.0f)
+                ++narrowCount;
+            if (densityWide.read(5, dy, dz) > 0.0f)
+                ++wideCount;
+        }
+    }
+
+    EXPECT_GT(wideCount, narrowCount) << "Wider radius should produce more voxels in cross-section";
+}
+
+// ---------------------------------------------------------------------------
+// 18. Density stays clamped to [0, 1]
+// ---------------------------------------------------------------------------
+TEST(LSystemVegetationTest, VoxelizeDensityClamped) {
+    DensityField density;
+    EssenceField essence;
+
+    // Voxelize many overlapping segments to try to exceed 1.0.
+    for (int i = 0; i < 10; ++i) {
+        TurtleSegment seg;
+        seg.start = glm::vec3(0.0f);
+        seg.end = glm::vec3(3.0f, 0.0f, 0.0f);
+        seg.radius = 1.0f;
+        seg.materialTag = 0;
+        voxelizeSegment(seg, density, essence);
+    }
+
+    // Check all voxels along the segment are within [0, 1].
+    for (int x = 0; x <= 3; ++x) {
+        float d = density.read(x, 0, 0);
+        EXPECT_GE(d, 0.0f) << "Density must be >= 0 at x=" << x;
+        EXPECT_LE(d, 1.0f) << "Density must be <= 1 at x=" << x;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 19. voxelizeTree origin offset works
+// ---------------------------------------------------------------------------
+TEST(LSystemVegetationTest, VoxelizeTreeOriginOffset) {
+    DensityField density;
+    EssenceField essence;
+
+    TurtleSegment seg;
+    seg.start = glm::vec3(0.0f, 0.0f, 0.0f);
+    seg.end = glm::vec3(0.0f, 5.0f, 0.0f);
+    seg.radius = 1.0f;
+    seg.materialTag = 0;
+
+    glm::ivec3 origin(100, 200, 300);
+    voxelizeTree({seg}, density, essence, origin);
+
+    // Density at the origin-shifted location should be non-zero.
+    bool foundAtOffset = false;
+    for (int y = 200; y <= 205; ++y) {
+        if (density.read(100, y, 300) > 0.0f) {
+            foundAtOffset = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundAtOffset) << "Voxelized tree should appear at origin offset";
+
+    // Original location should remain zero.
+    float atZero = density.read(0, 2, 0);
+    EXPECT_FLOAT_EQ(atZero, 0.0f) << "Original (un-offset) location should be empty";
+}
+
+// ---------------------------------------------------------------------------
+// 20. Empty segments produce no changes
+// ---------------------------------------------------------------------------
+TEST(LSystemVegetationTest, VoxelizeEmptySegmentsNoChange) {
+    DensityField density;
+    EssenceField essence;
+
+    std::vector<TurtleSegment> empty;
+    glm::ivec3 origin(0, 0, 0);
+    voxelizeTree(empty, density, essence, origin);
+
+    // Grid should have no allocated chunks.
+    EXPECT_EQ(density.grid().chunkCount(), 0u) << "Empty segments should allocate no chunks";
+    EXPECT_EQ(essence.grid().chunkCount(), 0u) << "Empty segments should allocate no chunks";
 }
