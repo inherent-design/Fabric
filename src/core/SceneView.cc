@@ -85,6 +85,7 @@ void SceneView::render() {
         bgfx::setViewFrameBuffer(geoView, postProcess_.hdrFramebuffer());
     }
 
+    bgfx::setViewRect(viewId_, 0, 0, viewWidth_, viewHeight_);
     bgfx::setViewTransform(viewId_, camera_.viewMatrix(), camera_.projectionMatrix());
     bgfx::setViewClear(viewId_, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, clearColor_, 1.0f, 0);
     skyRenderer_.init();
@@ -92,6 +93,7 @@ void SceneView::render() {
     bgfx::touch(viewId_);
 
     // 7. Geometry view (viewId_ + 1): no clear, inherits depth from sky view
+    bgfx::setViewRect(geoView, 0, 0, viewWidth_, viewHeight_);
     bgfx::setViewTransform(geoView, camera_.viewMatrix(), camera_.projectionMatrix());
     bgfx::setViewClear(geoView, BGFX_CLEAR_NONE);
     bgfx::touch(geoView);
@@ -101,6 +103,7 @@ void SceneView::render() {
         if (postProcess_.isValid()) {
             bgfx::setViewFrameBuffer(transparentViewId(), postProcess_.hdrFramebuffer());
         }
+        bgfx::setViewRect(transparentViewId(), 0, 0, viewWidth_, viewHeight_);
         bgfx::setViewTransform(transparentViewId(), camera_.viewMatrix(), camera_.projectionMatrix());
         // No clear on transparent pass: it composites over the geometry pass
         bgfx::setViewClear(transparentViewId(), BGFX_CLEAR_NONE);
@@ -147,6 +150,11 @@ const std::vector<flecs::entity>& SceneView::transparentEntities() const {
 
 const std::vector<flecs::entity>& SceneView::opaqueEntities() const {
     return opaqueEntities_;
+}
+
+void SceneView::setViewport(uint16_t width, uint16_t height) {
+    viewWidth_ = width;
+    viewHeight_ = height;
 }
 
 void SceneView::enablePostProcess(uint16_t width, uint16_t height) {
