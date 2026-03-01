@@ -42,4 +42,7 @@ CMakeUserPresets.json
 
 .cache/
 .clangd
+
+# Runtime log output
+logs/
 cmake_test_discovery_*.json
