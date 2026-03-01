@@ -1,0 +1,21 @@
+# Windows development environment overrides.
+# Activated by: MISE_ENV=windows (set in shell profile or per-session)
+#
+# Prerequisites:
+#   1. Visual Studio 2022 with C++ Desktop workload (provides cl.exe, MSVC)
+#   2. Run from "Developer PowerShell for VS" or source vcvarsall.bat
+#   3. mise install (provides cmake, ninja, ccache, codeql)
+#   4. Optional: scoop install llvm (for clang-format, clang-tidy, cppcheck)
+#
+# Quick start:
+#   $env:MISE_ENV = "windows"
+#   mise run build          # Debug build with MSVC + Ninja
+#   mise run test           # Run unit tests
+#   mise run build:release  # Release build
+
+[env]
+# No Homebrew paths. MSVC toolchain discovered via Developer Shell env.
+# If using clang-cl instead of MSVC, override CC/CXX here.
+CPM_SOURCE_CACHE = "~/.cache/CPM"
+CMAKE_C_COMPILER_LAUNCHER = "ccache"
+CMAKE_CXX_COMPILER_LAUNCHER = "ccache"
