@@ -25,6 +25,108 @@ void InputRecording::clear() {
     metadata = InputRecordingMetadata{};
 }
 
+// --- InputRecorder state machine ---
+
+RecorderMode InputRecorder::mode() const {
+    return currentMode_;
+}
+
+bool InputRecorder::isRecording() const {
+    return currentMode_ == RecorderMode::Recording;
+}
+
+bool InputRecorder::isPlaying() const {
+    return currentMode_ == RecorderMode::Playing;
+}
+
+bool InputRecorder::beginRecording() {
+    if (currentMode_ == RecorderMode::Playing) {
+        return false; // cannot record while playing
+    }
+    recording_.clear();
+    pendingFrame_ = InputFrame{};
+    frameCounter_ = 0;
+    pendingFrame_.frameNumber = 0;
+    currentMode_ = RecorderMode::Recording;
+    return true;
+}
+
+void InputRecorder::stopRecording() {
+    if (currentMode_ != RecorderMode::Recording) {
+        return;
+    }
+    // Finalize any pending frame that has events
+    if (!pendingFrame_.events.empty()) {
+        recording_.addFrame(pendingFrame_);
+    }
+    // Update metadata
+    recording_.metadata.totalFrames = recording_.frameCount();
+    recording_.metadata.totalDuration = recording_.totalDuration();
+    currentMode_ = RecorderMode::Idle;
+}
+
+void InputRecorder::captureEvent(const SerializedEvent& event) {
+    if (currentMode_ != RecorderMode::Recording) {
+        return;
+    }
+    pendingFrame_.events.push_back(event);
+}
+
+void InputRecorder::advanceFrame(float deltaTime) {
+    if (currentMode_ == RecorderMode::Recording) {
+        pendingFrame_.deltaTime = deltaTime;
+        recording_.addFrame(pendingFrame_);
+        frameCounter_++;
+        pendingFrame_ = InputFrame{};
+        pendingFrame_.frameNumber = frameCounter_;
+    }
+    // Playing: advancing is handled by getNextFrame()
+}
+
+bool InputRecorder::startPlayback() {
+    if (currentMode_ == RecorderMode::Recording) {
+        return false; // cannot play while recording
+    }
+    if (recording_.frames.empty()) {
+        return false; // nothing to play
+    }
+    playbackCursor_ = 0;
+    currentMode_ = RecorderMode::Playing;
+    return true;
+}
+
+std::vector<SerializedEvent> InputRecorder::getNextFrame() {
+    if (currentMode_ != RecorderMode::Playing) {
+        return {};
+    }
+    if (playbackCursor_ >= recording_.frames.size()) {
+        currentMode_ = RecorderMode::Idle;
+        return {};
+    }
+    const auto& frame = recording_.frames[playbackCursor_];
+    playbackCursor_++;
+    // If we've reached the end, transition to Idle
+    if (playbackCursor_ >= recording_.frames.size()) {
+        currentMode_ = RecorderMode::Idle;
+    }
+    return frame.events;
+}
+
+const InputRecording& InputRecorder::recording() const {
+    return recording_;
+}
+
+InputRecording& InputRecorder::recording() {
+    return recording_;
+}
+
+void InputRecorder::setRecording(InputRecording rec) {
+    if (currentMode_ != RecorderMode::Idle) {
+        return; // only set recording when idle
+    }
+    recording_ = std::move(rec);
+}
+
 // --- SerializedEvent JSON ---
 
 void to_json(nlohmann::json& j, const SerializedEvent& e) {

@@ -7,6 +7,13 @@
 
 namespace fabric {
 
+/// Recorder state machine modes
+enum class RecorderMode {
+    Idle,
+    Recording,
+    Playing
+};
+
 /// Event types for input recording (maps to SDL event type categories)
 enum class InputEventType : uint32_t {
     KEY_DOWN = 0,
@@ -80,6 +87,65 @@ struct InputRecording {
     void clear();
 
     bool operator==(const InputRecording& other) const = default;
+};
+
+/// State-machine controller for recording and playing back input.
+/// Manages transitions between Idle, Recording, and Playing modes.
+class InputRecorder {
+  public:
+    InputRecorder() = default;
+
+    // --- State queries ---
+    RecorderMode mode() const;
+    bool isRecording() const;
+    bool isPlaying() const;
+
+    // --- Recording ---
+
+    /// Switch to Recording mode (clears any previous recording).
+    /// No-op if already Recording. Fails (returns false) if Playing.
+    bool beginRecording();
+
+    /// Switch from Recording to Idle. Finalizes metadata.
+    /// No-op if not Recording.
+    void stopRecording();
+
+    /// Append an event to the current frame (only while Recording).
+    void captureEvent(const SerializedEvent& event);
+
+    /// Finish the current frame and start a new one (Recording),
+    /// or advance the playback cursor (Playing).
+    /// @param deltaTime  duration of the frame being finalized
+    void advanceFrame(float deltaTime = 0.0f);
+
+    // --- Playback ---
+
+    /// Switch to Playing mode and reset the playback cursor.
+    /// Fails (returns false) if Recording or if the recording is empty.
+    bool startPlayback();
+
+    /// Return events for the current playback frame and advance the cursor.
+    /// Returns an empty vector when playback is exhausted.
+    std::vector<SerializedEvent> getNextFrame();
+
+    // --- Access to underlying recording ---
+
+    const InputRecording& recording() const;
+    InputRecording& recording();
+
+    /// Replace the current recording (must be Idle).
+    void setRecording(InputRecording rec);
+
+  private:
+    RecorderMode currentMode_ = RecorderMode::Idle;
+    InputRecording recording_;
+
+    // Recording state
+    InputFrame pendingFrame_;
+    uint64_t frameCounter_ = 0;
+
+    // Playback state
+    size_t playbackCursor_ = 0;
 };
 
 // --- ADL JSON serialization (nlohmann convention) ---
