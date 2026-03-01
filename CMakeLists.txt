@@ -222,6 +222,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/MaterialSounds.cc
     src/core/SaveManager.cc
     src/core/AppModeManager.cc
+    src/core/BgfxCallback.cc
 )
 
 # Utils library components
