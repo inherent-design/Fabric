@@ -6,6 +6,9 @@
 #include <quill/sinks/ConsoleSink.h>
 #include <quill/sinks/FileSink.h>
 
+#include <filesystem>
+#include <string>
+
 namespace fabric::log {
 
 namespace {
@@ -22,6 +25,30 @@ quill::Logger* g_logger_input = nullptr;
 quill::Logger* g_logger_ui = nullptr;
 quill::Logger* g_logger_ecs = nullptr;
 quill::Logger* g_logger_bgfx = nullptr;
+
+const std::string kLogsDir = "logs";
+
+std::shared_ptr<quill::Sink> makeFileSink(const std::string& filename) {
+    return quill::Frontend::create_or_get_sink<quill::FileSink>(filename, []() {
+        quill::FileSinkConfig cfg;
+        cfg.set_open_mode('w');
+        cfg.set_filename_append_option(quill::FilenameAppendOption::StartDateTime);
+        return cfg;
+    }());
+}
+
+void createLogDirectory() {
+    std::filesystem::create_directories(kLogsDir);
+}
+
+void setAllLoggersInfoLevel() {
+    for (auto* lg : {g_logger_core, g_logger_render, g_logger_terrain, g_logger_physics, g_logger_audio, g_logger_input,
+                     g_logger_ui, g_logger_ecs, g_logger_bgfx}) {
+        if (lg)
+            lg->set_log_level(quill::LogLevel::Info);
+    }
+}
+
 } // namespace
 
 void init() {
@@ -31,6 +58,8 @@ void init() {
 
     quill::Backend::start(backend_opts);
 
+    createLogDirectory();
+
     auto console_sink = quill::Frontend::create_or_get_sink<quill::ConsoleSink>("console");
 
     quill::PatternFormatterOptions pattern;
@@ -38,27 +67,34 @@ void init() {
                              "%(log_level:<9) %(message)";
     pattern.timestamp_pattern = "%H:%M:%S.%Qms";
 
-    g_logger = quill::Frontend::create_or_get_logger("fabric", std::move(console_sink), pattern);
+    // Per-subsystem file sinks
+    auto fabric_file = makeFileSink(kLogsDir + "/fabric.log");
+    auto render_file = makeFileSink(kLogsDir + "/render.log");
+    auto terrain_file = makeFileSink(kLogsDir + "/terrain.log");
+    auto session_file = makeFileSink(kLogsDir + "/session.log");
+
+    // Root logger: console + fabric.log
+    g_logger = quill::Frontend::create_or_get_logger("fabric", {console_sink, fabric_file}, pattern);
     g_logger->set_log_level(quill::LogLevel::Info);
 
-    // Create per-subsystem loggers from the same console sink
-    auto console_sink_ref = quill::Frontend::get_sink("console");
-    g_logger_core = quill::Frontend::create_or_get_logger("core", console_sink_ref, pattern);
-    g_logger_render = quill::Frontend::create_or_get_logger("render", console_sink_ref, pattern);
-    g_logger_terrain = quill::Frontend::create_or_get_logger("terrain", console_sink_ref, pattern);
-    g_logger_physics = quill::Frontend::create_or_get_logger("physics", console_sink_ref, pattern);
-    g_logger_audio = quill::Frontend::create_or_get_logger("audio", console_sink_ref, pattern);
-    g_logger_input = quill::Frontend::create_or_get_logger("input", console_sink_ref, pattern);
-    g_logger_ui = quill::Frontend::create_or_get_logger("ui", console_sink_ref, pattern);
-    g_logger_ecs = quill::Frontend::create_or_get_logger("ecs", console_sink_ref, pattern);
-    g_logger_bgfx = quill::Frontend::create_or_get_logger("bgfx", console_sink_ref, pattern);
+    // Core logger: console + session.log (startup, shutdown, errors)
+    g_logger_core = quill::Frontend::create_or_get_logger("core", {console_sink, session_file}, pattern);
 
-    // All loggers start at Info level
-    for (auto logger : {g_logger_core, g_logger_render, g_logger_terrain, g_logger_physics, g_logger_audio,
-                        g_logger_input, g_logger_ui, g_logger_ecs, g_logger_bgfx}) {
-        if (logger)
-            logger->set_log_level(quill::LogLevel::Info);
-    }
+    // Render logger: console + render.log
+    g_logger_render = quill::Frontend::create_or_get_logger("render", {console_sink, render_file}, pattern);
+
+    // Terrain logger: console + terrain.log
+    g_logger_terrain = quill::Frontend::create_or_get_logger("terrain", {console_sink, terrain_file}, pattern);
+
+    // Remaining subsystem loggers: console only
+    g_logger_physics = quill::Frontend::create_or_get_logger("physics", console_sink, pattern);
+    g_logger_audio = quill::Frontend::create_or_get_logger("audio", console_sink, pattern);
+    g_logger_input = quill::Frontend::create_or_get_logger("input", console_sink, pattern);
+    g_logger_ui = quill::Frontend::create_or_get_logger("ui", console_sink, pattern);
+    g_logger_ecs = quill::Frontend::create_or_get_logger("ecs", console_sink, pattern);
+    g_logger_bgfx = quill::Frontend::create_or_get_logger("bgfx", console_sink, pattern);
+
+    setAllLoggersInfoLevel();
 }
 
 void init(const char* log_file_path) {
@@ -68,27 +104,39 @@ void init(const char* log_file_path) {
 
     quill::Backend::start(backend_opts);
 
+    createLogDirectory();
+
     auto console_sink = quill::Frontend::create_or_get_sink<quill::ConsoleSink>("console");
 
-    auto file_sink = quill::Frontend::create_or_get_sink<quill::FileSink>(log_file_path, []() {
-        quill::FileSinkConfig cfg;
-        cfg.set_open_mode('w');
-        cfg.set_filename_append_option(quill::FilenameAppendOption::StartDateTime);
-        return cfg;
-    }());
+    // Legacy file sink from caller-provided path
+    auto file_sink = makeFileSink(log_file_path);
 
     quill::PatternFormatterOptions pattern;
     pattern.format_pattern = "%(time) [%(thread_id)] %(short_source_location:<28) "
                              "%(log_level:<9) %(message)";
     pattern.timestamp_pattern = "%H:%M:%S.%Qms";
 
-    g_logger = quill::Frontend::create_or_get_logger("fabric", {console_sink, file_sink}, pattern);
+    // Per-subsystem file sinks
+    auto fabric_file = makeFileSink(kLogsDir + "/fabric.log");
+    auto render_file = makeFileSink(kLogsDir + "/render.log");
+    auto terrain_file = makeFileSink(kLogsDir + "/terrain.log");
+    auto session_file = makeFileSink(kLogsDir + "/session.log");
+
+    // Root logger: console + caller file + fabric.log
+    g_logger = quill::Frontend::create_or_get_logger("fabric", {console_sink, file_sink, fabric_file}, pattern);
     g_logger->set_log_level(quill::LogLevel::Info);
 
-    // Create per-subsystem loggers with both sinks
-    g_logger_core = quill::Frontend::create_or_get_logger("core", {console_sink, file_sink}, pattern);
-    g_logger_render = quill::Frontend::create_or_get_logger("render", {console_sink, file_sink}, pattern);
-    g_logger_terrain = quill::Frontend::create_or_get_logger("terrain", {console_sink, file_sink}, pattern);
+    // Core logger: console + caller file + session.log
+    g_logger_core = quill::Frontend::create_or_get_logger("core", {console_sink, file_sink, session_file}, pattern);
+
+    // Render logger: console + caller file + render.log
+    g_logger_render = quill::Frontend::create_or_get_logger("render", {console_sink, file_sink, render_file}, pattern);
+
+    // Terrain logger: console + caller file + terrain.log
+    g_logger_terrain =
+        quill::Frontend::create_or_get_logger("terrain", {console_sink, file_sink, terrain_file}, pattern);
+
+    // Remaining subsystem loggers: console + caller file
     g_logger_physics = quill::Frontend::create_or_get_logger("physics", {console_sink, file_sink}, pattern);
     g_logger_audio = quill::Frontend::create_or_get_logger("audio", {console_sink, file_sink}, pattern);
     g_logger_input = quill::Frontend::create_or_get_logger("input", {console_sink, file_sink}, pattern);
@@ -96,12 +144,7 @@ void init(const char* log_file_path) {
     g_logger_ecs = quill::Frontend::create_or_get_logger("ecs", {console_sink, file_sink}, pattern);
     g_logger_bgfx = quill::Frontend::create_or_get_logger("bgfx", {console_sink, file_sink}, pattern);
 
-    // All loggers start at Info level
-    for (auto logger : {g_logger_core, g_logger_render, g_logger_terrain, g_logger_physics, g_logger_audio,
-                        g_logger_input, g_logger_ui, g_logger_ecs, g_logger_bgfx}) {
-        if (logger)
-            logger->set_log_level(quill::LogLevel::Info);
-    }
+    setAllLoggersInfoLevel();
 }
 
 void shutdown() {
