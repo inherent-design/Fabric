@@ -167,12 +167,15 @@ void OITCompositor::beginAccumulation(uint8_t viewId, const float* viewMtx, cons
     bgfx::setViewFrameBuffer(viewId, oitFb_);
     bgfx::setViewTransform(viewId, viewMtx, projMtx);
 
-    // Clear accumulation to (0,0,0,0) and revealage to (1,0,0,1)
-    // Using BGFX_CLEAR_COLOR clears all attachments; we set appropriate initial values.
-    // Accum target: cleared to 0. Revealage target: cleared to 1 (fully revealed = no transparency).
-    // bgfx clears all RT attachments with the same color, so we clear to (0,0,0,0)
-    // and the revealage shader writes initial 1.0 via blend.
-    bgfx::setViewClear(viewId, BGFX_CLEAR_COLOR, 0x00000000, 1.0f, 0);
+    // Per-attachment clear via bgfx palette colors.
+    // Accumulation (attachment 0): must start at (0,0,0,0) for additive blending.
+    // Revealage (attachment 1): must start at R=1.0 (fully revealed = no transparency).
+    // bgfx::setViewClear with palette indices allows different clear values per MRT attachment.
+    const float clearAccum[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+    const float clearReveal[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+    bgfx::setPaletteColor(0, clearAccum);
+    bgfx::setPaletteColor(1, clearReveal);
+    bgfx::setViewClear(viewId, BGFX_CLEAR_COLOR, 1.0f, 0, 0, 1);
     bgfx::touch(viewId);
 }
 

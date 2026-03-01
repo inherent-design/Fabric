@@ -282,14 +282,6 @@ void VegetationPlacer::generate(DensityField& density, EssenceField& essence, co
             std::mt19937 rng(static_cast<unsigned>(config_.seed ^ static_cast<int>(cellHash)));
             std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
 
-            // Determine placement probability: one tree per spacing^2 area is guaranteed
-            // by the grid, so we use a flat probability to allow sparse placement.
-            float prob = dist01(rng);
-            if (prob > (1.0f / (spacing * spacing)) * (spacing * spacing)) {
-                // Always place within a cell (probability = 1.0 given grid enforcement).
-                // But use the PRNG to pick a random position within the cell.
-            }
-
             // Pick a random (x, z) position within the cell.
             float fx = (static_cast<float>(cx) + dist01(rng)) * spacing;
             float fz = (static_cast<float>(cz) + dist01(rng)) * spacing;
