@@ -1,5 +1,6 @@
 #include "fabric/core/AnimationEvents.hh"
 #include "fabric/core/AppContext.hh"
+#include "fabric/core/AppModeManager.hh"
 #include "fabric/core/Async.hh"
 #include "fabric/core/AudioSystem.hh"
 #include "fabric/core/BehaviorAI.hh"
@@ -286,6 +287,20 @@ int main(int argc, char* argv[]) {
         });
 
         //----------------------------------------------------------------------
+        // App Mode Manager
+        //----------------------------------------------------------------------
+        fabric::AppModeManager appModeManager;
+        appModeManager.addObserver([&](fabric::AppMode /*from*/, fabric::AppMode to) {
+            const auto& modeFlags = fabric::AppModeManager::flags(to);
+            SDL_SetWindowRelativeMouseMode(window, modeFlags.captureMouse);
+            if (modeFlags.pauseSimulation) {
+                timeline.pause();
+            } else {
+                timeline.resume();
+            }
+        });
+
+        //----------------------------------------------------------------------
         // Camera + Controller
         //----------------------------------------------------------------------
         fabric::Camera camera;
@@ -530,8 +545,14 @@ int main(int argc, char* argv[]) {
         fabric::DevConsole devConsole;
         devConsole.init(rmlContext);
 
-        // Backtick toggles console and switches input mode
-        inputRouter.setConsoleToggleCallback([&devConsole, &inputRouter]() {
+        // Backtick toggles console via AppModeManager (Game <-> Console)
+        inputRouter.setConsoleToggleCallback([&]() {
+            auto mode = appModeManager.current();
+            if (mode == fabric::AppMode::Console) {
+                appModeManager.transition(fabric::AppMode::Game);
+            } else if (mode == fabric::AppMode::Game) {
+                appModeManager.transition(fabric::AppMode::Console);
+            }
             devConsole.toggle();
             if (devConsole.isVisible()) {
                 inputRouter.setMode(fabric::InputMode::UIOnly);
@@ -636,11 +657,23 @@ int main(int argc, char* argv[]) {
         });
 
         dispatcher.addEventListener("toggle_content_browser", [&](fabric::Event&) {
+            auto mode = appModeManager.current();
+            if (mode == fabric::AppMode::Editor) {
+                appModeManager.transition(fabric::AppMode::Game);
+            } else if (mode == fabric::AppMode::Game) {
+                appModeManager.transition(fabric::AppMode::Editor);
+            }
             contentBrowser.toggle();
             FABRIC_LOG_INFO("Content Browser: {}", contentBrowser.isVisible() ? "on" : "off");
         });
 
         dispatcher.addEventListener("toggle_bt_debug", [&](fabric::Event&) {
+            auto mode = appModeManager.current();
+            if (mode == fabric::AppMode::Menu) {
+                appModeManager.transition(fabric::AppMode::Game);
+            } else if (mode == fabric::AppMode::Game) {
+                appModeManager.transition(fabric::AppMode::Menu);
+            }
             btDebugPanel.toggle();
             FABRIC_LOG_INFO("BT Debug: {}", btDebugPanel.isVisible() ? "on" : "off");
         });
@@ -707,6 +740,11 @@ int main(int argc, char* argv[]) {
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 inputRouter.routeEvent(event, rmlContext);
+
+                // Esc toggles pause (Game <-> Paused)
+                if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE && !event.key.repeat) {
+                    appModeManager.togglePause();
+                }
 
                 if (event.type == SDL_EVENT_QUIT)
                     running = false;
