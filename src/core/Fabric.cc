@@ -48,7 +48,6 @@
 #include "fabric/ui/ToastManager.hh"
 #include "fabric/utils/BVH.hh"
 #include "fabric/utils/Profiler.hh"
-#include <cstdio>
 
 #include <RmlUi/Core.h>
 
@@ -713,21 +712,6 @@ int main(int argc, char* argv[]) {
             FABRIC_ZONE_SCOPED_N("main_loop");
             ++frameCounter;
 
-            // TODO(profiling): Remove fprintf timing instrumentation once Tracy profiling is validated.
-            // These are diagnostic markers added during Sprint 13 perf investigation.
-            // Consider migrating to Tracy zones for production-grade profiling.
-            // Section timing markers
-            auto secStart = std::chrono::high_resolution_clock::now();
-            auto secLap = [&secStart]() -> double {
-                auto n = std::chrono::high_resolution_clock::now();
-                double ms = std::chrono::duration<double>(n - secStart).count() * 1000.0;
-                secStart = n;
-                return ms;
-            };
-            fprintf(stderr, "[F%d] start dt=%.1fms\n", frameCounter,
-                    std::chrono::duration<double>(secStart - lastTime).count() * 1000.0);
-            fflush(stderr);
-
             auto now = std::chrono::high_resolution_clock::now();
             double frameTime = std::chrono::duration<double>(now - lastTime).count();
             lastTime = now;
@@ -736,41 +720,41 @@ int main(int argc, char* argv[]) {
                 frameTime = 0.25;
             accumulator += frameTime;
 
-            // Route SDL events through InputRouter (Escape toggles UI mode)
-            SDL_Event event;
-            while (SDL_PollEvent(&event)) {
-                inputRouter.routeEvent(event, rmlContext);
+            // Route SDL events through InputRouter
+            {
+                FABRIC_ZONE_SCOPED_N("input_routing");
+                SDL_Event event;
+                while (SDL_PollEvent(&event)) {
+                    inputRouter.routeEvent(event, rmlContext);
 
-                // Esc toggles pause (Game <-> Paused)
-                if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE && !event.key.repeat) {
-                    appModeManager.togglePause();
-                }
+                    // Esc toggles pause (Game <-> Paused)
+                    if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE && !event.key.repeat) {
+                        appModeManager.togglePause();
+                    }
 
-                if (event.type == SDL_EVENT_QUIT)
-                    running = false;
+                    if (event.type == SDL_EVENT_QUIT)
+                        running = false;
 
-                if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
-                    auto w = static_cast<uint32_t>(event.window.data1);
-                    auto h = static_cast<uint32_t>(event.window.data2);
-                    if (w == 0 || h == 0)
-                        continue;
-                    bgfx::reset(w, h, BGFX_RESET_VSYNC);
-                    bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(w), static_cast<uint16_t>(h));
-                    sceneView.setViewport(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
-                    float newAspect = static_cast<float>(w) / static_cast<float>(h);
-                    camera.setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogeneousNdc);
-                    rmlContext->SetDimensions(Rml::Vector2i(static_cast<int>(w), static_cast<int>(h)));
+                    if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+                        auto w = static_cast<uint32_t>(event.window.data1);
+                        auto h = static_cast<uint32_t>(event.window.data2);
+                        if (w == 0 || h == 0)
+                            continue;
+                        bgfx::reset(w, h, BGFX_RESET_VSYNC);
+                        bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                        sceneView.setViewport(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                        float newAspect = static_cast<float>(w) / static_cast<float>(h);
+                        camera.setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogeneousNdc);
+                        rmlContext->SetDimensions(Rml::Vector2i(static_cast<int>(w), static_cast<int>(h)));
 
-                    // Recreate OIT framebuffers at new resolution
-                    if (oitCompositor.isValid()) {
-                        oitCompositor.shutdown();
-                        oitCompositor.init(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                        // Recreate OIT framebuffers at new resolution
+                        if (oitCompositor.isValid()) {
+                            oitCompositor.shutdown();
+                            oitCompositor.init(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                        }
                     }
                 }
             }
-
-            fprintf(stderr, "[F%d] events=%.1fms\n", frameCounter, secLap());
-            fflush(stderr);
             // Mouse look (once per frame, not per fixed step)
             cameraCtrl.processMouseInput(inputManager.mouseDeltaX(), inputManager.mouseDeltaY());
 
@@ -784,13 +768,7 @@ int main(int argc, char* argv[]) {
             int fixedIter = 0;
             while (accumulator >= kFixedDt && fixedIter < kMaxFixedStepsPerFrame) {
                 ++fixedIter;
-                auto fsStart = std::chrono::high_resolution_clock::now();
-                auto fsLap = [&fsStart]() -> double {
-                    auto n = std::chrono::high_resolution_clock::now();
-                    double ms = std::chrono::duration<double>(n - fsStart).count() * 1000.0;
-                    fsStart = n;
-                    return ms;
-                };
+                FABRIC_ZONE_SCOPED_N("fixed_timestep");
                 float dt = static_cast<float>(kFixedDt);
 
                 fabric::async::poll();
@@ -806,9 +784,6 @@ int main(int argc, char* argv[]) {
                 float speed =
                     std::sqrt(playerVel.x * playerVel.x + playerVel.y * playerVel.y + playerVel.z * playerVel.z);
                 auto streamUpdate = streaming.update(playerPos.x, playerPos.y, playerPos.z, speed);
-                fprintf(stderr, "[F%d.%d] streaming=%zu load, %zu unload, %.1fms\n", frameCounter, fixedIter,
-                        streamUpdate.toLoad.size(), streamUpdate.toUnload.size(), fsLap());
-                fflush(stderr);
 
                 for (const auto& coord : streamUpdate.toLoad) {
                     generateChunkTerrain(coord.cx, coord.cy, coord.cz, terrainGen, caveCarver, density, essence);
@@ -826,10 +801,6 @@ int main(int argc, char* argv[]) {
                         chunkEntities[coord] = ent;
                     }
                 }
-                fprintf(stderr, "[F%d.%d] terrain_gen=%zu chunks, %.1fms\n", frameCounter, fixedIter,
-                        streamUpdate.toLoad.size(), fsLap());
-                fflush(stderr);
-
                 for (const auto& coord : streamUpdate.toUnload) {
                     gpuUploadQueue.erase(coord);
                     meshManager.removeChunk(coord);
@@ -952,10 +923,11 @@ int main(int argc, char* argv[]) {
                 }
 
                 // Physics and AI step at fixed rate
-                physicsWorld.step(dt);
-                behaviorAI.update(dt);
-                fprintf(stderr, "[F%d.%d] physics_ai=%.1fms\n", frameCounter, fixedIter, fsLap());
-                fflush(stderr);
+                {
+                    FABRIC_ZONE_SCOPED_N("physics_step");
+                    physicsWorld.step(dt);
+                    behaviorAI.update(dt);
+                }
 
                 // LOD: compute per-chunk LOD from camera distance (marks dirty on change)
                 {
@@ -965,8 +937,6 @@ int main(int argc, char* argv[]) {
 
                 // Mesh manager: budgeted CPU re-meshing of dirty chunks
                 meshManager.update();
-                fprintf(stderr, "[F%d.%d] mesh_update=%.1fms\n", frameCounter, fixedIter, fsLap());
-                fflush(stderr);
 
                 // Particle simulation + debris-to-particle conversion
                 debrisPool.update(dt);
@@ -974,7 +944,7 @@ int main(int argc, char* argv[]) {
 
                 // GPU mesh sync: upload re-meshed chunks
                 {
-                    int gpuUploads = 0;
+                    FABRIC_ZONE_SCOPED_N("chunk_mesh_upload");
                     auto it = gpuUploadQueue.begin();
                     while (it != gpuUploadQueue.end()) {
                         if (chunkEntities.find(*it) == chunkEntities.end()) {
@@ -990,36 +960,32 @@ int main(int argc, char* argv[]) {
                             }
                             if (data && !data->vertices.empty()) {
                                 gpuMeshes[*it] = uploadChunkMesh(*data);
-                                ++gpuUploads;
                             }
                             it = gpuUploadQueue.erase(it);
                         } else {
                             ++it;
                         }
                     }
-                    fprintf(stderr, "[F%d.%d] gpu_upload=%d meshes, %.1fms\n", frameCounter, fixedIter, gpuUploads,
-                            fsLap());
-                    fflush(stderr);
                 }
 
                 accumulator -= kFixedDt;
             }
             // Drain excess accumulator if we hit the iteration cap (prevents spiral)
             if (fixedIter >= kMaxFixedStepsPerFrame && accumulator > kFixedDt) {
-                fprintf(stderr, "[F%d] fixedstep_drain=%.1fms excess\n", frameCounter, accumulator * 1000.0);
-                fflush(stderr);
+                FABRIC_ZONE_SCOPED_N("accumulator_drain");
                 accumulator = 0.0;
             }
 
-            fprintf(stderr, "[F%d] fixedstep=%.1fms (%d iters)\n", frameCounter, secLap(), fixedIter);
-            fflush(stderr);
             // Camera tracks player position (spring arm collision for 3P mode)
             cameraCtrl.update(playerPos, static_cast<float>(frameTime), &density.grid());
 
             // Audio listener follows camera, update per frame for smooth spatial audio
-            audioSystem.setListenerPosition(cameraCtrl.position());
-            audioSystem.setListenerDirection(cameraCtrl.forward(), cameraCtrl.up());
-            audioSystem.update(static_cast<float>(frameTime));
+            {
+                FABRIC_ZONE_SCOPED_N("audio_update");
+                audioSystem.setListenerPosition(cameraCtrl.position());
+                audioSystem.setListenerDirection(cameraCtrl.forward(), cameraCtrl.up());
+                audioSystem.update(static_cast<float>(frameTime));
+            }
 
             // Per-frame resets (InputRouter delegates to InputManager)
             inputRouter.beginFrame();
@@ -1030,8 +996,6 @@ int main(int argc, char* argv[]) {
             voxelRenderer.setLightDirection(
                 fabric::Vector3<float, fabric::Space::World>(lightDir.x, lightDir.y, lightDir.z));
 
-            fprintf(stderr, "[F%d] audio=%.1fms\n", frameCounter, secLap());
-            fflush(stderr);
             //------------------------------------------------------------------
             // Render
             //------------------------------------------------------------------
@@ -1141,16 +1105,10 @@ int main(int argc, char* argv[]) {
                 int curW, curH;
                 SDL_GetWindowSizeInPixels(window, &curW, &curH);
                 rmlRenderer.beginFrame(static_cast<uint16_t>(curW), static_cast<uint16_t>(curH));
-                fprintf(stderr, "[F%d] render=%.1fms\n", frameCounter, secLap());
-                fflush(stderr);
                 rmlContext->Update();
                 rmlContext->Render();
-                fprintf(stderr, "[F%d] rmlui=%.1fms\n", frameCounter, secLap());
-                fflush(stderr);
 
                 bgfx::frame();
-                fprintf(stderr, "[F%d] bgfxframe=%.1fms\n", frameCounter, secLap());
-                fflush(stderr);
             }
 
             // Debug HUD data update (after render, before next frame)
