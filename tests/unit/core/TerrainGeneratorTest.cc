@@ -96,21 +96,38 @@ TEST_F(TerrainGeneratorTest, RegionCoverageIsComplete) {
     EXPECT_GT(density.grid().chunkCount(), 0u);
 }
 
-TEST_F(TerrainGeneratorTest, EssenceAlphaMatchesDensity) {
-    TerrainGenerator gen(defaultConfig);
+TEST_F(TerrainGeneratorTest, EssenceIsDiscreteMaterialColor) {
+    // Use frequency that spans the density threshold to get both air and solid
+    TerrainConfig cfg = defaultConfig;
+    cfg.frequency = 0.5f; // higher frequency → more density variation in small region
+    TerrainGenerator gen(cfg);
     FieldLayer<float> density;
     FieldLayer<Vector4<float, Space::World>> essence;
 
-    AABB region(Vec3f(0.0f, 0.0f, 0.0f), Vec3f(4.0f, 4.0f, 4.0f));
+    AABB region(Vec3f(0.0f, 0.0f, 0.0f), Vec3f(8.0f, 8.0f, 8.0f));
     gen.generate(density, essence, region);
 
-    for (int z = 0; z < 4; ++z) {
-        for (int y = 0; y < 4; ++y) {
-            for (int x = 0; x < 4; ++x) {
+    // Validate mapping: air→(0,0,0,0), solid→discrete material with alpha=1
+    for (int z = 0; z < 8; ++z) {
+        for (int y = 0; y < 8; ++y) {
+            for (int x = 0; x < 8; ++x) {
                 float d = density.read(x, y, z);
                 auto e = essence.read(x, y, z);
-                EXPECT_FLOAT_EQ(e.w, d) << "Essence alpha should match density at (" << x << "," << y << "," << z
-                                        << ")";
+                if (d <= 0.5f) {
+                    EXPECT_FLOAT_EQ(e.x, 0.0f)
+                        << "Air should have zero essence at (" << x << "," << y << "," << z << ")";
+                    EXPECT_FLOAT_EQ(e.w, 0.0f);
+                } else {
+                    EXPECT_FLOAT_EQ(e.w, 1.0f)
+                        << "Solid voxel should have alpha=1 at (" << x << "," << y << "," << z << ")";
+                    // Must be one of: grass=(0.34,0.64,0.24), dirt=(0.55,0.36,0.22), stone=(0.52,0.52,0.54)
+                    bool isGrass = (e.x == 0.34f && e.y == 0.64f);
+                    bool isDirt = (e.x == 0.55f && e.y == 0.36f);
+                    bool isStone = (e.x == 0.52f && e.y == 0.52f);
+                    EXPECT_TRUE(isGrass || isDirt || isStone)
+                        << "Unknown material color (" << e.x << "," << e.y << "," << e.z << ") at (" << x << "," << y
+                        << "," << z << ") d=" << d;
+                }
             }
         }
     }

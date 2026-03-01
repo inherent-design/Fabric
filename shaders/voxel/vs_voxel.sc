@@ -27,8 +27,8 @@ void main() {
     float normalIdx = floor(mod(bits, 8.0));
     float aoLevel = floor(mod(bits / 8.0, 4.0));
 
-    // Palette index from first 2 bytes of second attribute
-    float palIdx = a_texcoord1.x + a_texcoord1.y * 256.0;
+    // Palette index from first 2 bytes of second attribute (clamped to array bounds)
+    float palIdx = min(a_texcoord1.x + a_texcoord1.y * 256.0, 255.0);
 
     gl_Position = mul(u_modelViewProj, vec4(pos, 1.0));
     v_color0 = u_palette[int(palIdx)];
