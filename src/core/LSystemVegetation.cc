@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <numbers>
+#include <random>
 #include <stack>
 
 namespace fabric {
@@ -230,6 +232,103 @@ void voxelizeTree(const std::vector<TurtleSegment>& segments, DensityField& dens
         offset.start += glm::vec3(origin);
         offset.end += glm::vec3(origin);
         voxelizeSegment(offset, density, essence);
+    }
+}
+
+// ---------- VegetationPlacer ----------
+
+VegetationPlacer::VegetationPlacer(const VegetationConfig& config) : config_(config) {}
+
+const VegetationConfig& VegetationPlacer::config() const {
+    return config_;
+}
+
+void VegetationPlacer::setConfig(const VegetationConfig& config) {
+    config_ = config;
+}
+
+void VegetationPlacer::generate(DensityField& density, EssenceField& essence, const AABB& region) {
+    // Resolve species list: use presets if none specified.
+    std::vector<LSystemRule> species = config_.species;
+    if (species.empty()) {
+        species = {kBushRule, kSmallTreeRule, kLargeTreeRule};
+    }
+
+    // Compute integer bounds from AABB (same as TerrainGenerator: floor min, ceil max).
+    int minX = static_cast<int>(std::floor(region.min.x));
+    int minY = static_cast<int>(std::floor(region.min.y));
+    int minZ = static_cast<int>(std::floor(region.min.z));
+    int maxX = static_cast<int>(std::ceil(region.max.x));
+    int maxY = static_cast<int>(std::ceil(region.max.y));
+    int maxZ = static_cast<int>(std::ceil(region.max.z));
+
+    if (maxX <= minX || maxY <= minY || maxZ <= minZ) {
+        return;
+    }
+
+    float spacing = std::max(config_.spacing, 1.0f);
+
+    // Grid-based spacing enforcement: divide the (x, z) plane into spacing x spacing cells.
+    // At most one tree per cell.
+    int cellMinX = static_cast<int>(std::floor(static_cast<float>(minX) / spacing));
+    int cellMaxX = static_cast<int>(std::ceil(static_cast<float>(maxX) / spacing));
+    int cellMinZ = static_cast<int>(std::floor(static_cast<float>(minZ) / spacing));
+    int cellMaxZ = static_cast<int>(std::ceil(static_cast<float>(maxZ) / spacing));
+
+    for (int cz = cellMinZ; cz < cellMaxZ; ++cz) {
+        for (int cx = cellMinX; cx < cellMaxX; ++cx) {
+            // Deterministic PRNG per cell.
+            std::size_t cellHash = std::hash<int>{}(cx) ^ (std::hash<int>{}(cz) << 16);
+            std::mt19937 rng(static_cast<unsigned>(config_.seed ^ static_cast<int>(cellHash)));
+            std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
+
+            // Determine placement probability: one tree per spacing^2 area is guaranteed
+            // by the grid, so we use a flat probability to allow sparse placement.
+            float prob = dist01(rng);
+            if (prob > (1.0f / (spacing * spacing)) * (spacing * spacing)) {
+                // Always place within a cell (probability = 1.0 given grid enforcement).
+                // But use the PRNG to pick a random position within the cell.
+            }
+
+            // Pick a random (x, z) position within the cell.
+            float fx = (static_cast<float>(cx) + dist01(rng)) * spacing;
+            float fz = (static_cast<float>(cz) + dist01(rng)) * spacing;
+
+            int x = static_cast<int>(std::floor(fx));
+            int z = static_cast<int>(std::floor(fz));
+
+            // Skip if outside the actual region bounds.
+            if (x < minX || x >= maxX || z < minZ || z >= maxZ) {
+                continue;
+            }
+
+            // Surface detection: scan Y from top to bottom in this column.
+            int surfaceY = -1;
+            for (int y = maxY - 1; y >= minY; --y) {
+                float d = density.read(x, y, z);
+                if (d >= config_.surfaceThreshold) {
+                    // Check if this is the surface: y+1 is either above region or below threshold.
+                    if (y + 1 >= maxY || density.read(x, y + 1, z) < config_.surfaceThreshold) {
+                        surfaceY = y;
+                        break;
+                    }
+                }
+            }
+
+            if (surfaceY < 0) {
+                continue; // No surface found in this column.
+            }
+
+            // Species selection via PRNG.
+            std::uniform_int_distribution<int> speciesDist(0, static_cast<int>(species.size()) - 1);
+            int speciesIdx = speciesDist(rng);
+
+            // Generate tree: expand L-system, interpret, voxelize.
+            const auto& rule = species[static_cast<size_t>(speciesIdx)];
+            std::string expanded = expand(rule);
+            auto segments = interpret(expanded, rule);
+            voxelizeTree(segments, density, essence, glm::ivec3(x, surfaceY + 1, z));
+        }
     }
 }
 
