@@ -4,14 +4,8 @@
 
 #include "stb_image.h"
 
-// Suppress shader profiles we don't compile per-platform.
-// bgfx's embedded_shader.h enables DXBC/DXIL on Windows and Linux,
-// and WGSL broadly, but we only compile the profiles listed in
-// FabricRmlUi.cmake: dxbc (Windows), glsl, essl, spv, mtl (macOS).
-// DXIL (SM 6.x) is not compiled — suppress it everywhere.
-#if !defined(_WIN32)
+// Vulkan-only: suppress all non-SPIR-V shader profiles.
 #define BGFX_PLATFORM_SUPPORTS_DXBC 0
-#endif
 #define BGFX_PLATFORM_SUPPORTS_DXIL 0
 #define BGFX_PLATFORM_SUPPORTS_WGSL 0
 #include <bgfx/embedded_shader.h>

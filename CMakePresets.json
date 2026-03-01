@@ -31,6 +31,16 @@
             }
         },
         {
+            "name": "dev-windows",
+            "displayName": "Development (Windows Debug)",
+            "inherits": "base",
+            "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "FABRIC_BUILD_TESTS": "ON"
+            }
+        },
+        {
             "name": "ci-linux-gcc",
             "displayName": "CI: Linux GCC",
             "inherits": "base",
@@ -123,6 +133,7 @@
     "buildPresets": [
         { "name": "dev-debug", "configurePreset": "dev-debug" },
         { "name": "dev-release", "configurePreset": "dev-release" },
+        { "name": "dev-windows", "configurePreset": "dev-windows" },
         { "name": "ci-sanitize", "configurePreset": "ci-sanitize" },
         { "name": "ci-tsan", "configurePreset": "ci-tsan" },
         { "name": "ci-coverage", "configurePreset": "ci-coverage" }
@@ -131,6 +142,11 @@
         {
             "name": "dev-debug",
             "configurePreset": "dev-debug",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "dev-windows",
+            "configurePreset": "dev-windows",
             "output": { "outputOnFailure": true }
         },
         {
