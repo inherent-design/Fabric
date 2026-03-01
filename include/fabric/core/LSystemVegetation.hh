@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -8,6 +9,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "fabric/core/FieldLayer.hh"
+#include "fabric/core/Rendering.hh"
 
 namespace fabric {
 
@@ -101,5 +103,32 @@ void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceFie
 /// Each segment is offset by the given origin before voxelization.
 void voxelizeTree(const std::vector<TurtleSegment>& segments, DensityField& density, EssenceField& essence,
                   const glm::ivec3& origin);
+
+// ---- Vegetation placement ----
+
+/// Configuration for the VegetationPlacer pipeline stage.
+struct VegetationConfig {
+    int seed = 42;                    ///< PRNG seed for deterministic placement.
+    float surfaceThreshold = 0.5f;    ///< Density at or above this value is considered surface.
+    float spacing = 8.0f;             ///< Minimum distance between tree origins (grid cell size).
+    std::vector<LSystemRule> species; ///< Species to place. If empty, uses preset defaults.
+};
+
+/// Places L-system vegetation onto a terrain surface within a given AABB region.
+/// Follows the TerrainGenerator / CaveCarver config + class + generate pattern.
+class VegetationPlacer {
+  public:
+    explicit VegetationPlacer(const VegetationConfig& config);
+
+    /// Generate vegetation in the given region. Scans density for surface,
+    /// places trees at deterministic positions, voxelizes into fields.
+    void generate(DensityField& density, EssenceField& essence, const AABB& region);
+
+    const VegetationConfig& config() const;
+    void setConfig(const VegetationConfig& config);
+
+  private:
+    VegetationConfig config_;
+};
 
 } // namespace fabric
