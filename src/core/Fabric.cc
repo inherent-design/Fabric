@@ -304,6 +304,7 @@ int main(int argc, char* argv[]) {
         ecsWorld.enableInspector();
 #endif
         fabric::SceneView sceneView(0, camera, ecsWorld.get());
+        sceneView.setViewport(static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
 
         fabric::ResourceHub resourceHub;
 
@@ -717,6 +718,7 @@ int main(int argc, char* argv[]) {
                         continue;
                     bgfx::reset(w, h, BGFX_RESET_VSYNC);
                     bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                    sceneView.setViewport(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
                     float newAspect = static_cast<float>(w) / static_cast<float>(h);
                     camera.setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogeneousNdc);
                     rmlContext->SetDimensions(Rml::Vector2i(static_cast<int>(w), static_cast<int>(h)));
