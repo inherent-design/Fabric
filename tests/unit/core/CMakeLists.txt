@@ -80,6 +80,7 @@ target_sources(UnitTests
   OITCompositorTest.cc
   MaterialSoundsTest.cc
   SaveManagerTest.cc
+  ContentBrowserTest.cc
 )
 
 set_source_files_properties(
