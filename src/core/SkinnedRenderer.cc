@@ -164,8 +164,12 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
         bgfx::setUniform(uniformJointMatrices_, skinning.jointMatrices[0].data(), static_cast<uint16_t>(jointCount));
     }
 
-    // Set transform
-    bgfx::setTransform(transform.elements.data());
+    // Transpose column-major Matrix4x4 to row-major for bgfx
+    float mtx[16];
+    for (int r = 0; r < 4; ++r)
+        for (int c = 0; c < 4; ++c)
+            mtx[r * 4 + c] = transform.elements[c * 4 + r];
+    bgfx::setTransform(mtx);
 
     // Set cached static buffers and submit
     bgfx::setVertexBuffer(0, cache.vbh);

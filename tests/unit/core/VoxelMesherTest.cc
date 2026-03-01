@@ -63,20 +63,19 @@ TEST_F(VoxelMesherTest, NormalsAreCorrect) {
     }
 }
 
-TEST_F(VoxelMesherTest, EssenceToColorMapping) {
+TEST_F(VoxelMesherTest, EssencePassesThroughAsColor) {
     density.set(0, 0, 0, 1.0f);
-    // essence = [Order=0, Chaos=1, Life=0, Decay=0]
-    essence.set(0, 0, 0, Essence(0.0f, 1.0f, 0.0f, 0.0f));
+    // Essence IS the material color (RGBA) — passed through directly
+    essence.set(0, 0, 0, Essence(0.34f, 0.64f, 0.24f, 1.0f));
 
     auto data = VoxelMesher::meshChunkData(0, 0, 0, density, essence);
     ASSERT_GT(data.vertices.size(), 0u);
     ASSERT_GT(data.palette.size(), 0u);
 
-    // R = Chaos = 1.0, G = Life = 0.0, B = Order = 0.0, A = 1.0
     auto& c = data.palette[data.vertices[0].paletteIndex()];
-    EXPECT_FLOAT_EQ(c[0], 1.0f);
-    EXPECT_FLOAT_EQ(c[1], 0.0f);
-    EXPECT_FLOAT_EQ(c[2], 0.0f);
+    EXPECT_FLOAT_EQ(c[0], 0.34f);
+    EXPECT_FLOAT_EQ(c[1], 0.64f);
+    EXPECT_FLOAT_EQ(c[2], 0.24f);
     EXPECT_FLOAT_EQ(c[3], 1.0f);
 }
 
@@ -102,9 +101,9 @@ TEST_F(VoxelMesherTest, ThresholdExcludesLowDensity) {
     EXPECT_EQ(data.indices.size(), 0u);
 }
 
-TEST_F(VoxelMesherTest, DecayAffectsAlpha) {
+TEST_F(VoxelMesherTest, AlphaPassesThroughDirectly) {
     density.set(0, 0, 0, 1.0f);
-    // essence = [Order=0.5, Chaos=0.3, Life=0.7, Decay=0.8]
+    // Essence RGBA passed through — alpha is preserved as-is
     essence.set(0, 0, 0, Essence(0.5f, 0.3f, 0.7f, 0.8f));
 
     auto data = VoxelMesher::meshChunkData(0, 0, 0, density, essence);
@@ -112,10 +111,10 @@ TEST_F(VoxelMesherTest, DecayAffectsAlpha) {
     ASSERT_GT(data.palette.size(), 0u);
 
     auto& c = data.palette[data.vertices[0].paletteIndex()];
-    EXPECT_FLOAT_EQ(c[0], 0.3f); // Chaos
-    EXPECT_FLOAT_EQ(c[1], 0.7f); // Life
-    EXPECT_FLOAT_EQ(c[2], 0.5f); // Order
-    EXPECT_FLOAT_EQ(c[3], 0.6f); // 1.0 - 0.8*0.5
+    EXPECT_FLOAT_EQ(c[0], 0.5f);
+    EXPECT_FLOAT_EQ(c[1], 0.3f);
+    EXPECT_FLOAT_EQ(c[2], 0.7f);
+    EXPECT_FLOAT_EQ(c[3], 0.8f);
 }
 
 TEST_F(VoxelMesherTest, GreedyMergesFlatWall) {

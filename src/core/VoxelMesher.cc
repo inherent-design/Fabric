@@ -135,19 +135,14 @@ ChunkMeshData VoxelMesher::meshChunkData(int cx, int cy, int cz, const ChunkedGr
 
                     mask[u][v] = true;
                     auto e = sampleEssence(wx, wy, wz);
-                    float r, g, b, a;
+                    // Essence IS the material color (RGBA). Zero essence → default gray.
+                    Vector4<float, Space::World> color;
                     if (e.x == 0.0f && e.y == 0.0f && e.z == 0.0f && e.w == 0.0f) {
-                        r = 0.5f;
-                        g = 0.5f;
-                        b = 0.5f;
-                        a = 1.0f;
+                        color = Vector4<float, Space::World>(0.5f, 0.5f, 0.5f, 1.0f);
                     } else {
-                        r = e.y;
-                        g = e.z;
-                        b = e.x;
-                        a = 1.0f - e.w * 0.5f;
+                        color = e;
                     }
-                    matIdx[u][v] = palette.quantize(Vector4<float, Space::World>(r, g, b, a));
+                    matIdx[u][v] = palette.quantize(color);
                 }
             }
 
