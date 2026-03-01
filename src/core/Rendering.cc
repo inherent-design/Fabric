@@ -199,10 +199,7 @@ void FrustumCuller::buildSceneBVH(flecs::world& world) {
     bvh_->clear();
     alwaysVisible_.clear();
 
-    world.each([&](flecs::entity e, const Position&) {
-        if (!e.has<SceneEntity>())
-            return;
-
+    world.each([&](flecs::entity e, const SceneEntity&) {
         const auto* bb = e.try_get<BoundingBox>();
         if (bb) {
             AABB worldAABB = computeWorldAABB(*bb, e.try_get<LocalToWorld>());
