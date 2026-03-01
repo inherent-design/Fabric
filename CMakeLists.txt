@@ -395,6 +395,11 @@ else()
     target_link_libraries(Fabric PRIVATE FabricLib)
 endif()
 
+add_custom_command(TARGET Fabric POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:Fabric>/assets
+    COMMENT "Copying assets to build output directory")
+
 #------------------------------------------------------------------------------
 # Testing Configuration
 #------------------------------------------------------------------------------
