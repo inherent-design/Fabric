@@ -1,7 +1,5 @@
-#Requires -Version 5.1
-# Build and test with AddressSanitizer.
-# NOTE: MSVC ASan support is limited compared to Clang. UBSan not available on MSVC.
-# Requires: MSVC with ASan support (VS 2019 16.9+) or clang-cl
+# MSVC ASan only — no UBSan. Use clang-cl for full sanitizer coverage.
+# Env: SANITIZE_PRESET (default: ci-sanitize)
 $ErrorActionPreference = 'Stop'
 
 $preset = if ($env:SANITIZE_PRESET) { $env:SANITIZE_PRESET } else { 'ci-sanitize' }

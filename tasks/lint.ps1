@@ -1,8 +1,5 @@
-#Requires -Version 5.1
-# Run clang-tidy on Fabric source files.
-# Env: LINT_FIX     - set to "1" to apply fixes (CAUTION: can break cross-file refs)
-# Env: LINT_CHANGED - set to "1" to only lint git-dirty files (fast)
-# Requires: compile_commands.json in build dir (cmake generates this)
+# Env: LINT_FIX=1 apply fixes (can break cross-file refs)
+# Env: LINT_CHANGED=1 git-dirty files only
 $ErrorActionPreference = 'Stop'
 
 $buildDir = if ($env:BUILD_DIR) { $env:BUILD_DIR } else { 'build/dev-debug' }

@@ -1,8 +1,6 @@
-#Requires -Version 5.1
-# Run Fabric test suites.
-# Env: TEST_SUITE   - which suite: unit, e2e, all (default: unit)
-# Env: TEST_FILTER  - gtest --gtest_filter value (default: disabled)
-# Env: TEST_TIMEOUT - per-suite timeout in seconds (default: 120)
+# Env: TEST_SUITE (default: unit) — unit, e2e, all
+# Env: TEST_FILTER — gtest --gtest_filter value
+# Env: TEST_TIMEOUT (default: 120)
 $ErrorActionPreference = 'Stop'
 
 $buildDir = if ($env:BUILD_DIR) { $env:BUILD_DIR } else { 'build/dev-debug' }
