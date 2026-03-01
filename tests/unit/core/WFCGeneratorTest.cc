@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <set>
 
 using namespace fabric;
@@ -507,4 +508,306 @@ TEST(WFCGeneratorTest, AdjacencyDerivedCorrectly) {
 TEST(WFCGeneratorTest, TileSizeConstant) {
     EXPECT_EQ(kWFCTileSize, 4);
     EXPECT_EQ(kWFCTileVolume, 64);
+}
+
+// ===========================================================================
+// WFCTerrainGenerator tests (EF-22.3)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Helper: create a default WFCTerrainConfig with dungeon tileset.
+// ---------------------------------------------------------------------------
+static WFCTerrainConfig makeDefaultTerrainConfig() {
+    WFCTerrainConfig cfg;
+    cfg.seed = 42;
+    cfg.tilesX = 4;
+    cfg.tilesY = 4;
+    cfg.tilesZ = 4;
+    cfg.tileset = createDungeonTileSet();
+    return cfg;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: create an AABB that covers the full tile grid (tilesN * kWFCTileSize).
+// ---------------------------------------------------------------------------
+static AABB makeFullRegion(const WFCTerrainConfig& cfg) {
+    Vec3f minPt(0.0f, 0.0f, 0.0f);
+    Vec3f maxPt(static_cast<float>(cfg.tilesX * kWFCTileSize), static_cast<float>(cfg.tilesY * kWFCTileSize),
+                static_cast<float>(cfg.tilesZ * kWFCTileSize));
+    return AABB(minPt, maxPt);
+}
+
+// ---------------------------------------------------------------------------
+// 18. WFCTerrainGenerator produces non-zero density in output fields
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, TerrainGeneratorProducesNonZeroDensity) {
+    auto cfg = makeDefaultTerrainConfig();
+    WFCTerrainGenerator gen(cfg);
+
+    DensityField density;
+    EssenceField essence;
+    AABB region = makeFullRegion(cfg);
+
+    gen.generate(density, essence, region);
+
+    // At least some voxels should have non-zero density (dungeon tileset
+    // has wall, corridor, room tiles with density > 0).
+    int nonZeroCount = 0;
+    int maxX = cfg.tilesX * kWFCTileSize;
+    int maxY = cfg.tilesY * kWFCTileSize;
+    int maxZ = cfg.tilesZ * kWFCTileSize;
+    for (int z = 0; z < maxZ; ++z) {
+        for (int y = 0; y < maxY; ++y) {
+            for (int x = 0; x < maxX; ++x) {
+                if (density.read(x, y, z) > 0.0f)
+                    ++nonZeroCount;
+            }
+        }
+    }
+
+    EXPECT_GT(nonZeroCount, 0) << "WFCTerrainGenerator should produce at least some non-zero density voxels";
+}
+
+// ---------------------------------------------------------------------------
+// 19. Output is within AABB bounds (no writes outside region)
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, TerrainOutputWithinBounds) {
+    auto cfg = makeDefaultTerrainConfig();
+    cfg.tilesX = 2;
+    cfg.tilesY = 2;
+    cfg.tilesZ = 2;
+
+    WFCTerrainGenerator gen(cfg);
+
+    DensityField density;
+    EssenceField essence;
+
+    // Use a region that exactly fits the tile grid.
+    AABB region = makeFullRegion(cfg);
+    gen.generate(density, essence, region);
+
+    int maxX = cfg.tilesX * kWFCTileSize;
+    int maxY = cfg.tilesY * kWFCTileSize;
+    int maxZ = cfg.tilesZ * kWFCTileSize;
+
+    // Check voxels just outside the region in each direction.
+    // They should remain at default (0).
+    for (int z = 0; z < maxZ; ++z) {
+        for (int y = 0; y < maxY; ++y) {
+            EXPECT_EQ(density.read(-1, y, z), 0.0f) << "No writes expected at x=-1";
+            EXPECT_EQ(density.read(maxX, y, z), 0.0f) << "No writes expected at x=" << maxX;
+        }
+    }
+    for (int z = 0; z < maxZ; ++z) {
+        for (int x = 0; x < maxX; ++x) {
+            EXPECT_EQ(density.read(x, -1, z), 0.0f) << "No writes expected at y=-1";
+            EXPECT_EQ(density.read(x, maxY, z), 0.0f) << "No writes expected at y=" << maxY;
+        }
+    }
+    for (int y = 0; y < maxY; ++y) {
+        for (int x = 0; x < maxX; ++x) {
+            EXPECT_EQ(density.read(x, y, -1), 0.0f) << "No writes expected at z=-1";
+            EXPECT_EQ(density.read(x, y, maxZ), 0.0f) << "No writes expected at z=" << maxZ;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 20. Deterministic: same config = same output
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, TerrainDeterministic) {
+    auto cfg = makeDefaultTerrainConfig();
+    cfg.seed = 1234;
+
+    AABB region = makeFullRegion(cfg);
+
+    // Run 1.
+    DensityField density1;
+    EssenceField essence1;
+    WFCTerrainGenerator gen1(cfg);
+    gen1.generate(density1, essence1, region);
+
+    // Run 2.
+    DensityField density2;
+    EssenceField essence2;
+    WFCTerrainGenerator gen2(cfg);
+    gen2.generate(density2, essence2, region);
+
+    // Every voxel must match.
+    int maxX = cfg.tilesX * kWFCTileSize;
+    int maxY = cfg.tilesY * kWFCTileSize;
+    int maxZ = cfg.tilesZ * kWFCTileSize;
+    for (int z = 0; z < maxZ; ++z) {
+        for (int y = 0; y < maxY; ++y) {
+            for (int x = 0; x < maxX; ++x) {
+                EXPECT_EQ(density1.read(x, y, z), density2.read(x, y, z))
+                    << "Density mismatch at (" << x << "," << y << "," << z << ")";
+                auto e1 = essence1.read(x, y, z);
+                auto e2 = essence2.read(x, y, z);
+                EXPECT_EQ(e1.x, e2.x) << "Essence.x mismatch at (" << x << "," << y << "," << z << ")";
+                EXPECT_EQ(e1.y, e2.y) << "Essence.y mismatch at (" << x << "," << y << "," << z << ")";
+                EXPECT_EQ(e1.z, e2.z) << "Essence.z mismatch at (" << x << "," << y << "," << z << ")";
+                EXPECT_EQ(e1.w, e2.w) << "Essence.w mismatch at (" << x << "," << y << "," << z << ")";
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 21. Blending preserves existing terrain (pre-fill density, verify max behavior)
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, TerrainBlendingPreservesExisting) {
+    auto cfg = makeDefaultTerrainConfig();
+    cfg.tilesX = 2;
+    cfg.tilesY = 2;
+    cfg.tilesZ = 2;
+
+    WFCTerrainGenerator gen(cfg);
+
+    DensityField density;
+    EssenceField essence;
+    AABB region = makeFullRegion(cfg);
+
+    int maxX = cfg.tilesX * kWFCTileSize;
+    int maxY = cfg.tilesY * kWFCTileSize;
+    int maxZ = cfg.tilesZ * kWFCTileSize;
+
+    // Pre-fill density with a high value (0.95).
+    density.fill(0, 0, 0, maxX - 1, maxY - 1, maxZ - 1, 0.95f);
+
+    gen.generate(density, essence, region);
+
+    // Every voxel should be >= 0.95 because blending uses max(existing, tile).
+    // Tile densities are in [0, 1], so max(0.95, tile) >= 0.95 always.
+    for (int z = 0; z < maxZ; ++z) {
+        for (int y = 0; y < maxY; ++y) {
+            for (int x = 0; x < maxX; ++x) {
+                EXPECT_GE(density.read(x, y, z), 0.95f)
+                    << "Blending should preserve existing density at (" << x << "," << y << "," << z << ")";
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 22. Essence written only where tile has non-zero density
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, TerrainEssenceOnlyWhereNonZeroDensity) {
+    auto cfg = makeDefaultTerrainConfig();
+    cfg.tilesX = 2;
+    cfg.tilesY = 2;
+    cfg.tilesZ = 2;
+
+    WFCTerrainGenerator gen(cfg);
+
+    DensityField density;
+    EssenceField essence;
+    AABB region = makeFullRegion(cfg);
+
+    gen.generate(density, essence, region);
+
+    int maxX = cfg.tilesX * kWFCTileSize;
+    int maxY = cfg.tilesY * kWFCTileSize;
+    int maxZ = cfg.tilesZ * kWFCTileSize;
+
+    // Run a second pass to verify: generate with a fresh field, then check
+    // that wherever density is 0 (from a tile with zero density), essence
+    // is also the default (0,0,0,0).
+    // We need to check carefully: density uses max blending, so we need
+    // to start with zero density to see which tiles wrote zero.
+    DensityField densityCheck;
+    EssenceField essenceCheck;
+    WFCTerrainGenerator gen2(cfg);
+    gen2.generate(densityCheck, essenceCheck, region);
+
+    for (int z = 0; z < maxZ; ++z) {
+        for (int y = 0; y < maxY; ++y) {
+            for (int x = 0; x < maxX; ++x) {
+                if (densityCheck.read(x, y, z) == 0.0f) {
+                    // If density is zero, essence should be default (0,0,0,0).
+                    auto e = essenceCheck.read(x, y, z);
+                    EXPECT_EQ(e.x, 0.0f) << "Essence.x should be 0 at zero-density voxel (" << x << "," << y << "," << z
+                                         << ")";
+                    EXPECT_EQ(e.y, 0.0f) << "Essence.y should be 0 at zero-density voxel";
+                    EXPECT_EQ(e.z, 0.0f) << "Essence.z should be 0 at zero-density voxel";
+                    EXPECT_EQ(e.w, 0.0f) << "Essence.w should be 0 at zero-density voxel";
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 23. Default config (dungeon tileset) works end-to-end
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, TerrainDefaultConfigEndToEnd) {
+    WFCTerrainConfig cfg;
+    cfg.tileset = createDungeonTileSet();
+
+    WFCTerrainGenerator gen(cfg);
+
+    DensityField density;
+    EssenceField essence;
+    AABB region = makeFullRegion(cfg);
+
+    // Should not crash or infinite loop.
+    gen.generate(density, essence, region);
+
+    // Verify config accessors.
+    EXPECT_EQ(gen.config().seed, 42u);
+    EXPECT_EQ(gen.config().tilesX, 4);
+    EXPECT_EQ(gen.config().tilesY, 4);
+    EXPECT_EQ(gen.config().tilesZ, 4);
+
+    // setConfig should work.
+    WFCTerrainConfig cfg2 = cfg;
+    cfg2.seed = 9999;
+    gen.setConfig(cfg2);
+    EXPECT_EQ(gen.config().seed, 9999u);
+}
+
+// ---------------------------------------------------------------------------
+// 24. Region clipping: tiles partially outside AABB are clipped correctly
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, TerrainRegionClipping) {
+    auto cfg = makeDefaultTerrainConfig();
+    cfg.tilesX = 2;
+    cfg.tilesY = 2;
+    cfg.tilesZ = 2;
+
+    WFCTerrainGenerator gen(cfg);
+
+    DensityField density;
+    EssenceField essence;
+
+    // Create a region smaller than the full tile grid.
+    // Full grid would be 8x8x8, but we clip to 0..5 on each axis.
+    int clipMax = 5;
+    AABB region(Vec3f(0.0f, 0.0f, 0.0f),
+                Vec3f(static_cast<float>(clipMax), static_cast<float>(clipMax), static_cast<float>(clipMax)));
+
+    gen.generate(density, essence, region);
+
+    // Voxels at x/y/z >= clipMax should not have been written.
+    int fullMax = cfg.tilesX * kWFCTileSize; // 8
+    for (int z = clipMax; z < fullMax; ++z) {
+        for (int y = clipMax; y < fullMax; ++y) {
+            for (int x = clipMax; x < fullMax; ++x) {
+                EXPECT_EQ(density.read(x, y, z), 0.0f)
+                    << "Voxel at (" << x << "," << y << "," << z << ") should be clipped (outside region)";
+            }
+        }
+    }
+
+    // But voxels within the region may have non-zero density.
+    int nonZero = 0;
+    for (int z = 0; z < clipMax; ++z) {
+        for (int y = 0; y < clipMax; ++y) {
+            for (int x = 0; x < clipMax; ++x) {
+                if (density.read(x, y, z) > 0.0f)
+                    ++nonZero;
+            }
+        }
+    }
+    EXPECT_GT(nonZero, 0) << "Some voxels within the clipped region should have non-zero density";
 }
