@@ -14,13 +14,24 @@
 #   mise run build:release  # Release build
 
 [settings]
-# Use PowerShell instead of cmd.exe for inline task commands.
+# Route inline task commands through PowerShell Core instead of cmd.exe.
 # Default is "cmd /c" which mangles PowerShell syntax ($env:, &, etc.)
+#
+# How this works:
+#   mise splits the string via shell_words::split() into an argv vector,
+#   then appends the run_windows string as the final argument:
+#     pwsh.exe -NoProfile -NonInteractive -Command "<run_windows value>"
+#
+# The run_windows strings must therefore be valid PowerShell expressions
+# that pwsh -Command can evaluate (& operator, $env: variables, etc.).
+#
+# pwsh (PowerShell 7+) is required. Windows PowerShell 5.1 (powershell.exe)
+# lacks modern features and has different quoting behavior.
 windows_default_inline_shell_args = "pwsh -NoProfile -NonInteractive -Command"
 
 [env]
 # No Homebrew paths. MSVC toolchain discovered via Developer Shell env.
 # If using clang-cl instead of MSVC, override CC/CXX here.
-CPM_SOURCE_CACHE = "~/.cache/CPM"
+CPM_SOURCE_CACHE = "{{env.USERPROFILE}}/.cache/CPM"
 CMAKE_C_COMPILER_LAUNCHER = "ccache"
 CMAKE_CXX_COMPILER_LAUNCHER = "ccache"

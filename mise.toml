@@ -1,3 +1,9 @@
+[settings]
+# Route Windows inline task commands through PowerShell instead of cmd.exe.
+# Default "cmd /c" mangles $env: and & syntax, and opens .ps1 in an editor.
+# This setting is Windows-only by name — no effect on macOS/Linux.
+windows_default_inline_shell_args = "pwsh -NoProfile -NonInteractive -Command"
+
 [tools]
 ccache = "latest"
 cmake = "latest"
@@ -26,10 +32,6 @@ ninja = "latest"
 #   cmake/ninja/ccache: latest (mise locally, apt/action in CI)
 # Local Homebrew LLVM may be ahead of CI. Known gaps documented in
 # .github/workflows/ comments and ~/.atlas/plans/fabric/ci-unification-*.md.
-#
-# Windows: Set MISE_ENV=windows to load mise.windows.toml.
-# This switches the inline shell from cmd.exe to pwsh and overrides [env].
-# Run from Developer PowerShell for VS or source vcvarsall.bat first.
 [env]
 _.path = ["/opt/homebrew/opt/llvm/bin"]
 CC = "clang"
@@ -47,19 +49,19 @@ CMAKE_CXX_COMPILER_LAUNCHER = "ccache"
 [tasks.clean]
 description = "Remove build artifacts"
 run = "sh tasks/clean.sh"
-run_windows = "& tasks/clean.ps1"
+run_windows = "& .\\tasks\\clean.ps1"
 
 [tasks.build]
 alias = "b"
 description = "Configure and build (Debug)"
 run = "sh tasks/build.sh"
-run_windows = "& tasks/build.ps1"
+run_windows = "& .\\tasks\\build.ps1"
 
 [tasks."build:release"]
 alias = "br"
 description = "Configure and build (Release)"
 run = "BUILD_PRESET=dev-release sh tasks/build.sh"
-run_windows = "$env:BUILD_PRESET='dev-release'; & tasks/build.ps1"
+run_windows = "$env:BUILD_PRESET='dev-release'; & .\\tasks\\build.ps1"
 
 #
 # Lint & Format
@@ -69,33 +71,33 @@ run_windows = "$env:BUILD_PRESET='dev-release'; & tasks/build.ps1"
 alias = "fmt"
 description = "Check clang-format on source files"
 run = "sh tasks/format.sh"
-run_windows = "& tasks/format.ps1"
+run_windows = "& .\\tasks\\format.ps1"
 
 [tasks."format:fix"]
 description = "Auto-format source files"
 run = "FORMAT_FIX=1 sh tasks/format.sh"
-run_windows = "$env:FORMAT_FIX='1'; & tasks/format.ps1"
+run_windows = "$env:FORMAT_FIX='1'; & .\\tasks\\format.ps1"
 
 [tasks.lint]
 description = "Run clang-tidy on all source files (slow)"
 run = "sh tasks/lint.sh"
-run_windows = "& tasks/lint.ps1"
+run_windows = "& .\\tasks\\lint.ps1"
 
 [tasks."lint:changed"]
 description = "Run clang-tidy on git-dirty files only (fast)"
 run = "LINT_CHANGED=1 sh tasks/lint.sh"
-run_windows = "$env:LINT_CHANGED='1'; & tasks/lint.ps1"
+run_windows = "$env:LINT_CHANGED='1'; & .\\tasks\\lint.ps1"
 
 [tasks."lint:fix"]
 alias = "fix"
 description = "Run clang-tidy with auto-fix (CAUTION: can break cross-file refs)"
 run = "LINT_FIX=1 LINT_CHANGED=1 sh tasks/lint.sh"
-run_windows = "$env:LINT_FIX='1'; $env:LINT_CHANGED='1'; & tasks/lint.ps1"
+run_windows = "$env:LINT_FIX='1'; $env:LINT_CHANGED='1'; & .\\tasks\\lint.ps1"
 
 [tasks.cppcheck]
 description = "Run cppcheck static analysis"
 run = "sh tasks/cppcheck.sh"
-run_windows = "& tasks/cppcheck.ps1"
+run_windows = "& .\\tasks\\cppcheck.ps1"
 
 #
 # Test
@@ -106,19 +108,19 @@ alias = "t"
 description = "Run unit tests"
 depends = ["build"]
 run = "sh tasks/test.sh"
-run_windows = "& tasks/test.ps1"
+run_windows = "& .\\tasks\\test.ps1"
 
 [tasks."test:e2e"]
 description = "Run E2E tests (slow)"
 depends = ["build"]
 run = "TEST_SUITE=e2e sh tasks/test.sh"
-run_windows = "$env:TEST_SUITE='e2e'; & tasks/test.ps1"
+run_windows = "$env:TEST_SUITE='e2e'; & .\\tasks\\test.ps1"
 
 [tasks."test:all"]
 description = "Run unit + E2E tests"
 depends = ["build"]
 run = "TEST_SUITE=all sh tasks/test.sh"
-run_windows = "$env:TEST_SUITE='all'; & tasks/test.ps1"
+run_windows = "$env:TEST_SUITE='all'; & .\\tasks\\test.ps1"
 
 [tasks."test:filter"]
 alias = "tf"
@@ -126,7 +128,7 @@ description = "Run unit tests with gtest filter"
 depends = ["build"]
 usage = 'arg "filter" help="gtest --gtest_filter value"'
 run = "TEST_FILTER=\"{{arg(name='filter')}}\" sh tasks/test.sh"
-run_windows = "$env:TEST_FILTER='{{arg(name=''filter'')}}'; & tasks/test.ps1"
+run_windows = "$env:TEST_FILTER='{{arg(name=''filter'')}}'; & .\\tasks\\test.ps1"
 
 #
 # Analysis
@@ -135,20 +137,20 @@ run_windows = "$env:TEST_FILTER='{{arg(name=''filter'')}}'; & tasks/test.ps1"
 [tasks.sanitize]
 description = "Build and test with ASan + UBSan"
 run = "sh tasks/sanitize.sh"
-run_windows = "& tasks/sanitize.ps1"
+run_windows = "& .\\tasks\\sanitize.ps1"
 
 [tasks."sanitize:tsan"]
 description = "Build and test with ThreadSanitizer"
 run = "SANITIZE_PRESET=ci-tsan sh tasks/sanitize.sh"
-run_windows = "$env:SANITIZE_PRESET='ci-tsan'; & tasks/sanitize.ps1"
+run_windows = "$env:SANITIZE_PRESET='ci-tsan'; & .\\tasks\\sanitize.ps1"
 
 [tasks.coverage]
 description = "Build with coverage and generate report"
 run = "sh tasks/coverage.sh"
-run_windows = "& tasks/coverage.ps1"
+run_windows = "& .\\tasks\\coverage.ps1"
 
 [tasks.codeql]
 description = "Run CodeQL security analysis locally"
 depends = ["build"]
 run = "sh tasks/codeql.sh"
-run_windows = "& tasks/codeql.ps1"
+run_windows = "& .\\tasks\\codeql.ps1"
