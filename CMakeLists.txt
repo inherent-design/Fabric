@@ -221,7 +221,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/OITCompositor.cc
     src/core/MaterialSounds.cc
     src/core/SaveManager.cc
-    src/core/InputModeManager.cc
+    src/core/AppModeManager.cc
 )
 
 # Utils library components

@@ -1,4 +1,4 @@
-#include "fabric/core/InputModeManager.hh"
+#include "fabric/core/AppModeManager.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "fabric/utils/Utils.hh"
