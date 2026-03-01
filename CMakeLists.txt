@@ -217,6 +217,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/WFCGenerator.cc
     src/core/InputRecorder.cc
     src/core/WaterRenderer.cc
+    src/core/OITCompositor.cc
     src/core/MaterialSounds.cc
     src/core/SaveManager.cc
 )
@@ -336,11 +337,14 @@ include(FabricParticleShaders)
 # Water shaders (vs_water, fs_water)
 include(FabricWaterShaders)
 
+# OIT shaders (vs_oit_accum, fs_oit_accum, vs_oit_composite, fs_oit_composite)
+include(FabricOITShaders)
+
 # Add shader output to include path
-target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_VOXEL_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT} ${FABRIC_POST_SHADER_OUT} ${FABRIC_PARTICLE_SHADER_OUT} ${FABRIC_WATER_SHADER_OUT})
+target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_VOXEL_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT} ${FABRIC_POST_SHADER_OUT} ${FABRIC_PARTICLE_SHADER_OUT} ${FABRIC_WATER_SHADER_OUT} ${FABRIC_OIT_SHADER_OUT})
 
 # Shader compilation must finish before FabricLib sources compile
-add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricVoxelShaders FabricSkyShaders FabricPostShaders FabricParticleShaders FabricWaterShaders)
+add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricVoxelShaders FabricSkyShaders FabricPostShaders FabricParticleShaders FabricWaterShaders FabricOITShaders)
 
 # Per-target compile options (replaces global CMAKE_CXX_FLAGS_* variables)
 target_compile_options(FabricLib PRIVATE

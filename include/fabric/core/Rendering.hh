@@ -123,4 +123,9 @@ void transparentSort(std::vector<flecs::entity>& entities, const Vec3f& cameraPo
 // Global render capabilities, populated after bgfx::init().
 const RenderCaps& renderCaps();
 
+// OIT (order-independent transparency) view ID constants.
+// Placed between post-process (200..205) and shadows (240..243).
+constexpr uint8_t kOITAccumViewId = 210;
+constexpr uint8_t kOITCompositeViewId = 211;
+
 } // namespace fabric
