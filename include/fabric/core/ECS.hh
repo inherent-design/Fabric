@@ -33,6 +33,9 @@ struct LocalToWorld {
 // Tag component for entities that are part of the scene graph
 struct SceneEntity {};
 
+// Tag component for entities that should be rendered in the transparent pass
+struct TransparentTag {};
+
 // Component for entities that have a renderable (draw call data)
 struct Renderable {
     uint64_t sortKey;
