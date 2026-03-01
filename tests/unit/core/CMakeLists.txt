@@ -77,6 +77,7 @@ target_sources(UnitTests
   WFCGeneratorTest.cc
   InputRecorderTest.cc
   WaterRendererTest.cc
+  OITCompositorTest.cc
   MaterialSoundsTest.cc
   SaveManagerTest.cc
 )

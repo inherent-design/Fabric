@@ -23,6 +23,7 @@
 #include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/MovementFSM.hh"
+#include "fabric/core/OITCompositor.hh"
 #include "fabric/core/ParticleSystem.hh"
 #include "fabric/core/Pathfinding.hh"
 #include "fabric/core/PhysicsWorld.hh"
@@ -465,6 +466,12 @@ int main(int argc, char* argv[]) {
         }
 
         //----------------------------------------------------------------------
+        // OIT (order-independent transparency) compositor
+        //----------------------------------------------------------------------
+        fabric::OITCompositor oitCompositor;
+        oitCompositor.init(static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
+
+        //----------------------------------------------------------------------
         // Sprint 7 systems: ragdoll, AI, audio
         //----------------------------------------------------------------------
         fabric::Ragdoll ragdoll;
@@ -671,6 +678,12 @@ int main(int argc, char* argv[]) {
                     float newAspect = static_cast<float>(w) / static_cast<float>(h);
                     camera.setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogeneousNdc);
                     rmlContext->SetDimensions(Rml::Vector2i(static_cast<int>(w), static_cast<int>(h)));
+
+                    // Recreate OIT framebuffers at new resolution
+                    if (oitCompositor.isValid()) {
+                        oitCompositor.shutdown();
+                        oitCompositor.init(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                    }
                 }
             }
 
@@ -925,6 +938,22 @@ int main(int argc, char* argv[]) {
                     voxelRenderer.render(sceneView.geometryViewId(), mesh, coord.cx, coord.cy, coord.cz);
                 }
 
+                // OIT accumulation pass (weighted blended transparency)
+                // Runs after opaque geometry, composites before particles.
+                if (oitCompositor.isValid()) {
+                    int oitPW, oitPH;
+                    SDL_GetWindowSizeInPixels(window, &oitPW, &oitPH);
+                    oitCompositor.beginAccumulation(fabric::kOITAccumViewId, camera.viewMatrix(),
+                                                    camera.projectionMatrix(), static_cast<uint16_t>(oitPW),
+                                                    static_cast<uint16_t>(oitPH));
+                    // NOTE: Transparent entity draw calls would be submitted here
+                    // against oitCompositor.accumViewId() with the accum program and
+                    // blend state (ONE, ONE for accum target; ZERO, ONE_MINUS_SRC_ALPHA
+                    // for revealage). Full entity integration is deferred to EF-21.1.
+                    oitCompositor.composite(fabric::kOITCompositeViewId, static_cast<uint16_t>(oitPW),
+                                            static_cast<uint16_t>(oitPH));
+                }
+
                 // Particle billboard rendering (dedicated view, alpha blended)
                 {
                     int curPW, curPH;
@@ -1071,6 +1100,7 @@ int main(int argc, char* argv[]) {
         Rml::Shutdown();
         rmlRenderer.shutdown();
 
+        oitCompositor.shutdown();
         particleSystem.shutdown();
         voxelRenderer.shutdown();
         sceneView.skyRenderer().shutdown();
