@@ -50,7 +50,7 @@ AudioSystem::~AudioSystem() {
 
 void AudioSystem::init() {
     if (initialized_) {
-        FABRIC_LOG_WARN("AudioSystem already initialized");
+        FABRIC_LOG_AUDIO_WARN("AudioSystem already initialized");
         return;
     }
 
@@ -74,15 +74,15 @@ void AudioSystem::init() {
     if (threadedMode_) {
         audioThreadRunning_.store(true, std::memory_order_release);
         audioThread_ = std::thread(&AudioSystem::audioThreadLoop, this);
-        FABRIC_LOG_INFO("AudioSystem initialized with device audio (threaded mode)");
+        FABRIC_LOG_AUDIO_INFO("AudioSystem initialized with device audio (threaded mode)");
     } else {
-        FABRIC_LOG_INFO("AudioSystem initialized with device audio");
+        FABRIC_LOG_AUDIO_INFO("AudioSystem initialized with device audio");
     }
 }
 
 void AudioSystem::initHeadless() {
     if (initialized_) {
-        FABRIC_LOG_WARN("AudioSystem already initialized");
+        FABRIC_LOG_AUDIO_WARN("AudioSystem already initialized");
         return;
     }
 
@@ -109,9 +109,9 @@ void AudioSystem::initHeadless() {
     if (threadedMode_) {
         audioThreadRunning_.store(true, std::memory_order_release);
         audioThread_ = std::thread(&AudioSystem::audioThreadLoop, this);
-        FABRIC_LOG_INFO("AudioSystem initialized in headless mode (threaded)");
+        FABRIC_LOG_AUDIO_INFO("AudioSystem initialized in headless mode (threaded)");
     } else {
-        FABRIC_LOG_INFO("AudioSystem initialized in headless mode");
+        FABRIC_LOG_AUDIO_INFO("AudioSystem initialized in headless mode");
     }
 }
 
@@ -123,7 +123,7 @@ void AudioSystem::shutdown() {
     audioThreadRunning_.store(false, std::memory_order_release);
     if (audioThread_.joinable()) {
         audioThread_.join();
-        FABRIC_LOG_INFO("Audio thread joined");
+        FABRIC_LOG_AUDIO_INFO("Audio thread joined");
     }
 
     drainCommandBuffer();
@@ -148,7 +148,7 @@ void AudioSystem::shutdown() {
     attenuationModel_ = AttenuationModel::Inverse;
     categoryVolumes_.fill(1.0f);
     masterVolume_ = 1.0f;
-    FABRIC_LOG_INFO("AudioSystem shut down");
+    FABRIC_LOG_AUDIO_INFO("AudioSystem shut down");
 }
 
 void AudioSystem::update(float dt) {
@@ -219,7 +219,7 @@ void AudioSystem::setListenerPosition(const Vec3f& pos) {
         cmd.type = AudioCommandType::SetListenerPosition;
         cmd.position = pos;
         if (!commandBuffer_.tryPush(std::move(cmd))) {
-            FABRIC_LOG_WARN("Audio command buffer full, dropping SetListenerPosition");
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping SetListenerPosition");
         }
         return;
     }
@@ -235,7 +235,7 @@ void AudioSystem::setListenerDirection(const Vec3f& forward, const Vec3f& up) {
         cmd.direction = forward;
         cmd.up = up;
         if (!commandBuffer_.tryPush(std::move(cmd))) {
-            FABRIC_LOG_WARN("Audio command buffer full, dropping SetListenerDirection");
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping SetListenerDirection");
         }
         return;
     }
@@ -255,7 +255,7 @@ SoundHandle AudioSystem::playSoundLooped(const std::string& path, const Vec3f& p
 
 SoundHandle AudioSystem::playSound(const std::string& path, const Vec3f& position, SoundCategory category) {
     if (!initialized_) {
-        FABRIC_LOG_WARN("Cannot play sound: AudioSystem not initialized");
+        FABRIC_LOG_AUDIO_WARN("Cannot play sound: AudioSystem not initialized");
         return InvalidSoundHandle;
     }
 
@@ -268,7 +268,7 @@ SoundHandle AudioSystem::playSound(const std::string& path, const Vec3f& positio
         cmd.position = position;
         cmd.category = category;
         if (!commandBuffer_.tryPush(std::move(cmd))) {
-            FABRIC_LOG_WARN("Audio command buffer full, dropping Play command");
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping Play command");
             return InvalidSoundHandle;
         }
         return handle;
@@ -279,7 +279,7 @@ SoundHandle AudioSystem::playSound(const std::string& path, const Vec3f& positio
 
 SoundHandle AudioSystem::playSoundLooped(const std::string& path, const Vec3f& position, SoundCategory category) {
     if (!initialized_) {
-        FABRIC_LOG_WARN("Cannot play sound: AudioSystem not initialized");
+        FABRIC_LOG_AUDIO_WARN("Cannot play sound: AudioSystem not initialized");
         return InvalidSoundHandle;
     }
 
@@ -292,7 +292,7 @@ SoundHandle AudioSystem::playSoundLooped(const std::string& path, const Vec3f& p
         cmd.position = position;
         cmd.category = category;
         if (!commandBuffer_.tryPush(std::move(cmd))) {
-            FABRIC_LOG_WARN("Audio command buffer full, dropping PlayLooped command");
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping PlayLooped command");
             return InvalidSoundHandle;
         }
         return handle;
@@ -307,7 +307,7 @@ void AudioSystem::stopSound(SoundHandle handle) {
         cmd.type = AudioCommandType::Stop;
         cmd.handle = handle;
         if (!commandBuffer_.tryPush(std::move(cmd))) {
-            FABRIC_LOG_WARN("Audio command buffer full, dropping Stop command");
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping Stop command");
         }
         return;
     }
@@ -319,7 +319,7 @@ void AudioSystem::stopAllSounds() {
         AudioCommand cmd;
         cmd.type = AudioCommandType::StopAll;
         if (!commandBuffer_.tryPush(std::move(cmd))) {
-            FABRIC_LOG_WARN("Audio command buffer full, dropping StopAll command");
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping StopAll command");
         }
         return;
     }
@@ -335,7 +335,7 @@ void AudioSystem::setSoundPosition(SoundHandle handle, const Vec3f& pos) {
         cmd.handle = handle;
         cmd.position = pos;
         if (!commandBuffer_.tryPush(std::move(cmd))) {
-            FABRIC_LOG_WARN("Audio command buffer full, dropping SetPosition");
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping SetPosition");
         }
         return;
     }
@@ -349,7 +349,7 @@ void AudioSystem::setSoundVolume(SoundHandle handle, float volume) {
         cmd.handle = handle;
         cmd.volume = volume;
         if (!commandBuffer_.tryPush(std::move(cmd))) {
-            FABRIC_LOG_WARN("Audio command buffer full, dropping SetVolume");
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping SetVolume");
         }
         return;
     }
@@ -382,7 +382,7 @@ void AudioSystem::setAttenuationModel(AttenuationModel model) {
             ma_sound_set_attenuation_model(sound, maModel);
         }
     }
-    FABRIC_LOG_DEBUG("Attenuation model set to {}", static_cast<int>(model));
+    FABRIC_LOG_AUDIO_DEBUG("Attenuation model set to {}", static_cast<int>(model));
 }
 
 // --- Sound categories ---
@@ -561,7 +561,7 @@ SoundHandle AudioSystem::executePlay(const std::string& path, const Vec3f& posit
     // Pre-validate: miniaudio's resource manager has a use-after-free on
     // missing files in headless mode (v0.11.22). Check existence first.
     if (!std::filesystem::exists(path)) {
-        FABRIC_LOG_ERROR("Sound file not found: '{}'", path);
+        FABRIC_LOG_AUDIO_ERROR("Sound file not found: '{}'", path);
         return InvalidSoundHandle;
     }
 
@@ -569,7 +569,7 @@ SoundHandle AudioSystem::executePlay(const std::string& path, const Vec3f& posit
     ma_result result = ma_sound_init_from_file(engine_, path.c_str(), 0, nullptr, nullptr, sound);
     if (result != MA_SUCCESS) {
         delete sound;
-        FABRIC_LOG_ERROR("Failed to load sound '{}': {}", path, static_cast<int>(result));
+        FABRIC_LOG_AUDIO_ERROR("Failed to load sound '{}': {}", path, static_cast<int>(result));
         return InvalidSoundHandle;
     }
 
@@ -607,12 +607,12 @@ SoundHandle AudioSystem::executePlay(const std::string& path, const Vec3f& posit
             baseVolumes_.erase(preAllocHandle);
             soundCategories_.erase(preAllocHandle);
         }
-        FABRIC_LOG_ERROR("Failed to start sound '{}': {}", path, static_cast<int>(result));
+        FABRIC_LOG_AUDIO_ERROR("Failed to start sound '{}': {}", path, static_cast<int>(result));
         return InvalidSoundHandle;
     }
 
-    FABRIC_LOG_DEBUG("Playing{} sound '{}' at ({}, {}, {}), handle={}, category={}", looped ? " looped" : "", path,
-                     position.x, position.y, position.z, preAllocHandle, static_cast<int>(category));
+    FABRIC_LOG_AUDIO_DEBUG("Playing{} sound '{}' at ({}, {}, {}), handle={}, category={}", looped ? " looped" : "",
+                           path, position.x, position.y, position.z, preAllocHandle, static_cast<int>(category));
     return preAllocHandle;
 }
 
@@ -718,7 +718,7 @@ void AudioSystem::setReverbParameters(float decayTime, float damping, float wetM
         cmd.damping = damping;
         cmd.wetMix = wetMix;
         if (!commandBuffer_.tryPush(std::move(cmd))) {
-            FABRIC_LOG_WARN("Audio command buffer full, dropping SetReverbParams");
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping SetReverbParams");
         }
         return;
     }
@@ -767,8 +767,8 @@ void AudioSystem::executeSetReverbParams(float decayTime, float damping, float w
     ma_lpf_config lpfConfig = ma_lpf_config_init(ma_format_f32, 2, 48000, cutoff, 2);
     ma_lpf_node_reinit(&lpfConfig, asLpfNode(lpfNode_));
 
-    FABRIC_LOG_DEBUG("Reverb params: decayTime={}, damping={}, wetMix={}, feedback={}, cutoff={}", decayTime, damping,
-                     wetMix, feedback, cutoff);
+    FABRIC_LOG_AUDIO_DEBUG("Reverb params: decayTime={}, damping={}, wetMix={}, feedback={}, cutoff={}", decayTime,
+                           damping, wetMix, feedback, cutoff);
 }
 
 void AudioSystem::initReverbNodes() {
@@ -785,7 +785,7 @@ void AudioSystem::initReverbNodes() {
     ma_lpf_node_config lpfConfig = ma_lpf_node_config_init(2, 48000, initialCutoff, 2);
     ma_result result = ma_lpf_node_init(nodeGraph, &lpfConfig, nullptr, lpf);
     if (result != MA_SUCCESS) {
-        FABRIC_LOG_ERROR("Failed to initialize reverb LPF node: {}", static_cast<int>(result));
+        FABRIC_LOG_AUDIO_ERROR("Failed to initialize reverb LPF node: {}", static_cast<int>(result));
         delete lpf;
         return;
     }
@@ -800,7 +800,7 @@ void AudioSystem::initReverbNodes() {
     ma_delay_node_config delayConfig = ma_delay_node_config_init(2, 48000, delayFrames, initialFeedback);
     result = ma_delay_node_init(nodeGraph, &delayConfig, nullptr, delay);
     if (result != MA_SUCCESS) {
-        FABRIC_LOG_ERROR("Failed to initialize reverb delay node: {}", static_cast<int>(result));
+        FABRIC_LOG_AUDIO_ERROR("Failed to initialize reverb delay node: {}", static_cast<int>(result));
         ma_lpf_node_uninit(lpf, nullptr);
         delete lpf;
         lpfNode_ = nullptr;
@@ -818,8 +818,8 @@ void AudioSystem::initReverbNodes() {
     ma_node_attach_output_bus(delay, 0, endpoint, 0);
 
     reverbInitialized_ = true;
-    FABRIC_LOG_INFO("Reverb nodes initialized (decayTime={}, damping={}, wetMix={})", reverbDecayTime_, reverbDamping_,
-                    reverbWetMix_);
+    FABRIC_LOG_AUDIO_INFO("Reverb nodes initialized (decayTime={}, damping={}, wetMix={})", reverbDecayTime_,
+                          reverbDamping_, reverbWetMix_);
 }
 
 void AudioSystem::uninitReverbNodes() {
@@ -842,7 +842,7 @@ void AudioSystem::uninitReverbNodes() {
 }
 
 void AudioSystem::audioThreadLoop() {
-    FABRIC_LOG_INFO("Audio thread started");
+    FABRIC_LOG_AUDIO_INFO("Audio thread started");
 
     constexpr float kThreadUpdateRate = 0.016f;
     auto lastTime = std::chrono::high_resolution_clock::now();
@@ -888,7 +888,7 @@ void AudioSystem::audioThreadLoop() {
         }
     }
 
-    FABRIC_LOG_INFO("Audio thread stopped");
+    FABRIC_LOG_AUDIO_INFO("Audio thread stopped");
 }
 
 } // namespace fabric

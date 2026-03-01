@@ -1,5 +1,6 @@
 #include "fabric/core/AnimationEvents.hh"
 #include "fabric/core/AppContext.hh"
+#include "fabric/core/AppModeManager.hh"
 #include "fabric/core/Async.hh"
 #include "fabric/core/AudioSystem.hh"
 #include "fabric/core/BehaviorAI.hh"
@@ -211,6 +212,14 @@ int main(int argc, char* argv[]) {
         Rml::Context* rmlContext = Rml::CreateContext("main", Rml::Vector2i(pw, ph));
         FABRIC_LOG_INFO("RmlUi context created ({}x{})", pw, ph);
 
+        // Load monospace font for debug HUD, console, and BT debug panels
+        // fallback_face=true ensures this font is used for any unresolved font-family
+        if (!Rml::LoadFontFace("assets/fonts/robotomono-regular.ttf", true)) {
+            FABRIC_LOG_WARN("Failed to load RmlUi font: assets/fonts/robotomono-regular.ttf");
+        } else {
+            FABRIC_LOG_INFO("RmlUi font loaded: robotomono-regular.ttf (fallback)");
+        }
+
         fabric::async::init();
 
         //----------------------------------------------------------------------
@@ -277,6 +286,20 @@ int main(int argc, char* argv[]) {
         });
 
         //----------------------------------------------------------------------
+        // App Mode Manager
+        //----------------------------------------------------------------------
+        fabric::AppModeManager appModeManager;
+        appModeManager.addObserver([&](fabric::AppMode /*from*/, fabric::AppMode to) {
+            const auto& modeFlags = fabric::AppModeManager::flags(to);
+            SDL_SetWindowRelativeMouseMode(window, modeFlags.captureMouse);
+            if (modeFlags.pauseSimulation) {
+                timeline.pause();
+            } else {
+                timeline.resume();
+            }
+        });
+
+        //----------------------------------------------------------------------
         // Camera + Controller
         //----------------------------------------------------------------------
         fabric::Camera camera;
@@ -295,9 +318,9 @@ int main(int argc, char* argv[]) {
         ecsWorld.enableInspector();
 #endif
         fabric::SceneView sceneView(0, camera, ecsWorld.get());
+        sceneView.setViewport(static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
 
         fabric::ResourceHub resourceHub;
-        resourceHub.disableWorkerThreadsForTesting();
 
         fabric::AppContext appContext{ecsWorld, timeline, dispatcher, resourceHub};
         (void)appContext; // threaded through systems in future passes
@@ -329,7 +352,10 @@ int main(int argc, char* argv[]) {
         fabric::StreamingConfig streamConfig;
         streamConfig.baseRadius = 3;
         streamConfig.maxRadius = 5;
-        streamConfig.maxLoadsPerTick = 8;
+        // TODO(async-terrain): Increase back to 4-8 once terrain gen is async.
+        // Reduced from 8 to prevent death spiral: 8 × 207ms/chunk (Debug) = 1.66s/tick.
+        // In Release, 8 × 1.4ms = 11ms — safe. But keeping low until async is implemented.
+        streamConfig.maxLoadsPerTick = 2;
         streamConfig.maxUnloadsPerTick = 4;
         fabric::ChunkStreamingManager streaming(streamConfig);
 
@@ -461,7 +487,7 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         fabric::ShadowSystem shadowSystem(fabric::presetConfig(fabric::ShadowQualityPreset::Medium));
 
-        fabric::Vec3f lightDir(0.5f, -0.8f, 0.3f);
+        fabric::Vec3f lightDir(0.5f, 0.8f, 0.3f);
         {
             float len = std::sqrt(lightDir.x * lightDir.x + lightDir.y * lightDir.y + lightDir.z * lightDir.z);
             lightDir = fabric::Vec3f(lightDir.x / len, lightDir.y / len, lightDir.z / len);
@@ -518,8 +544,14 @@ int main(int argc, char* argv[]) {
         fabric::DevConsole devConsole;
         devConsole.init(rmlContext);
 
-        // Backtick toggles console and switches input mode
-        inputRouter.setConsoleToggleCallback([&devConsole, &inputRouter]() {
+        // Backtick toggles console via AppModeManager (Game <-> Console)
+        inputRouter.setConsoleToggleCallback([&]() {
+            auto mode = appModeManager.current();
+            if (mode == fabric::AppMode::Console) {
+                appModeManager.transition(fabric::AppMode::Game);
+            } else if (mode == fabric::AppMode::Game) {
+                appModeManager.transition(fabric::AppMode::Console);
+            }
             devConsole.toggle();
             if (devConsole.isVisible()) {
                 inputRouter.setMode(fabric::InputMode::UIOnly);
@@ -624,11 +656,23 @@ int main(int argc, char* argv[]) {
         });
 
         dispatcher.addEventListener("toggle_content_browser", [&](fabric::Event&) {
+            auto mode = appModeManager.current();
+            if (mode == fabric::AppMode::Editor) {
+                appModeManager.transition(fabric::AppMode::Game);
+            } else if (mode == fabric::AppMode::Game) {
+                appModeManager.transition(fabric::AppMode::Editor);
+            }
             contentBrowser.toggle();
             FABRIC_LOG_INFO("Content Browser: {}", contentBrowser.isVisible() ? "on" : "off");
         });
 
         dispatcher.addEventListener("toggle_bt_debug", [&](fabric::Event&) {
+            auto mode = appModeManager.current();
+            if (mode == fabric::AppMode::Menu) {
+                appModeManager.transition(fabric::AppMode::Game);
+            } else if (mode == fabric::AppMode::Game) {
+                appModeManager.transition(fabric::AppMode::Menu);
+            }
             btDebugPanel.toggle();
             FABRIC_LOG_INFO("BT Debug: {}", btDebugPanel.isVisible() ? "on" : "off");
         });
@@ -662,8 +706,11 @@ int main(int argc, char* argv[]) {
 
         FABRIC_LOG_INFO("Entering main loop");
 
+        int frameCounter = 0;
+
         while (running) {
             FABRIC_ZONE_SCOPED_N("main_loop");
+            ++frameCounter;
 
             auto now = std::chrono::high_resolution_clock::now();
             double frameTime = std::chrono::duration<double>(now - lastTime).count();
@@ -673,40 +720,55 @@ int main(int argc, char* argv[]) {
                 frameTime = 0.25;
             accumulator += frameTime;
 
-            // Route SDL events through InputRouter (Escape toggles UI mode)
-            SDL_Event event;
-            while (SDL_PollEvent(&event)) {
-                inputRouter.routeEvent(event, rmlContext);
+            // Route SDL events through InputRouter
+            {
+                FABRIC_ZONE_SCOPED_N("input_routing");
+                SDL_Event event;
+                while (SDL_PollEvent(&event)) {
+                    inputRouter.routeEvent(event, rmlContext);
 
-                if (event.type == SDL_EVENT_QUIT)
-                    running = false;
+                    // Esc toggles pause (Game <-> Paused)
+                    if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE && !event.key.repeat) {
+                        appModeManager.togglePause();
+                    }
 
-                if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
-                    auto w = static_cast<uint32_t>(event.window.data1);
-                    auto h = static_cast<uint32_t>(event.window.data2);
-                    if (w == 0 || h == 0)
-                        continue;
-                    bgfx::reset(w, h, BGFX_RESET_VSYNC);
-                    bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(w), static_cast<uint16_t>(h));
-                    float newAspect = static_cast<float>(w) / static_cast<float>(h);
-                    camera.setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogeneousNdc);
-                    rmlContext->SetDimensions(Rml::Vector2i(static_cast<int>(w), static_cast<int>(h)));
+                    if (event.type == SDL_EVENT_QUIT)
+                        running = false;
 
-                    // Recreate OIT framebuffers at new resolution
-                    if (oitCompositor.isValid()) {
-                        oitCompositor.shutdown();
-                        oitCompositor.init(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                    if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+                        auto w = static_cast<uint32_t>(event.window.data1);
+                        auto h = static_cast<uint32_t>(event.window.data2);
+                        if (w == 0 || h == 0)
+                            continue;
+                        bgfx::reset(w, h, BGFX_RESET_VSYNC);
+                        bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                        sceneView.setViewport(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                        float newAspect = static_cast<float>(w) / static_cast<float>(h);
+                        camera.setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogeneousNdc);
+                        rmlContext->SetDimensions(Rml::Vector2i(static_cast<int>(w), static_cast<int>(h)));
+
+                        // Recreate OIT framebuffers at new resolution
+                        if (oitCompositor.isValid()) {
+                            oitCompositor.shutdown();
+                            oitCompositor.init(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                        }
                     }
                 }
             }
-
             // Mouse look (once per frame, not per fixed step)
             cameraCtrl.processMouseInput(inputManager.mouseDeltaX(), inputManager.mouseDeltaY());
 
             //------------------------------------------------------------------
             // Fixed timestep
             //------------------------------------------------------------------
-            while (accumulator >= kFixedDt) {
+            // TODO(async-terrain): Remove iteration cap once terrain gen is async.
+            // This is a band-aid fix — proper solution is moving generateChunkTerrain()
+            // to ResourceHub worker threads so fixedstep doesn't block on noise evaluation.
+            constexpr int kMaxFixedStepsPerFrame = 3; // Prevent death spiral
+            int fixedIter = 0;
+            while (accumulator >= kFixedDt && fixedIter < kMaxFixedStepsPerFrame) {
+                ++fixedIter;
+                FABRIC_ZONE_SCOPED_N("fixed_timestep");
                 float dt = static_cast<float>(kFixedDt);
 
                 fabric::async::poll();
@@ -739,7 +801,6 @@ int main(int argc, char* argv[]) {
                         chunkEntities[coord] = ent;
                     }
                 }
-
                 for (const auto& coord : streamUpdate.toUnload) {
                     gpuUploadQueue.erase(coord);
                     meshManager.removeChunk(coord);
@@ -862,8 +923,11 @@ int main(int argc, char* argv[]) {
                 }
 
                 // Physics and AI step at fixed rate
-                physicsWorld.step(dt);
-                behaviorAI.update(dt);
+                {
+                    FABRIC_ZONE_SCOPED_N("physics_step");
+                    physicsWorld.step(dt);
+                    behaviorAI.update(dt);
+                }
 
                 // LOD: compute per-chunk LOD from camera distance (marks dirty on change)
                 {
@@ -880,6 +944,7 @@ int main(int argc, char* argv[]) {
 
                 // GPU mesh sync: upload re-meshed chunks
                 {
+                    FABRIC_ZONE_SCOPED_N("chunk_mesh_upload");
                     auto it = gpuUploadQueue.begin();
                     while (it != gpuUploadQueue.end()) {
                         if (chunkEntities.find(*it) == chunkEntities.end()) {
@@ -905,14 +970,22 @@ int main(int argc, char* argv[]) {
 
                 accumulator -= kFixedDt;
             }
+            // Drain excess accumulator if we hit the iteration cap (prevents spiral)
+            if (fixedIter >= kMaxFixedStepsPerFrame && accumulator > kFixedDt) {
+                FABRIC_ZONE_SCOPED_N("accumulator_drain");
+                accumulator = 0.0;
+            }
 
             // Camera tracks player position (spring arm collision for 3P mode)
             cameraCtrl.update(playerPos, static_cast<float>(frameTime), &density.grid());
 
             // Audio listener follows camera, update per frame for smooth spatial audio
-            audioSystem.setListenerPosition(cameraCtrl.position());
-            audioSystem.setListenerDirection(cameraCtrl.forward(), cameraCtrl.up());
-            audioSystem.update(static_cast<float>(frameTime));
+            {
+                FABRIC_ZONE_SCOPED_N("audio_update");
+                audioSystem.setListenerPosition(cameraCtrl.position());
+                audioSystem.setListenerDirection(cameraCtrl.forward(), cameraCtrl.up());
+                audioSystem.update(static_cast<float>(frameTime));
+            }
 
             // Per-frame resets (InputRouter delegates to InputManager)
             inputRouter.beginFrame();
@@ -1073,6 +1146,16 @@ int main(int argc, char* argv[]) {
                 debugData.chunkMeshQueueSize = static_cast<int>(meshManager.dirtyCount());
 
                 debugHUD.update(debugData);
+
+                // Periodic performance log (every 10 frames)
+                if (frameCounter % 10 == 0) {
+                    FABRIC_LOG_INFO("perf: frame={} fps={:.1f} dt={:.1f}ms gpu={:.1f}ms draws={} tris={} chunks={}/{} "
+                                    "meshQueue={} vram={:.1f}MB bodies={} voices={}",
+                                    frameCounter, debugData.fps, debugData.frameTimeMs, debugData.gpuTimeMs,
+                                    debugData.drawCallCount, debugData.triangleCount, debugData.visibleChunks,
+                                    debugData.totalChunks, debugData.chunkMeshQueueSize, debugData.memoryUsageMB,
+                                    debugData.physicsBodyCount, debugData.audioVoiceCount);
+                }
             }
 
             if (btDebugPanel.isVisible()) {

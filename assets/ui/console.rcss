@@ -1,5 +1,5 @@
 body {
-    font-family: monospace;
+    font-family: 'Roboto Mono';
     font-size: 14dp;
     color: #e0e0e0;
 }

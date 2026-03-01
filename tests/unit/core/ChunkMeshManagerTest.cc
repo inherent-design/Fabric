@@ -75,9 +75,10 @@ TEST_F(ChunkMeshManagerTest, UpdateProducesCorrectGeometry) {
     ASSERT_NE(mesh, nullptr);
     ASSERT_GT(mesh->palette.size(), 0u);
 
+    // Essence is passed through directly as RGBA color
     auto& c = mesh->palette[mesh->vertices[0].paletteIndex()];
-    EXPECT_FLOAT_EQ(c[0], 1.0f);
-    EXPECT_FLOAT_EQ(c[1], 0.0f);
+    EXPECT_FLOAT_EQ(c[0], 0.0f);
+    EXPECT_FLOAT_EQ(c[1], 1.0f);
     EXPECT_FLOAT_EQ(c[2], 0.0f);
 }
 

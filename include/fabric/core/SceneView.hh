@@ -47,6 +47,10 @@ class SceneView {
     const std::vector<flecs::entity>& transparentEntities() const;
     const std::vector<flecs::entity>& opaqueEntities() const;
 
+    // Set the viewport dimensions for all sub-views (sky, geometry, transparent).
+    // Must be called after bgfx::init() and again on window resize.
+    void setViewport(uint16_t width, uint16_t height);
+
     // Enable HDR post-processing. Must be called after bgfx::init().
     void enablePostProcess(uint16_t width, uint16_t height);
 
@@ -63,6 +67,8 @@ class SceneView {
     std::vector<flecs::entity> opaqueEntities_;
     std::vector<flecs::entity> transparentEntities_;
     uint32_t clearColor_ = 0x303030ff;
+    uint16_t viewWidth_ = 0;
+    uint16_t viewHeight_ = 0;
 
     // Build a DrawCall for an entity and add it to the given render list with the given view ID
     void buildDrawCall(flecs::entity entity, uint8_t viewId, RenderList& list);

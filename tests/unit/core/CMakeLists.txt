@@ -81,6 +81,7 @@ target_sources(UnitTests
   MaterialSoundsTest.cc
   SaveManagerTest.cc
   ContentBrowserTest.cc
+  AppModeManagerTest.cc
 )
 
 set_source_files_properties(

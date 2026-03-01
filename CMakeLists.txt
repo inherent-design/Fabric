@@ -221,6 +221,8 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/OITCompositor.cc
     src/core/MaterialSounds.cc
     src/core/SaveManager.cc
+    src/core/AppModeManager.cc
+    src/core/BgfxCallback.cc
 )
 
 # Utils library components
@@ -394,6 +396,11 @@ else()
     add_executable(Fabric src/core/Fabric.cc)
     target_link_libraries(Fabric PRIVATE FabricLib)
 endif()
+
+add_custom_command(TARGET Fabric POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:Fabric>/assets
+    COMMENT "Copying assets to build output directory")
 
 #------------------------------------------------------------------------------
 # Testing Configuration
