@@ -445,3 +445,65 @@ TEST_F(InputRouterTest, EscapeWithContextStillTogglesAndConsumes) {
     EXPECT_TRUE(router.routeEvent(esc, scoped.get()));
     EXPECT_EQ(router.mode(), InputMode::UIOnly);
 }
+
+// -- Key callback registration --
+
+TEST_F(InputRouterTest, KeyCallbackFiresOnKeyDown) {
+    int callCount = 0;
+    router.registerKeyCallback(SDLK_F5, [&callCount]() { ++callCount; });
+
+    auto f5 = makeKeyDown(SDLK_F5);
+    EXPECT_TRUE(router.routeEvent(f5, nullptr));
+    EXPECT_EQ(callCount, 1);
+}
+
+TEST_F(InputRouterTest, KeyCallbackBlockedOnRepeat) {
+    int callCount = 0;
+    router.registerKeyCallback(SDLK_F5, [&callCount]() { ++callCount; });
+
+    auto f5Repeat = makeKeyDown(SDLK_F5, SDL_KMOD_NONE, true);
+    router.routeEvent(f5Repeat, nullptr);
+    EXPECT_EQ(callCount, 0);
+}
+
+TEST_F(InputRouterTest, KeyCallbackBlockedInUIOnlyMode) {
+    int callCount = 0;
+    router.registerKeyCallback(SDLK_F5, [&callCount]() { ++callCount; });
+    router.setMode(InputMode::UIOnly);
+
+    auto f5 = makeKeyDown(SDLK_F5);
+    router.routeEvent(f5, nullptr);
+    EXPECT_EQ(callCount, 0);
+}
+
+TEST_F(InputRouterTest, KeyCallbackWorksInGameAndUIMode) {
+    int callCount = 0;
+    router.registerKeyCallback(SDLK_F5, [&callCount]() { ++callCount; });
+    router.setMode(InputMode::GameAndUI);
+
+    auto f5 = makeKeyDown(SDLK_F5);
+    EXPECT_TRUE(router.routeEvent(f5, nullptr));
+    EXPECT_EQ(callCount, 1);
+}
+
+TEST_F(InputRouterTest, UnregisterKeyCallbackPreventsCallback) {
+    int callCount = 0;
+    router.registerKeyCallback(SDLK_F5, [&callCount]() { ++callCount; });
+    router.unregisterKeyCallback(SDLK_F5);
+
+    auto f5 = makeKeyDown(SDLK_F5);
+    router.routeEvent(f5, nullptr);
+    EXPECT_EQ(callCount, 0);
+}
+
+TEST_F(InputRouterTest, KeyCallbackReplacesExisting) {
+    int firstCount = 0;
+    int secondCount = 0;
+    router.registerKeyCallback(SDLK_F5, [&firstCount]() { ++firstCount; });
+    router.registerKeyCallback(SDLK_F5, [&secondCount]() { ++secondCount; });
+
+    auto f5 = makeKeyDown(SDLK_F5);
+    router.routeEvent(f5, nullptr);
+    EXPECT_EQ(firstCount, 0);
+    EXPECT_EQ(secondCount, 1);
+}

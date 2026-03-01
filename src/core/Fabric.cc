@@ -42,6 +42,7 @@
 #include "fabric/ui/BgfxRenderInterface.hh"
 #include "fabric/ui/BgfxSystemInterface.hh"
 #include "fabric/ui/DebugHUD.hh"
+#include "fabric/ui/ToastManager.hh"
 #include "fabric/utils/BVH.hh"
 #include "fabric/utils/Profiler.hh"
 
@@ -236,11 +237,10 @@ int main(int argc, char* argv[]) {
         inputManager.bindKey("toggle_debug", SDLK_F3);
         inputManager.bindKey("toggle_wireframe", SDLK_F4);
         inputManager.bindKey("toggle_camera", SDLK_V);
-        inputManager.bindKey("toggle_collision_debug", SDLK_F5);
+        inputManager.bindKey("toggle_collision_debug", SDLK_F10);
         inputManager.bindKey("toggle_bvh_debug", SDLK_F6);
         inputManager.bindKey("toggle_bt_debug", SDLK_F7);
         inputManager.bindKey("cycle_bt_npc", SDLK_F8);
-        inputManager.bindKey("quicksave", SDLK_F9);
 
         //----------------------------------------------------------------------
         // Timeline
@@ -514,10 +514,46 @@ int main(int argc, char* argv[]) {
         });
 
         //----------------------------------------------------------------------
-        // Save system
+        // Save system + toast notifications
         //----------------------------------------------------------------------
         fabric::SaveManager saveManager("saves");
         fabric::SceneSerializer saveSerializer;
+        fabric::ToastManager toastManager;
+
+        // F5 = quicksave, F9 = quickload (via InputRouter key callbacks)
+        inputRouter.registerKeyCallback(SDLK_F5, [&]() {
+            fabric::SceneSerializer qsSerializer;
+            if (saveManager.save(
+                    "quicksave", qsSerializer, ecsWorld, density, essence, timeline,
+                    std::optional<fabric::Position>(fabric::Position{playerPos.x, playerPos.y, playerPos.z}),
+                    std::optional<fabric::Position>(fabric::Position{playerVel.x, playerVel.y, playerVel.z}))) {
+                toastManager.show("Quick save complete", 2.0f);
+                FABRIC_LOG_INFO("Quick save complete");
+            } else {
+                toastManager.show("Quick save failed", 3.0f);
+                FABRIC_LOG_ERROR("Quick save failed");
+            }
+        });
+
+        inputRouter.registerKeyCallback(SDLK_F9, [&]() {
+            fabric::SceneSerializer qlSerializer;
+            std::optional<fabric::Position> loadedPos;
+            std::optional<fabric::Position> loadedVel;
+            if (saveManager.load("quicksave", qlSerializer, ecsWorld, density, essence, timeline, loadedPos,
+                                 loadedVel)) {
+                if (loadedPos) {
+                    playerPos = fabric::Vec3f(loadedPos->x, loadedPos->y, loadedPos->z);
+                }
+                if (loadedVel) {
+                    playerVel = fabric::Velocity{loadedVel->x, loadedVel->y, loadedVel->z};
+                }
+                toastManager.show("Quick load complete", 2.0f);
+                FABRIC_LOG_INFO("Quick load complete");
+            } else {
+                toastManager.show("Quick load failed", 3.0f);
+                FABRIC_LOG_ERROR("Quick load failed");
+            }
+        });
 
         //----------------------------------------------------------------------
         // Particle system + DebrisPool emitter wiring
@@ -580,18 +616,6 @@ int main(int argc, char* argv[]) {
         dispatcher.addEventListener("cycle_bt_npc", [&](fabric::Event&) {
             btDebugPanel.selectNextNPC(behaviorAI, ecsWorld.get());
             btDebugSelectedNpc = btDebugPanel.selectedNpc();
-        });
-
-        dispatcher.addEventListener("quicksave", [&](fabric::Event&) {
-            fabric::SceneSerializer qsSerializer;
-            if (saveManager.save(
-                    "quicksave", qsSerializer, ecsWorld, density, essence, timeline,
-                    std::optional<fabric::Position>(fabric::Position{playerPos.x, playerPos.y, playerPos.z}),
-                    std::optional<fabric::Position>(fabric::Position{playerVel.x, playerVel.y, playerVel.z}))) {
-                FABRIC_LOG_INFO("Quick save complete");
-            } else {
-                FABRIC_LOG_ERROR("Quick save failed");
-            }
         });
 
         // Jump on space press (grounded only; in flight, move_up is continuous)
@@ -666,6 +690,7 @@ int main(int argc, char* argv[]) {
                     dt, saveSerializer, ecsWorld, density, essence, timeline,
                     std::optional<fabric::Position>(fabric::Position{playerPos.x, playerPos.y, playerPos.z}),
                     std::optional<fabric::Position>(fabric::Position{playerVel.x, playerVel.y, playerVel.z}));
+                toastManager.update(dt);
 
                 // Streaming: load/unload chunks around player
                 float speed =
@@ -911,7 +936,7 @@ int main(int argc, char* argv[]) {
                 // Debug draw overlay (lines, shapes) on geometry view
                 debugDraw.begin(sceneView.geometryViewId());
 
-                // Collision shape overlays (F5)
+                // Collision shape overlays (F10)
                 if (debugDraw.hasFlag(fabric::DebugDrawFlags::CollisionShapes)) {
                     debugDraw.setColor(0xff00ff00); // green (ABGR)
                     for (const auto& [coord, ent] : chunkEntities) {

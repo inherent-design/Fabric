@@ -21,6 +21,14 @@ InputMode InputRouter::mode() const {
     return mode_;
 }
 
+void InputRouter::registerKeyCallback(SDL_Keycode key, std::function<void()> cb) {
+    keyCallbacks_[key] = std::move(cb);
+}
+
+void InputRouter::unregisterKeyCallback(SDL_Keycode key) {
+    keyCallbacks_.erase(key);
+}
+
 bool InputRouter::routeEvent(const SDL_Event& event, Rml::Context* rmlContext) {
     // Backtick toggles developer console (intercept before any other routing)
     if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && event.key.key == SDLK_GRAVE) {
@@ -34,6 +42,15 @@ bool InputRouter::routeEvent(const SDL_Event& event, Rml::Context* rmlContext) {
     if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && event.key.key == SDLK_ESCAPE) {
         toggleUIMode();
         return true;
+    }
+
+    // Key callbacks: fire on non-repeat key-down, suppressed in UIOnly mode
+    if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && mode_ != InputMode::UIOnly) {
+        auto it = keyCallbacks_.find(event.key.key);
+        if (it != keyCallbacks_.end()) {
+            it->second();
+            return true;
+        }
     }
 
     switch (mode_) {
