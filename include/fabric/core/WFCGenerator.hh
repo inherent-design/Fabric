@@ -3,9 +3,17 @@
 #include <array>
 #include <cstdint>
 #include <random>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace fabric {
+
+/// Side length (in voxels) of a single WFC tile volume.
+constexpr int kWFCTileSize = 4;
+
+/// Total number of voxels in a single tile (kWFCTileSize^3).
+constexpr int kWFCTileVolume = kWFCTileSize * kWFCTileSize * kWFCTileSize;
 
 // ---------- Face indexing ----------
 
@@ -130,5 +138,37 @@ bool wfcPropagate(WFCGrid& grid, int startX, int startY, int startZ, const std::
 
 /// Run the full WFC solve loop: lowest entropy -> collapse -> propagate -> repeat.
 WFCResult wfcSolve(WFCGrid& grid, const std::vector<WFCTile>& tiles, uint32_t seed);
+
+// ---------- Tile data (voxel content) ----------
+
+/// Extended tile data carrying per-voxel density and essence plus socket and weight metadata.
+struct WFCTileData {
+    std::array<float, kWFCTileVolume> density{}; ///< Per-voxel density [0,1].
+    std::array<float, kWFCTileVolume> essence{}; ///< Per-voxel essence ID.
+    std::array<int, 6> sockets{};                ///< Socket ID per face (+X,-X,+Y,-Y,+Z,-Z).
+    float weight = 1.0f;                         ///< Selection weight during collapse.
+    std::string name;                            ///< Human-readable tile name.
+};
+
+/// An adjacency pair: indices of two tiles that can sit next to each other on a given face.
+using WFCAdjPair = std::pair<int, int>;
+
+/// A complete tile set: tiles + derived adjacency information.
+struct WFCTileSet {
+    std::vector<WFCTileData> tiles;         ///< All tile definitions.
+    std::vector<WFCAdjPair> adjacencyPairs; ///< Explicit adjacency overrides (optional).
+
+    /// Derive adjacency pairs from socket symmetry: +X face matches -X face, etc.
+    /// Populates adjacencyPairs by checking all tile combinations.
+    void deriveAdjacency();
+};
+
+// ---------- Tile set factories ----------
+
+/// Create a dungeon-themed tile set with >= 5 tiles (air, corridor, room, wall, pillar, etc.).
+WFCTileSet createDungeonTileSet();
+
+/// Create a building-themed tile set with >= 5 tiles (air, floor, wall, window, roof, etc.).
+WFCTileSet createBuildingTileSet();
 
 } // namespace fabric

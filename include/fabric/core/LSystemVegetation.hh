@@ -7,7 +7,17 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "fabric/core/FieldLayer.hh"
+
 namespace fabric {
+
+// ---- Essence constants for voxelization ----
+
+/// Wood essence: brown channel encoding (x=0.6, y=0.3, z=0.1, w=1.0).
+inline const Vector4<float, Space::World> kWoodEssence{0.6f, 0.3f, 0.1f, 1.0f};
+
+/// Leaf essence: green channel encoding (x=0.2, y=0.7, z=0.1, w=1.0).
+inline const Vector4<float, Space::World> kLeafEssence{0.2f, 0.7f, 0.1f, 1.0f};
 
 /// Rule set defining an L-system grammar and turtle interpretation parameters.
 struct LSystemRule {
@@ -79,5 +89,17 @@ std::string expand(const LSystemRule& rule);
 ///   ]  - pop turtle state
 ///   L  - switch material tag to "leaf" (1)
 std::vector<TurtleSegment> interpret(const std::string& expanded, const LSystemRule& params);
+
+// ---- Voxelization ----
+
+/// Rasterize a single turtle segment into density and essence fields using 3D DDA
+/// thick-line traversal. Maps materialTag 0 -> kWoodEssence, 1 -> kLeafEssence.
+/// Density is clamped to [0, 1].
+void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceField& essence);
+
+/// Rasterize an entire tree (vector of segments) into density and essence fields.
+/// Each segment is offset by the given origin before voxelization.
+void voxelizeTree(const std::vector<TurtleSegment>& segments, DensityField& density, EssenceField& essence,
+                  const glm::ivec3& origin);
 
 } // namespace fabric
