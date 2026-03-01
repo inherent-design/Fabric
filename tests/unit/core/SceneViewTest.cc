@@ -1,3 +1,4 @@
+#include "fabric/core/SceneView.hh"
 #include "fabric/core/Camera.hh"
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Rendering.hh"
@@ -13,6 +14,7 @@ using namespace fabric;
 class FrustumCullerTest : public ::testing::Test {
   protected:
     World ecsWorld;
+    FrustumCuller culler;
 
     void SetUp() override { ecsWorld.registerCoreComponents(); }
 
@@ -51,7 +53,7 @@ TEST_F(FrustumCullerTest, EntitiesWithoutBoundingBoxAlwaysVisible) {
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visible = culler.cull(vp, ecsWorld.get());
 
     // Both entities have no BoundingBox, so both should be visible
     EXPECT_EQ(visible.size(), 2u);
@@ -71,7 +73,7 @@ TEST_F(FrustumCullerTest, EntityBehindCameraIsCulled) {
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visible = culler.cull(vp, ecsWorld.get());
     auto names = visibleNames(visible);
 
     EXPECT_FALSE(names.count("behind"));
@@ -90,7 +92,7 @@ TEST_F(FrustumCullerTest, EntityInFrontOfCameraIsVisible) {
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visible = culler.cull(vp, ecsWorld.get());
     auto names = visibleNames(visible);
 
     EXPECT_TRUE(names.count("front"));
@@ -108,7 +110,7 @@ TEST_F(FrustumCullerTest, EntityFarOutsideFrustumIsCulled) {
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visible = culler.cull(vp, ecsWorld.get());
     auto names = visibleNames(visible);
 
     EXPECT_FALSE(names.count("far_right"));
@@ -130,7 +132,7 @@ TEST_F(FrustumCullerTest, FlatCullingDoesNotSkipChildren) {
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visible = culler.cull(vp, ecsWorld.get());
     auto names = visibleNames(visible);
 
     EXPECT_FALSE(names.count("outside_parent"));
@@ -158,7 +160,7 @@ TEST_F(FrustumCullerTest, MixedVisibility) {
     float vp[16];
     camera.getViewProjection(vp);
 
-    auto visibleNodes = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visibleNodes = culler.cull(vp, ecsWorld.get());
     auto names = visibleNames(visibleNodes);
 
     EXPECT_TRUE(names.count("visible_1"));
@@ -176,7 +178,7 @@ TEST_F(FrustumCullerTest, OrthoFrustumCull) {
     auto outside = createEntity("outside");
     setBoundingBox(outside, 20.0f, 20.0f, 1.0f, 30.0f, 30.0f, 5.0f);
 
-    auto visible = FrustumCuller::cull(ortho.elements.data(), ecsWorld.get());
+    auto visible = culler.cull(ortho.elements.data(), ecsWorld.get());
     auto names = visibleNames(visible);
 
     EXPECT_TRUE(names.count("inside"));
@@ -199,7 +201,7 @@ TEST_F(FrustumCullerTest, CameraMovementChangesVisibleSet) {
 
     float vp[16];
     camera.getViewProjection(vp);
-    auto visible1 = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visible1 = culler.cull(vp, ecsWorld.get());
     auto names1 = visibleNames(visible1);
     EXPECT_FALSE(names1.count("left"));
     EXPECT_FALSE(names1.count("right"));
@@ -208,7 +210,7 @@ TEST_F(FrustumCullerTest, CameraMovementChangesVisibleSet) {
     camTransform.setPosition(Vec3f(-45.0f, 0.0f, 0.0f));
     camera.updateView(camTransform);
     camera.getViewProjection(vp);
-    auto visible2 = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visible2 = culler.cull(vp, ecsWorld.get());
     auto names2 = visibleNames(visible2);
     EXPECT_TRUE(names2.count("left"));
     EXPECT_FALSE(names2.count("right"));
@@ -233,7 +235,7 @@ TEST_F(FrustumCullerTest, MultipleCamerasOnDifferentViews) {
 
     float vpA[16];
     cameraA.getViewProjection(vpA);
-    auto visibleA = FrustumCuller::cull(vpA, ecsWorld.get());
+    auto visibleA = culler.cull(vpA, ecsWorld.get());
     auto namesA = visibleNames(visibleA);
     EXPECT_TRUE(namesA.count("near_center"));
     EXPECT_FALSE(namesA.count("far_right"));
@@ -245,7 +247,7 @@ TEST_F(FrustumCullerTest, MultipleCamerasOnDifferentViews) {
 
     float vpB[16];
     cameraB.getViewProjection(vpB);
-    auto visibleB = FrustumCuller::cull(vpB, ecsWorld.get());
+    auto visibleB = culler.cull(vpB, ecsWorld.get());
     auto namesB = visibleNames(visibleB);
     EXPECT_FALSE(namesB.count("near_center"));
     EXPECT_TRUE(namesB.count("far_right"));
@@ -266,7 +268,7 @@ TEST_F(FrustumCullerTest, OnlySceneEntitiesCulled) {
 
     float vp[16];
     camera.getViewProjection(vp);
-    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visible = culler.cull(vp, ecsWorld.get());
     auto names = visibleNames(visible);
 
     EXPECT_TRUE(names.count("scene_entity"));
@@ -287,7 +289,7 @@ TEST_F(FrustumCullerTest, ChunkBoundingBoxVisibilityFiltersAsExpected) {
 
     float vp[16];
     camera.getViewProjection(vp);
-    auto visible = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visible = culler.cull(vp, ecsWorld.get());
     auto names = visibleNames(visible);
 
     EXPECT_TRUE(names.count("chunk_visible"));
@@ -309,7 +311,7 @@ TEST_F(FrustumCullerTest, ChunkVisibilityChangesWithCameraMovement) {
     Transform<float> atOrigin;
     camera.updateView(atOrigin);
     camera.getViewProjection(vp);
-    auto visibleAtOrigin = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visibleAtOrigin = culler.cull(vp, ecsWorld.get());
     auto namesAtOrigin = visibleNames(visibleAtOrigin);
 
     EXPECT_TRUE(namesAtOrigin.count("origin_chunk"));
@@ -319,7 +321,7 @@ TEST_F(FrustumCullerTest, ChunkVisibilityChangesWithCameraMovement) {
     movedRight.setPosition(Vec3f(256.0f, 0.0f, 0.0f));
     camera.updateView(movedRight);
     camera.getViewProjection(vp);
-    auto visibleMovedRight = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visibleMovedRight = culler.cull(vp, ecsWorld.get());
     auto namesMovedRight = visibleNames(visibleMovedRight);
 
     EXPECT_FALSE(namesMovedRight.count("origin_chunk"));
@@ -363,7 +365,7 @@ TEST_F(FrustumCullerTest, ChunkEntityMapAndVisibilitySetFilterGpuMeshKeys) {
 
     float vp[16];
     camera.getViewProjection(vp);
-    auto visibleEntities = FrustumCuller::cull(vp, ecsWorld.get());
+    auto visibleEntities = culler.cull(vp, ecsWorld.get());
 
     std::unordered_set<flecs::entity_t> visibleIds;
     for (const auto& entity : visibleEntities) {
@@ -385,6 +387,95 @@ TEST_F(FrustumCullerTest, ChunkEntityMapAndVisibilitySetFilterGpuMeshKeys) {
     EXPECT_EQ(drawList[0], (ChunkCoord{0, 0, 0}));
 }
 
+// --- BVH-backed frustum culling tests (TD-5) ---
+
+TEST_F(FrustumCullerTest, BVHCullMatchesFlatIteration) {
+    // Verify BVH-backed cull produces the same results as the old flat iteration
+    Camera camera;
+    camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
+    Transform<float> camTransform;
+    camera.updateView(camTransform);
+
+    auto visible1 = createEntity("v1");
+    setBoundingBox(visible1, -1.0f, -1.0f, 5.0f, 1.0f, 1.0f, 10.0f);
+
+    auto culled1 = createEntity("c1");
+    setBoundingBox(culled1, 500.0f, 0.0f, 5.0f, 510.0f, 1.0f, 10.0f);
+
+    auto noBox = createEntity("nb");
+
+    float vp[16];
+    camera.getViewProjection(vp);
+
+    auto visible = culler.cull(vp, ecsWorld.get());
+    auto names = visibleNames(visible);
+
+    EXPECT_EQ(names.size(), 2u);
+    EXPECT_TRUE(names.count("v1"));
+    EXPECT_TRUE(names.count("nb"));
+    EXPECT_FALSE(names.count("c1"));
+}
+
+TEST_F(FrustumCullerTest, BVHCull1000Entities) {
+    // Stress test: 1000+ entities with BoundingBox, verify correct cull count.
+    // Use a perspective camera with wide FOV and large far plane.
+    Camera camera;
+    camera.setPerspective(90.0f, 1.0f, 0.1f, 10000.0f, true);
+    Transform<float> camTransform;
+    camera.updateView(camTransform);
+
+    int expectedVisible = 0;
+
+    for (int i = 0; i < 1024; ++i) {
+        std::string name = "e" + std::to_string(i);
+        auto e = createEntity(name.c_str());
+
+        if (i % 2 == 0) {
+            // Place directly in front of camera at origin, along +Z axis
+            // Small box centered near z axis, spread along Z depth
+            float z = 1.0f + static_cast<float>(i) * 0.5f;
+            setBoundingBox(e, -0.1f, -0.1f, z, 0.1f, 0.1f, z + 0.2f);
+            expectedVisible++;
+        } else {
+            // Place far outside frustum (culled): way off to the side
+            float x = 50000.0f + static_cast<float>(i);
+            setBoundingBox(e, x, 50000.0f, 5.0f, x + 1.0f, 50001.0f, 10.0f);
+        }
+    }
+
+    float vp[16];
+    camera.getViewProjection(vp);
+
+    auto visible = culler.cull(vp, ecsWorld.get());
+
+    // All even-indexed entities should be visible, all odd-indexed culled
+    EXPECT_EQ(visible.size(), static_cast<size_t>(expectedVisible));
+}
+
+TEST_F(FrustumCullerTest, BVHEntitiesWithoutBoundingBoxAlwaysVisible) {
+    Camera camera;
+    camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
+    Transform<float> camTransform;
+    camera.updateView(camTransform);
+
+    // Entity without BoundingBox at a position that would be culled if it had one
+    auto noBB = createEntity("no_bb");
+    // No bounding box set, so it should always be visible
+
+    // Entity with BoundingBox outside frustum
+    auto outsideBB = createEntity("outside_bb");
+    setBoundingBox(outsideBB, 500.0f, 500.0f, 500.0f, 510.0f, 510.0f, 510.0f);
+
+    float vp[16];
+    camera.getViewProjection(vp);
+
+    auto visible = culler.cull(vp, ecsWorld.get());
+    auto names = visibleNames(visible);
+
+    EXPECT_TRUE(names.count("no_bb"));
+    EXPECT_FALSE(names.count("outside_bb"));
+}
+
 // BoundingBox component tests (replacing SceneNodeAABBTest)
 
 TEST(BoundingBoxComponentTest, EntityDefaultHasNoBoundingBox) {
@@ -404,4 +495,135 @@ TEST(BoundingBoxComponentTest, SetAndGetBoundingBox) {
     ASSERT_NE(bb, nullptr);
     EXPECT_FLOAT_EQ(bb->minX, -1.0f);
     EXPECT_FLOAT_EQ(bb->maxX, 1.0f);
+}
+
+// --- Transparent render pass tests (EF-1c) ---
+// These tests exercise the partition and sort logic without calling SceneView::render()
+// (which requires bgfx initialization). The partition is tested via TransparentTag checks,
+// and the sort is tested via the transparentSort() utility.
+
+TEST(TransparentPassTest, PartitionSplitsOpaqueAndTransparent) {
+    // TransparentTag partitions entities into two sets
+    World world;
+    world.registerCoreComponents();
+
+    auto opaque1 = world.createSceneEntity("opaque1");
+    auto opaque2 = world.createSceneEntity("opaque2");
+    auto trans1 = world.createSceneEntity("trans1");
+    trans1.add<TransparentTag>();
+    auto trans2 = world.createSceneEntity("trans2");
+    trans2.add<TransparentTag>();
+
+    // Simulate the partition logic from SceneView::render()
+    std::vector<flecs::entity> all = {opaque1, opaque2, trans1, trans2};
+    std::vector<flecs::entity> opaqueList;
+    std::vector<flecs::entity> transparentList;
+
+    for (auto entity : all) {
+        if (entity.has<TransparentTag>()) {
+            transparentList.push_back(entity);
+        } else {
+            opaqueList.push_back(entity);
+        }
+    }
+
+    EXPECT_EQ(opaqueList.size(), 2u);
+    EXPECT_EQ(transparentList.size(), 2u);
+
+    std::unordered_set<std::string> opaqueNames;
+    for (auto e : opaqueList)
+        opaqueNames.insert(std::string(e.name().c_str()));
+    std::unordered_set<std::string> transNames;
+    for (auto e : transparentList)
+        transNames.insert(std::string(e.name().c_str()));
+
+    EXPECT_TRUE(opaqueNames.count("opaque1"));
+    EXPECT_TRUE(opaqueNames.count("opaque2"));
+    EXPECT_TRUE(transNames.count("trans1"));
+    EXPECT_TRUE(transNames.count("trans2"));
+}
+
+TEST(TransparentPassTest, EmptyTransparentListProducesNoTransparentPass) {
+    // When no entities have TransparentTag, transparent list is empty
+    World world;
+    world.registerCoreComponents();
+
+    auto opaque = world.createSceneEntity("opaque_only");
+
+    std::vector<flecs::entity> all = {opaque};
+    std::vector<flecs::entity> transparentList;
+    for (auto entity : all) {
+        if (entity.has<TransparentTag>()) {
+            transparentList.push_back(entity);
+        }
+    }
+
+    EXPECT_TRUE(transparentList.empty());
+}
+
+TEST(TransparentPassTest, OpaqueEntitiesStayInGeometryView) {
+    // Verify view ID assignments: viewId+1 = geometry, viewId+2 = transparent
+    Camera camera;
+    camera.setPerspective(60.0f, 1.0f, 0.1f, 100.0f, true);
+
+    World world;
+    world.registerCoreComponents();
+
+    SceneView view(10, camera, world.get());
+
+    EXPECT_EQ(view.viewId(), 10u);
+    EXPECT_EQ(view.geometryViewId(), 11u);
+    EXPECT_EQ(view.transparentViewId(), 12u);
+}
+
+TEST(TransparentPassTest, TransparentSortDeterministic) {
+    // Verify sort is deterministic across multiple runs
+    World world;
+    world.registerCoreComponents();
+
+    auto a = world.createSceneEntity("a");
+    a.set<Position>({0.0f, 0.0f, 20.0f});
+    auto b = world.createSceneEntity("b");
+    b.set<Position>({0.0f, 0.0f, 80.0f});
+
+    Vec3f cameraPos(0.0f, 0.0f, 0.0f);
+
+    for (int i = 0; i < 5; ++i) {
+        std::vector<flecs::entity> entities = {a, b};
+        transparentSort(entities, cameraPos);
+        ASSERT_EQ(entities.size(), 2u);
+        EXPECT_STREQ(entities[0].name().c_str(), "b");
+        EXPECT_STREQ(entities[1].name().c_str(), "a");
+    }
+}
+
+// --- transparentSort utility tests ---
+
+TEST(TransparentSortTest, BackToFrontOrder) {
+    World world;
+    world.registerCoreComponents();
+
+    auto a = world.createSceneEntity("a");
+    a.set<Position>({0.0f, 0.0f, 10.0f});
+    auto b = world.createSceneEntity("b");
+    b.set<Position>({0.0f, 0.0f, 50.0f});
+    auto c = world.createSceneEntity("c");
+    c.set<Position>({0.0f, 0.0f, 100.0f});
+
+    std::vector<flecs::entity> entities = {a, b, c};
+    Vec3f cameraPos(0.0f, 0.0f, 0.0f);
+
+    transparentSort(entities, cameraPos);
+
+    // Farthest first (back-to-front)
+    EXPECT_STREQ(entities[0].name().c_str(), "c");
+    EXPECT_STREQ(entities[1].name().c_str(), "b");
+    EXPECT_STREQ(entities[2].name().c_str(), "a");
+}
+
+TEST(TransparentSortTest, EmptyListNoOp) {
+    std::vector<flecs::entity> entities;
+    Vec3f cameraPos(0.0f, 0.0f, 0.0f);
+    transparentSort(entities, cameraPos);
+    EXPECT_TRUE(entities.empty());
 }

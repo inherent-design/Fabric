@@ -26,6 +26,9 @@ class Camera {
     // Combined view-projection (for frustum extraction)
     void getViewProjection(float* outVP) const;
 
+    // Extract world-space camera position from the view matrix
+    Vector3<float, Space::World> getPosition() const;
+
     // Projection parameters
     float fovY() const;
     float aspectRatio() const;

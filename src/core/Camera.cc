@@ -41,6 +41,20 @@ void Camera::updateView(const Transform<float>& transform) {
     bx::mtxLookAt(view_, eye, at, upVec);
 }
 
+Vector3<float, Space::World> Camera::getPosition() const {
+    // View matrix V = [R | t] where the camera position p satisfies t = -R*p.
+    // So p = -R^T * t. R is the upper-left 3x3, t is column 3.
+    // Column-major: element(row, col) = view_[col * 4 + row]
+    float rx = view_[0], ry = view_[4], rz = view_[8];
+    float ux = view_[1], uy = view_[5], uz = view_[9];
+    float fx = view_[2], fy = view_[6], fz = view_[10];
+    float tx = view_[12], ty = view_[13], tz = view_[14];
+
+    // p = -R^T * t  (R^T rows are columns of R in the view matrix)
+    return Vector3<float, Space::World>(-(rx * tx + ux * ty + fx * tz), -(ry * tx + uy * ty + fy * tz),
+                                        -(rz * tx + uz * ty + fz * tz));
+}
+
 const float* Camera::viewMatrix() const {
     return view_;
 }

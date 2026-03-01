@@ -46,6 +46,7 @@ void World::registerCoreComponents() {
     world_->component<BoundingBox>("BoundingBox");
     world_->component<LocalToWorld>("LocalToWorld");
     world_->component<SceneEntity>("SceneEntity");
+    world_->component<TransparentTag>("TransparentTag");
     world_->component<Renderable>("Renderable");
 }
 
