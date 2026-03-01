@@ -34,8 +34,8 @@ CameraMode CameraController::mode() const {
 }
 
 void CameraController::processMouseInput(float deltaX, float deltaY) {
-    yaw_ -= deltaX * config_.mouseSensitivity / kDegToRad;
-    pitch_ -= deltaY * config_.mouseSensitivity / kDegToRad;
+    yaw_ += deltaX * config_.mouseSensitivity / kDegToRad;
+    pitch_ += deltaY * config_.mouseSensitivity / kDegToRad;
     wrapYaw();
     clampPitch();
 }
