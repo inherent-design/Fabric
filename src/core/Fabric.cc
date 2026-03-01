@@ -472,7 +472,7 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         fabric::ShadowSystem shadowSystem(fabric::presetConfig(fabric::ShadowQualityPreset::Medium));
 
-        fabric::Vec3f lightDir(0.5f, -0.8f, 0.3f);
+        fabric::Vec3f lightDir(0.5f, 0.8f, 0.3f);
         {
             float len = std::sqrt(lightDir.x * lightDir.x + lightDir.y * lightDir.y + lightDir.z * lightDir.z);
             lightDir = fabric::Vec3f(lightDir.x / len, lightDir.y / len, lightDir.z / len);
