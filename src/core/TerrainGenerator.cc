@@ -70,9 +70,10 @@ void TerrainGenerator::generate(FieldLayer<float>& density, FieldLayer<Vector4<f
     std::vector<float> noiseBuffer(static_cast<size_t>(sizeX) * static_cast<size_t>(sizeY) *
                                    static_cast<size_t>(sizeZ));
 
-    fractal->GenUniformGrid3D(noiseBuffer.data(), static_cast<float>(minX), static_cast<float>(minY),
-                              static_cast<float>(minZ), sizeX, sizeY, sizeZ, config_.frequency, config_.frequency,
-                              config_.frequency, config_.seed);
+    fractal->GenUniformGrid3D(noiseBuffer.data(), static_cast<float>(minX) * config_.frequency,
+                              static_cast<float>(minY) * config_.frequency,
+                              static_cast<float>(minZ) * config_.frequency, sizeX, sizeY, sizeZ, config_.frequency,
+                              config_.frequency, config_.frequency, config_.seed);
 
     // Write density and essence into field layers.
     // FastNoise2 outputs roughly [-1, 1]; remap to [0, 1].
