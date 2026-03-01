@@ -47,6 +47,7 @@
 #include "fabric/ui/ToastManager.hh"
 #include "fabric/utils/BVH.hh"
 #include "fabric/utils/Profiler.hh"
+#include <cstdio>
 
 #include <RmlUi/Core.h>
 
@@ -211,6 +212,14 @@ int main(int argc, char* argv[]) {
         Rml::Context* rmlContext = Rml::CreateContext("main", Rml::Vector2i(pw, ph));
         FABRIC_LOG_INFO("RmlUi context created ({}x{})", pw, ph);
 
+        // Load monospace font for debug HUD, console, and BT debug panels
+        // fallback_face=true ensures this font is used for any unresolved font-family
+        if (!Rml::LoadFontFace("assets/fonts/robotomono-regular.ttf", true)) {
+            FABRIC_LOG_WARN("Failed to load RmlUi font: assets/fonts/robotomono-regular.ttf");
+        } else {
+            FABRIC_LOG_INFO("RmlUi font loaded: robotomono-regular.ttf (fallback)");
+        }
+
         fabric::async::init();
 
         //----------------------------------------------------------------------
@@ -328,7 +337,10 @@ int main(int argc, char* argv[]) {
         fabric::StreamingConfig streamConfig;
         streamConfig.baseRadius = 3;
         streamConfig.maxRadius = 5;
-        streamConfig.maxLoadsPerTick = 8;
+        // TODO(async-terrain): Increase back to 4-8 once terrain gen is async.
+        // Reduced from 8 to prevent death spiral: 8 × 207ms/chunk (Debug) = 1.66s/tick.
+        // In Release, 8 × 1.4ms = 11ms — safe. But keeping low until async is implemented.
+        streamConfig.maxLoadsPerTick = 2;
         streamConfig.maxUnloadsPerTick = 4;
         fabric::ChunkStreamingManager streaming(streamConfig);
 
@@ -661,8 +673,26 @@ int main(int argc, char* argv[]) {
 
         FABRIC_LOG_INFO("Entering main loop");
 
+        int frameCounter = 0;
+
         while (running) {
             FABRIC_ZONE_SCOPED_N("main_loop");
+            ++frameCounter;
+
+            // TODO(profiling): Remove fprintf timing instrumentation once Tracy profiling is validated.
+            // These are diagnostic markers added during Sprint 13 perf investigation.
+            // Consider migrating to Tracy zones for production-grade profiling.
+            // Section timing markers
+            auto secStart = std::chrono::high_resolution_clock::now();
+            auto secLap = [&secStart]() -> double {
+                auto n = std::chrono::high_resolution_clock::now();
+                double ms = std::chrono::duration<double>(n - secStart).count() * 1000.0;
+                secStart = n;
+                return ms;
+            };
+            fprintf(stderr, "[F%d] start dt=%.1fms\n", frameCounter,
+                    std::chrono::duration<double>(secStart - lastTime).count() * 1000.0);
+            fflush(stderr);
 
             auto now = std::chrono::high_resolution_clock::now();
             double frameTime = std::chrono::duration<double>(now - lastTime).count();
@@ -699,13 +729,28 @@ int main(int argc, char* argv[]) {
                 }
             }
 
+            fprintf(stderr, "[F%d] events=%.1fms\n", frameCounter, secLap());
+            fflush(stderr);
             // Mouse look (once per frame, not per fixed step)
             cameraCtrl.processMouseInput(inputManager.mouseDeltaX(), inputManager.mouseDeltaY());
 
             //------------------------------------------------------------------
             // Fixed timestep
             //------------------------------------------------------------------
-            while (accumulator >= kFixedDt) {
+            // TODO(async-terrain): Remove iteration cap once terrain gen is async.
+            // This is a band-aid fix — proper solution is moving generateChunkTerrain()
+            // to ResourceHub worker threads so fixedstep doesn't block on noise evaluation.
+            constexpr int kMaxFixedStepsPerFrame = 3; // Prevent death spiral
+            int fixedIter = 0;
+            while (accumulator >= kFixedDt && fixedIter < kMaxFixedStepsPerFrame) {
+                ++fixedIter;
+                auto fsStart = std::chrono::high_resolution_clock::now();
+                auto fsLap = [&fsStart]() -> double {
+                    auto n = std::chrono::high_resolution_clock::now();
+                    double ms = std::chrono::duration<double>(n - fsStart).count() * 1000.0;
+                    fsStart = n;
+                    return ms;
+                };
                 float dt = static_cast<float>(kFixedDt);
 
                 fabric::async::poll();
@@ -721,6 +766,9 @@ int main(int argc, char* argv[]) {
                 float speed =
                     std::sqrt(playerVel.x * playerVel.x + playerVel.y * playerVel.y + playerVel.z * playerVel.z);
                 auto streamUpdate = streaming.update(playerPos.x, playerPos.y, playerPos.z, speed);
+                fprintf(stderr, "[F%d.%d] streaming=%zu load, %zu unload, %.1fms\n", frameCounter, fixedIter,
+                        streamUpdate.toLoad.size(), streamUpdate.toUnload.size(), fsLap());
+                fflush(stderr);
 
                 for (const auto& coord : streamUpdate.toLoad) {
                     generateChunkTerrain(coord.cx, coord.cy, coord.cz, terrainGen, caveCarver, density, essence);
@@ -738,6 +786,9 @@ int main(int argc, char* argv[]) {
                         chunkEntities[coord] = ent;
                     }
                 }
+                fprintf(stderr, "[F%d.%d] terrain_gen=%zu chunks, %.1fms\n", frameCounter, fixedIter,
+                        streamUpdate.toLoad.size(), fsLap());
+                fflush(stderr);
 
                 for (const auto& coord : streamUpdate.toUnload) {
                     gpuUploadQueue.erase(coord);
@@ -863,6 +914,8 @@ int main(int argc, char* argv[]) {
                 // Physics and AI step at fixed rate
                 physicsWorld.step(dt);
                 behaviorAI.update(dt);
+                fprintf(stderr, "[F%d.%d] physics_ai=%.1fms\n", frameCounter, fixedIter, fsLap());
+                fflush(stderr);
 
                 // LOD: compute per-chunk LOD from camera distance (marks dirty on change)
                 {
@@ -872,6 +925,8 @@ int main(int argc, char* argv[]) {
 
                 // Mesh manager: budgeted CPU re-meshing of dirty chunks
                 meshManager.update();
+                fprintf(stderr, "[F%d.%d] mesh_update=%.1fms\n", frameCounter, fixedIter, fsLap());
+                fflush(stderr);
 
                 // Particle simulation + debris-to-particle conversion
                 debrisPool.update(dt);
@@ -879,6 +934,7 @@ int main(int argc, char* argv[]) {
 
                 // GPU mesh sync: upload re-meshed chunks
                 {
+                    int gpuUploads = 0;
                     auto it = gpuUploadQueue.begin();
                     while (it != gpuUploadQueue.end()) {
                         if (chunkEntities.find(*it) == chunkEntities.end()) {
@@ -894,17 +950,29 @@ int main(int argc, char* argv[]) {
                             }
                             if (data && !data->vertices.empty()) {
                                 gpuMeshes[*it] = uploadChunkMesh(*data);
+                                ++gpuUploads;
                             }
                             it = gpuUploadQueue.erase(it);
                         } else {
                             ++it;
                         }
                     }
+                    fprintf(stderr, "[F%d.%d] gpu_upload=%d meshes, %.1fms\n", frameCounter, fixedIter, gpuUploads,
+                            fsLap());
+                    fflush(stderr);
                 }
 
                 accumulator -= kFixedDt;
             }
+            // Drain excess accumulator if we hit the iteration cap (prevents spiral)
+            if (fixedIter >= kMaxFixedStepsPerFrame && accumulator > kFixedDt) {
+                fprintf(stderr, "[F%d] fixedstep_drain=%.1fms excess\n", frameCounter, accumulator * 1000.0);
+                fflush(stderr);
+                accumulator = 0.0;
+            }
 
+            fprintf(stderr, "[F%d] fixedstep=%.1fms (%d iters)\n", frameCounter, secLap(), fixedIter);
+            fflush(stderr);
             // Camera tracks player position (spring arm collision for 3P mode)
             cameraCtrl.update(playerPos, static_cast<float>(frameTime), &density.grid());
 
@@ -922,6 +990,8 @@ int main(int argc, char* argv[]) {
             voxelRenderer.setLightDirection(
                 fabric::Vector3<float, fabric::Space::World>(lightDir.x, lightDir.y, lightDir.z));
 
+            fprintf(stderr, "[F%d] audio=%.1fms\n", frameCounter, secLap());
+            fflush(stderr);
             //------------------------------------------------------------------
             // Render
             //------------------------------------------------------------------
@@ -1031,10 +1101,16 @@ int main(int argc, char* argv[]) {
                 int curW, curH;
                 SDL_GetWindowSizeInPixels(window, &curW, &curH);
                 rmlRenderer.beginFrame(static_cast<uint16_t>(curW), static_cast<uint16_t>(curH));
+                fprintf(stderr, "[F%d] render=%.1fms\n", frameCounter, secLap());
+                fflush(stderr);
                 rmlContext->Update();
                 rmlContext->Render();
+                fprintf(stderr, "[F%d] rmlui=%.1fms\n", frameCounter, secLap());
+                fflush(stderr);
 
                 bgfx::frame();
+                fprintf(stderr, "[F%d] bgfxframe=%.1fms\n", frameCounter, secLap());
+                fflush(stderr);
             }
 
             // Debug HUD data update (after render, before next frame)
@@ -1072,6 +1148,16 @@ int main(int argc, char* argv[]) {
                 debugData.chunkMeshQueueSize = static_cast<int>(meshManager.dirtyCount());
 
                 debugHUD.update(debugData);
+
+                // Periodic performance log (every 10 frames)
+                if (frameCounter % 10 == 0) {
+                    FABRIC_LOG_INFO("perf: frame={} fps={:.1f} dt={:.1f}ms gpu={:.1f}ms draws={} tris={} chunks={}/{} "
+                                    "meshQueue={} vram={:.1f}MB bodies={} voices={}",
+                                    frameCounter, debugData.fps, debugData.frameTimeMs, debugData.gpuTimeMs,
+                                    debugData.drawCallCount, debugData.triangleCount, debugData.visibleChunks,
+                                    debugData.totalChunks, debugData.chunkMeshQueueSize, debugData.memoryUsageMB,
+                                    debugData.physicsBodyCount, debugData.audioVoiceCount);
+                }
             }
 
             if (btDebugPanel.isVisible()) {
