@@ -66,7 +66,7 @@ void ContentBrowser::navigate(const std::string& path) {
 
     // Ensure target is under rootPath_
     std::string targetStr = target.string();
-    if (targetStr.find(rootPath_) != 0) {
+    if (!targetStr.starts_with(rootPath_)) {
         FABRIC_LOG_WARN("ContentBrowser: '{}' is outside root '{}'", targetStr, rootPath_);
         return;
     }
@@ -93,7 +93,7 @@ void ContentBrowser::navigateUp() {
     refresh();
 }
 
-std::string ContentBrowser::currentPath() const {
+const std::string& ContentBrowser::currentPath() const {
     return currentPath_;
 }
 
