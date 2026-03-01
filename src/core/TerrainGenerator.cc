@@ -84,12 +84,23 @@ void TerrainGenerator::generate(FieldLayer<float>& density, FieldLayer<Vector4<f
                 float d = std::clamp(raw * 0.5f + 0.5f, 0.0f, 1.0f);
                 density.write(x, y, z, d);
 
-                // Derive essence from position: normalized spatial coordinates
-                // plus density as alpha channel
-                float nx = static_cast<float>(x - minX) / static_cast<float>(std::max(sizeX - 1, 1));
-                float ny = static_cast<float>(y - minY) / static_cast<float>(std::max(sizeY - 1, 1));
-                float nz = static_cast<float>(z - minZ) / static_cast<float>(std::max(sizeZ - 1, 1));
-                essence.write(x, y, z, Vector4<float, Space::World>(nx, ny, nz, d));
+                // Classify material by density band (depth from surface).
+                // d ~0.5 = surface transition, d→1.0 = deep interior.
+                // Mesher threshold is 0.5, so d <= 0.5 → air (not rendered).
+                Vector4<float, Space::World> materialColor;
+                if (d <= 0.5f) {
+                    materialColor = Vector4<float, Space::World>(0.0f, 0.0f, 0.0f, 0.0f);
+                } else if (d <= 0.55f) {
+                    // Surface layer → grass green
+                    materialColor = Vector4<float, Space::World>(0.34f, 0.64f, 0.24f, 1.0f);
+                } else if (d <= 0.65f) {
+                    // Subsurface → dirt brown
+                    materialColor = Vector4<float, Space::World>(0.55f, 0.36f, 0.22f, 1.0f);
+                } else {
+                    // Deep interior → stone gray
+                    materialColor = Vector4<float, Space::World>(0.52f, 0.52f, 0.54f, 1.0f);
+                }
+                essence.write(x, y, z, materialColor);
             }
         }
     }
