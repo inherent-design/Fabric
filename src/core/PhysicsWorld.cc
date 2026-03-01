@@ -92,13 +92,13 @@ void PhysicsWorld::init(uint32_t maxBodies, int numThreads) {
     physicsSystem_->SetContactListener(contactListener_.get());
 
     initialized_ = true;
-    FABRIC_LOG_INFO("PhysicsWorld initialized (maxBodies={}, threads={})", maxBodies, threads);
+    FABRIC_LOG_PHYSICS_INFO("PhysicsWorld initialized (maxBodies={}, threads={})", maxBodies, threads);
 }
 
 void PhysicsWorld::shutdown() {
     if (!initialized_)
         return;
-    FABRIC_LOG_INFO("PhysicsWorld shutting down");
+    FABRIC_LOG_PHYSICS_INFO("PhysicsWorld shutting down");
 
     // Remove constraints first (they reference bodies)
     for (auto& [id, constraint] : constraints_)
