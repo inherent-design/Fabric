@@ -340,3 +340,336 @@ TEST(InputRecorderTest, MetadataDefaults) {
     EXPECT_EQ(meta.totalFrames, 0u);
     EXPECT_FLOAT_EQ(meta.totalDuration, 0.0f);
 }
+
+// ============================================================
+// InputRecorder state machine tests (INH-51)
+// ============================================================
+
+// --- Initial state ---
+
+TEST(InputRecorderTest, InitialModeIsIdle) {
+    InputRecorder recorder;
+    EXPECT_EQ(recorder.mode(), RecorderMode::Idle);
+    EXPECT_FALSE(recorder.isRecording());
+    EXPECT_FALSE(recorder.isPlaying());
+}
+
+// --- Record / stop state transitions ---
+
+TEST(InputRecorderTest, BeginRecordingSetsRecordingMode) {
+    InputRecorder recorder;
+    EXPECT_TRUE(recorder.beginRecording());
+    EXPECT_EQ(recorder.mode(), RecorderMode::Recording);
+    EXPECT_TRUE(recorder.isRecording());
+    EXPECT_FALSE(recorder.isPlaying());
+}
+
+TEST(InputRecorderTest, StopRecordingReturnsToIdle) {
+    InputRecorder recorder;
+    recorder.beginRecording();
+    recorder.stopRecording();
+    EXPECT_EQ(recorder.mode(), RecorderMode::Idle);
+    EXPECT_FALSE(recorder.isRecording());
+}
+
+TEST(InputRecorderTest, BeginRecordingClearsPrevious) {
+    InputRecorder recorder;
+    recorder.beginRecording();
+
+    SerializedEvent e;
+    e.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e.keycode = 65;
+    recorder.captureEvent(e);
+    recorder.advanceFrame(0.016f);
+    recorder.stopRecording();
+
+    EXPECT_EQ(recorder.recording().frameCount(), 1u);
+
+    // Begin a new recording — previous data is cleared
+    recorder.beginRecording();
+    EXPECT_EQ(recorder.recording().frameCount(), 0u);
+}
+
+// --- Capture events during recording ---
+
+TEST(InputRecorderTest, CaptureEventsDuringRecording) {
+    InputRecorder recorder;
+    recorder.beginRecording();
+
+    SerializedEvent e1;
+    e1.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e1.keycode = 119; // 'w'
+
+    SerializedEvent e2;
+    e2.eventType = static_cast<uint32_t>(InputEventType::MOUSE_MOTION);
+    e2.mouseX = 100;
+    e2.mouseY = 200;
+
+    recorder.captureEvent(e1);
+    recorder.captureEvent(e2);
+    recorder.advanceFrame(0.016f);
+
+    recorder.stopRecording();
+
+    ASSERT_EQ(recorder.recording().frameCount(), 1u);
+    ASSERT_EQ(recorder.recording().frames[0].events.size(), 2u);
+    EXPECT_EQ(recorder.recording().frames[0].events[0].keycode, 119);
+    EXPECT_EQ(recorder.recording().frames[0].events[1].mouseX, 100);
+}
+
+TEST(InputRecorderTest, CaptureEventIgnoredWhenNotRecording) {
+    InputRecorder recorder;
+
+    SerializedEvent e;
+    e.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e.keycode = 65;
+    recorder.captureEvent(e); // should be ignored
+
+    EXPECT_EQ(recorder.recording().frameCount(), 0u);
+}
+
+// --- advanceFrame during recording ---
+
+TEST(InputRecorderTest, AdvanceFrameCreatesMultipleFrames) {
+    InputRecorder recorder;
+    recorder.beginRecording();
+
+    SerializedEvent e;
+    e.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e.keycode = 65;
+
+    // Frame 0
+    recorder.captureEvent(e);
+    recorder.advanceFrame(0.016f);
+
+    // Frame 1
+    e.keycode = 66;
+    recorder.captureEvent(e);
+    recorder.advanceFrame(0.017f);
+
+    // Frame 2 (empty)
+    recorder.advanceFrame(0.016f);
+
+    recorder.stopRecording();
+
+    ASSERT_EQ(recorder.recording().frameCount(), 3u);
+    EXPECT_EQ(recorder.recording().frames[0].frameNumber, 0u);
+    EXPECT_EQ(recorder.recording().frames[1].frameNumber, 1u);
+    EXPECT_EQ(recorder.recording().frames[2].frameNumber, 2u);
+    EXPECT_FLOAT_EQ(recorder.recording().frames[0].deltaTime, 0.016f);
+    EXPECT_FLOAT_EQ(recorder.recording().frames[1].deltaTime, 0.017f);
+}
+
+// --- stopRecording finalizes pending frame with events ---
+
+TEST(InputRecorderTest, StopRecordingFinalizesPendingFrame) {
+    InputRecorder recorder;
+    recorder.beginRecording();
+
+    SerializedEvent e;
+    e.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e.keycode = 65;
+    recorder.captureEvent(e);
+
+    // Stop without calling advanceFrame — pending events should be saved
+    recorder.stopRecording();
+
+    ASSERT_EQ(recorder.recording().frameCount(), 1u);
+    EXPECT_EQ(recorder.recording().frames[0].events.size(), 1u);
+}
+
+// --- Playback returns events in correct frame order ---
+
+TEST(InputRecorderTest, PlaybackReturnsEventsInOrder) {
+    InputRecorder recorder;
+    recorder.beginRecording();
+
+    SerializedEvent e1;
+    e1.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e1.keycode = 65;
+    recorder.captureEvent(e1);
+    recorder.advanceFrame(0.016f);
+
+    SerializedEvent e2;
+    e2.eventType = static_cast<uint32_t>(InputEventType::KEY_UP);
+    e2.keycode = 65;
+    recorder.captureEvent(e2);
+    recorder.advanceFrame(0.016f);
+
+    recorder.stopRecording();
+    ASSERT_EQ(recorder.recording().frameCount(), 2u);
+
+    EXPECT_TRUE(recorder.startPlayback());
+    EXPECT_TRUE(recorder.isPlaying());
+
+    auto frame0 = recorder.getNextFrame();
+    ASSERT_EQ(frame0.size(), 1u);
+    EXPECT_EQ(frame0[0].keycode, 65);
+    EXPECT_EQ(frame0[0].eventType, static_cast<uint32_t>(InputEventType::KEY_DOWN));
+
+    auto frame1 = recorder.getNextFrame();
+    ASSERT_EQ(frame1.size(), 1u);
+    EXPECT_EQ(frame1[0].eventType, static_cast<uint32_t>(InputEventType::KEY_UP));
+}
+
+// --- Playback ends when frames exhausted ---
+
+TEST(InputRecorderTest, PlaybackEndsWhenFramesExhausted) {
+    InputRecorder recorder;
+    recorder.beginRecording();
+
+    SerializedEvent e;
+    e.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e.keycode = 65;
+    recorder.captureEvent(e);
+    recorder.advanceFrame(0.016f);
+    recorder.stopRecording();
+
+    recorder.startPlayback();
+
+    auto frame0 = recorder.getNextFrame();
+    EXPECT_EQ(frame0.size(), 1u);
+
+    // After last frame, mode returns to Idle
+    EXPECT_EQ(recorder.mode(), RecorderMode::Idle);
+
+    // Further calls return empty
+    auto empty = recorder.getNextFrame();
+    EXPECT_TRUE(empty.empty());
+}
+
+// --- Cannot record while playing ---
+
+TEST(InputRecorderTest, CannotRecordWhilePlaying) {
+    InputRecorder recorder;
+    recorder.beginRecording();
+
+    SerializedEvent e;
+    e.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e.keycode = 65;
+    recorder.captureEvent(e);
+    recorder.advanceFrame(0.016f);
+    recorder.stopRecording();
+
+    recorder.startPlayback();
+    EXPECT_TRUE(recorder.isPlaying());
+
+    // Attempting to begin recording while playing should fail
+    EXPECT_FALSE(recorder.beginRecording());
+    EXPECT_TRUE(recorder.isPlaying()); // still playing
+}
+
+// --- Cannot play while recording ---
+
+TEST(InputRecorderTest, CannotPlayWhileRecording) {
+    InputRecorder recorder;
+    recorder.beginRecording();
+
+    SerializedEvent e;
+    e.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e.keycode = 65;
+    recorder.captureEvent(e);
+    recorder.advanceFrame(0.016f);
+    // Don't stop recording
+
+    EXPECT_FALSE(recorder.startPlayback());
+    EXPECT_TRUE(recorder.isRecording()); // still recording
+}
+
+// --- Cannot play empty recording ---
+
+TEST(InputRecorderTest, CannotPlayEmptyRecording) {
+    InputRecorder recorder;
+    EXPECT_FALSE(recorder.startPlayback());
+    EXPECT_EQ(recorder.mode(), RecorderMode::Idle);
+}
+
+// --- Save -> load -> playback roundtrip ---
+
+TEST(InputRecorderTest, SaveLoadPlaybackRoundtrip) {
+    // Record some events
+    InputRecorder recorder;
+    recorder.beginRecording();
+
+    SerializedEvent e1;
+    e1.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e1.keycode = 87; // 'W'
+    e1.modifiers = MOD_SHIFT;
+    recorder.captureEvent(e1);
+    recorder.advanceFrame(0.016f);
+
+    SerializedEvent e2;
+    e2.eventType = static_cast<uint32_t>(InputEventType::MOUSE_MOTION);
+    e2.mouseX = 320;
+    e2.mouseY = 240;
+    e2.mouseDeltaX = 5;
+    e2.mouseDeltaY = -3;
+    recorder.captureEvent(e2);
+    recorder.advanceFrame(0.033f);
+
+    recorder.stopRecording();
+
+    // Serialize to JSON and back
+    nlohmann::json j = recorder.recording();
+    InputRecording loaded = j.get<InputRecording>();
+
+    // Load into a fresh recorder
+    InputRecorder recorder2;
+    recorder2.setRecording(std::move(loaded));
+
+    EXPECT_TRUE(recorder2.startPlayback());
+
+    auto f0 = recorder2.getNextFrame();
+    ASSERT_EQ(f0.size(), 1u);
+    EXPECT_EQ(f0[0].keycode, 87);
+    EXPECT_EQ(f0[0].modifiers, MOD_SHIFT);
+
+    auto f1 = recorder2.getNextFrame();
+    ASSERT_EQ(f1.size(), 1u);
+    EXPECT_EQ(f1[0].mouseX, 320);
+    EXPECT_EQ(f1[0].mouseDeltaY, -3);
+
+    EXPECT_EQ(recorder2.mode(), RecorderMode::Idle);
+}
+
+// --- setRecording only works when Idle ---
+
+TEST(InputRecorderTest, SetRecordingOnlyWorksWhenIdle) {
+    InputRecorder recorder;
+    recorder.beginRecording();
+
+    InputRecording replacement;
+    InputFrame f;
+    f.frameNumber = 0;
+    f.deltaTime = 0.016f;
+    SerializedEvent e;
+    e.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e.keycode = 99;
+    f.events.push_back(e);
+    replacement.addFrame(f);
+
+    recorder.setRecording(std::move(replacement));
+    // Should have been ignored because we're recording
+    EXPECT_EQ(recorder.recording().frameCount(), 0u);
+}
+
+// --- Metadata updated on stopRecording ---
+
+TEST(InputRecorderTest, MetadataUpdatedOnStopRecording) {
+    InputRecorder recorder;
+    recorder.beginRecording();
+
+    SerializedEvent e;
+    e.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
+    e.keycode = 65;
+    recorder.captureEvent(e);
+    recorder.advanceFrame(0.016f);
+
+    recorder.captureEvent(e);
+    recorder.advanceFrame(0.033f);
+
+    recorder.stopRecording();
+
+    EXPECT_EQ(recorder.recording().metadata.totalFrames, 2u);
+    EXPECT_NEAR(recorder.recording().metadata.totalDuration, 0.049f, 1e-5f);
+}

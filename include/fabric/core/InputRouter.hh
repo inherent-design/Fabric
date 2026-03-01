@@ -13,6 +13,8 @@ class Element;
 
 namespace fabric {
 
+class InputRecorder;
+
 enum class InputMode {
     GameOnly,
     UIOnly,
@@ -39,6 +41,9 @@ class InputRouter {
     // Console toggle callback (backtick key)
     void setConsoleToggleCallback(std::function<void()> cb) { consoleToggleCallback_ = std::move(cb); }
 
+    /// Attach an InputRecorder for capture/playback. Pass nullptr to detach.
+    void setRecorder(InputRecorder* recorder);
+
     /// Register a callback that fires on non-repeat key-down events.
     /// Callbacks are suppressed in UIOnly mode. Replaces any previous
     /// callback for the same key.
@@ -54,6 +59,7 @@ class InputRouter {
   private:
     InputManager& inputMgr_;
     InputMode mode_ = InputMode::GameOnly;
+    InputRecorder* recorder_ = nullptr;
     std::function<void()> consoleToggleCallback_;
     std::unordered_map<SDL_Keycode, std::function<void()>> keyCallbacks_;
 
