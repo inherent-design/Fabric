@@ -1,5 +1,6 @@
 #include "fabric/core/LSystemVegetation.hh"
 
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 #include <stack>
@@ -160,6 +161,76 @@ std::vector<TurtleSegment> interpret(const std::string& expanded, const LSystemR
     }
 
     return segments;
+}
+
+// ---------- voxelizeSegment ----------
+
+void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceField& essence) {
+    // Choose essence by material tag.
+    auto ess = (seg.materialTag == 0) ? kWoodEssence : kLeafEssence;
+
+    glm::vec3 delta = seg.end - seg.start;
+    float length = glm::length(delta);
+
+    if (length < 1e-6f) {
+        // Degenerate segment: stamp a single voxel at start.
+        int ix = static_cast<int>(std::floor(seg.start.x));
+        int iy = static_cast<int>(std::floor(seg.start.y));
+        int iz = static_cast<int>(std::floor(seg.start.z));
+        float d = density.read(ix, iy, iz);
+        density.write(ix, iy, iz, std::clamp(d + 1.0f, 0.0f, 1.0f));
+        essence.write(ix, iy, iz, ess);
+        return;
+    }
+
+    glm::vec3 dir = delta / length;
+
+    // Number of steps: at least 1 per voxel along the line.
+    int steps = static_cast<int>(std::ceil(length)) + 1;
+    float stepSize = length / static_cast<float>(steps);
+    int iRadius = std::max(0, static_cast<int>(std::ceil(seg.radius)) - 1);
+
+    for (int s = 0; s <= steps; ++s) {
+        float t = static_cast<float>(s) * stepSize;
+        glm::vec3 pos = seg.start + dir * t;
+
+        int cx = static_cast<int>(std::floor(pos.x));
+        int cy = static_cast<int>(std::floor(pos.y));
+        int cz = static_cast<int>(std::floor(pos.z));
+
+        // Fill sphere cross-section at each step.
+        for (int dz = -iRadius; dz <= iRadius; ++dz) {
+            for (int dy = -iRadius; dy <= iRadius; ++dy) {
+                for (int dx = -iRadius; dx <= iRadius; ++dx) {
+                    float dist2 = static_cast<float>(dx * dx + dy * dy + dz * dz);
+                    if (dist2 <= seg.radius * seg.radius) {
+                        int vx = cx + dx;
+                        int vy = cy + dy;
+                        int vz = cz + dz;
+
+                        // Distance-based falloff for density.
+                        float dist = std::sqrt(dist2);
+                        float contribution = 1.0f - (dist / (seg.radius + 1.0f));
+                        float d = density.read(vx, vy, vz);
+                        density.write(vx, vy, vz, std::clamp(d + contribution, 0.0f, 1.0f));
+                        essence.write(vx, vy, vz, ess);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------- voxelizeTree ----------
+
+void voxelizeTree(const std::vector<TurtleSegment>& segments, DensityField& density, EssenceField& essence,
+                  const glm::ivec3& origin) {
+    for (const auto& seg : segments) {
+        TurtleSegment offset = seg;
+        offset.start += glm::vec3(origin);
+        offset.end += glm::vec3(origin);
+        voxelizeSegment(offset, density, essence);
+    }
 }
 
 } // namespace fabric

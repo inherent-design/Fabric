@@ -298,4 +298,108 @@ WFCResult wfcSolve(WFCGrid& grid, const std::vector<WFCTile>& tiles, uint32_t se
     return hadContradiction ? WFCResult::Contradiction : WFCResult::Success;
 }
 
+// ---------- WFCTileSet::deriveAdjacency ----------
+
+void WFCTileSet::deriveAdjacency() {
+    adjacencyPairs.clear();
+    int n = static_cast<int>(tiles.size());
+
+    for (int face = 0; face < 6; ++face) {
+        int opp = wfcOppositeFace(face);
+        for (int a = 0; a < n; ++a) {
+            for (int b = 0; b < n; ++b) {
+                if (tiles[a].sockets[face] == tiles[b].sockets[opp]) {
+                    // Encode: face * n*n + a * n + b (unique per triple).
+                    adjacencyPairs.push_back({a, b});
+                }
+            }
+        }
+    }
+}
+
+// ---------- Factory helpers ----------
+
+namespace {
+
+/// Helper: create a WFCTileData with uniform density and essence, named sockets, and weight.
+WFCTileData makeTileData(const std::string& name, float uniformDensity, float uniformEssence,
+                         const std::array<int, 6>& sockets, float weight = 1.0f) {
+    WFCTileData tile;
+    tile.name = name;
+    tile.weight = weight;
+    tile.sockets = sockets;
+    tile.density.fill(uniformDensity);
+    tile.essence.fill(uniformEssence);
+    return tile;
+}
+
+} // anonymous namespace
+
+// ---------- createDungeonTileSet ----------
+
+WFCTileSet createDungeonTileSet() {
+    WFCTileSet ts;
+
+    // Socket convention:
+    //   0 = air-air boundary
+    //   1 = wall face (solid exterior)
+    //   2 = corridor opening
+    //   3 = pillar contact
+
+    // Tile 0: Air (empty space)
+    ts.tiles.push_back(makeTileData("air", 0.0f, 0.0f, {0, 0, 0, 0, 0, 0}, 3.0f));
+
+    // Tile 1: Corridor (open on +X/-X, walls on Y/Z)
+    ts.tiles.push_back(makeTileData("corridor", 0.2f, 1.0f, {2, 2, 1, 1, 1, 1}, 2.0f));
+
+    // Tile 2: Room (open on all horizontal faces, floor/ceiling on Y)
+    ts.tiles.push_back(makeTileData("room", 0.1f, 2.0f, {2, 2, 1, 1, 2, 2}, 1.0f));
+
+    // Tile 3: Wall (solid on all faces)
+    ts.tiles.push_back(makeTileData("wall", 1.0f, 3.0f, {1, 1, 1, 1, 1, 1}, 2.0f));
+
+    // Tile 4: Pillar (solid, but with pillar sockets on Y)
+    ts.tiles.push_back(makeTileData("pillar", 0.9f, 4.0f, {1, 1, 3, 3, 1, 1}, 0.5f));
+
+    // Tile 5: Door (open on +X/-X, solid elsewhere, transition piece)
+    ts.tiles.push_back(makeTileData("door", 0.3f, 5.0f, {2, 2, 1, 1, 1, 1}, 0.5f));
+
+    ts.deriveAdjacency();
+    return ts;
+}
+
+// ---------- createBuildingTileSet ----------
+
+WFCTileSet createBuildingTileSet() {
+    WFCTileSet ts;
+
+    // Socket convention:
+    //   0 = air
+    //   10 = wall exterior
+    //   11 = wall interior
+    //   12 = window opening
+    //   13 = floor/ceiling contact
+
+    // Tile 0: Air
+    ts.tiles.push_back(makeTileData("air", 0.0f, 0.0f, {0, 0, 0, 0, 0, 0}, 3.0f));
+
+    // Tile 1: Floor slab (solid on +Y/-Y, open on horizontal)
+    ts.tiles.push_back(makeTileData("floor", 0.8f, 10.0f, {11, 11, 13, 13, 11, 11}, 2.0f));
+
+    // Tile 2: Wall section (solid on +X/-X, stacks on Y)
+    ts.tiles.push_back(makeTileData("wall", 1.0f, 11.0f, {10, 10, 13, 13, 10, 10}, 2.0f));
+
+    // Tile 3: Window (wall with opening on +Z/-Z)
+    ts.tiles.push_back(makeTileData("window", 0.5f, 12.0f, {10, 10, 13, 13, 12, 12}, 1.0f));
+
+    // Tile 4: Roof (solid on -Y, air on +Y)
+    ts.tiles.push_back(makeTileData("roof", 0.9f, 13.0f, {10, 10, 0, 13, 10, 10}, 1.0f));
+
+    // Tile 5: Interior (open space inside building)
+    ts.tiles.push_back(makeTileData("interior", 0.0f, 14.0f, {11, 11, 13, 13, 11, 11}, 1.5f));
+
+    ts.deriveAdjacency();
+    return ts;
+}
+
 } // namespace fabric

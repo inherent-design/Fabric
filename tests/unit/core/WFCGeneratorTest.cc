@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <set>
+
 using namespace fabric;
 
 // ---------------------------------------------------------------------------
@@ -406,4 +408,103 @@ TEST(WFCGeneratorTest, WeightedSelectionBias) {
 
     // With 99:1 weight ratio, we expect ~99% heavy. Allow generous margin.
     EXPECT_GT(heavyCount, kTrials * 80 / 100) << "Heavy tile (weight 99) should be chosen most of the time";
+}
+
+// ===========================================================================
+// TileSet tests (EF-22.2)
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// 13. Dungeon tile set has >= 5 tiles, Building tile set has >= 5 tiles
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, TileSetMinimumTileCount) {
+    auto dungeon = createDungeonTileSet();
+    EXPECT_GE(dungeon.tiles.size(), 5u) << "Dungeon tile set must have at least 5 tiles";
+
+    auto building = createBuildingTileSet();
+    EXPECT_GE(building.tiles.size(), 5u) << "Building tile set must have at least 5 tiles";
+}
+
+// ---------------------------------------------------------------------------
+// 14. No orphan sockets (every socket value on any face has at least one
+//     matching tile on the opposite face)
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, NoOrphanSockets) {
+    auto checkOrphans = [](const WFCTileSet& ts, const std::string& label) {
+        for (int face = 0; face < 6; ++face) {
+            int opp = wfcOppositeFace(face);
+            for (size_t i = 0; i < ts.tiles.size(); ++i) {
+                int socket = ts.tiles[i].sockets[face];
+                bool found = false;
+                for (size_t j = 0; j < ts.tiles.size(); ++j) {
+                    if (ts.tiles[j].sockets[opp] == socket) {
+                        found = true;
+                        break;
+                    }
+                }
+                EXPECT_TRUE(found) << label << ": tile \"" << ts.tiles[i].name << "\" has orphan socket " << socket
+                                   << " on face " << face;
+            }
+        }
+    };
+
+    checkOrphans(createDungeonTileSet(), "dungeon");
+    checkOrphans(createBuildingTileSet(), "building");
+}
+
+// ---------------------------------------------------------------------------
+// 15. All tile densities are in [0, 1]
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, TileDataDensityValid) {
+    auto check = [](const WFCTileSet& ts, const std::string& label) {
+        for (const auto& tile : ts.tiles) {
+            for (int i = 0; i < kWFCTileVolume; ++i) {
+                EXPECT_GE(tile.density[i], 0.0f)
+                    << label << ": tile \"" << tile.name << "\" density[" << i << "] below 0";
+                EXPECT_LE(tile.density[i], 1.0f)
+                    << label << ": tile \"" << tile.name << "\" density[" << i << "] above 1";
+            }
+        }
+    };
+
+    check(createDungeonTileSet(), "dungeon");
+    check(createBuildingTileSet(), "building");
+}
+
+// ---------------------------------------------------------------------------
+// 16. Adjacency derived correctly: pairs are non-empty and consistent
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, AdjacencyDerivedCorrectly) {
+    auto dungeon = createDungeonTileSet();
+    EXPECT_FALSE(dungeon.adjacencyPairs.empty()) << "Dungeon adjacency pairs should not be empty";
+
+    // Every pair index must be a valid tile index.
+    int n = static_cast<int>(dungeon.tiles.size());
+    for (const auto& [a, b] : dungeon.adjacencyPairs) {
+        EXPECT_GE(a, 0);
+        EXPECT_LT(a, n);
+        EXPECT_GE(b, 0);
+        EXPECT_LT(b, n);
+    }
+
+    // Verify: the air tile (socket 0 on all faces) should be self-adjacent
+    // on every face, producing at least 6 (air, air) pairs.
+    int airPairCount = 0;
+    for (const auto& [a, b] : dungeon.adjacencyPairs) {
+        if (a == 0 && b == 0)
+            ++airPairCount;
+    }
+    EXPECT_GE(airPairCount, 6) << "Air tile should be self-adjacent on all 6 faces";
+
+    // Also check building tile set.
+    auto building = createBuildingTileSet();
+    EXPECT_FALSE(building.adjacencyPairs.empty()) << "Building adjacency pairs should not be empty";
+}
+
+// ---------------------------------------------------------------------------
+// 17. kWFCTileSize constant is correct
+// ---------------------------------------------------------------------------
+TEST(WFCGeneratorTest, TileSizeConstant) {
+    EXPECT_EQ(kWFCTileSize, 4);
+    EXPECT_EQ(kWFCTileVolume, 64);
 }
