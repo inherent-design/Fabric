@@ -63,8 +63,9 @@ include(FabricGoogleTest)
 # GLM (OpenGL Mathematics) - header-only math library
 include(FabricGLM)
 
-# mimalloc - global allocator replacement (gated for sanitizer compatibility)
-option(FABRIC_USE_MIMALLOC "Link mimalloc as global allocator override" ON)
+# mimalloc - available for explicit use on hot paths; global override OFF by
+# default because MI_OVERRIDE conflicts with dlopen'd drivers (MoltenVK/Metal).
+option(FABRIC_USE_MIMALLOC "Link mimalloc as global allocator override" OFF)
 if(FABRIC_USE_MIMALLOC)
     include(FabricMimalloc)
 endif()
@@ -395,6 +396,14 @@ if(FABRIC_USE_MIMALLOC)
 else()
     add_executable(Fabric src/core/Fabric.cc)
     target_link_libraries(Fabric PRIVATE FabricLib)
+endif()
+
+# Vulkan loader (libvulkan.1.dylib) is installed via Homebrew on macOS;
+# /opt/homebrew/lib is not in the default dlopen search path on Apple Silicon.
+if(APPLE)
+    set_target_properties(Fabric PROPERTIES
+        BUILD_RPATH "/opt/homebrew/lib"
+    )
 endif()
 
 add_custom_command(TARGET Fabric POST_BUILD
