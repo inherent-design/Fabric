@@ -8,6 +8,8 @@
 
 namespace recurse::systems {
 
+TerrainSystem::~TerrainSystem() = default;
+
 void TerrainSystem::init(fabric::AppContext& /*ctx*/) {
     TerrainConfig terrainConfig;
     terrainConfig.seed = 42;

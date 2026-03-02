@@ -1,4 +1,5 @@
 #include "recurse/systems/CharacterMovementSystem.hh"
+#include "recurse/systems/CameraGameSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 
@@ -13,14 +14,9 @@
 
 #include <cmath>
 
-// Forward declare; CameraGameSystem is created by W1B but will exist
-// in the registry at init time because all systems are registered
-// before initAll() runs.
 namespace recurse::systems {
-class CameraGameSystem;
-} // namespace recurse::systems
 
-namespace recurse::systems {
+CharacterMovementSystem::~CharacterMovementSystem() = default;
 
 void CharacterMovementSystem::init(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
@@ -59,21 +55,13 @@ void CharacterMovementSystem::init(fabric::AppContext& ctx) {
 void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     auto* inputManager = ctx.inputManager;
 
-    // Camera direction from previous frame (CameraGameSystem runs in Update phase).
-    // This matches existing behavior: onFixedUpdate read cameraCtrl before
-    // onRender updated it.
-    // CameraGameSystem provides forward()/right() accessors.
-    // Until W2 wiring, use zero vectors as safe fallback.
+    // Camera direction from previous frame (CameraGameSystem runs in Update phase)
     fabric::Vec3f camFwd(0.0f, 0.0f, -1.0f);
     fabric::Vec3f camRight(1.0f, 0.0f, 0.0f);
 
-    // camera_ may be null if CameraGameSystem is not yet registered
-    // (during unit testing or partial system setup)
     if (camera_) {
-        // CameraGameSystem is defined by W1B; access its forward/right
-        // through the opaque pointer. The actual method calls will compile
-        // once both W1A and W1B files are in CMakeLists.txt.
-        // For now, leave the fallback vectors above.
+        camFwd = camera_->forward();
+        camRight = camera_->right();
     }
 
     if (movementFSM_.isFlying()) {

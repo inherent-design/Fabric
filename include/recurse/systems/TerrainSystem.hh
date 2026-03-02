@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fabric/core/FieldLayer.hh"
-#include "fabric/core/Spatial.hh"
+#include "fabric/core/Rendering.hh"
 #include "fabric/core/SystemBase.hh"
 #include <memory>
 
@@ -21,6 +21,7 @@ namespace recurse::systems {
 class TerrainSystem : public fabric::System<TerrainSystem> {
   public:
     TerrainSystem() = default;
+    ~TerrainSystem() override;
 
     void init(fabric::AppContext& ctx) override;
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;

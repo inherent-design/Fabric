@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/core/Spatial.hh"
+#include "fabric/core/Rendering.hh"
 #include "fabric/core/SystemBase.hh"
 #include "recurse/render/ShadowSystem.hh"
 

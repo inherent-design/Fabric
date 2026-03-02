@@ -1,4 +1,5 @@
 #include "recurse/systems/ChunkPipelineSystem.hh"
+#include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 
@@ -22,9 +23,12 @@ constexpr float kSpawnZ = 16.0f;
 
 namespace recurse::systems {
 
+ChunkPipelineSystem::~ChunkPipelineSystem() = default;
+
 void ChunkPipelineSystem::init(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
+    charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
 
     auto& dispatcher = ctx.dispatcher;
 
@@ -128,15 +132,19 @@ void ChunkPipelineSystem::shutdown() {
 void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/) {
     auto& ecsWorld = ctx.world;
 
-    // Streaming: load/unload chunks around player position.
-    // CharacterMovementSystem owns playerPos, but streaming uses
-    // a cached position from CameraGameSystem (previous frame).
-    // For now, use spawn position as fallback; Wave 2 wiring will
-    // provide the actual player position through the cross-system pattern.
+    // Streaming: load/unload chunks around player position
     float px = kSpawnX, py = kSpawnY, pz = kSpawnZ;
     float speed = 0.0f;
 
-    // These will be set properly when CharacterMovementSystem is wired
+    if (charMovement_) {
+        const auto& pos = charMovement_->playerPosition();
+        px = pos.x;
+        py = pos.y;
+        pz = pos.z;
+        const auto& vel = charMovement_->playerVelocity();
+        speed = std::sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
+    }
+
     auto streamUpdate = streaming_->update(px, py, pz, speed);
 
     for (const auto& coord : streamUpdate.toLoad) {
@@ -170,8 +178,7 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
         terrain_->essence().grid().removeChunk(coord.cx, coord.cy, coord.cz);
     }
 
-    // LOD: compute per-chunk LOD from camera distance (marks dirty on change).
-    // Camera position will be provided by CameraGameSystem once wired.
+    // LOD: compute per-chunk LOD from player distance (marks dirty on change)
     meshManager_->updateLOD(px, py, pz);
 
     // Mesh manager: budgeted CPU re-meshing of dirty chunks
