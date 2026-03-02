@@ -1,9 +1,11 @@
 #include "recurse/render/WaterRenderer.hh"
+#include "fixtures/BgfxNoopFixture.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
 using namespace recurse;
+using fabric::test::BgfxNoopFixture;
 
 TEST(WaterRendererTest, DefaultInvalidState) {
     WaterRenderer renderer;
@@ -66,10 +68,33 @@ TEST(WaterRendererTest, RenderZeroIndexCountSkips) {
     EXPECT_FALSE(renderer.isValid());
 }
 
-TEST(WaterRendererTest, IsValidAfterInitRequiresRuntimeBgfxContext) {
-    GTEST_SKIP() << "Requires live bgfx runtime context to safely validate isValid() after init.";
+TEST_F(BgfxNoopFixture, WaterRendererInitAndShutdownUnderNoop) {
+    WaterRenderer renderer;
+    // Trigger lazy initProgram() through render() with a valid mesh.
+    // Noop renderer accepts all shader creates, so init succeeds.
+    WaterChunkMesh mesh;
+    mesh.valid = true;
+    mesh.indexCount = 3;
+    mesh.vbh = BGFX_INVALID_HANDLE;
+    mesh.ibh = BGFX_INVALID_HANDLE;
+
+    renderer.render(0, mesh, 0, 0, 0);
+    EXPECT_TRUE(renderer.isValid());
+    renderer.shutdown();
+    EXPECT_FALSE(renderer.isValid());
 }
 
-TEST(WaterRendererTest, RenderWithValidMeshRequiresRuntimeBgfxContext) {
-    GTEST_SKIP() << "Requires live bgfx runtime context to safely validate render path.";
+TEST_F(BgfxNoopFixture, WaterRendererRenderWithValidMeshNoOp) {
+    WaterRenderer renderer;
+    // Render with valid-looking mesh but invalid buffer handles.
+    // Lazy init triggers initProgram() which succeeds under noop.
+    WaterChunkMesh mesh;
+    mesh.valid = true;
+    mesh.indexCount = 100;
+    mesh.vbh = BGFX_INVALID_HANDLE;
+    mesh.ibh = BGFX_INVALID_HANDLE;
+
+    renderer.render(0, mesh, 0, 0, 0);
+    EXPECT_TRUE(renderer.isValid());
+    renderer.shutdown();
 }
