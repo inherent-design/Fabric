@@ -139,6 +139,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
 
     // ── Phase 3: Infrastructure ─────────────────────────────────
     ConfigManager configManager;
+    configManager.loadEngineConfig("fabric.toml");
     if (!desc.configPath.empty())
         configManager.loadAppConfig(desc.configPath);
     configManager.applyCLIOverrides(argc, argv);
@@ -318,6 +319,9 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
                 rmlContext->Update();
                 rmlContext->Render();
             }
+
+            // Persist user preferences (500ms debounce, no-op when clean)
+            configManager.flushIfDirty();
 
             bgfx::frame();
 

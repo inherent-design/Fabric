@@ -427,32 +427,8 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_CXX_COMPILER M
     endif()
 endif()
 
-# Create the Fabric executable
-if(FABRIC_USE_MIMALLOC)
-    add_executable(Fabric src/core/Fabric.cc src/core/MimallocOverride.cc)
-    target_link_libraries(Fabric PRIVATE FabricLib mimalloc-static)
-else()
-    add_executable(Fabric src/core/Fabric.cc)
-    target_link_libraries(Fabric PRIVATE FabricLib)
-endif()
-
-# Vulkan loader (libvulkan.1.dylib) is installed via Homebrew on macOS;
-# /opt/homebrew/lib is not in the default dlopen search path on Apple Silicon.
-if(APPLE)
-    set_target_properties(Fabric PROPERTIES
-        BUILD_RPATH "/opt/homebrew/lib"
-    )
-endif()
-
-add_custom_command(TARGET Fabric POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:Fabric>/assets
-    COMMENT "Copying assets to build output directory")
-
-# Create the Recurse executable (new entry point, FabricAppDesc pattern).
-# Uses FabricApp::run() with lifecycle callbacks instead of an inline main loop.
-# Fabric remains the primary working executable until FabricApp::run() Phase 8
-# (main loop) is fully implemented.
+# Create the Recurse executable (canonical entry point, FabricAppDesc pattern).
+# Uses FabricApp::run() with lifecycle callbacks; all game logic in Recurse.cc.
 if(FABRIC_USE_MIMALLOC)
     add_executable(Recurse src/recurse/Recurse.cc src/core/MimallocOverride.cc)
     target_link_libraries(Recurse PRIVATE FabricLib mimalloc-static)
@@ -470,7 +446,14 @@ endif()
 add_custom_command(TARGET Recurse POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:Recurse>/assets
-    COMMENT "Copying assets to Recurse build output directory")
+    COMMENT "Copying assets to build output directory")
+
+add_custom_command(TARGET Recurse POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_SOURCE_DIR}/config/fabric.toml $<TARGET_FILE_DIR:Recurse>/fabric.toml
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_SOURCE_DIR}/config/recurse.toml $<TARGET_FILE_DIR:Recurse>/recurse.toml
+    COMMENT "Copying config files to build output directory")
 
 #------------------------------------------------------------------------------
 # Testing Configuration
@@ -569,8 +552,7 @@ if(WIN32)
         WIN32_LEAN_AND_MEAN
     )
 
-    # Configure as Windows GUI applications
-    set_target_properties(Fabric PROPERTIES WIN32_EXECUTABLE TRUE)
+    # Configure as Windows GUI application
     set_target_properties(Recurse PROPERTIES WIN32_EXECUTABLE TRUE)
 
     # Windows-specific libraries (shlwapi and version required by webview 0.12)
@@ -595,7 +577,7 @@ endif()
 #------------------------------------------------------------------------------
 include(GNUInstallDirs)
 
-install(TARGETS Fabric Recurse
+install(TARGETS Recurse
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
