@@ -323,4 +323,400 @@ TEST_F(AssetRegistryTest, MemoryUsageTracking) {
     EXPECT_GT(registry.getMemoryUsage<TestAsset>(), 0u);
 }
 
+// ========================================================================
+// Audit: Handle<T> get() on non-Loaded states
+// ========================================================================
+
+TEST_F(AssetRegistryTest, GetOnNullHandleThrows) {
+    Handle<TestAsset> h;
+    EXPECT_THROW(h.get(), std::exception);
+}
+
+TEST_F(AssetRegistryTest, GetOnFailedHandleThrows) {
+    auto loader = std::make_unique<TestAssetLoader>();
+    loader->shouldFail = true;
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::move(loader));
+
+    auto path = writeTempFile("failget.test", "data");
+    auto handle = registry.load<TestAsset>(path);
+
+    EXPECT_TRUE(handle.isFailed());
+    EXPECT_THROW(handle.get(), std::exception);
+}
+
+// ========================================================================
+// Audit: Handle<T> callbacks
+// ========================================================================
+
+TEST_F(AssetRegistryTest, OnLoadedMultipleCallbacksAllFire) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    auto path = writeTempFile("multi_cb.test", "data");
+    auto handle = registry.load<TestAsset>(path);
+
+    int count = 0;
+    handle.onLoaded([&](TestAsset&) { ++count; });
+    handle.onLoaded([&](TestAsset&) { ++count; });
+    handle.onLoaded([&](TestAsset&) { ++count; });
+
+    EXPECT_EQ(count, 3);
+}
+
+TEST_F(AssetRegistryTest, OnLoadedOnNullHandleIsNoop) {
+    Handle<TestAsset> h;
+    bool called = false;
+    h.onLoaded([&](TestAsset&) { called = true; });
+    EXPECT_FALSE(called);
+}
+
+TEST_F(AssetRegistryTest, OnLoadedOnFailedHandleDoesNotFire) {
+    auto loader = std::make_unique<TestAssetLoader>();
+    loader->shouldFail = true;
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::move(loader));
+
+    auto path = writeTempFile("fail_cb.test", "data");
+    auto handle = registry.load<TestAsset>(path);
+
+    bool called = false;
+    handle.onLoaded([&](TestAsset&) { called = true; });
+    EXPECT_FALSE(called);
+}
+
+// ========================================================================
+// Audit: Handle<T> copy/move/equality
+// ========================================================================
+
+TEST_F(AssetRegistryTest, HandleCopySharesUnderlyingAsset) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    auto path = writeTempFile("copy.test", "shared");
+    auto h1 = registry.load<TestAsset>(path);
+    auto h2 = h1;
+
+    EXPECT_EQ(h1, h2);
+    EXPECT_EQ(&h1.get(), &h2.get());
+}
+
+TEST_F(AssetRegistryTest, HandleMoveTransfersOwnership) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    auto path = writeTempFile("move.test", "data");
+    auto h1 = registry.load<TestAsset>(path);
+    auto* ptr = h1.tryGet();
+
+    auto h2 = std::move(h1);
+
+    EXPECT_FALSE(static_cast<bool>(h1));
+    EXPECT_TRUE(static_cast<bool>(h2));
+    EXPECT_EQ(h2.tryGet(), ptr);
+}
+
+TEST_F(AssetRegistryTest, HandleInequalityForDifferentAssets) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    auto p1 = writeTempFile("neq1.test", "a");
+    auto p2 = writeTempFile("neq2.test", "b");
+
+    auto h1 = registry.load<TestAsset>(p1);
+    auto h2 = registry.load<TestAsset>(p2);
+
+    EXPECT_NE(h1, h2);
+}
+
+// ========================================================================
+// Audit: Handle<T> accessor edge cases
+// ========================================================================
+
+TEST_F(AssetRegistryTest, HandlePathOnNullReturnsEmpty) {
+    Handle<TestAsset> h;
+    EXPECT_TRUE(h.path().empty());
+}
+
+TEST_F(AssetRegistryTest, HandleErrorOnLoadedReturnsEmpty) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    auto path = writeTempFile("no_err.test", "data");
+    auto handle = registry.load<TestAsset>(path);
+
+    EXPECT_TRUE(handle.error().empty());
+}
+
+// ========================================================================
+// Audit: Loader returning nullptr (Loaded state but no asset)
+// ========================================================================
+
+TEST_F(AssetRegistryTest, LoaderReturningNullptrSetsLoadedButGetFails) {
+    struct NullLoader : AssetLoader<TestAsset> {
+        std::unique_ptr<TestAsset> load(const std::filesystem::path&, ResourceHub&) override { return nullptr; }
+        std::vector<std::string> extensions() const override { return {".test"}; }
+    };
+
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<NullLoader>());
+
+    auto path = writeTempFile("null_ret.test", "data");
+    auto handle = registry.load<TestAsset>(path);
+
+    // State is Loaded because the loader did not throw
+    EXPECT_EQ(handle.state(), AssetState::Loaded);
+    EXPECT_TRUE(handle.isLoaded());
+    // But the asset pointer is null, so get() throws and tryGet() returns nullptr
+    EXPECT_THROW(handle.get(), std::exception);
+    EXPECT_EQ(handle.tryGet(), nullptr);
+}
+
+// ========================================================================
+// Audit: AssetRegistry type-erasure edge cases
+// ========================================================================
+
+TEST_F(AssetRegistryTest, GetUnregisteredTypeReturnsNull) {
+    AssetRegistry registry(hub);
+    auto h = registry.get<TestAsset>("/some/path.test");
+    EXPECT_FALSE(static_cast<bool>(h));
+}
+
+TEST_F(AssetRegistryTest, CountUnregisteredTypeReturnsZero) {
+    AssetRegistry registry(hub);
+    EXPECT_EQ(registry.count<TestAsset>(), 0u);
+}
+
+TEST_F(AssetRegistryTest, MemoryUsageUnregisteredTypeReturnsZero) {
+    AssetRegistry registry(hub);
+    EXPECT_EQ(registry.getMemoryUsage<TestAsset>(), 0u);
+}
+
+TEST_F(AssetRegistryTest, TotalCountOnEmptyRegistryIsZero) {
+    AssetRegistry registry(hub);
+    EXPECT_EQ(registry.totalCount(), 0u);
+}
+
+// ========================================================================
+// Audit: Path normalization deduplication
+// ========================================================================
+
+TEST_F(AssetRegistryTest, PathNormalizationDeduplicates) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    auto path = writeTempFile("norm.test", "data");
+    auto h1 = registry.load<TestAsset>(path);
+
+    // Construct an equivalent path with .. that resolves to the same file
+    auto altPath = tempDir / ".." / tempDir.filename() / "norm.test";
+    auto h2 = registry.load<TestAsset>(altPath);
+
+    EXPECT_EQ(h1, h2);
+    EXPECT_EQ(registry.count<TestAsset>(), 1u);
+}
+
+// ========================================================================
+// Audit: LRU eviction invariants
+// ========================================================================
+
+TEST_F(AssetRegistryTest, LRUNoEvictionWhenAtExactBudget) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    auto p1 = writeTempFile("exact1.test", "a");
+    auto p2 = writeTempFile("exact2.test", "b");
+    registry.load<TestAsset>(p1);
+    registry.load<TestAsset>(p2);
+
+    // Budget exactly fits 2 assets: no eviction should occur
+    registry.setMemoryBudget<TestAsset>(sizeof(TestAsset) * 2);
+    registry.update();
+
+    EXPECT_EQ(registry.count<TestAsset>(), 2u);
+}
+
+TEST_F(AssetRegistryTest, LRUAccessViaGetRefreshesPosition) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    auto p1 = writeTempFile("lru_r1.test", "first");
+    auto p2 = writeTempFile("lru_r2.test", "second");
+    auto p3 = writeTempFile("lru_r3.test", "third");
+
+    registry.load<TestAsset>(p1); // tick 0
+    registry.update();            // tick 1
+    registry.load<TestAsset>(p2); // tick 1
+    registry.update();            // tick 2
+    registry.load<TestAsset>(p3); // tick 2
+    registry.update();            // tick 3
+
+    // Refresh p1 via get() so it is no longer the oldest
+    auto refreshed = registry.get<TestAsset>(p1);
+    EXPECT_TRUE(static_cast<bool>(refreshed));
+
+    // Budget for 2 assets. p2 should be evicted (oldest access), not p1.
+    registry.setMemoryBudget<TestAsset>(sizeof(TestAsset) * 2);
+    registry.update(); // tick 4, triggers eviction
+
+    auto h1 = registry.get<TestAsset>(p1);
+    auto h2 = registry.get<TestAsset>(p2);
+    auto h3 = registry.get<TestAsset>(p3);
+
+    EXPECT_TRUE(static_cast<bool>(h1));
+    EXPECT_FALSE(static_cast<bool>(h2));
+    EXPECT_TRUE(static_cast<bool>(h3));
+}
+
+TEST_F(AssetRegistryTest, LRUEvictsMultipleToFitBudget) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    for (int i = 0; i < 5; ++i) {
+        auto p = writeTempFile("mevict" + std::to_string(i) + ".test", "d");
+        registry.load<TestAsset>(p);
+        registry.update();
+    }
+    EXPECT_EQ(registry.count<TestAsset>(), 5u);
+
+    // Budget for only 1 asset: 4 must be evicted
+    registry.setMemoryBudget<TestAsset>(sizeof(TestAsset));
+    registry.update();
+
+    EXPECT_LE(registry.count<TestAsset>(), 1u);
+}
+
+// ========================================================================
+// Audit: Per-type memory budgets
+// ========================================================================
+
+TEST_F(AssetRegistryTest, NoBudgetMeansNoEviction) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    for (int i = 0; i < 10; ++i) {
+        auto p = writeTempFile("nobud" + std::to_string(i) + ".test", "data");
+        registry.load<TestAsset>(p);
+        registry.update();
+    }
+
+    // Default budget is 0 which means unlimited: all 10 survive
+    EXPECT_EQ(registry.count<TestAsset>(), 10u);
+}
+
+TEST_F(AssetRegistryTest, IndependentBudgetsPerType) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+    registry.registerLoader<OtherAsset>(std::make_unique<OtherAssetLoader>());
+
+    auto p1 = writeTempFile("ind1.test", "a");
+    auto p2 = writeTempFile("ind2.test", "b");
+    auto p3 = writeTempFile("ind3.test", "c");
+    registry.load<TestAsset>(p1);
+    registry.update();
+    registry.load<TestAsset>(p2);
+    registry.update();
+    registry.load<TestAsset>(p3);
+
+    auto o1 = writeTempFile("ind1.other", "x");
+    auto o2 = writeTempFile("ind2.other", "y");
+    registry.load<OtherAsset>(o1);
+    registry.update();
+    registry.load<OtherAsset>(o2);
+
+    // Tight budget for TestAsset only; OtherAsset has no budget
+    registry.setMemoryBudget<TestAsset>(sizeof(TestAsset));
+    registry.update();
+
+    EXPECT_LE(registry.count<TestAsset>(), 1u);
+    EXPECT_EQ(registry.count<OtherAsset>(), 2u);
+}
+
+// ========================================================================
+// Audit: Stress patterns
+// ========================================================================
+
+TEST_F(AssetRegistryTest, RapidLoadUnloadCycles) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+    auto path = writeTempFile("rapid.test", "cycle");
+
+    for (int i = 0; i < 20; ++i) {
+        auto handle = registry.load<TestAsset>(path);
+        EXPECT_TRUE(handle.isLoaded());
+        registry.unload<TestAsset>(path);
+        EXPECT_EQ(registry.count<TestAsset>(), 0u);
+    }
+}
+
+TEST_F(AssetRegistryTest, ManyHandlesToSameAsset) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+    auto path = writeTempFile("shared.test", "shared_data");
+
+    std::vector<Handle<TestAsset>> handles;
+    for (int i = 0; i < 50; ++i) {
+        handles.push_back(registry.load<TestAsset>(path));
+    }
+
+    // All handles point to the same underlying asset
+    for (size_t i = 1; i < handles.size(); ++i) {
+        EXPECT_EQ(&handles[i].get(), &handles[0].get());
+    }
+    EXPECT_EQ(registry.count<TestAsset>(), 1u);
+}
+
+// ========================================================================
+// Audit: Reload edge cases
+// ========================================================================
+
+TEST_F(AssetRegistryTest, ReloadNonExistentPathIsNoop) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+    EXPECT_NO_THROW(registry.reload<TestAsset>("/nonexistent/path.test"));
+}
+
+TEST_F(AssetRegistryTest, ReloadUnregisteredTypeIsNoop) {
+    AssetRegistry registry(hub);
+    EXPECT_NO_THROW(registry.reload<TestAsset>("/some/path.test"));
+}
+
+// ========================================================================
+// Audit: Unload edge cases
+// ========================================================================
+
+TEST_F(AssetRegistryTest, UnloadNullHandleIsNoop) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+    Handle<TestAsset> h;
+    EXPECT_NO_THROW(registry.unload(h));
+}
+
+TEST_F(AssetRegistryTest, DoubleUnloadIsNoop) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+    auto path = writeTempFile("dbl_unload.test", "data");
+    registry.load<TestAsset>(path);
+    registry.unload<TestAsset>(path);
+    EXPECT_NO_THROW(registry.unload<TestAsset>(path));
+}
+
+TEST_F(AssetRegistryTest, HandleStateAfterUnload) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+    auto path = writeTempFile("after_unload.test", "data");
+    auto handle = registry.load<TestAsset>(path);
+    EXPECT_TRUE(handle.isLoaded());
+
+    registry.unload<TestAsset>(path);
+
+    // Handle still exists (shared_ptr alive) but asset is gone
+    EXPECT_EQ(handle.state(), AssetState::Unloaded);
+    EXPECT_EQ(handle.tryGet(), nullptr);
+    EXPECT_FALSE(handle.isLoaded());
+    EXPECT_THROW(handle.get(), std::exception);
+    // The handle itself is still non-null (block_ shared_ptr is valid)
+    EXPECT_TRUE(static_cast<bool>(handle));
+}
+
 } // namespace fabric
