@@ -331,6 +331,11 @@ TEST(AppContextTest, OptionalPtrsDefaultNull) {
     EXPECT_EQ(ctx.appModeManager, nullptr);
     EXPECT_EQ(ctx.window, nullptr);
     EXPECT_EQ(ctx.cursorManager, nullptr);
+    EXPECT_EQ(ctx.inputManager, nullptr);
+    EXPECT_EQ(ctx.inputRouter, nullptr);
+    EXPECT_EQ(ctx.camera, nullptr);
+    EXPECT_EQ(ctx.sceneView, nullptr);
+    EXPECT_EQ(ctx.rmlContext, nullptr);
 }
 
 TEST(AppContextTest, OptionalPtrNullCheckPattern) {
@@ -359,6 +364,67 @@ TEST(AppContextTest, OptionalPtrNullCheckPattern) {
 
     bool runtimeAvailable = (ctx.runtimeState != nullptr);
     EXPECT_FALSE(runtimeAvailable);
+}
+
+// ── FabricAppDesc new fields ───────────────────────────────────────────
+
+TEST(FabricAppDescTest, OnFixedUpdateAndOnRenderDefaultNull) {
+    FabricAppDesc desc;
+    EXPECT_FALSE(desc.onFixedUpdate);
+    EXPECT_FALSE(desc.onRender);
+}
+
+TEST(FabricAppDescTest, HeadlessDefaultTrue) {
+    FabricAppDesc desc;
+    EXPECT_TRUE(desc.headless);
+}
+
+TEST(FabricAppDescTest, CallbacksAssignable) {
+    FabricAppDesc desc;
+    bool fixedCalled = false;
+    bool renderCalled = false;
+
+    desc.onFixedUpdate = [&](AppContext& /*ctx*/, float dt) {
+        fixedCalled = true;
+        EXPECT_GT(dt, 0.0f);
+    };
+    desc.onRender = [&](AppContext& /*ctx*/, float frameTime) {
+        renderCalled = true;
+        EXPECT_GE(frameTime, 0.0f);
+    };
+
+    EXPECT_TRUE(static_cast<bool>(desc.onFixedUpdate));
+    EXPECT_TRUE(static_cast<bool>(desc.onRender));
+}
+
+TEST_F(FabricAppTest, HeadlessModeSkipsPlatform) {
+    // headless=true (default) should run through lifecycle without SDL/bgfx
+    FabricAppDesc desc;
+    desc.name = "HeadlessTest";
+
+    bool initCalled = false;
+    bool shutdownCalled = false;
+    desc.onInit = [&](AppContext& ctx) {
+        initCalled = true;
+        // In headless mode, platform pointers should be null
+        EXPECT_EQ(ctx.window, nullptr);
+        EXPECT_EQ(ctx.inputManager, nullptr);
+        EXPECT_EQ(ctx.inputRouter, nullptr);
+        EXPECT_EQ(ctx.camera, nullptr);
+        EXPECT_EQ(ctx.sceneView, nullptr);
+        EXPECT_EQ(ctx.rmlContext, nullptr);
+    };
+    desc.onShutdown = [&](AppContext& /*ctx*/) {
+        shutdownCalled = true;
+    };
+
+    char arg0[] = "test";
+    char* args[] = {arg0};
+    int result = FabricApp::run(1, args, std::move(desc));
+
+    EXPECT_EQ(result, 0);
+    EXPECT_TRUE(initCalled);
+    EXPECT_TRUE(shutdownCalled);
 }
 
 } // namespace fabric

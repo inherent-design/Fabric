@@ -1,14 +1,59 @@
 #include "fabric/core/FabricApp.hh"
 #include "fabric/core/AppContext.hh"
+#include "fabric/core/AppModeManager.hh"
 #include "fabric/core/AssetRegistry.hh"
+#include "fabric/core/Async.hh"
+#include "fabric/core/Camera.hh"
 #include "fabric/core/ConfigManager.hh"
+#include "fabric/core/InputManager.hh"
+#include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/ResourceHub.hh"
 #include "fabric/core/RuntimeState.hh"
+#include "fabric/core/SceneView.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/platform/WindowDesc.hh"
+#include "fabric/ui/BgfxRenderInterface.hh"
+#include "fabric/ui/BgfxSystemInterface.hh"
 #include "fabric/utils/Profiler.hh"
 
+#include <RmlUi/Core.h>
+
+#include <bgfx/bgfx.h>
+#include <bgfx/platform.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_properties.h>
+
+#include <chrono>
 #include <cstring>
+
+namespace {
+
+bgfx::PlatformData getPlatformData(SDL_Window* window) {
+    bgfx::PlatformData pd{};
+    SDL_PropertiesID props = SDL_GetWindowProperties(window);
+
+#if defined(SDL_PLATFORM_WIN32)
+    pd.nwh = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+#elif defined(SDL_PLATFORM_MACOS)
+    pd.nwh = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, nullptr);
+#elif defined(SDL_PLATFORM_LINUX)
+    void* wl = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr);
+    if (wl) {
+        pd.ndt = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, nullptr);
+        pd.nwh = wl;
+        pd.type = bgfx::NativeWindowHandleType::Wayland;
+    } else {
+        pd.ndt = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, nullptr);
+        pd.nwh = reinterpret_cast<void*>(
+            static_cast<uintptr_t>(SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0)));
+    }
+#endif
+
+    return pd;
+}
+
+} // namespace
 
 namespace fabric {
 
@@ -30,8 +75,67 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
     }
 
     // ── Phase 2: Platform Init ──────────────────────────────────
-    // TODO: SDL_Init, PlatformInfo::populate(), createWindow, bgfx::init
-    // These require runtime SDL/bgfx and are wired in a future integration pass.
+    SDL_Window* window = nullptr;
+    Rml::Context* rmlContext = nullptr;
+    BgfxSystemInterface rmlSystem;
+    BgfxRenderInterface rmlRenderer;
+
+    if (!desc.headless) {
+        if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+            FABRIC_LOG_CRITICAL("SDL init failed: {}", SDL_GetError());
+            return 1;
+        }
+
+        // Use WindowDesc from the descriptor (config overrides can adjust it)
+        window = createWindow(desc.windowDesc);
+        if (!window) {
+            FABRIC_LOG_CRITICAL("Window creation failed: {}", SDL_GetError());
+            SDL_Quit();
+            return 1;
+        }
+
+        // Single-threaded rendering: call renderFrame() before bgfx::init().
+        // On macOS Metal must stay on the main thread.
+        bgfx::renderFrame();
+
+        int pw, ph;
+        SDL_GetWindowSizeInPixels(window, &pw, &ph);
+
+        bgfx::Init bgfxInit;
+        bgfxInit.type = bgfx::RendererType::Vulkan;
+        bgfxInit.platformData = getPlatformData(window);
+        bgfxInit.resolution.width = static_cast<uint32_t>(pw);
+        bgfxInit.resolution.height = static_cast<uint32_t>(ph);
+        bgfxInit.resolution.reset = BGFX_RESET_VSYNC | BGFX_RESET_HIDPI;
+
+        if (!bgfx::init(bgfxInit)) {
+            FABRIC_LOG_CRITICAL("bgfx init failed");
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+            return 1;
+        }
+
+        bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f, 0);
+        bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
+
+        FABRIC_LOG_INFO("bgfx renderer: {}", bgfx::getRendererName(bgfx::getRendererType()));
+
+        // RmlUi backend interfaces
+        rmlRenderer.init();
+
+        Rml::SetSystemInterface(&rmlSystem);
+        Rml::SetRenderInterface(&rmlRenderer);
+        Rml::Initialise();
+
+        rmlContext = Rml::CreateContext("main", Rml::Vector2i(pw, ph));
+        FABRIC_LOG_INFO("RmlUi context created ({}x{})", pw, ph);
+
+        if (!Rml::LoadFontFace("assets/fonts/robotomono-regular.ttf", true)) {
+            FABRIC_LOG_WARN("Failed to load RmlUi font: assets/fonts/robotomono-regular.ttf");
+        }
+
+        async::init();
+    }
 
     // ── Phase 3: Infrastructure ─────────────────────────────────
     ConfigManager configManager;
@@ -47,6 +151,31 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
     SystemRegistry systemRegistry;
     RuntimeState runtimeState;
 
+    // Engine objects (constructed only in non-headless mode)
+    std::unique_ptr<InputManager> inputManagerPtr;
+    std::unique_ptr<InputRouter> inputRouterPtr;
+    std::unique_ptr<Camera> camera;
+    std::unique_ptr<AppModeManager> appModeManager;
+    std::unique_ptr<SceneView> sceneView;
+
+    if (!desc.headless) {
+        inputManagerPtr = std::make_unique<InputManager>(dispatcher);
+        inputRouterPtr = std::make_unique<InputRouter>(*inputManagerPtr);
+        inputRouterPtr->setMode(InputMode::GameOnly);
+
+        int pw, ph;
+        SDL_GetWindowSizeInPixels(window, &pw, &ph);
+        float aspect = static_cast<float>(pw) / static_cast<float>(ph);
+        bool homogeneousNdc = bgfx::getCaps()->homogeneousDepth;
+
+        camera = std::make_unique<Camera>();
+        camera->setPerspective(60.0f, aspect, 0.1f, 1000.0f, homogeneousNdc);
+
+        appModeManager = std::make_unique<AppModeManager>();
+        sceneView = std::make_unique<SceneView>(0, *camera, world.get());
+        sceneView->setViewport(static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
+    }
+
     AppContext ctx{
         .world = world,
         .timeline = timeline,
@@ -56,6 +185,13 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         .systemRegistry = systemRegistry,
         .configManager = configManager,
         .runtimeState = &runtimeState,
+        .appModeManager = appModeManager.get(),
+        .window = window,
+        .inputManager = inputManagerPtr.get(),
+        .inputRouter = inputRouterPtr.get(),
+        .camera = camera.get(),
+        .sceneView = sceneView.get(),
+        .rmlContext = rmlContext,
     };
 
     // ── Phase 4: System Registration ────────────────────────────
@@ -85,10 +221,113 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
     FABRIC_LOG_INFO("All systems initialized");
 
     // ── Phase 8: Main Loop ──────────────────────────────────────
-    // TODO: Full SDL event loop with fixed timestep accumulator.
-    // The main loop requires SDL event polling and bgfx::frame().
-    // For now, this is a skeleton; the loop is wired during platform
-    // integration.
+    if (!desc.headless) {
+        constexpr double kFixedDt = 1.0 / 60.0;
+        double accumulator = 0.0;
+        auto lastTime = std::chrono::high_resolution_clock::now();
+        bool running = true;
+
+        FABRIC_LOG_INFO("Entering main loop");
+
+        while (running) {
+            FABRIC_ZONE_SCOPED_N("main_loop");
+
+            auto now = std::chrono::high_resolution_clock::now();
+            double frameTime = std::chrono::duration<double>(now - lastTime).count();
+            lastTime = now;
+
+            // Cap frame time to prevent spiral after debugger pauses or hitches
+            if (frameTime > 0.25)
+                frameTime = 0.25;
+            accumulator += frameTime;
+
+            // Route SDL events
+            {
+                FABRIC_ZONE_SCOPED_N("input_routing");
+                SDL_Event event;
+                while (SDL_PollEvent(&event)) {
+                    inputRouterPtr->routeEvent(event, rmlContext);
+
+                    if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE && !event.key.repeat) {
+                        appModeManager->togglePause();
+                    }
+
+                    if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT) {
+                        if (appModeManager->current() == AppMode::Paused) {
+                            appModeManager->transition(AppMode::Game);
+                        }
+                    }
+
+                    if (event.type == SDL_EVENT_QUIT)
+                        running = false;
+
+                    if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+                        auto w = static_cast<uint32_t>(event.window.data1);
+                        auto h = static_cast<uint32_t>(event.window.data2);
+                        if (w == 0 || h == 0)
+                            continue;
+                        bgfx::reset(w, h, BGFX_RESET_VSYNC | BGFX_RESET_HIDPI);
+                        bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                        sceneView->setViewport(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
+                        float newAspect = static_cast<float>(w) / static_cast<float>(h);
+                        bool homogNdc = bgfx::getCaps()->homogeneousDepth;
+                        camera->setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogNdc);
+                        rmlContext->SetDimensions(Rml::Vector2i(static_cast<int>(w), static_cast<int>(h)));
+
+                        if (desc.onResize)
+                            desc.onResize(ctx, w, h);
+                    }
+                }
+            }
+
+            // Fixed timestep
+            constexpr int kMaxFixedStepsPerFrame = 3;
+            int fixedIter = 0;
+            while (accumulator >= kFixedDt && fixedIter < kMaxFixedStepsPerFrame) {
+                ++fixedIter;
+                FABRIC_ZONE_SCOPED_N("fixed_timestep");
+                float dt = static_cast<float>(kFixedDt);
+
+                async::poll();
+                timeline.update(kFixedDt);
+
+                if (desc.onFixedUpdate)
+                    desc.onFixedUpdate(ctx, dt);
+
+                accumulator -= kFixedDt;
+            }
+
+            // Drain excess accumulator if we hit the iteration cap
+            if (fixedIter >= kMaxFixedStepsPerFrame && accumulator > kFixedDt) {
+                FABRIC_ZONE_SCOPED_N("accumulator_drain");
+                accumulator = 0.0;
+            }
+
+            // Per-frame input reset
+            inputRouterPtr->beginFrame();
+
+            // Application render callback
+            if (desc.onRender)
+                desc.onRender(ctx, static_cast<float>(frameTime));
+
+            // RmlUi overlay
+            {
+                int curW, curH;
+                SDL_GetWindowSizeInPixels(window, &curW, &curH);
+                rmlRenderer.beginFrame(static_cast<uint16_t>(curW), static_cast<uint16_t>(curH));
+                rmlContext->Update();
+                rmlContext->Render();
+            }
+
+            bgfx::frame();
+
+            // RuntimeState per-frame update
+            runtimeState.frameTimeMs = static_cast<float>(frameTime * 1000.0);
+            runtimeState.fps = (frameTime > 0.0) ? static_cast<float>(1.0 / frameTime) : 0.0f;
+
+            FABRIC_FRAME_MARK;
+        }
+    }
 
     // ── Phase 9: Shutdown ───────────────────────────────────────
     FABRIC_LOG_INFO("Shutting down");
@@ -97,6 +336,16 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         desc.onShutdown(ctx);
 
     systemRegistry.shutdownAll();
+
+    if (!desc.headless) {
+        Rml::Shutdown();
+        rmlRenderer.shutdown();
+        bgfx::shutdown();
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        async::shutdown();
+    }
+
     return 0;
 }
 
