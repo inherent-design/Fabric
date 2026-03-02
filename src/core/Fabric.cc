@@ -1,6 +1,7 @@
 #include "fabric/core/AnimationEvents.hh"
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/AppModeManager.hh"
+#include "fabric/core/AssetRegistry.hh"
 #include "fabric/core/Async.hh"
 #include "fabric/core/AudioSystem.hh"
 #include "fabric/core/BehaviorAI.hh"
@@ -12,6 +13,7 @@
 #include "fabric/core/CharacterTypes.hh"
 #include "fabric/core/ChunkMeshManager.hh"
 #include "fabric/core/ChunkStreaming.hh"
+#include "fabric/core/ConfigManager.hh"
 #include "fabric/core/Constants.g.hh"
 #include "fabric/core/ContentBrowser.hh"
 #include "fabric/core/DebrisPool.hh"
@@ -36,6 +38,7 @@
 #include "fabric/core/SceneView.hh"
 #include "fabric/core/ShadowSystem.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/core/SystemRegistry.hh"
 #include "fabric/core/Temporal.hh"
 #include "fabric/core/TerrainGenerator.hh"
 #include "fabric/core/VoxelInteraction.hh"
@@ -324,8 +327,19 @@ int main(int argc, char* argv[]) {
         sceneView.setViewport(static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
 
         fabric::ResourceHub resourceHub;
+        fabric::AssetRegistry assetRegistry(resourceHub);
+        fabric::SystemRegistry systemRegistry;
+        fabric::ConfigManager configManager;
 
-        fabric::AppContext appContext{ecsWorld, timeline, dispatcher, resourceHub};
+        fabric::AppContext appContext{
+            .world = ecsWorld,
+            .timeline = timeline,
+            .dispatcher = dispatcher,
+            .resourceHub = resourceHub,
+            .assetRegistry = assetRegistry,
+            .systemRegistry = systemRegistry,
+            .configManager = configManager,
+        };
         (void)appContext; // threaded through systems in future passes
 
         //----------------------------------------------------------------------
