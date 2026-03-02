@@ -17,8 +17,6 @@ class InputRecorder;
 
 namespace fabric {
 
-using recurse::InputRecorder;
-
 enum class InputMode {
     GameOnly,
     UIOnly,
@@ -46,7 +44,7 @@ class InputRouter {
     void setConsoleToggleCallback(std::function<void()> cb) { consoleToggleCallback_ = std::move(cb); }
 
     /// Attach an InputRecorder for capture/playback. Pass nullptr to detach.
-    void setRecorder(InputRecorder* recorder);
+    void setRecorder(recurse::InputRecorder* recorder);
 
     /// Register a callback that fires on non-repeat key-down events.
     /// Callbacks are suppressed in UIOnly mode. Replaces any previous
@@ -63,7 +61,7 @@ class InputRouter {
   private:
     InputManager& inputMgr_;
     InputMode mode_ = InputMode::GameOnly;
-    InputRecorder* recorder_ = nullptr;
+    recurse::InputRecorder* recorder_ = nullptr;
     std::function<void()> consoleToggleCallback_;
     std::unordered_map<SDL_Keycode, std::function<void()>> keyCallbacks_;
 

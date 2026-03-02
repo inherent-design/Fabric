@@ -1,8 +1,8 @@
 #pragma once
 
-#include "recurse/world/ChunkedGrid.hh"
-#include "recurse/world/FieldLayer.hh"
+#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Spatial.hh"
+#include "recurse/world/ChunkedGrid.hh"
 #include "recurse/world/VoxelVertex.hh"
 #include <array>
 #include <bgfx/bgfx.h>
@@ -12,9 +12,9 @@
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
+using fabric::FieldLayer;
 namespace Space = fabric::Space;
 using fabric::Vector4;
-
 
 struct ChunkMeshData {
     std::vector<VoxelVertex> vertices;

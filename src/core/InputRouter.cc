@@ -9,7 +9,6 @@
 
 namespace fabric {
 
-// Recurse types imported for backward compatibility during transition
 using recurse::InputEventType;
 using recurse::InputRecorder;
 using recurse::SerializedEvent;

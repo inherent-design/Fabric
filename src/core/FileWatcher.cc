@@ -1,12 +1,9 @@
-#include "recurse/persistence/FileWatcher.hh"
+#include "fabric/core/FileWatcher.hh"
 #include "fabric/core/Log.hh"
 #include <efsw/efsw.hpp>
 #include <filesystem>
 
-
-using namespace fabric;
-
-namespace recurse {
+namespace fabric {
 
 // Internal listener that forwards efsw callbacks into the event queue
 class FileWatcherListener : public efsw::FileWatchListener {
@@ -187,4 +184,4 @@ bool FileWatcher::matchesExtensionFilter(const std::string& filename) const {
     return extensionFilter_.find(ext) != extensionFilter_.end();
 }
 
-} // namespace recurse
+} // namespace fabric

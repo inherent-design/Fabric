@@ -1,9 +1,8 @@
-#include "recurse/render/SkyRenderer.hh"
+#include "fabric/core/SkyRenderer.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
-using namespace recurse;
 
 TEST(SkyRendererTest, DefaultInvalidState) {
     SkyRenderer renderer;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "fabric/core/FieldLayer.hh"
+
 #include <chrono>
 #include <cstdint>
 #include <functional>
@@ -8,9 +10,9 @@
 
 namespace recurse {
 
+using fabric::FieldLayer;
 
 template <typename T> class ChunkedGrid;
-template <typename T> class FieldLayer;
 
 struct WaterChangeEvent {
     int x, y, z;

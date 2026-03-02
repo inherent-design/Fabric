@@ -3,12 +3,7 @@
 #include "recurse/world/ChunkedGrid.hh"
 #include "fabric/core/Spatial.hh"
 
-namespace recurse {
-
-// Engine types imported from fabric:: namespace
-namespace Space = fabric::Space;
-using fabric::Vector4;
-
+namespace fabric {
 
 template <typename T> class FieldLayer {
   public:
@@ -41,14 +36,14 @@ template <typename T> class FieldLayer {
         }
     }
 
-    ChunkedGrid<T>& grid() { return grid_; }
-    const ChunkedGrid<T>& grid() const { return grid_; }
+    recurse::ChunkedGrid<T>& grid() { return grid_; }
+    const recurse::ChunkedGrid<T>& grid() const { return grid_; }
 
   private:
-    ChunkedGrid<T> grid_;
+    recurse::ChunkedGrid<T> grid_;
 };
 
 using DensityField = FieldLayer<float>;
 using EssenceField = FieldLayer<Vector4<float, Space::World>>;
 
-} // namespace recurse
+} // namespace fabric

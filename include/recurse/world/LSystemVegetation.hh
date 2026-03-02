@@ -8,16 +8,17 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "recurse/world/FieldLayer.hh"
+#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Rendering.hh"
 
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
+using fabric::DensityField;
+using fabric::EssenceField;
 namespace Space = fabric::Space;
 using fabric::Vector4;
-
 
 // ---- Essence constants for voxelization ----
 

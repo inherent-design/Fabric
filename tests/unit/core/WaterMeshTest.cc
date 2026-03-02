@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "recurse/world/FieldLayer.hh"
+#include "fabric/core/FieldLayer.hh"
 #include "recurse/world/VoxelMesher.hh"
 
 using namespace fabric;
