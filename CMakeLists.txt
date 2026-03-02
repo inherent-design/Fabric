@@ -230,6 +230,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/SystemBase.cc
     src/core/SystemRegistry.cc
     src/core/ConfigManager.cc
+    src/core/AssetRegistry.cc
 )
 
 # Utils library components
