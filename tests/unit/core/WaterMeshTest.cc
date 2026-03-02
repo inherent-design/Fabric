@@ -1,9 +1,10 @@
 #include <gtest/gtest.h>
 
-#include "fabric/core/FieldLayer.hh"
-#include "fabric/core/VoxelMesher.hh"
+#include "recurse/world/FieldLayer.hh"
+#include "recurse/world/VoxelMesher.hh"
 
 using namespace fabric;
+using namespace recurse;
 
 class WaterMeshTest : public ::testing::Test {
   protected:

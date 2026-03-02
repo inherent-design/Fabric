@@ -3,7 +3,9 @@
 #include <filesystem>
 #include <fstream>
 
-#include "fabric/core/DataLoader.hh"
+#include "recurse/persistence/DataLoader.hh"
+
+using namespace recurse;
 
 namespace fabric {
 

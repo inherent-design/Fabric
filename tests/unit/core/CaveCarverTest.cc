@@ -1,7 +1,8 @@
-#include "fabric/core/CaveCarver.hh"
+#include "recurse/world/CaveCarver.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class CaveCarverTest : public ::testing::Test {
   protected:

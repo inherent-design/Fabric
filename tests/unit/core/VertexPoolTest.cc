@@ -2,9 +2,9 @@
 
 #include <algorithm>
 
-#include "fabric/core/VertexPool.hh"
+#include "recurse/render/VertexPool.hh"
 
-using namespace fabric;
+using namespace recurse;
 
 namespace {
 

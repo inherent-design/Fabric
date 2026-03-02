@@ -1,7 +1,8 @@
-#include "fabric/core/CharacterController.hh"
+#include "recurse/gameplay/CharacterController.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class CharacterControllerTest : public ::testing::Test {
   protected:

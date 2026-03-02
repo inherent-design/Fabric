@@ -1,8 +1,8 @@
-#include "fabric/core/OITCompositor.hh"
+#include "recurse/render/OITCompositor.hh"
 
 #include <gtest/gtest.h>
 
-using namespace fabric;
+using namespace recurse;
 
 TEST(OITCompositorTest, DefaultInvalidState) {
     OITCompositor compositor;

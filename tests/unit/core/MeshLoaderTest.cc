@@ -1,10 +1,11 @@
-#include "fabric/core/MeshLoader.hh"
+#include "recurse/animation/MeshLoader.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <fstream>
 #include <gtest/gtest.h>
 #include <ozz/animation/runtime/skeleton.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class MeshLoaderTest : public ::testing::Test {
   protected:

@@ -1,8 +1,9 @@
-#include "fabric/core/DashController.hh"
+#include "recurse/gameplay/DashController.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class DashControllerTest : public ::testing::Test {
   protected:

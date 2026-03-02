@@ -1,9 +1,9 @@
-#include "fabric/core/StructuralIntegrity.hh"
-#include "fabric/core/ChunkedGrid.hh"
+#include "recurse/world/StructuralIntegrity.hh"
+#include "recurse/world/ChunkedGrid.hh"
 
 #include <gtest/gtest.h>
 
-using namespace fabric;
+using namespace recurse;
 
 class StructuralIntegrityTest : public ::testing::Test {
   protected:

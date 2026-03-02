@@ -1,9 +1,10 @@
-#include "fabric/core/MaterialSounds.hh"
+#include "recurse/audio/MaterialSounds.hh"
 
 #include <gtest/gtest.h>
 #include <set>
 
 using namespace fabric;
+using namespace recurse;
 
 // Convenience alias
 using Ess = Vector4<float, Space::World>;

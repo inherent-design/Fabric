@@ -1,4 +1,4 @@
-#include "fabric/core/WFCGenerator.hh"
+#include "recurse/world/WFCGenerator.hh"
 
 #include <gtest/gtest.h>
 
@@ -6,6 +6,7 @@
 #include <set>
 
 using namespace fabric;
+using namespace recurse;
 
 // ---------------------------------------------------------------------------
 // Helper: build a simple 2-tile palette for basic tests.

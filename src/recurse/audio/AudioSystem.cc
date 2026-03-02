@@ -1,0 +1,897 @@
+#define MINIAUDIO_IMPLEMENTATION
+#include <miniaudio.h>
+
+#include "recurse/audio/AudioSystem.hh"
+#include "fabric/core/Log.hh"
+#include "recurse/world/VoxelRaycast.hh"
+#include "fabric/utils/ErrorHandling.hh"
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <filesystem>
+
+
+using namespace fabric;
+
+namespace recurse {
+
+namespace {
+
+ma_attenuation_model toMaModel(AttenuationModel model) {
+    switch (model) {
+        case AttenuationModel::Inverse:
+            return ma_attenuation_model_inverse;
+        case AttenuationModel::Linear:
+            return ma_attenuation_model_linear;
+        case AttenuationModel::Exponential:
+            return ma_attenuation_model_exponential;
+    }
+    return ma_attenuation_model_inverse;
+}
+
+// Casting helpers for void* reverb node members (miniaudio uses C-style typedefs,
+// preventing forward-declaration in the header).
+ma_delay_node* asDelayNode(void* p) {
+    return static_cast<ma_delay_node*>(p);
+}
+ma_lpf_node* asLpfNode(void* p) {
+    return static_cast<ma_lpf_node*>(p);
+}
+
+} // namespace
+
+AudioSystem::AudioSystem() {
+    categoryVolumes_.fill(1.0f);
+}
+
+AudioSystem::~AudioSystem() {
+    if (initialized_) {
+        shutdown();
+    }
+}
+
+void AudioSystem::init() {
+    if (initialized_) {
+        FABRIC_LOG_AUDIO_WARN("AudioSystem already initialized");
+        return;
+    }
+
+    engine_ = new ma_engine;
+
+    ma_engine_config config = ma_engine_config_init();
+    config.listenerCount = 1;
+
+    ma_result result = ma_engine_init(&config, engine_);
+    if (result != MA_SUCCESS) {
+        delete engine_;
+        engine_ = nullptr;
+        throwError("Failed to initialize miniaudio engine: " + std::to_string(result));
+    }
+
+    commandBufferEnabled_ = true;
+    initialized_ = true;
+
+    initReverbNodes();
+
+    if (threadedMode_) {
+        audioThreadRunning_.store(true, std::memory_order_release);
+        audioThread_ = std::thread(&AudioSystem::audioThreadLoop, this);
+        FABRIC_LOG_AUDIO_INFO("AudioSystem initialized with device audio (threaded mode)");
+    } else {
+        FABRIC_LOG_AUDIO_INFO("AudioSystem initialized with device audio");
+    }
+}
+
+void AudioSystem::initHeadless() {
+    if (initialized_) {
+        FABRIC_LOG_AUDIO_WARN("AudioSystem already initialized");
+        return;
+    }
+
+    engine_ = new ma_engine;
+
+    ma_engine_config config = ma_engine_config_init();
+    config.listenerCount = 1;
+    config.noDevice = MA_TRUE;
+    config.channels = 2;
+    config.sampleRate = 48000;
+
+    ma_result result = ma_engine_init(&config, engine_);
+    if (result != MA_SUCCESS) {
+        delete engine_;
+        engine_ = nullptr;
+        throwError("Failed to initialize miniaudio engine (headless): " + std::to_string(result));
+    }
+
+    commandBufferEnabled_ = true;
+    initialized_ = true;
+
+    initReverbNodes();
+
+    if (threadedMode_) {
+        audioThreadRunning_.store(true, std::memory_order_release);
+        audioThread_ = std::thread(&AudioSystem::audioThreadLoop, this);
+        FABRIC_LOG_AUDIO_INFO("AudioSystem initialized in headless mode (threaded)");
+    } else {
+        FABRIC_LOG_AUDIO_INFO("AudioSystem initialized in headless mode");
+    }
+}
+
+void AudioSystem::shutdown() {
+    if (!initialized_) {
+        return;
+    }
+
+    audioThreadRunning_.store(false, std::memory_order_release);
+    if (audioThread_.joinable()) {
+        audioThread_.join();
+        FABRIC_LOG_AUDIO_INFO("Audio thread joined");
+    }
+
+    drainCommandBuffer();
+    executeStopAll();
+
+    uninitReverbNodes();
+
+    ma_engine_uninit(engine_);
+    delete engine_;
+    engine_ = nullptr;
+    initialized_ = false;
+    commandBufferEnabled_ = false;
+    handleCounter_ = 0;
+    soundPositions_.clear();
+    baseVolumes_.clear();
+    soundCategories_.clear();
+    densityGrid_ = nullptr;
+    occlusionEnabled_ = false;
+    reverbDecayTime_ = 0.5f;
+    reverbDamping_ = 0.5f;
+    reverbWetMix_ = 0.3f;
+    attenuationModel_ = AttenuationModel::Inverse;
+    categoryVolumes_.fill(1.0f);
+    masterVolume_ = 1.0f;
+    FABRIC_LOG_AUDIO_INFO("AudioSystem shut down");
+}
+
+void AudioSystem::update(float dt) {
+    (void)dt;
+    if (!initialized_) {
+        return;
+    }
+
+    if (!threadedMode_) {
+        drainCommandBuffer();
+        cleanupFinishedSounds();
+
+        if (occlusionEnabled_ && densityGrid_) {
+            std::lock_guard<std::mutex> lock(soundsMutex_);
+            for (auto& [handle, sound] : activeSounds_) {
+                auto posIt = soundPositions_.find(handle);
+                if (posIt == soundPositions_.end())
+                    continue;
+
+                auto occ = computeOcclusion(posIt->second, listenerPos_);
+                float baseVol = 1.0f;
+                auto volIt = baseVolumes_.find(handle);
+                if (volIt != baseVolumes_.end()) {
+                    baseVol = volIt->second;
+                }
+
+                float catVol = 1.0f;
+                auto catIt = soundCategories_.find(handle);
+                if (catIt != soundCategories_.end()) {
+                    catVol = categoryVolumes_[static_cast<size_t>(catIt->second)];
+                }
+
+                float effective = catVol * baseVol * (1.0f - occ.factor * 0.8f);
+                ma_sound_set_volume(sound, effective);
+            }
+        }
+    }
+}
+
+bool AudioSystem::isInitialized() const {
+    return initialized_;
+}
+
+void AudioSystem::setCommandBufferEnabled(bool enabled) {
+    commandBufferEnabled_ = enabled;
+}
+
+bool AudioSystem::isCommandBufferEnabled() const {
+    return commandBufferEnabled_;
+}
+
+void AudioSystem::setThreadedMode(bool enabled) {
+    threadedMode_ = enabled;
+}
+
+bool AudioSystem::isThreadedMode() const {
+    return threadedMode_;
+}
+
+// --- Listener ---
+
+void AudioSystem::setListenerPosition(const Vec3f& pos) {
+    listenerPos_ = pos;
+    if (!initialized_)
+        return;
+    if (commandBufferEnabled_) {
+        AudioCommand cmd;
+        cmd.type = AudioCommandType::SetListenerPosition;
+        cmd.position = pos;
+        if (!commandBuffer_.tryPush(std::move(cmd))) {
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping SetListenerPosition");
+        }
+        return;
+    }
+    ma_engine_listener_set_position(engine_, 0, pos.x, pos.y, pos.z);
+}
+
+void AudioSystem::setListenerDirection(const Vec3f& forward, const Vec3f& up) {
+    if (!initialized_)
+        return;
+    if (commandBufferEnabled_) {
+        AudioCommand cmd;
+        cmd.type = AudioCommandType::SetListenerDirection;
+        cmd.direction = forward;
+        cmd.up = up;
+        if (!commandBuffer_.tryPush(std::move(cmd))) {
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping SetListenerDirection");
+        }
+        return;
+    }
+    ma_engine_listener_set_direction(engine_, 0, forward.x, forward.y, forward.z);
+    ma_engine_listener_set_world_up(engine_, 0, up.x, up.y, up.z);
+}
+
+// --- Sound playback ---
+
+SoundHandle AudioSystem::playSound(const std::string& path, const Vec3f& position) {
+    return playSound(path, position, SoundCategory::SFX);
+}
+
+SoundHandle AudioSystem::playSoundLooped(const std::string& path, const Vec3f& position) {
+    return playSoundLooped(path, position, SoundCategory::SFX);
+}
+
+SoundHandle AudioSystem::playSound(const std::string& path, const Vec3f& position, SoundCategory category) {
+    if (!initialized_) {
+        FABRIC_LOG_AUDIO_WARN("Cannot play sound: AudioSystem not initialized");
+        return InvalidSoundHandle;
+    }
+
+    if (commandBufferEnabled_) {
+        SoundHandle handle = nextHandle();
+        AudioCommand cmd;
+        cmd.type = AudioCommandType::Play;
+        cmd.handle = handle;
+        cmd.path = path;
+        cmd.position = position;
+        cmd.category = category;
+        if (!commandBuffer_.tryPush(std::move(cmd))) {
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping Play command");
+            return InvalidSoundHandle;
+        }
+        return handle;
+    }
+
+    return executePlay(path, position, false, category, nextHandle());
+}
+
+SoundHandle AudioSystem::playSoundLooped(const std::string& path, const Vec3f& position, SoundCategory category) {
+    if (!initialized_) {
+        FABRIC_LOG_AUDIO_WARN("Cannot play sound: AudioSystem not initialized");
+        return InvalidSoundHandle;
+    }
+
+    if (commandBufferEnabled_) {
+        SoundHandle handle = nextHandle();
+        AudioCommand cmd;
+        cmd.type = AudioCommandType::PlayLooped;
+        cmd.handle = handle;
+        cmd.path = path;
+        cmd.position = position;
+        cmd.category = category;
+        if (!commandBuffer_.tryPush(std::move(cmd))) {
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping PlayLooped command");
+            return InvalidSoundHandle;
+        }
+        return handle;
+    }
+
+    return executePlay(path, position, true, category, nextHandle());
+}
+
+void AudioSystem::stopSound(SoundHandle handle) {
+    if (commandBufferEnabled_) {
+        AudioCommand cmd;
+        cmd.type = AudioCommandType::Stop;
+        cmd.handle = handle;
+        if (!commandBuffer_.tryPush(std::move(cmd))) {
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping Stop command");
+        }
+        return;
+    }
+    executeStop(handle);
+}
+
+void AudioSystem::stopAllSounds() {
+    if (commandBufferEnabled_) {
+        AudioCommand cmd;
+        cmd.type = AudioCommandType::StopAll;
+        if (!commandBuffer_.tryPush(std::move(cmd))) {
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping StopAll command");
+        }
+        return;
+    }
+    executeStopAll();
+}
+
+// --- Sound manipulation ---
+
+void AudioSystem::setSoundPosition(SoundHandle handle, const Vec3f& pos) {
+    if (commandBufferEnabled_) {
+        AudioCommand cmd;
+        cmd.type = AudioCommandType::SetPosition;
+        cmd.handle = handle;
+        cmd.position = pos;
+        if (!commandBuffer_.tryPush(std::move(cmd))) {
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping SetPosition");
+        }
+        return;
+    }
+    executeSetPosition(handle, pos);
+}
+
+void AudioSystem::setSoundVolume(SoundHandle handle, float volume) {
+    if (commandBufferEnabled_) {
+        AudioCommand cmd;
+        cmd.type = AudioCommandType::SetVolume;
+        cmd.handle = handle;
+        cmd.volume = volume;
+        if (!commandBuffer_.tryPush(std::move(cmd))) {
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping SetVolume");
+        }
+        return;
+    }
+    executeSetVolume(handle, volume);
+}
+
+bool AudioSystem::isSoundPlaying(SoundHandle handle) const {
+    std::lock_guard<std::mutex> lock(soundsMutex_);
+    auto it = activeSounds_.find(handle);
+    if (it == activeSounds_.end())
+        return false;
+    return ma_sound_is_playing(it->second) != 0;
+}
+
+// --- Configuration ---
+
+void AudioSystem::setMasterVolume(float volume) {
+    masterVolume_ = volume;
+    if (initialized_) {
+        ma_engine_set_volume(engine_, volume);
+    }
+}
+
+void AudioSystem::setAttenuationModel(AttenuationModel model) {
+    attenuationModel_ = model;
+    if (initialized_) {
+        ma_attenuation_model maModel = toMaModel(model);
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        for (auto& [handle, sound] : activeSounds_) {
+            ma_sound_set_attenuation_model(sound, maModel);
+        }
+    }
+    FABRIC_LOG_AUDIO_DEBUG("Attenuation model set to {}", static_cast<int>(model));
+}
+
+// --- Sound categories ---
+
+void AudioSystem::setCategoryVolume(SoundCategory category, float volume) {
+    if (category >= SoundCategory::Count)
+        return;
+
+    if (category == SoundCategory::Master) {
+        setMasterVolume(volume);
+        return;
+    }
+
+    categoryVolumes_[static_cast<size_t>(category)] = volume;
+    std::lock_guard<std::mutex> lock(soundsMutex_);
+    for (auto& [handle, cat] : soundCategories_) {
+        if (cat == category) {
+            recalculateVolume(handle);
+        }
+    }
+}
+
+float AudioSystem::getCategoryVolume(SoundCategory category) const {
+    if (category == SoundCategory::Master) {
+        return masterVolume_;
+    }
+    if (category >= SoundCategory::Count)
+        return 0.0f;
+    return categoryVolumes_[static_cast<size_t>(category)];
+}
+
+// --- Occlusion ---
+
+void AudioSystem::setDensityGrid(const ChunkedGrid<float>* grid) {
+    densityGrid_ = grid;
+}
+
+OcclusionResult AudioSystem::computeOcclusion(const Vec3f& source, const Vec3f& listener, float threshold) const {
+    if (!densityGrid_) {
+        return {0.0f, 0, 0};
+    }
+
+    float dx = listener.x - source.x;
+    float dy = listener.y - source.y;
+    float dz = listener.z - source.z;
+    float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+    if (distance < 1e-6f) {
+        return {0.0f, 0, 0};
+    }
+
+    // Direction is unnormalized (source-to-listener). With t in [0,1],
+    // t=1.0 reaches the listener exactly, so maxDistance=1.0 traces
+    // the full source-to-listener segment.
+    auto hits = castRayAll(*densityGrid_, source.x, source.y, source.z, dx, dy, dz, 1.0f, threshold);
+
+    int solidCount = static_cast<int>(hits.size());
+    int totalSteps = static_cast<int>(std::ceil(distance));
+
+    constexpr int kMaxOcclusionVoxels = 8;
+    float factor = std::min(static_cast<float>(solidCount) / static_cast<float>(kMaxOcclusionVoxels), 1.0f);
+
+    return {factor, solidCount, totalSteps};
+}
+
+void AudioSystem::setOcclusionEnabled(bool enabled) {
+    occlusionEnabled_ = enabled;
+}
+
+bool AudioSystem::isOcclusionEnabled() const {
+    return occlusionEnabled_;
+}
+
+// --- Stats ---
+
+uint32_t AudioSystem::activeSoundCount() const {
+    std::lock_guard<std::mutex> lock(soundsMutex_);
+    return static_cast<uint32_t>(activeSounds_.size());
+}
+
+// --- Private ---
+
+SoundHandle AudioSystem::nextHandle() {
+    ++handleCounter_;
+    if (handleCounter_ == InvalidSoundHandle) {
+        ++handleCounter_;
+    }
+    return handleCounter_;
+}
+
+void AudioSystem::cleanupFinishedSounds() {
+    std::vector<SoundHandle> finished;
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        for (auto& [handle, sound] : activeSounds_) {
+            if (ma_sound_at_end(sound) && !ma_sound_is_looping(sound)) {
+                finished.push_back(handle);
+            }
+        }
+        for (auto handle : finished) {
+            auto it = activeSounds_.find(handle);
+            if (it != activeSounds_.end()) {
+                ma_sound_uninit(it->second);
+                delete it->second;
+                activeSounds_.erase(it);
+                soundPositions_.erase(handle);
+                baseVolumes_.erase(handle);
+                soundCategories_.erase(handle);
+            }
+        }
+    }
+}
+
+void AudioSystem::drainCommandBuffer() {
+    AudioCommand cmd;
+    while (commandBuffer_.tryPop(cmd)) {
+        executeCommand(cmd);
+    }
+}
+
+void AudioSystem::executeCommand(AudioCommand& cmd) {
+    switch (cmd.type) {
+        case AudioCommandType::Play:
+            executePlay(cmd.path, cmd.position, false, cmd.category, cmd.handle);
+            break;
+        case AudioCommandType::PlayLooped:
+            executePlay(cmd.path, cmd.position, true, cmd.category, cmd.handle);
+            break;
+        case AudioCommandType::Stop:
+            executeStop(cmd.handle);
+            break;
+        case AudioCommandType::StopAll:
+            executeStopAll();
+            break;
+        case AudioCommandType::SetPosition:
+            executeSetPosition(cmd.handle, cmd.position);
+            break;
+        case AudioCommandType::SetVolume:
+            executeSetVolume(cmd.handle, cmd.volume);
+            break;
+        case AudioCommandType::SetListenerPosition:
+            executeSetListenerPosition(cmd.position);
+            break;
+        case AudioCommandType::SetListenerDirection:
+            executeSetListenerDirection(cmd.direction, cmd.up);
+            break;
+        case AudioCommandType::SetReverbParams:
+            executeSetReverbParams(cmd.decayTime, cmd.damping, cmd.wetMix);
+            break;
+    }
+}
+
+void AudioSystem::recalculateVolume(SoundHandle handle) {
+    // Caller must hold soundsMutex_
+    auto it = activeSounds_.find(handle);
+    if (it == activeSounds_.end())
+        return;
+
+    float base = 1.0f;
+    auto volIt = baseVolumes_.find(handle);
+    if (volIt != baseVolumes_.end())
+        base = volIt->second;
+
+    float catVol = 1.0f;
+    auto catIt = soundCategories_.find(handle);
+    if (catIt != soundCategories_.end()) {
+        catVol = categoryVolumes_[static_cast<size_t>(catIt->second)];
+    }
+
+    // Master volume handled at engine level via ma_engine_set_volume
+    ma_sound_set_volume(it->second, catVol * base);
+}
+
+SoundHandle AudioSystem::executePlay(const std::string& path, const Vec3f& position, bool looped,
+                                     SoundCategory category, SoundHandle preAllocHandle) {
+    // Pre-validate: miniaudio's resource manager has a use-after-free on
+    // missing files in headless mode (v0.11.22). Check existence first.
+    if (!std::filesystem::exists(path)) {
+        FABRIC_LOG_AUDIO_ERROR("Sound file not found: '{}'", path);
+        return InvalidSoundHandle;
+    }
+
+    auto* sound = new ma_sound;
+    ma_result result = ma_sound_init_from_file(engine_, path.c_str(), 0, nullptr, nullptr, sound);
+    if (result != MA_SUCCESS) {
+        delete sound;
+        FABRIC_LOG_AUDIO_ERROR("Failed to load sound '{}': {}", path, static_cast<int>(result));
+        return InvalidSoundHandle;
+    }
+
+    ma_sound_set_position(sound, position.x, position.y, position.z);
+    ma_sound_set_spatialization_enabled(sound, MA_TRUE);
+    ma_sound_set_attenuation_model(sound, toMaModel(attenuationModel_));
+    if (looped) {
+        ma_sound_set_looping(sound, MA_TRUE);
+    }
+
+    // Route spatial sounds through reverb chain; UI sounds bypass reverb
+    if (reverbInitialized_ && category != SoundCategory::UI) {
+        ma_node_attach_output_bus(sound, 0, asLpfNode(lpfNode_), 0);
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        activeSounds_[preAllocHandle] = sound;
+        soundPositions_[preAllocHandle] = position;
+        baseVolumes_[preAllocHandle] = 1.0f;
+        soundCategories_[preAllocHandle] = category;
+    }
+
+    float catVol = categoryVolumes_[static_cast<size_t>(category)];
+    ma_sound_set_volume(sound, catVol);
+
+    result = ma_sound_start(sound);
+    if (result != MA_SUCCESS) {
+        ma_sound_uninit(sound);
+        delete sound;
+        {
+            std::lock_guard<std::mutex> lock(soundsMutex_);
+            activeSounds_.erase(preAllocHandle);
+            soundPositions_.erase(preAllocHandle);
+            baseVolumes_.erase(preAllocHandle);
+            soundCategories_.erase(preAllocHandle);
+        }
+        FABRIC_LOG_AUDIO_ERROR("Failed to start sound '{}': {}", path, static_cast<int>(result));
+        return InvalidSoundHandle;
+    }
+
+    FABRIC_LOG_AUDIO_DEBUG("Playing{} sound '{}' at ({}, {}, {}), handle={}, category={}", looped ? " looped" : "",
+                           path, position.x, position.y, position.z, preAllocHandle, static_cast<int>(category));
+    return preAllocHandle;
+}
+
+void AudioSystem::executeStop(SoundHandle handle) {
+    ma_sound* sound = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        auto it = activeSounds_.find(handle);
+        if (it == activeSounds_.end())
+            return;
+
+        sound = it->second;
+        soundPositions_.erase(handle);
+        baseVolumes_.erase(handle);
+        soundCategories_.erase(handle);
+        activeSounds_.erase(it);
+    }
+
+    ma_sound_stop(sound);
+    ma_sound_uninit(sound);
+    delete sound;
+}
+
+void AudioSystem::executeStopAll() {
+    std::vector<ma_sound*> toDelete;
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        for (auto& [handle, sound] : activeSounds_) {
+            ma_sound_stop(sound);
+            ma_sound_uninit(sound);
+            toDelete.push_back(sound);
+        }
+        activeSounds_.clear();
+        soundPositions_.clear();
+        baseVolumes_.clear();
+        soundCategories_.clear();
+    }
+    for (auto* sound : toDelete) {
+        delete sound;
+    }
+}
+
+void AudioSystem::executeSetPosition(SoundHandle handle, const Vec3f& pos) {
+    ma_sound* sound = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        auto it = activeSounds_.find(handle);
+        if (it == activeSounds_.end())
+            return;
+        sound = it->second;
+        soundPositions_[handle] = pos;
+    }
+    ma_sound_set_position(sound, pos.x, pos.y, pos.z);
+}
+
+void AudioSystem::executeSetVolume(SoundHandle handle, float volume) {
+    {
+        std::lock_guard<std::mutex> lock(soundsMutex_);
+        auto it = activeSounds_.find(handle);
+        if (it == activeSounds_.end())
+            return;
+        baseVolumes_[handle] = volume;
+        recalculateVolume(handle);
+    }
+}
+
+void AudioSystem::executeSetListenerPosition(const Vec3f& pos) {
+    {
+        std::lock_guard<std::mutex> lock(listenerMutex_);
+        listenerPos_ = pos;
+    }
+    if (!initialized_)
+        return;
+    ma_engine_listener_set_position(engine_, 0, pos.x, pos.y, pos.z);
+}
+
+void AudioSystem::executeSetListenerDirection(const Vec3f& forward, const Vec3f& up) {
+    if (!initialized_)
+        return;
+    ma_engine_listener_set_direction(engine_, 0, forward.x, forward.y, forward.z);
+    ma_engine_listener_set_world_up(engine_, 0, up.x, up.y, up.z);
+}
+
+// --- Reverb ---
+
+void AudioSystem::setReverbParameters(float decayTime, float damping, float wetMix) {
+    // Clamp parameters to valid ranges
+    decayTime = std::clamp(decayTime, 0.1f, 3.0f);
+    damping = std::clamp(damping, 0.1f, 0.9f);
+    wetMix = std::clamp(wetMix, 0.0f, 1.0f);
+
+    reverbDecayTime_ = decayTime;
+    reverbDamping_ = damping;
+    reverbWetMix_ = wetMix;
+
+    if (!initialized_)
+        return;
+
+    if (commandBufferEnabled_) {
+        AudioCommand cmd;
+        cmd.type = AudioCommandType::SetReverbParams;
+        cmd.decayTime = decayTime;
+        cmd.damping = damping;
+        cmd.wetMix = wetMix;
+        if (!commandBuffer_.tryPush(std::move(cmd))) {
+            FABRIC_LOG_AUDIO_WARN("Audio command buffer full, dropping SetReverbParams");
+        }
+        return;
+    }
+    executeSetReverbParams(decayTime, damping, wetMix);
+}
+
+float AudioSystem::getReverbDecayTime() const {
+    return reverbDecayTime_;
+}
+
+float AudioSystem::getReverbDamping() const {
+    return reverbDamping_;
+}
+
+float AudioSystem::getReverbWetMix() const {
+    return reverbWetMix_;
+}
+
+bool AudioSystem::isReverbInitialized() const {
+    return reverbInitialized_;
+}
+
+void AudioSystem::executeSetReverbParams(float decayTime, float damping, float wetMix) {
+    if (!reverbInitialized_)
+        return;
+
+    // Map decayTime to delay length and feedback decay coefficient.
+    // Longer decay -> higher feedback. delay_node decay is feedback per echo.
+    // For a Schroeder-style reverb approximation:
+    //   feedback = exp(-3 * delayTime / decayTime)  [from RT60 definition]
+    // We use a fixed delay time of ~40ms (typical early reflection spacing).
+    constexpr float kDelaySeconds = 0.04f;
+    float feedback = std::exp(-3.0f * kDelaySeconds / std::max(decayTime, 0.1f));
+    feedback = std::clamp(feedback, 0.0f, 0.95f);
+
+    ma_delay_node_set_decay(asDelayNode(delayNode_), feedback);
+    ma_delay_node_set_wet(asDelayNode(delayNode_), wetMix);
+    ma_delay_node_set_dry(asDelayNode(delayNode_), 1.0f - wetMix * 0.5f);
+
+    // Map damping to LPF cutoff frequency.
+    // Higher damping -> lower cutoff (more high-frequency absorption).
+    // Range: damping 0.1 -> 12kHz, damping 0.9 -> 800Hz
+    double cutoff = 12000.0 * std::exp(-3.0 * static_cast<double>(damping));
+    cutoff = std::clamp(cutoff, 200.0, 16000.0);
+
+    ma_lpf_config lpfConfig = ma_lpf_config_init(ma_format_f32, 2, 48000, cutoff, 2);
+    ma_lpf_node_reinit(&lpfConfig, asLpfNode(lpfNode_));
+
+    FABRIC_LOG_AUDIO_DEBUG("Reverb params: decayTime={}, damping={}, wetMix={}, feedback={}, cutoff={}", decayTime,
+                           damping, wetMix, feedback, cutoff);
+}
+
+void AudioSystem::initReverbNodes() {
+    if (!engine_)
+        return;
+
+    ma_node_graph* nodeGraph = ma_engine_get_node_graph(engine_);
+    ma_node* endpoint = ma_engine_get_endpoint(engine_);
+
+    // Create LPF node for damping (sounds -> lpf -> delay -> endpoint)
+    auto* lpf = new ma_lpf_node;
+    double initialCutoff = 12000.0 * std::exp(-3.0 * static_cast<double>(reverbDamping_));
+    initialCutoff = std::clamp(initialCutoff, 200.0, 16000.0);
+    ma_lpf_node_config lpfConfig = ma_lpf_node_config_init(2, 48000, initialCutoff, 2);
+    ma_result result = ma_lpf_node_init(nodeGraph, &lpfConfig, nullptr, lpf);
+    if (result != MA_SUCCESS) {
+        FABRIC_LOG_AUDIO_ERROR("Failed to initialize reverb LPF node: {}", static_cast<int>(result));
+        delete lpf;
+        return;
+    }
+    lpfNode_ = lpf;
+
+    // Create delay node for the reverb tail
+    auto* delay = new ma_delay_node;
+    constexpr float kDelaySeconds = 0.04f;
+    ma_uint32 delayFrames = static_cast<ma_uint32>(48000 * kDelaySeconds);
+    float initialFeedback = std::exp(-3.0f * kDelaySeconds / std::max(reverbDecayTime_, 0.1f));
+    initialFeedback = std::clamp(initialFeedback, 0.0f, 0.95f);
+    ma_delay_node_config delayConfig = ma_delay_node_config_init(2, 48000, delayFrames, initialFeedback);
+    result = ma_delay_node_init(nodeGraph, &delayConfig, nullptr, delay);
+    if (result != MA_SUCCESS) {
+        FABRIC_LOG_AUDIO_ERROR("Failed to initialize reverb delay node: {}", static_cast<int>(result));
+        ma_lpf_node_uninit(lpf, nullptr);
+        delete lpf;
+        lpfNode_ = nullptr;
+        delete delay;
+        return;
+    }
+    delayNode_ = delay;
+
+    // Set initial wet/dry
+    ma_delay_node_set_wet(delay, reverbWetMix_);
+    ma_delay_node_set_dry(delay, 1.0f - reverbWetMix_ * 0.5f);
+
+    // Wire the chain: lpf -> delay -> endpoint
+    ma_node_attach_output_bus(lpf, 0, delay, 0);
+    ma_node_attach_output_bus(delay, 0, endpoint, 0);
+
+    reverbInitialized_ = true;
+    FABRIC_LOG_AUDIO_INFO("Reverb nodes initialized (decayTime={}, damping={}, wetMix={})", reverbDecayTime_,
+                          reverbDamping_, reverbWetMix_);
+}
+
+void AudioSystem::uninitReverbNodes() {
+    if (!reverbInitialized_)
+        return;
+
+    if (delayNode_) {
+        ma_delay_node_uninit(asDelayNode(delayNode_), nullptr);
+        delete asDelayNode(delayNode_);
+        delayNode_ = nullptr;
+    }
+
+    if (lpfNode_) {
+        ma_lpf_node_uninit(asLpfNode(lpfNode_), nullptr);
+        delete asLpfNode(lpfNode_);
+        lpfNode_ = nullptr;
+    }
+
+    reverbInitialized_ = false;
+}
+
+void AudioSystem::audioThreadLoop() {
+    FABRIC_LOG_AUDIO_INFO("Audio thread started");
+
+    constexpr float kThreadUpdateRate = 0.016f;
+    auto lastTime = std::chrono::high_resolution_clock::now();
+
+    while (audioThreadRunning_.load(std::memory_order_acquire)) {
+        auto now = std::chrono::high_resolution_clock::now();
+        double elapsed = std::chrono::duration<double>(now - lastTime).count();
+
+        if (elapsed >= kThreadUpdateRate) {
+            drainCommandBuffer();
+            cleanupFinishedSounds();
+
+            if (occlusionEnabled_ && densityGrid_) {
+                std::lock_guard<std::mutex> lock(soundsMutex_);
+                std::lock_guard<std::mutex> listenerLock(listenerMutex_);
+
+                for (auto& [handle, sound] : activeSounds_) {
+                    auto posIt = soundPositions_.find(handle);
+                    if (posIt == soundPositions_.end())
+                        continue;
+
+                    auto occ = computeOcclusion(posIt->second, listenerPos_);
+                    float baseVol = 1.0f;
+                    auto volIt = baseVolumes_.find(handle);
+                    if (volIt != baseVolumes_.end()) {
+                        baseVol = volIt->second;
+                    }
+
+                    float catVol = 1.0f;
+                    auto catIt = soundCategories_.find(handle);
+                    if (catIt != soundCategories_.end()) {
+                        catVol = categoryVolumes_[static_cast<size_t>(catIt->second)];
+                    }
+
+                    float effective = catVol * baseVol * (1.0f - occ.factor * 0.8f);
+                    ma_sound_set_volume(sound, effective);
+                }
+            }
+
+            lastTime = now;
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+
+    FABRIC_LOG_AUDIO_INFO("Audio thread stopped");
+}
+
+} // namespace recurse

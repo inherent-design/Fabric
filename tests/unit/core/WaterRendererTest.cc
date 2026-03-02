@@ -1,8 +1,9 @@
-#include "fabric/core/WaterRenderer.hh"
+#include "recurse/render/WaterRenderer.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 TEST(WaterRendererTest, DefaultInvalidState) {
     WaterRenderer renderer;

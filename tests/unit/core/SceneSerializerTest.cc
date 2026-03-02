@@ -1,11 +1,12 @@
-#include "fabric/core/SceneSerializer.hh"
-#include "fabric/core/FieldLayer.hh"
+#include "recurse/persistence/SceneSerializer.hh"
 #include "fabric/core/Temporal.hh"
+#include "recurse/world/FieldLayer.hh"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class SceneSerializerTest : public ::testing::Test {
   protected:

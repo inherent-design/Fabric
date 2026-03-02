@@ -1,8 +1,9 @@
-#include "fabric/core/ParticleSystem.hh"
+#include "recurse/render/ParticleSystem.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 // ParticleSystem requires bgfx for init()/render(), but we can test
 // the CPU-side pool logic (emit, update, kill) without a live GPU context.

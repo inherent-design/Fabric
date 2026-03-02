@@ -1,9 +1,9 @@
-#include "fabric/core/OITCompositor.hh"
-#include "fabric/core/ParticleSystem.hh"
-#include "fabric/core/PostProcess.hh"
 #include "fabric/core/Rendering.hh"
-#include "fabric/core/VoxelMesher.hh"
-#include "fabric/core/VoxelVertex.hh"
+#include "recurse/render/OITCompositor.hh"
+#include "recurse/render/ParticleSystem.hh"
+#include "recurse/render/PostProcess.hh"
+#include "recurse/world/VoxelMesher.hh"
+#include "recurse/world/VoxelVertex.hh"
 
 #include <bgfx/bgfx.h>
 #include <gtest/gtest.h>
@@ -11,6 +11,7 @@
 #include <set>
 
 using namespace fabric;
+using namespace recurse;
 
 // ---------------------------------------------------------------------------
 // Shader Profile Tests

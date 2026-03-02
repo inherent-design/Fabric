@@ -1,4 +1,4 @@
-#include "fabric/core/Animation.hh"
+#include "recurse/animation/Animation.hh"
 #include <cmath>
 #include <cstring>
 #include <gtest/gtest.h>
@@ -11,6 +11,7 @@
 #include <ozz/base/memory/allocator.h>
 
 using namespace fabric;
+using namespace recurse;
 
 namespace {
 

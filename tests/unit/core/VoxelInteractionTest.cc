@@ -1,8 +1,9 @@
-#include "fabric/core/VoxelInteraction.hh"
-#include "fabric/core/ChunkMeshManager.hh"
+#include "recurse/gameplay/VoxelInteraction.hh"
+#include "recurse/world/ChunkMeshManager.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class VoxelInteractionTest : public ::testing::Test {
   protected:

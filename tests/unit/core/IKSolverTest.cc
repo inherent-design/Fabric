@@ -1,6 +1,6 @@
-#include "fabric/core/IKSolver.hh"
-#include "fabric/core/Animation.hh"
-#include "fabric/core/ChunkedGrid.hh"
+#include "recurse/animation/IKSolver.hh"
+#include "recurse/animation/Animation.hh"
+#include "recurse/world/ChunkedGrid.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 #include <ozz/animation/offline/raw_skeleton.h>
@@ -9,6 +9,7 @@
 #include <ozz/base/memory/allocator.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class TwoBoneIKTest : public ::testing::Test {
   protected:
@@ -308,8 +309,8 @@ class FootIKTest : public ::testing::Test {
         return Vec3f(col3[0], col3[1], col3[2]);
     }
 
-    fabric::FootIKConfig makeConfig(const fabric::ChunkedGrid<float>* grid) {
-        fabric::FootIKConfig config;
+    FootIKConfig makeConfig(const ChunkedGrid<float>* grid) {
+        FootIKConfig config;
         config.leftLeg = {leftHipIdx_, leftKneeIdx_, leftAnkleIdx_};
         config.rightLeg = {rightHipIdx_, rightKneeIdx_, rightAnkleIdx_};
         config.pelvisJoint = rootIdx_;
@@ -321,8 +322,8 @@ class FootIKTest : public ::testing::Test {
         return config;
     }
 
-    fabric::ChunkedGrid<float> makeFlatGround(int groundVoxelY) {
-        fabric::ChunkedGrid<float> grid;
+    ChunkedGrid<float> makeFlatGround(int groundVoxelY) {
+        ChunkedGrid<float> grid;
         for (int x = -5; x <= 5; ++x) {
             for (int z = -5; z <= 5; ++z) {
                 grid.set(x, groundVoxelY, z, 1.0f);
@@ -340,8 +341,8 @@ TEST_F(FootIKTest, FlatTerrainContact) {
     ozz::vector<ozz::math::SoaTransform> locals(skeleton_->joint_rest_poses().begin(),
                                                 skeleton_->joint_rest_poses().end());
 
-    fabric::AnimationSampler sampler;
-    fabric::processFootIK(sampler, *skeleton_, locals, config);
+    AnimationSampler sampler;
+    processFootIK(sampler, *skeleton_, locals, config);
 
     ozz::vector<ozz::math::Float4x4> models;
     sampler.localToModel(*skeleton_, locals, models);
@@ -356,7 +357,7 @@ TEST_F(FootIKTest, FlatTerrainContact) {
 
 TEST_F(FootIKTest, SteppedTerrain) {
     // Left ground at Y=0 (voxel y=-1), right ground at Y=1 (voxel y=0)
-    fabric::ChunkedGrid<float> grid;
+    ChunkedGrid<float> grid;
     for (int x = -5; x < 0; ++x) {
         for (int z = -5; z <= 5; ++z) {
             grid.set(x, -1, z, 1.0f);
@@ -373,8 +374,8 @@ TEST_F(FootIKTest, SteppedTerrain) {
     ozz::vector<ozz::math::SoaTransform> locals(skeleton_->joint_rest_poses().begin(),
                                                 skeleton_->joint_rest_poses().end());
 
-    fabric::AnimationSampler sampler;
-    fabric::processFootIK(sampler, *skeleton_, locals, config);
+    AnimationSampler sampler;
+    processFootIK(sampler, *skeleton_, locals, config);
 
     ozz::vector<ozz::math::Float4x4> models;
     sampler.localToModel(*skeleton_, locals, models);
@@ -390,7 +391,7 @@ TEST_F(FootIKTest, UnreachableGround) {
     // Ground surface above ankles. Correction exceeds maxCorrectionDist.
     // Solid voxels at y=2 give surface at Y=3. Ankles at Y=1.
     // correction = |1 - 3| = 2 > maxCorrectionDist = 0.5
-    fabric::ChunkedGrid<float> grid;
+    ChunkedGrid<float> grid;
     for (int x = -5; x <= 5; ++x) {
         for (int z = -5; z <= 5; ++z) {
             grid.set(x, 2, z, 1.0f);
@@ -404,8 +405,8 @@ TEST_F(FootIKTest, UnreachableGround) {
                                                 skeleton_->joint_rest_poses().end());
     ozz::vector<ozz::math::SoaTransform> originalLocals(locals.begin(), locals.end());
 
-    fabric::AnimationSampler sampler;
-    fabric::processFootIK(sampler, *skeleton_, locals, config);
+    AnimationSampler sampler;
+    processFootIK(sampler, *skeleton_, locals, config);
 
     // Locals should be unchanged (correction exceeds max)
     for (size_t i = 0; i < locals.size(); ++i) {
@@ -432,8 +433,8 @@ TEST_F(FootIKTest, PelvisAdjustment) {
     alignas(16) float origRootY[4];
     ozz::math::StorePtrU(locals[static_cast<size_t>(soaIdx)].translation.y, origRootY);
 
-    fabric::AnimationSampler sampler;
-    fabric::processFootIK(sampler, *skeleton_, locals, config);
+    AnimationSampler sampler;
+    processFootIK(sampler, *skeleton_, locals, config);
 
     alignas(16) float newRootY[4];
     ozz::math::StorePtrU(locals[static_cast<size_t>(soaIdx)].translation.y, newRootY);
@@ -454,8 +455,8 @@ TEST_F(FootIKTest, NoConfigPassthrough) {
                                                 skeleton_->joint_rest_poses().end());
     ozz::vector<ozz::math::SoaTransform> originalLocals(locals.begin(), locals.end());
 
-    fabric::AnimationSampler sampler;
-    fabric::processFootIK(sampler, *skeleton_, locals, config);
+    AnimationSampler sampler;
+    processFootIK(sampler, *skeleton_, locals, config);
 
     for (size_t i = 0; i < locals.size(); ++i) {
         alignas(16) float origY[4], newY[4];
@@ -469,7 +470,7 @@ TEST_F(FootIKTest, NoConfigPassthrough) {
     // Test null grid skips processing
     config.grounded = true;
     config.grid = nullptr;
-    fabric::processFootIK(sampler, *skeleton_, locals, config);
+    processFootIK(sampler, *skeleton_, locals, config);
 
     for (size_t i = 0; i < locals.size(); ++i) {
         alignas(16) float origY[4], newY[4];
@@ -547,7 +548,7 @@ TEST_F(ComputeRotationsTest, CorrectRotationCount) {
 // --- SpineIKConfig Tests ---
 
 TEST(SpineIKConfigTest, DefaultConstruction) {
-    fabric::SpineIKConfig config;
+    SpineIKConfig config;
     EXPECT_TRUE(config.jointIndices.empty());
     EXPECT_FLOAT_EQ(config.weight, 1.0f);
     EXPECT_GT(config.maxAnglePerJoint, 0.0f);
@@ -556,7 +557,7 @@ TEST(SpineIKConfigTest, DefaultConstruction) {
 }
 
 TEST(SpineIKConfigTest, CustomConfiguration) {
-    fabric::SpineIKConfig config;
+    SpineIKConfig config;
     config.jointIndices = {1, 2, 3, 4};
     config.target = Vec3f(5.0f, 5.0f, 0.0f);
     config.weight = 0.75f;
@@ -637,13 +638,13 @@ TEST_F(SpineIKTest, WeightZeroProducesNoChange) {
                                                 skeleton_->joint_rest_poses().end());
     ozz::vector<ozz::math::SoaTransform> original(locals.begin(), locals.end());
 
-    fabric::SpineIKConfig config;
+    SpineIKConfig config;
     config.jointIndices = spineIndices_;
     config.target = Vec3f(5.0f, 2.0f, 0.0f);
     config.weight = 0.0f;
 
-    fabric::AnimationSampler sampler;
-    fabric::processSpineIK(sampler, *skeleton_, locals, config);
+    AnimationSampler sampler;
+    processSpineIK(sampler, *skeleton_, locals, config);
 
     // Verify locals unchanged
     for (size_t i = 0; i < locals.size(); ++i) {
@@ -670,14 +671,14 @@ TEST_F(SpineIKTest, WeightOneProducesFullCorrection) {
     ozz::vector<ozz::math::SoaTransform> locals(skeleton_->joint_rest_poses().begin(),
                                                 skeleton_->joint_rest_poses().end());
 
-    fabric::SpineIKConfig config;
+    SpineIKConfig config;
     config.jointIndices = spineIndices_;
     config.target = Vec3f(3.0f, 2.0f, 0.0f);
     config.weight = 1.0f;
     config.maxAnglePerJoint = 3.14159f; // large clamp to allow full correction
 
-    fabric::AnimationSampler sampler;
-    fabric::processSpineIK(sampler, *skeleton_, locals, config);
+    AnimationSampler sampler;
+    processSpineIK(sampler, *skeleton_, locals, config);
 
     // After applying spine IK, the head should have moved toward the target.
     // Build model-space to check.
@@ -698,21 +699,21 @@ TEST_F(SpineIKTest, PerJointClampingLimitsRotation) {
 
     Vec3f target(5.0f, 2.0f, 0.0f); // far to the side
 
-    fabric::SpineIKConfig configSmall;
+    SpineIKConfig configSmall;
     configSmall.jointIndices = spineIndices_;
     configSmall.target = target;
     configSmall.weight = 1.0f;
     configSmall.maxAnglePerJoint = 0.05f; // very small clamp (~3 degrees)
 
-    fabric::SpineIKConfig configLarge;
+    SpineIKConfig configLarge;
     configLarge.jointIndices = spineIndices_;
     configLarge.target = target;
     configLarge.weight = 1.0f;
     configLarge.maxAnglePerJoint = 3.14159f; // essentially unclamped
 
-    fabric::AnimationSampler sampler;
-    fabric::processSpineIK(sampler, *skeleton_, localsSmall, configSmall);
-    fabric::processSpineIK(sampler, *skeleton_, localsLarge, configLarge);
+    AnimationSampler sampler;
+    processSpineIK(sampler, *skeleton_, localsSmall, configSmall);
+    processSpineIK(sampler, *skeleton_, localsLarge, configLarge);
 
     ozz::vector<ozz::math::Float4x4> modelsSmall, modelsLarge;
     sampler.localToModel(*skeleton_, localsSmall, modelsSmall);
@@ -730,13 +731,13 @@ TEST_F(SpineIKTest, EmptyJointIndicesSkips) {
                                                 skeleton_->joint_rest_poses().end());
     ozz::vector<ozz::math::SoaTransform> original(locals.begin(), locals.end());
 
-    fabric::SpineIKConfig config;
+    SpineIKConfig config;
     // jointIndices empty
     config.target = Vec3f(5.0f, 2.0f, 0.0f);
     config.weight = 1.0f;
 
-    fabric::AnimationSampler sampler;
-    fabric::processSpineIK(sampler, *skeleton_, locals, config);
+    AnimationSampler sampler;
+    processSpineIK(sampler, *skeleton_, locals, config);
 
     // Should be unchanged
     for (size_t i = 0; i < locals.size(); ++i) {
@@ -754,13 +755,13 @@ TEST_F(SpineIKTest, InvalidJointIndexSkips) {
                                                 skeleton_->joint_rest_poses().end());
     ozz::vector<ozz::math::SoaTransform> original(locals.begin(), locals.end());
 
-    fabric::SpineIKConfig config;
+    SpineIKConfig config;
     config.jointIndices = {0, 1, 999}; // 999 is out of range
     config.target = Vec3f(5.0f, 2.0f, 0.0f);
     config.weight = 1.0f;
 
-    fabric::AnimationSampler sampler;
-    fabric::processSpineIK(sampler, *skeleton_, locals, config);
+    AnimationSampler sampler;
+    processSpineIK(sampler, *skeleton_, locals, config);
 
     // Should be unchanged (invalid index causes early return)
     for (size_t i = 0; i < locals.size(); ++i) {
