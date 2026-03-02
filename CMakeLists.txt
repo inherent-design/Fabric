@@ -232,6 +232,8 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/ConfigManager.cc
     src/core/AssetRegistry.cc
     src/core/FabricApp.cc
+    src/core/InputContext.cc
+    src/core/InputSystem.cc
 )
 
 # Utils library components
