@@ -96,6 +96,8 @@ target_sources(UnitTests
   AssetRegistryTest.cc
   FabricAppDescTest.cc
   FabricAppTest.cc
+  InputContextTest.cc
+  InputSystemTest.cc
 )
 
 set_source_files_properties(
