@@ -50,10 +50,18 @@ struct FabricAppDesc {
     std::function<void(AppContext&)> onInit;
     std::function<void(AppContext&)> onShutdown;
 
+    // Per-frame callbacks (called only when headless=false)
+    std::function<void(AppContext&, float dt)> onFixedUpdate;
+    std::function<void(AppContext&, float frameTime)> onRender;
+
     // Window/focus event callbacks
     std::function<void(AppContext&)> onFocusGained;
     std::function<void(AppContext&)> onFocusLost;
     std::function<void(AppContext&, uint32_t width, uint32_t height)> onResize;
+
+    // When true, skip SDL/bgfx init and main loop (safe for tests).
+    // Real executables set this to false.
+    bool headless = true;
 
     // Internal: used by FabricApp::run() to instantiate systems.
     struct SystemRegistration {
