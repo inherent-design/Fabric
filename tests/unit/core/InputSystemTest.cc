@@ -383,3 +383,212 @@ TEST_F(InputSystemTest, QueryWithNoContextsReturnsDefaults) {
     EXPECT_FLOAT_EQ(input.getAxisValue("anything"), 0.0f);
     EXPECT_EQ(input.actionState("anything").state, ActionState::Released);
 }
+
+// --- Audit: mouse button device state ---
+
+TEST_F(InputSystemTest, MouseButtonUpdatesDeviceState) {
+    input.processEvent(makeMouseButton(SDL_BUTTON_LEFT, true));
+    EXPECT_TRUE(input.deviceState().mouseButtons[0]);
+
+    input.processEvent(makeMouseButton(SDL_BUTTON_LEFT, false));
+    EXPECT_FALSE(input.deviceState().mouseButtons[0]);
+
+    input.processEvent(makeMouseButton(SDL_BUTTON_RIGHT, true));
+    EXPECT_TRUE(input.deviceState().mouseButtons[2]);
+}
+
+TEST_F(InputSystemTest, MouseWheelUpdatesDeviceState) {
+    input.processEvent(makeMouseWheel(0.0f, 3.0f));
+    EXPECT_FLOAT_EQ(input.deviceState().scrollDeltaY, 3.0f);
+
+    input.processEvent(makeMouseWheel(0.0f, -1.0f));
+    EXPECT_FLOAT_EQ(input.deviceState().scrollDeltaY, 2.0f);
+}
+
+// --- Audit: out-of-range device inputs ---
+
+TEST_F(InputSystemTest, MouseButtonOutOfRangeIgnored) {
+    SDL_Event e = {};
+    e.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+    e.button.button = 0;
+    e.button.down = true;
+    EXPECT_TRUE(input.processEvent(e));
+
+    e.button.button = 6;
+    EXPECT_TRUE(input.processEvent(e));
+
+    for (int i = 0; i < 5; ++i) {
+        EXPECT_FALSE(input.deviceState().mouseButtons[i]);
+    }
+}
+
+// --- Audit: oneShot action lifecycle ---
+
+TEST_F(InputSystemTest, OneShotActionLifecycle) {
+    auto ctx = std::make_shared<InputContext>("test", 100);
+    ActionBinding screenshot;
+    screenshot.name = "screenshot";
+    screenshot.sources.push_back(KeySource{SDLK_F12});
+    screenshot.oneShot = true;
+    ctx->addAction(screenshot);
+    input.pushContext(ctx);
+
+    // Frame 1: press
+    input.processEvent(makeKeyDown(SDLK_F12));
+    input.evaluate();
+    EXPECT_EQ(input.actionState("screenshot").state, ActionState::JustPressed);
+
+    // Frame 2: key still held, oneShot skips Held and goes to JustReleased
+    input.beginFrame();
+    input.evaluate();
+    EXPECT_EQ(input.actionState("screenshot").state, ActionState::JustReleased);
+}
+
+// --- Audit: gamepad axis as digital action trigger ---
+
+TEST_F(InputSystemTest, GamepadAxisTriggersDigitalAction) {
+    auto ctx = std::make_shared<InputContext>("test", 100);
+    ActionBinding accelerate;
+    accelerate.name = "accelerate";
+    accelerate.sources.push_back(GamepadAxisSource{SDL_GAMEPAD_AXIS_RIGHTX});
+    ctx->addAction(accelerate);
+    input.pushContext(ctx);
+
+    // Below 0.5 threshold: not triggered
+    input.processEvent(makeGamepadAxis(SDL_GAMEPAD_AXIS_RIGHTX, 10000));
+    input.evaluate();
+    EXPECT_FALSE(input.isActionActive("accelerate"));
+
+    // Above 0.5 threshold: triggered
+    input.beginFrame();
+    input.processEvent(makeGamepadAxis(SDL_GAMEPAD_AXIS_RIGHTX, 20000));
+    input.evaluate();
+    EXPECT_TRUE(input.isActionActive("accelerate"));
+}
+
+// --- Audit: context stack consumption ---
+
+TEST_F(InputSystemTest, NonConsumingContextPassesThrough) {
+    auto gameplay = makeGameplayContext();
+    auto global = makeGlobalContext();
+    input.pushContext(gameplay);
+    input.pushContext(global);
+
+    input.processEvent(makeKeyDown(SDLK_ESCAPE));
+    input.processEvent(makeKeyDown(SDLK_SPACE));
+    input.evaluate();
+
+    EXPECT_TRUE(input.isActionActive("quit"));
+    EXPECT_TRUE(input.isActionActive("jump"));
+}
+
+TEST_F(InputSystemTest, ConsumingContextBlocksSameAction) {
+    auto menu = std::make_shared<InputContext>("menu", 200);
+    menu->setConsumeInput(true);
+    ActionBinding menuQuit;
+    menuQuit.name = "quit";
+    menuQuit.sources.push_back(KeySource{SDLK_ESCAPE});
+    menu->addAction(menuQuit);
+
+    auto global = makeGlobalContext();
+    input.pushContext(menu);
+    input.pushContext(global);
+
+    input.processEvent(makeKeyDown(SDLK_ESCAPE));
+    input.evaluate();
+
+    EXPECT_TRUE(input.isActionActive("quit"));
+    EXPECT_TRUE(input.isActionJustPressed("quit"));
+}
+
+// --- Audit: clearContexts ---
+
+TEST_F(InputSystemTest, ClearContextsRemovesAll) {
+    input.pushContext(makeGameplayContext());
+    input.pushContext(makeGlobalContext());
+    EXPECT_EQ(input.contexts().size(), 2u);
+
+    input.clearContexts();
+    EXPECT_TRUE(input.contexts().empty());
+}
+
+// --- Audit: query after context removal ---
+
+TEST_F(InputSystemTest, QueryAfterContextRemoval) {
+    input.pushContext(makeGameplayContext());
+    input.processEvent(makeKeyDown(SDLK_SPACE));
+    input.evaluate();
+    EXPECT_TRUE(input.isActionActive("jump"));
+
+    input.popContext("gameplay");
+    input.beginFrame();
+    input.evaluate();
+    EXPECT_FALSE(input.isActionActive("jump"));
+    EXPECT_FLOAT_EQ(input.getAxisValue("move_x"), 0.0f);
+}
+
+// --- Audit: axis with gamepad source ---
+
+TEST_F(InputSystemTest, AxisEvaluationWithGamepadSource) {
+    auto ctx = std::make_shared<InputContext>("test", 100);
+    AxisBinding lookX;
+    lookX.name = "look_x";
+    lookX.deadZone = 0.15f;
+    AxisSource gpSrc;
+    gpSrc.source = GamepadAxisSource{SDL_GAMEPAD_AXIS_RIGHTX};
+    lookX.sources.push_back(gpSrc);
+    ctx->addAxis(lookX);
+    input.pushContext(ctx);
+
+    input.processEvent(makeGamepadAxis(SDL_GAMEPAD_AXIS_RIGHTX, 16384));
+    input.evaluate();
+
+    float value = input.getAxisValue("look_x");
+    EXPECT_GT(value, 0.0f);
+    EXPECT_LE(value, 1.0f);
+}
+
+// --- Audit: evaluate with empty context stack ---
+
+TEST_F(InputSystemTest, EvaluateWithEmptyContextStack) {
+    input.processEvent(makeKeyDown(SDLK_SPACE));
+    input.evaluate();
+
+    EXPECT_FALSE(input.isActionActive("jump"));
+    EXPECT_FLOAT_EQ(input.getAxisValue("anything"), 0.0f);
+}
+
+// --- Audit: multiple evaluate calls per frame ---
+
+TEST_F(InputSystemTest, MultipleEvaluatesInSameFrame) {
+    input.pushContext(makeGameplayContext());
+    input.processEvent(makeKeyDown(SDLK_SPACE));
+
+    input.evaluate();
+    EXPECT_TRUE(input.isActionJustPressed("jump"));
+
+    // Second evaluate: key still held, was active in prevActiveActions_
+    input.evaluate();
+    EXPECT_EQ(input.actionState("jump").state, ActionState::Held);
+}
+
+// --- Audit: disabled context does not consume ---
+
+TEST_F(InputSystemTest, DisabledContextDoesNotConsumeInput) {
+    auto menu = std::make_shared<InputContext>("menu", 200);
+    menu->setConsumeInput(true);
+    menu->setEnabled(false);
+    ActionBinding menuAction;
+    menuAction.name = "quit";
+    menuAction.sources.push_back(KeySource{SDLK_ESCAPE});
+    menu->addAction(menuAction);
+
+    auto global = makeGlobalContext();
+    input.pushContext(menu);
+    input.pushContext(global);
+
+    input.processEvent(makeKeyDown(SDLK_ESCAPE));
+    input.evaluate();
+
+    EXPECT_TRUE(input.isActionActive("quit"));
+}
