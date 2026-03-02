@@ -10,6 +10,10 @@ void SystemRegistry::registerSystem(SystemPhase phase, std::unique_ptr<SystemBas
 }
 
 void SystemRegistry::registerSystemImpl(SystemPhase phase, std::unique_ptr<SystemBase> system) {
+    if (resolved_) {
+        throwError("Cannot register system '" + system->name() + "' after resolve()");
+    }
+
     auto typeId = system->typeId();
     if (systems_.count(typeId)) {
         throwError("System '" + system->name() + "' is already registered");
@@ -100,10 +104,26 @@ bool SystemRegistry::resolve() {
 }
 
 void SystemRegistry::initAll(AppContext& ctx) {
-    for (const auto& typeId : initOrder_) {
-        auto& entry = systems_.at(typeId);
-        FABRIC_LOG_DEBUG("Initializing system: {}", entry.system->name());
-        entry.system->init(ctx);
+    size_t initialized = 0;
+    try {
+        for (const auto& typeId : initOrder_) {
+            auto& entry = systems_.at(typeId);
+            FABRIC_LOG_DEBUG("Initializing system: {}", entry.system->name());
+            entry.system->init(ctx);
+            ++initialized;
+        }
+    } catch (...) {
+        FABRIC_LOG_ERROR("System init failed after {} of {} systems, shutting down initialized systems", initialized,
+                         initOrder_.size());
+        // Shut down successfully initialized systems in reverse order
+        for (size_t i = initialized; i > 0; --i) {
+            auto entryIt = systems_.find(initOrder_[i - 1]);
+            if (entryIt != systems_.end()) {
+                FABRIC_LOG_DEBUG("Cleanup shutdown: {}", entryIt->second.system->name());
+                entryIt->second.system->shutdown();
+            }
+        }
+        throw;
     }
 }
 

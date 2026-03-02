@@ -592,3 +592,33 @@ TEST_F(InputSystemTest, DisabledContextDoesNotConsumeInput) {
 
     EXPECT_TRUE(input.isActionActive("quit"));
 }
+
+// --- BUG-ONESHOT: oneShot must not re-trigger while source is held ---
+
+TEST_F(InputSystemTest, OneShotDoesNotRetriggerWhileHeld) {
+    auto ctx = std::make_shared<InputContext>("test", 100);
+    ActionBinding screenshot;
+    screenshot.name = "screenshot";
+    screenshot.sources.push_back(KeySource{SDLK_F12});
+    screenshot.oneShot = true;
+    ctx->addAction(screenshot);
+    input.pushContext(ctx);
+
+    // Frame 1: press key
+    input.processEvent(makeKeyDown(SDLK_F12));
+    input.evaluate();
+    EXPECT_EQ(input.actionState("screenshot").state, ActionState::JustPressed);
+
+    // Frame 2: key still held, oneShot transitions to JustReleased
+    input.beginFrame();
+    input.evaluate();
+    EXPECT_EQ(input.actionState("screenshot").state, ActionState::JustReleased);
+
+    // Frames 3-7: key still held, must stay Released (no oscillation)
+    for (int i = 3; i <= 7; ++i) {
+        input.beginFrame();
+        input.evaluate();
+        EXPECT_EQ(input.actionState("screenshot").state, ActionState::Released)
+            << "Frame " << i << ": oneShot re-triggered while held";
+    }
+}

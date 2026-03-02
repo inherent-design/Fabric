@@ -449,10 +449,10 @@ TEST_F(AssetRegistryTest, HandleErrorOnLoadedReturnsEmpty) {
 }
 
 // ========================================================================
-// Audit: Loader returning nullptr (Loaded state but no asset)
+// Audit: Loader returning nullptr transitions to Failed
 // ========================================================================
 
-TEST_F(AssetRegistryTest, LoaderReturningNullptrSetsLoadedButGetFails) {
+TEST_F(AssetRegistryTest, LoaderReturningNullptrSetsFailedState) {
     struct NullLoader : AssetLoader<TestAsset> {
         std::unique_ptr<TestAsset> load(const std::filesystem::path&, ResourceHub&) override { return nullptr; }
         std::vector<std::string> extensions() const override { return {".test"}; }
@@ -464,12 +464,13 @@ TEST_F(AssetRegistryTest, LoaderReturningNullptrSetsLoadedButGetFails) {
     auto path = writeTempFile("null_ret.test", "data");
     auto handle = registry.load<TestAsset>(path);
 
-    // State is Loaded because the loader did not throw
-    EXPECT_EQ(handle.state(), AssetState::Loaded);
-    EXPECT_TRUE(handle.isLoaded());
-    // But the asset pointer is null, so get() throws and tryGet() returns nullptr
-    EXPECT_THROW(handle.get(), std::exception);
+    // Loader returned nullptr: state must be Failed, not Loaded
+    EXPECT_EQ(handle.state(), AssetState::Failed);
+    EXPECT_FALSE(handle.isLoaded());
+    EXPECT_TRUE(handle.isFailed());
+    EXPECT_FALSE(handle.error().empty());
     EXPECT_EQ(handle.tryGet(), nullptr);
+    EXPECT_THROW(handle.get(), std::exception);
 }
 
 // ========================================================================
@@ -717,6 +718,44 @@ TEST_F(AssetRegistryTest, HandleStateAfterUnload) {
     EXPECT_THROW(handle.get(), std::exception);
     // The handle itself is still non-null (block_ shared_ptr is valid)
     EXPECT_TRUE(static_cast<bool>(handle));
+}
+
+// ========================================================================
+// Bug fix: LRU eviction skips in-use handles (ref count protection)
+// ========================================================================
+
+TEST_F(AssetRegistryTest, LRUEvictionSkipsInUseHandles) {
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    auto pA = writeTempFile("lru_inuse_a.test", "A");
+    auto pB = writeTempFile("lru_inuse_b.test", "B");
+    auto pC = writeTempFile("lru_inuse_c.test", "C");
+
+    // Load A first (oldest), keep a handle alive
+    auto handleA = registry.load<TestAsset>(pA); // tick 0
+    registry.update();                           // tick 1
+
+    // Load B and C, let their handles go out of scope
+    {
+        registry.load<TestAsset>(pB); // tick 1
+        registry.update();            // tick 2
+        registry.load<TestAsset>(pC); // tick 2
+    }
+    EXPECT_EQ(registry.count<TestAsset>(), 3u);
+
+    // Budget for 2: must evict 1. A is oldest but in-use (handleA holds ref).
+    registry.setMemoryBudget<TestAsset>(sizeof(TestAsset) * 2);
+    registry.update(); // tick 3, eviction runs
+
+    // A must survive because handleA keeps use_count > 1
+    EXPECT_TRUE(handleA.isLoaded());
+    EXPECT_EQ(handleA.get().data, "A");
+    EXPECT_EQ(registry.count<TestAsset>(), 2u);
+
+    // A must still be in the cache
+    auto hA = registry.get<TestAsset>(pA);
+    EXPECT_TRUE(static_cast<bool>(hA));
 }
 
 } // namespace fabric
