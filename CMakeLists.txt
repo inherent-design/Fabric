@@ -478,6 +478,9 @@ if(FABRIC_BUILD_TESTS)
         )
     endforeach()
 
+    # Test fixture include path (tests/fixtures/)
+    target_include_directories(UnitTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+
     # Add test directories
     add_subdirectory(tests)
 

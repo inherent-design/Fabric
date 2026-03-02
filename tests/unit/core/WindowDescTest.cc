@@ -1,4 +1,5 @@
 #include "fabric/platform/WindowDesc.hh"
+#include "fixtures/SDLFixture.hh"
 
 #include <gtest/gtest.h>
 
@@ -6,6 +7,7 @@
 #include <toml++/toml.hpp>
 
 using namespace fabric;
+using fabric::test::SDLFixture;
 
 TEST(WindowDescTest, DefaultValues) {
     WindowDesc desc;
@@ -119,8 +121,20 @@ TEST(WindowDescTest, ApplyConstraintsWithNullWindow) {
     desc.applyConstraints(nullptr); // should not crash
 }
 
-TEST(WindowDescTest, CreateWindowRequiresSDLRuntime) {
-    GTEST_SKIP() << "Requires live SDL runtime to validate createWindow().";
+TEST_F(SDLFixture, CreateWindowReturnsValidHandle) {
+    WindowDesc desc;
+    desc.title = "TestWindow";
+    desc.width = 320;
+    desc.height = 240;
+    desc.hidden = true;  // keep invisible during test
+    desc.vulkan = false; // no GPU required for window creation test
+
+    SDL_Window* window = createWindow(desc);
+    ASSERT_NE(window, nullptr);
+
+    EXPECT_EQ(std::string(SDL_GetWindowTitle(window)), "TestWindow");
+
+    SDL_DestroyWindow(window);
 }
 
 // -- Zero and negative dimensions --

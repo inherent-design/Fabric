@@ -1,8 +1,10 @@
 #include "fabric/platform/PlatformInfo.hh"
+#include "fixtures/SDLFixture.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using fabric::test::SDLFixture;
 
 TEST(PlatformInfoTest, DefaultState) {
     PlatformInfo info;
@@ -101,8 +103,22 @@ TEST(PlatformInfoTest, PlatformDirsFieldAssignment) {
     EXPECT_EQ(info.dirs.dataDir, "/home/user/.local/share/fabric");
 }
 
-TEST(PlatformInfoTest, PopulateRequiresSDLRuntime) {
-    GTEST_SKIP() << "Requires live SDL runtime to validate populate().";
+TEST_F(SDLFixture, PopulateReturnsValidPlatformInfo) {
+    PlatformInfo info;
+    info.populate();
+
+    // OS fields should be populated on any machine with SDL available
+    EXPECT_FALSE(info.os.name.empty());
+    EXPECT_GT(info.os.cpuCount, 0);
+    EXPECT_GT(info.os.systemRAM, 0);
+
+    // At least one display should be present when SDL video succeeds
+    EXPECT_GE(info.displayCount(), 1u);
+
+    const DisplayInfo* primary = info.primaryDisplay();
+    ASSERT_NE(primary, nullptr);
+    EXPECT_GT(primary->width, 0);
+    EXPECT_GT(primary->height, 0);
 }
 
 // -- Multiple displays with no primary flag --
