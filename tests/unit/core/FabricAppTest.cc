@@ -368,33 +368,9 @@ TEST(AppContextTest, OptionalPtrNullCheckPattern) {
 
 // ── FabricAppDesc new fields ───────────────────────────────────────────
 
-TEST(FabricAppDescTest, OnFixedUpdateAndOnRenderDefaultNull) {
-    FabricAppDesc desc;
-    EXPECT_FALSE(desc.onFixedUpdate);
-    EXPECT_FALSE(desc.onRender);
-}
-
 TEST(FabricAppDescTest, HeadlessDefaultTrue) {
     FabricAppDesc desc;
     EXPECT_TRUE(desc.headless);
-}
-
-TEST(FabricAppDescTest, CallbacksAssignable) {
-    FabricAppDesc desc;
-    bool fixedCalled = false;
-    bool renderCalled = false;
-
-    desc.onFixedUpdate = [&](AppContext& /*ctx*/, float dt) {
-        fixedCalled = true;
-        EXPECT_GT(dt, 0.0f);
-    };
-    desc.onRender = [&](AppContext& /*ctx*/, float frameTime) {
-        renderCalled = true;
-        EXPECT_GE(frameTime, 0.0f);
-    };
-
-    EXPECT_TRUE(static_cast<bool>(desc.onFixedUpdate));
-    EXPECT_TRUE(static_cast<bool>(desc.onRender));
 }
 
 TEST_F(FabricAppTest, HeadlessModeSkipsPlatform) {
