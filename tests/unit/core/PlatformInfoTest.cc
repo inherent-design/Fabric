@@ -104,3 +104,157 @@ TEST(PlatformInfoTest, PlatformDirsFieldAssignment) {
 TEST(PlatformInfoTest, PopulateRequiresSDLRuntime) {
     GTEST_SKIP() << "Requires live SDL runtime to validate populate().";
 }
+
+// -- Multiple displays with no primary flag --
+
+TEST(PlatformInfoTest, NoPrimaryFlagFallsBackToFirst) {
+    PlatformInfo info;
+    info.displays.push_back({1, "Left", 0, 0, 1920, 1080, 1.0f, 60.0f, false});
+    info.displays.push_back({2, "Right", 1920, 0, 1920, 1080, 1.0f, 60.0f, false});
+    info.displays.push_back({3, "Top", 0, -1080, 1920, 1080, 1.0f, 60.0f, false});
+
+    const DisplayInfo* primary = info.primaryDisplay();
+    ASSERT_NE(primary, nullptr);
+    EXPECT_EQ(primary->id, 1u);
+}
+
+// -- Multiple primary displays (first flagged wins) --
+
+TEST(PlatformInfoTest, MultiplePrimaryFlagsReturnsFirst) {
+    PlatformInfo info;
+    info.displays.push_back({1, "A", 0, 0, 1920, 1080, 1.0f, 60.0f, true});
+    info.displays.push_back({2, "B", 1920, 0, 2560, 1440, 2.0f, 144.0f, true});
+
+    const DisplayInfo* primary = info.primaryDisplay();
+    ASSERT_NE(primary, nullptr);
+    EXPECT_EQ(primary->id, 1u);
+}
+
+// -- Empty device lists for all types --
+
+TEST(PlatformInfoTest, DevicesOfTypeEmptyForAllTypes) {
+    PlatformInfo info;
+    EXPECT_TRUE(info.devicesOfType(InputDeviceType::Keyboard).empty());
+    EXPECT_TRUE(info.devicesOfType(InputDeviceType::Mouse).empty());
+    EXPECT_TRUE(info.devicesOfType(InputDeviceType::Gamepad).empty());
+    EXPECT_TRUE(info.devicesOfType(InputDeviceType::Touch).empty());
+    EXPECT_TRUE(info.devicesOfType(InputDeviceType::Pen).empty());
+}
+
+// -- Pen device type --
+
+TEST(PlatformInfoTest, DevicesOfTypePen) {
+    PlatformInfo info;
+    info.inputDevices.push_back({1, InputDeviceType::Pen, "Wacom"});
+    info.inputDevices.push_back({2, InputDeviceType::Mouse, "Mouse"});
+
+    auto pens = info.devicesOfType(InputDeviceType::Pen);
+    EXPECT_EQ(pens.size(), 1u);
+    EXPECT_EQ(pens[0].name, "Wacom");
+}
+
+// -- Multiple devices of same type --
+
+TEST(PlatformInfoTest, MultipleDevicesSameType) {
+    PlatformInfo info;
+    info.inputDevices.push_back({1, InputDeviceType::Gamepad, "Xbox"});
+    info.inputDevices.push_back({2, InputDeviceType::Gamepad, "PS5"});
+    info.inputDevices.push_back({3, InputDeviceType::Gamepad, "Switch Pro"});
+
+    auto gamepads = info.devicesOfType(InputDeviceType::Gamepad);
+    EXPECT_EQ(gamepads.size(), 3u);
+    EXPECT_TRUE(info.hasGamepad());
+}
+
+// -- hasGamepad / hasTouch with mixed devices --
+
+TEST(PlatformInfoTest, HasGamepadWithMixedDevices) {
+    PlatformInfo info;
+    info.inputDevices.push_back({1, InputDeviceType::Keyboard, "KB"});
+    info.inputDevices.push_back({2, InputDeviceType::Mouse, "Mouse"});
+    EXPECT_FALSE(info.hasGamepad());
+    EXPECT_FALSE(info.hasTouch());
+
+    info.inputDevices.push_back({3, InputDeviceType::Gamepad, "Pad"});
+    EXPECT_TRUE(info.hasGamepad());
+    EXPECT_FALSE(info.hasTouch());
+}
+
+// -- GPUInfo field assignment --
+
+TEST(PlatformInfoTest, GPUInfoFieldAssignment) {
+    PlatformInfo info;
+    info.gpu.vendorId = 0x10de;
+    info.gpu.deviceId = 0x2684;
+    info.gpu.vendorName = "NVIDIA";
+    info.gpu.deviceName = "RTX 4090";
+    info.gpu.driverInfo = "Vulkan";
+
+    EXPECT_EQ(info.gpu.vendorId, 0x10de);
+    EXPECT_EQ(info.gpu.deviceId, 0x2684);
+    EXPECT_EQ(info.gpu.vendorName, "NVIDIA");
+    EXPECT_EQ(info.gpu.deviceName, "RTX 4090");
+    EXPECT_EQ(info.gpu.driverInfo, "Vulkan");
+}
+
+// -- OSInfo field assignment --
+
+TEST(PlatformInfoTest, OSInfoFieldAssignment) {
+    PlatformInfo info;
+    info.os.name = "macOS";
+    info.os.version = "3.2.0";
+    info.os.arch = "arm64";
+    info.os.cpuCount = 10;
+    info.os.systemRAM = 32768;
+
+    EXPECT_EQ(info.os.name, "macOS");
+    EXPECT_EQ(info.os.version, "3.2.0");
+    EXPECT_EQ(info.os.arch, "arm64");
+    EXPECT_EQ(info.os.cpuCount, 10);
+    EXPECT_EQ(info.os.systemRAM, 32768);
+}
+
+// -- DisplayInfo defaults --
+
+TEST(PlatformInfoTest, DisplayInfoDefaultConstruction) {
+    DisplayInfo d;
+    EXPECT_EQ(d.id, 0u);
+    EXPECT_TRUE(d.name.empty());
+    EXPECT_EQ(d.x, 0);
+    EXPECT_EQ(d.y, 0);
+    EXPECT_EQ(d.width, 0);
+    EXPECT_EQ(d.height, 0);
+    EXPECT_FLOAT_EQ(d.contentScale, 1.0f);
+    EXPECT_FLOAT_EQ(d.refreshRate, 0.0f);
+    EXPECT_FALSE(d.primary);
+}
+
+// -- InputDeviceInfo defaults --
+
+TEST(PlatformInfoTest, InputDeviceInfoDefaultConstruction) {
+    InputDeviceInfo dev;
+    EXPECT_EQ(dev.id, 0u);
+    EXPECT_EQ(dev.type, InputDeviceType::Keyboard);
+    EXPECT_TRUE(dev.name.empty());
+}
+
+// -- PlatformDirs default construction --
+
+TEST(PlatformInfoTest, PlatformDirsDefaultConstruction) {
+    PlatformDirs dirs;
+    EXPECT_TRUE(dirs.basePath.empty());
+    EXPECT_TRUE(dirs.prefPath.empty());
+    EXPECT_TRUE(dirs.configDir.empty());
+    EXPECT_TRUE(dirs.cacheDir.empty());
+    EXPECT_TRUE(dirs.dataDir.empty());
+}
+
+// -- Vulkan API version --
+
+TEST(PlatformInfoTest, VulkanApiVersionStorage) {
+    PlatformInfo info;
+    // VK_MAKE_VERSION(1, 3, 0) = (1 << 22) | (3 << 12) | 0
+    uint32_t version = (1u << 22) | (3u << 12) | 0u;
+    info.vulkanApiVersion = version;
+    EXPECT_EQ(info.vulkanApiVersion, version);
+}
