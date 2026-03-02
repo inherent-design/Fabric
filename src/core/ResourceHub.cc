@@ -25,41 +25,8 @@ void ResourceHub::enforceBudget() {
 // Destructor implementation
 ResourceHub::~ResourceHub() {
     try {
-        // Use timeout protection for shutdown operations
-        auto shutdownTimeoutMs = 1000; // 1 second timeout
-        auto startTime = std::chrono::steady_clock::now();
-
-        // Create a separate thread for shutdown to prevent blocking
-        std::atomic<bool> shutdownCompleted{false};
-        std::thread shutdownThread([this, &shutdownCompleted]() {
-            try {
-                shutdown();
-                shutdownCompleted = true;
-            } catch (const std::exception& e) {
-                FABRIC_LOG_ERROR("Exception during ResourceHub shutdown: {}", e.what());
-                shutdownCompleted = true;
-            } catch (...) {
-                FABRIC_LOG_ERROR("Unknown exception during ResourceHub shutdown");
-                shutdownCompleted = true;
-            }
-        });
-
-        // Wait for shutdown to complete with timeout
-        while (!shutdownCompleted) {
-            auto now = std::chrono::steady_clock::now();
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count() > shutdownTimeoutMs) {
-                FABRIC_LOG_WARN("ResourceHub shutdown timed out, continuing with destruction");
-                break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-
-        // Detach the thread if it's still running
-        if (shutdownThread.joinable()) {
-            shutdownThread.detach();
-        }
+        shutdown();
     } catch (const std::exception& e) {
-        // Log but don't throw from destructor
         FABRIC_LOG_ERROR("Exception in ResourceHub destructor: {}", e.what());
     } catch (...) {
         FABRIC_LOG_ERROR("Unknown exception in ResourceHub destructor");
@@ -68,177 +35,41 @@ ResourceHub::~ResourceHub() {
 
 // Shutdown implementation
 void ResourceHub::shutdown() {
-    // Use timeout constants
-    constexpr int MUTEX_TIMEOUT_MS = 100;
-    constexpr int THREAD_JOIN_TIMEOUT_MS = 500;
-    constexpr int OVERALL_TIMEOUT_MS = 2000;
-
-    auto startTime = std::chrono::steady_clock::now();
-
-    // Timeout checker function
-    auto isTimedOut = [&startTime, OVERALL_TIMEOUT_MS]() -> bool {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime)
-                   .count() > OVERALL_TIMEOUT_MS;
-    };
-
-    try {
-        // Signal worker threads to stop with timeout protection
-        bool lockAcquired = false;
-
-        // Try to acquire queue mutex with timeout
-        auto queueLockStart = std::chrono::steady_clock::now();
-        while (!queueMutex_.try_lock()) {
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - queueLockStart)
-                    .count() > MUTEX_TIMEOUT_MS) {
-                FABRIC_LOG_WARN("Failed to acquire queue mutex in shutdown");
-                break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-
-        // Set shutdown flag (thread-safe since it's atomic)
+    // Signal workers to exit: set flag, drain queue, notify
+    {
+        std::unique_lock<std::timed_mutex> lock(queueMutex_, std::chrono::milliseconds(200));
+        if (shutdown_)
+            return; // Already shut down
         shutdown_ = true;
-
-        // If we acquired the lock, we can clear the queue and unlock
-        if (queueMutex_.try_lock()) {
-            lockAcquired = true;
-
-            // Clear the queue
-            while (!loadQueue_.empty()) {
+        if (lock.owns_lock()) {
+            while (!loadQueue_.empty())
                 loadQueue_.pop();
-            }
-
-            // Release the lock
-            queueMutex_.unlock();
         }
+    } // Mutex released before notify so workers can re-acquire
+    queueCondition_.notify_all();
 
-        // Notify all threads (this is thread-safe)
-        queueCondition_.notify_all();
-
-        // Create a copy of worker threads to prevent race conditions
-        std::vector<std::unique_ptr<std::thread>> threadsCopy;
-
-        // Safely get threads - with timeout
-        bool threadCopySucceeded = false;
-        try {
-            if (threadControlMutex_.try_lock_for(std::chrono::milliseconds(MUTEX_TIMEOUT_MS))) {
-                threadsCopy = std::move(workerThreads_);
-                workerThreads_.clear();
-                threadControlMutex_.unlock();
-                threadCopySucceeded = true;
+    // Join worker threads. Workers see shutdown_ and exit their loop after
+    // finishing any in-flight load (file I/O, bounded duration). The 500ms
+    // condition_variable timeout in workerThread() guarantees wake-up even
+    // if notify_all races with wait_for entry.
+    {
+        std::unique_lock<std::timed_mutex> lock(threadControlMutex_, std::chrono::milliseconds(500));
+        if (lock.owns_lock()) {
+            for (auto& t : workerThreads_) {
+                if (t && t->joinable())
+                    t->join();
             }
-        } catch (...) {
-            FABRIC_LOG_WARN("ResourceHub: failed to copy worker threads during shutdown");
-            if (threadControlMutex_.try_lock()) {
-                threadControlMutex_.unlock();
-            }
-        }
-
-        // If we couldn't copy threads, try to use the original vector with care
-        std::vector<std::thread*> threadsToJoin;
-        if (threadCopySucceeded) {
-            // Wait for threads to finish with timeout
-            for (auto& thread : threadsCopy) {
-                if (thread && thread->joinable()) {
-                    threadsToJoin.push_back(thread.get());
-                }
-            }
+            workerThreads_.clear();
         } else {
-            // Try to read the original vector (less safe)
-            for (auto& thread : workerThreads_) {
-                if (thread && thread->joinable()) {
-                    threadsToJoin.push_back(thread.get());
-                }
-            }
+            FABRIC_LOG_WARN("ResourceHub::shutdown: could not acquire thread control mutex");
         }
+    }
 
-        // Join threads with timeout protection
-        for (auto thread : threadsToJoin) {
-            if (isTimedOut()) {
-                FABRIC_LOG_WARN("Shutdown timed out during thread joining");
-                break;
-            }
-
-            // Use a timeout thread to join with timeout
-            std::atomic<bool> joinCompleted{false};
-            std::thread joiner([thread, &joinCompleted]() {
-                if (thread->joinable()) {
-                    thread->join();
-                }
-                joinCompleted = true;
-            });
-
-            // Wait for join to complete with timeout
-            auto joinStart = std::chrono::steady_clock::now();
-            while (!joinCompleted) {
-                if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - joinStart)
-                        .count() > THREAD_JOIN_TIMEOUT_MS) {
-                    FABRIC_LOG_WARN("Thread join timed out in shutdown");
-                    break;
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            }
-
-            // Detach the joiner thread if it's still running
-            if (joiner.joinable()) {
-                joiner.detach();
-            }
-        }
-
-        // Clear threads
-        if (threadCopySucceeded) {
-            threadsCopy.clear();
-        } else {
-            // Try to clear the original vector, with timeout protection
-            if (threadControlMutex_.try_lock_for(std::chrono::milliseconds(MUTEX_TIMEOUT_MS))) {
-                workerThreads_.clear();
-                threadControlMutex_.unlock();
-            }
-        }
-
-        // Unload all resources with timeout protection
-        if (!isTimedOut()) {
-            try {
-                // Attempt to clear resources with a separate timeout
-                constexpr int CLEAR_TIMEOUT_MS = 500;
-                auto clearStart = std::chrono::steady_clock::now();
-
-                std::atomic<bool> clearCompleted{false};
-                std::thread clearThread([this, &clearCompleted]() {
-                    try {
-                        clear();
-                        clearCompleted = true;
-                    } catch (...) {
-                        FABRIC_LOG_ERROR("ResourceHub: unknown exception during clear() in shutdown");
-                        clearCompleted = true;
-                    }
-                });
-
-                // Wait for clear to complete with timeout
-                while (!clearCompleted) {
-                    if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
-                                                                              clearStart)
-                            .count() > CLEAR_TIMEOUT_MS) {
-                        FABRIC_LOG_WARN("Resource clearing timed out in shutdown");
-                        break;
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                }
-
-                // Detach the clear thread if it's still running
-                if (clearThread.joinable()) {
-                    clearThread.detach();
-                }
-            } catch (const std::exception& e) {
-                FABRIC_LOG_ERROR("Exception during resource clearing in shutdown: {}", e.what());
-            } catch (...) {
-                FABRIC_LOG_ERROR("Unknown exception during resource clearing in shutdown");
-            }
-        }
+    // Clear loaded resources
+    try {
+        clear();
     } catch (const std::exception& e) {
-        FABRIC_LOG_ERROR("Exception in ResourceHub::shutdown(): {}", e.what());
-    } catch (...) {
-        FABRIC_LOG_ERROR("Unknown exception in ResourceHub::shutdown()");
+        FABRIC_LOG_ERROR("ResourceHub::shutdown: clear() failed: {}", e.what());
     }
 }
 
