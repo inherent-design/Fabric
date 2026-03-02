@@ -252,6 +252,22 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/ui/ContentBrowser.cc
     src/recurse/ui/DevConsole.cc
     src/recurse/ui/DebrisPool.cc
+
+    # systems/ (SystemBase subclasses, phase-dispatched by SystemRegistry)
+    src/recurse/systems/TerrainSystem.cc
+    src/recurse/systems/ChunkPipelineSystem.cc
+    src/recurse/systems/PhysicsGameSystem.cc
+    src/recurse/systems/CharacterMovementSystem.cc
+    src/recurse/systems/VoxelInteractionSystem.cc
+    src/recurse/systems/AIGameSystem.cc
+    src/recurse/systems/SaveGameSystem.cc
+    src/recurse/systems/ParticleGameSystem.cc
+    src/recurse/systems/CameraGameSystem.cc
+    src/recurse/systems/AudioGameSystem.cc
+    src/recurse/systems/ShadowRenderSystem.cc
+    src/recurse/systems/VoxelRenderSystem.cc
+    src/recurse/systems/OITRenderSystem.cc
+    src/recurse/systems/DebugOverlaySystem.cc
 )
 
 # Utils library components
