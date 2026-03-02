@@ -85,4 +85,44 @@ TEST(FabricAppDescTest, SetCallbacks) {
     EXPECT_TRUE(static_cast<bool>(desc.onShutdown));
 }
 
+TEST(FabricAppDescTest, DuplicateTypeRegistrationAccumulates) {
+    FabricAppDesc desc;
+    desc.registerSystem<TestSystemA>(SystemPhase::Update);
+    desc.registerSystem<TestSystemA>(SystemPhase::FixedUpdate);
+    // FabricAppDesc does not deduplicate; it just accumulates factories.
+    // SystemRegistry::registerSystemImpl will throw when the second one is registered.
+    EXPECT_EQ(desc.systemRegistrations_.size(), 2u);
+}
+
+TEST(FabricAppDescTest, MultipleSystemsSamePhase) {
+    FabricAppDesc desc;
+    desc.registerSystem<TestSystemA>(SystemPhase::Update);
+    desc.registerSystem<TestSystemB>(SystemPhase::Update, 10);
+    EXPECT_EQ(desc.systemRegistrations_.size(), 2u);
+    EXPECT_EQ(desc.systemRegistrations_[0].phase, SystemPhase::Update);
+    EXPECT_EQ(desc.systemRegistrations_[1].phase, SystemPhase::Update);
+}
+
+TEST(FabricAppDescTest, NoArgFactoryCreatesSystem) {
+    FabricAppDesc desc;
+    desc.registerSystem<TestSystemA>(SystemPhase::Render);
+
+    auto system = desc.systemRegistrations_[0].factory();
+    ASSERT_NE(system, nullptr);
+    auto* concrete = dynamic_cast<TestSystemA*>(system.get());
+    ASSERT_NE(concrete, nullptr);
+    EXPECT_FALSE(concrete->initialized);
+}
+
+TEST(FabricAppDescTest, WindowDescDefaults) {
+    FabricAppDesc desc;
+    EXPECT_EQ(desc.windowDesc.title, "Fabric");
+    EXPECT_EQ(desc.windowDesc.width, 1280);
+    EXPECT_EQ(desc.windowDesc.height, 720);
+    EXPECT_TRUE(desc.windowDesc.resizable);
+    EXPECT_TRUE(desc.windowDesc.hidpiEnabled);
+    EXPECT_FALSE(desc.windowDesc.fullscreen);
+    EXPECT_FALSE(desc.windowDesc.borderless);
+}
+
 } // namespace fabric
