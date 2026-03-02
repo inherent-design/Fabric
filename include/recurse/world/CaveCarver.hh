@@ -1,6 +1,6 @@
 #pragma once
 
-#include "recurse/world/FieldLayer.hh"
+#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Rendering.hh"
 #include <cstdint>
 
@@ -8,7 +8,8 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
-
+using fabric::DensityField;
+using fabric::FieldLayer;
 
 struct CaveConfig {
     float frequency = 0.03f;

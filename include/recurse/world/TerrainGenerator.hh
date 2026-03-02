@@ -1,6 +1,6 @@
 #pragma once
 
-#include "recurse/world/FieldLayer.hh"
+#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/Spatial.hh"
 #include <cstdint>
@@ -9,9 +9,11 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
+using fabric::DensityField;
+using fabric::EssenceField;
+using fabric::FieldLayer;
 namespace Space = fabric::Space;
 using fabric::Vector4;
-
 
 enum class NoiseType : uint8_t {
     Simplex,

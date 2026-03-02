@@ -7,6 +7,7 @@
 #include "fabric/core/Constants.g.hh"
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Event.hh"
+#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/InputManager.hh"
 #include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
@@ -48,7 +49,6 @@
 #include "recurse/world/CaveCarver.hh"
 #include "recurse/world/ChunkMeshManager.hh"
 #include "recurse/world/ChunkStreaming.hh"
-#include "recurse/world/FieldLayer.hh"
 #include "recurse/world/TerrainGenerator.hh"
 #include "recurse/world/VoxelMesher.hh"
 

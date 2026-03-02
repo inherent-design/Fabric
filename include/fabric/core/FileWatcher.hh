@@ -13,8 +13,7 @@ class FileWatcher;
 class FileWatchListener;
 } // namespace efsw
 
-namespace recurse {
-
+namespace fabric {
 
 // File change event queued for main-thread processing
 struct FileChangeEvent {
@@ -82,4 +81,4 @@ class FileWatcher {
     static constexpr std::chrono::milliseconds kDebounceWindow{100};
 };
 
-} // namespace recurse
+} // namespace fabric

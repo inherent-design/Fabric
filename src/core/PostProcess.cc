@@ -1,4 +1,4 @@
-#include "recurse/render/PostProcess.hh"
+#include "fabric/core/PostProcess.hh"
 
 #include "fabric/core/Log.hh"
 #include "fabric/core/Rendering.hh"
@@ -32,9 +32,7 @@ static const float s_fullscreenVertices[] = {
 };
 
 
-using namespace fabric;
-
-namespace recurse {
+namespace fabric {
 
 PostProcess::PostProcess()
     : brightProgram_(BGFX_INVALID_HANDLE),
@@ -318,4 +316,4 @@ void PostProcess::destroyFramebuffers() {
     }
 }
 
-} // namespace recurse
+} // namespace fabric

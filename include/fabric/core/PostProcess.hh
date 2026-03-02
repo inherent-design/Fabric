@@ -3,8 +3,7 @@
 #include <bgfx/bgfx.h>
 #include <cstdint>
 
-namespace recurse {
-
+namespace fabric {
 
 // HDR post-processing pipeline: brightness extraction, dual Kawase blur, ACES
 // tonemapping. Scene renders into an RGBA16F offscreen framebuffer; the pipeline
@@ -91,4 +90,4 @@ class PostProcess {
     bool initialized_ = false;
 };
 
-} // namespace recurse
+} // namespace fabric

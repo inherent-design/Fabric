@@ -3,12 +3,7 @@
 #include "fabric/core/Spatial.hh"
 #include <bgfx/bgfx.h>
 
-namespace recurse {
-
-// Engine types imported from fabric:: namespace
-namespace Space = fabric::Space;
-using fabric::Vector3;
-
+namespace fabric {
 
 // Renders a procedural atmospheric sky using a fullscreen triangle.
 // Implements a Preetham/Perez luminance distribution driven by sun position.
@@ -52,4 +47,4 @@ class SkyRenderer {
     bool initialized_ = false;
 };
 
-} // namespace recurse
+} // namespace fabric

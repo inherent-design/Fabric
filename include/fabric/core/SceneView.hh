@@ -1,18 +1,14 @@
 #pragma once
 
 #include "fabric/core/Camera.hh"
+#include "fabric/core/PostProcess.hh"
 #include "fabric/core/Rendering.hh"
-#include "recurse/render/PostProcess.hh"
-#include "recurse/render/SkyRenderer.hh"
+#include "fabric/core/SkyRenderer.hh"
 #include <cstdint>
 #include <flecs.h>
 #include <vector>
 
 namespace fabric {
-
-// Recurse types imported for backward compatibility during transition
-using recurse::PostProcess;
-using recurse::SkyRenderer;
 
 // View ID layout:
 //   viewId_     = sky dome (clear color+depth, fullscreen triangle)
