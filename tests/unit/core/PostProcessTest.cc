@@ -1,8 +1,8 @@
-#include "fabric/core/PostProcess.hh"
+#include "recurse/render/PostProcess.hh"
 
 #include <gtest/gtest.h>
 
-using namespace fabric;
+using namespace recurse;
 
 TEST(PostProcessTest, DefaultInvalidState) {
     PostProcess pp;

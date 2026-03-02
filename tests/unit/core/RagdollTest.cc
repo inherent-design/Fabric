@@ -1,10 +1,10 @@
-#include "fabric/core/Ragdoll.hh"
+#include "recurse/physics/Ragdoll.hh"
 
 #include <gtest/gtest.h>
 
 #include <cstring>
 
-using namespace fabric;
+using namespace recurse;
 
 namespace {
 

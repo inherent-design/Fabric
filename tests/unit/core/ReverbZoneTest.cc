@@ -1,9 +1,9 @@
-#include "fabric/core/ReverbZone.hh"
-#include "fabric/core/ChunkedGrid.hh"
+#include "recurse/audio/ReverbZone.hh"
+#include "recurse/world/ChunkedGrid.hh"
 
 #include <gtest/gtest.h>
 
-using namespace fabric;
+using namespace recurse;
 
 // ---------------------------------------------------------------------------
 // Helper: build a sealed box of solid voxels with air interior.

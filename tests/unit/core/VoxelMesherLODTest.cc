@@ -1,7 +1,8 @@
-#include "fabric/core/VoxelMesher.hh"
+#include "recurse/world/VoxelMesher.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 using Essence = Vector4<float, Space::World>;
 
 class VoxelMesherLODTest : public ::testing::Test {

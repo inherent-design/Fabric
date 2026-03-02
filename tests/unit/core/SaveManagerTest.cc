@@ -1,12 +1,13 @@
-#include "fabric/core/SaveManager.hh"
-#include "fabric/core/FieldLayer.hh"
-#include "fabric/core/SceneSerializer.hh"
+#include "recurse/persistence/SaveManager.hh"
 #include "fabric/core/Temporal.hh"
+#include "recurse/persistence/SceneSerializer.hh"
+#include "recurse/world/FieldLayer.hh"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class SaveManagerTest : public ::testing::Test {
   protected:

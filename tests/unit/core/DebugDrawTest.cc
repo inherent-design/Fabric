@@ -1,8 +1,8 @@
-#include "fabric/core/DebugDraw.hh"
+#include "recurse/render/DebugDraw.hh"
 
 #include <gtest/gtest.h>
 
-using namespace fabric;
+using namespace recurse;
 
 // Flag management tests (no bgfx required)
 

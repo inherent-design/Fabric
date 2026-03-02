@@ -1,9 +1,10 @@
-#include "fabric/core/CameraController.hh"
+#include "recurse/gameplay/CameraController.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 #include <numbers>
 
 using namespace fabric;
+using namespace recurse;
 
 class CameraControllerTest : public ::testing::Test {
   protected:

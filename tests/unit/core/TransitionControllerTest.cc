@@ -1,8 +1,9 @@
-#include "fabric/core/TransitionController.hh"
+#include "recurse/gameplay/TransitionController.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class TransitionControllerTest : public ::testing::Test {
   protected:

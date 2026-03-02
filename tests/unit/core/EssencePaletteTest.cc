@@ -1,8 +1,9 @@
-#include "fabric/core/EssencePalette.hh"
+#include "recurse/world/EssencePalette.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 using Vec4 = Vector4<float, Space::World>;
 
 class EssencePaletteTest : public ::testing::Test {

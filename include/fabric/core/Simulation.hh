@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/core/FieldLayer.hh"
+#include "recurse/world/FieldLayer.hh"
 
 #include <functional>
 #include <string>
@@ -8,6 +8,10 @@
 #include <vector>
 
 namespace fabric {
+
+// Recurse types imported for backward compatibility during transition
+using recurse::DensityField;
+using recurse::EssenceField;
 
 using SimRule = std::function<void(DensityField&, EssenceField&, int x, int y, int z, double dt)>;
 

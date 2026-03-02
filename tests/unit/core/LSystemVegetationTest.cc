@@ -1,4 +1,4 @@
-#include "fabric/core/LSystemVegetation.hh"
+#include "recurse/world/LSystemVegetation.hh"
 
 #include <gtest/gtest.h>
 
@@ -8,6 +8,7 @@
 #include <set>
 
 using namespace fabric;
+using namespace recurse;
 
 // ---------------------------------------------------------------------------
 // 1. expand() produces correct string for 1 iteration

@@ -1,9 +1,10 @@
-#include "fabric/core/ShadowSystem.hh"
+#include "recurse/render/ShadowSystem.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class ShadowSystemTest : public ::testing::Test {
   protected:

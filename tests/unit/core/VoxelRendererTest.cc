@@ -1,8 +1,9 @@
-#include "fabric/core/VoxelRenderer.hh"
+#include "recurse/render/VoxelRenderer.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 TEST(VoxelRendererTest, DefaultInvalidState) {
     VoxelRenderer renderer;

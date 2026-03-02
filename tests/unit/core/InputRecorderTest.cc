@@ -1,7 +1,7 @@
-#include "fabric/core/InputRecorder.hh"
+#include "recurse/persistence/InputRecorder.hh"
 #include <gtest/gtest.h>
 
-using namespace fabric;
+using namespace recurse;
 
 // --- SerializedEvent construction ---
 

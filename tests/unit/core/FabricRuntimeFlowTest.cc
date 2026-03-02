@@ -1,8 +1,8 @@
 #include "fabric/core/Camera.hh"
-#include "fabric/core/ChunkMeshManager.hh"
 #include "fabric/core/ECS.hh"
 #include "fabric/core/SceneView.hh"
-#include "fabric/core/VoxelInteraction.hh"
+#include "recurse/gameplay/VoxelInteraction.hh"
+#include "recurse/world/ChunkMeshManager.hh"
 
 #include <gtest/gtest.h>
 
@@ -10,6 +10,7 @@
 #include <unordered_set>
 
 using namespace fabric;
+using namespace recurse;
 
 namespace {
 using Essence = Vector4<float, Space::World>;

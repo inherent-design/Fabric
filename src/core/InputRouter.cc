@@ -1,6 +1,6 @@
 #include "fabric/core/InputRouter.hh"
-#include "fabric/core/InputRecorder.hh"
 #include "fabric/core/Log.hh"
+#include "recurse/persistence/InputRecorder.hh"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Element.h>
@@ -8,6 +8,11 @@
 #include <unordered_map>
 
 namespace fabric {
+
+// Recurse types imported for backward compatibility during transition
+using recurse::InputEventType;
+using recurse::InputRecorder;
+using recurse::SerializedEvent;
 
 namespace {
 
