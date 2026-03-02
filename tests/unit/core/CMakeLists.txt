@@ -91,6 +91,8 @@ target_sources(UnitTests
   RuntimeStateTest.cc
   WindowDescTest.cc
   CursorManagerTest.cc
+  SystemBaseTest.cc
+  SystemRegistryTest.cc
 )
 
 set_source_files_properties(
