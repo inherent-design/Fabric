@@ -50,10 +50,6 @@ struct FabricAppDesc {
     std::function<void(AppContext&)> onInit;
     std::function<void(AppContext&)> onShutdown;
 
-    // Per-frame callbacks (called only when headless=false)
-    std::function<void(AppContext&, float dt)> onFixedUpdate;
-    std::function<void(AppContext&, float frameTime)> onRender;
-
     // Window/focus event callbacks
     std::function<void(AppContext&)> onFocusGained;
     std::function<void(AppContext&)> onFocusLost;
