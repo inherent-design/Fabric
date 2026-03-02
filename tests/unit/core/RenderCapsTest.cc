@@ -1,11 +1,14 @@
 #include "fabric/core/RenderCaps.hh"
+#include "fixtures/BgfxNoopFixture.hh"
 
 #include <gtest/gtest.h>
 
 // Pull in BGFX_CAPS_* defines for synthetic test data
 #include <bgfx/bgfx.h>
+#include <cstring>
 
 using namespace fabric;
+using fabric::test::BgfxNoopFixture;
 
 TEST(RenderCapsTest, DefaultState) {
     RenderCaps caps;
@@ -78,6 +81,15 @@ TEST(RenderCapsTest, Tier1_ComputeAloneNotSufficient) {
     EXPECT_EQ(tier, RenderTier::Tier1);
 }
 
-TEST(RenderCapsTest, InitFromBgfxRequiresRuntime) {
-    GTEST_SKIP() << "Requires live bgfx runtime context to validate initFromBgfx().";
+TEST_F(BgfxNoopFixture, InitFromBgfxPopulatesCaps) {
+    RenderCaps caps;
+    caps.initFromBgfx();
+
+    // Noop renderer provides getCaps() with minimal feature support.
+    // Verify the call completes and sets a renderer name.
+    EXPECT_NE(caps.rendererName, nullptr);
+    EXPECT_GT(std::strlen(caps.rendererName), 0u);
+    // Noop is baseline, so tier may be Tier0 (no compute/drawIndirect).
+    EXPECT_GE(static_cast<int>(caps.tier), 0);
+    EXPECT_LE(static_cast<int>(caps.tier), 2);
 }
