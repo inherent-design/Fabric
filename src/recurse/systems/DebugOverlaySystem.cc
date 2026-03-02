@@ -53,7 +53,7 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
     // Console toggle via InputRouter (backtick key)
     auto* appMode = ctx.appModeManager;
     auto* inputRouter = ctx.inputRouter;
-    inputRouter->setConsoleToggleCallback([this, appMode, inputRouter]() {
+    inputRouter->setConsoleToggleCallback([this, appMode]() {
         auto mode = appMode->current();
         if (mode == fabric::AppMode::Console) {
             appMode->transition(fabric::AppMode::Game);
@@ -61,11 +61,6 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
             appMode->transition(fabric::AppMode::Console);
         }
         devConsole_.toggle();
-        if (devConsole_.isVisible()) {
-            inputRouter->setMode(fabric::InputMode::UIOnly);
-        } else {
-            inputRouter->setMode(fabric::InputMode::GameOnly);
-        }
     });
 
     // Console quit pushes SDL_QUIT
@@ -229,8 +224,8 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
 
         debugHUD_.update(debugData);
 
-        // Periodic performance log (every 10 frames)
-        if (frameCounter_ % 10 == 0) {
+        // Periodic performance log (every 1000 frames)
+        if (frameCounter_ % 1000 == 0) {
             FABRIC_LOG_INFO("perf: frame={} fps={:.1f} dt={:.1f}ms gpu={:.1f}ms draws={} tris={} chunks={}/{} "
                             "meshQueue={} vram={:.1f}MB bodies={} voices={}",
                             frameCounter_, debugData.fps, debugData.frameTimeMs, debugData.gpuTimeMs,
