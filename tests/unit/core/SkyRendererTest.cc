@@ -1,8 +1,10 @@
 #include "fabric/core/SkyRenderer.hh"
+#include "fixtures/BgfxNoopFixture.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using fabric::test::BgfxNoopFixture;
 
 TEST(SkyRendererTest, DefaultInvalidState) {
     SkyRenderer renderer;
@@ -49,8 +51,13 @@ TEST(SkyRendererTest, RenderWithoutInitIsNoOp) {
     EXPECT_FALSE(renderer.isValid());
 }
 
-TEST(SkyRendererTest, InitRequiresRuntimeBgfxContext) {
-    GTEST_SKIP() << "Requires live bgfx runtime context to safely validate init behavior.";
+TEST_F(BgfxNoopFixture, SkyRendererInitAndShutdownUnderNoop) {
+    SkyRenderer renderer;
+    renderer.init();
+    // Noop renderer accepts all shader creates, so init succeeds.
+    EXPECT_TRUE(renderer.isValid());
+    renderer.shutdown();
+    EXPECT_FALSE(renderer.isValid());
 }
 
 TEST(SkyRendererTest, SetSunDirectionBeforeInitDoesNotCrash) {

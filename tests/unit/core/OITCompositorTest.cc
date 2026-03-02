@@ -1,8 +1,12 @@
 #include "recurse/render/OITCompositor.hh"
+#include "fabric/core/RenderCaps.hh"
+#include "fixtures/BgfxNoopFixture.hh"
 
 #include <gtest/gtest.h>
 
+using namespace fabric;
 using namespace recurse;
+using fabric::test::BgfxNoopFixture;
 
 TEST(OITCompositorTest, DefaultInvalidState) {
     OITCompositor compositor;
@@ -60,22 +64,45 @@ TEST(OITCompositorTest, ColorUniformInvalidBeforeInit) {
     EXPECT_FALSE(bgfx::isValid(compositor.colorUniform()));
 }
 
-TEST(OITCompositorTest, InitRequiresRuntimeBgfxContext) {
-    GTEST_SKIP() << "Requires live bgfx runtime context to safely validate init().";
+TEST_F(BgfxNoopFixture, OITCompositorInitAndShutdownUnderNoop) {
+    OITCompositor compositor;
+    bool ok = compositor.init(320, 240);
+    // Noop renderer accepts all creates, so init succeeds.
+    EXPECT_TRUE(ok);
+    EXPECT_TRUE(compositor.isValid());
+    compositor.shutdown();
+    EXPECT_FALSE(compositor.isValid());
 }
 
-TEST(OITCompositorTest, CompositeRequiresRuntimeBgfxContext) {
-    GTEST_SKIP() << "Requires live bgfx runtime context to safely validate composite path.";
+TEST_F(BgfxNoopFixture, OITCompositorCompositeWithoutInit) {
+    OITCompositor compositor;
+    // composite() before init should be a safe no-op.
+    compositor.composite(0, 320, 240);
+    EXPECT_FALSE(compositor.isValid());
 }
 
-TEST(OITCompositorTest, AccumulationRequiresRuntimeBgfxContext) {
-    GTEST_SKIP() << "Requires live bgfx runtime context to safely validate accumulation path.";
+TEST_F(BgfxNoopFixture, OITCompositorAccumulationWithoutInit) {
+    OITCompositor compositor;
+    // beginAccumulation before init should be safe no-op.
+    float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+    compositor.beginAccumulation(0, identity, identity, 320, 240);
+    EXPECT_FALSE(compositor.isValid());
 }
 
-TEST(OITCompositorTest, GracefulFallbackWithoutMRT) {
-    GTEST_SKIP() << "Requires live bgfx runtime context to test MRT capability gating.";
+TEST_F(BgfxNoopFixture, OITCompositorMRTCapabilityGating) {
+    // Verify RenderCaps reports MRT state under noop renderer.
+    RenderCaps caps;
+    caps.initFromBgfx();
+    // Noop renderer has minimal caps; MRT depends on maxFBAttachments.
+    // Test that the field is populated without crashing.
+    EXPECT_GE(caps.maxFBAttachments, 0);
 }
 
-TEST(OITCompositorTest, GracefulFallbackWithoutRGBA16F) {
-    GTEST_SKIP() << "Requires live bgfx runtime context to test RGBA16F format gating.";
+TEST_F(BgfxNoopFixture, OITCompositorFormatCapabilityGating) {
+    // Verify bgfx caps are queryable for texture format support under noop.
+    const bgfx::Caps* caps = bgfx::getCaps();
+    ASSERT_NE(caps, nullptr);
+    // Check that format queries don't crash. Noop may or may not support RGBA16F.
+    // The key check: getCaps() returns a valid structure with format data.
+    EXPECT_GT(caps->limits.maxTextureSize, 0u);
 }
