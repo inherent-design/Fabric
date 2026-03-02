@@ -16,16 +16,21 @@ vec3 decodeNormal(float idx) {
 }
 
 void main() {
+    // UNORM recovery: bgfx Vulkan maps Uint8(normalized=true) to UNORM [0,1].
+    // Multiply by 255.0 to recover original integer byte values.
+    vec4 tc0 = a_texcoord0 * 255.0;
+    vec2 tc2 = a_texcoord2 * 255.0;
+
     // Unpack position from first 3 bytes of posNormalAO (a_texcoord0)
-    vec3 pos = a_texcoord0.xyz;
+    vec3 pos = tc0.xyz;
 
     // Byte 3: normalIdx[2:0] | aoLevel[4:3]
-    float bits = a_texcoord0.w;
+    float bits = tc0.w;
     float normalIdx = floor(mod(bits, 8.0));
 
     // Flow direction from a_texcoord2 (int8 encoded as uint8, remap to -1..1)
     // Values are stored as uint8 (0-255), reinterpret: 0-127 = 0..1, 128-255 = -1..0
-    vec2 flowRaw = a_texcoord2.xy;
+    vec2 flowRaw = tc2;
     vec2 flow;
     flow.x = flowRaw.x < 128.0 ? flowRaw.x / 127.0 : (flowRaw.x - 256.0) / 127.0;
     flow.y = flowRaw.y < 128.0 ? flowRaw.y / 127.0 : (flowRaw.y - 256.0) / 127.0;
