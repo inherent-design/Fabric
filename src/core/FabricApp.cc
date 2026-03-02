@@ -281,7 +281,10 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
                 }
             }
 
-            // Fixed timestep
+            // Pre-update: input processing, mode transitions (once per frame)
+            systemRegistry.runPreUpdate(ctx, static_cast<float>(frameTime));
+
+            // Fixed timestep simulation
             constexpr int kMaxFixedStepsPerFrame = 3;
             int fixedIter = 0;
             while (accumulator >= kFixedDt && fixedIter < kMaxFixedStepsPerFrame) {
@@ -292,8 +295,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
                 async::poll();
                 timeline.update(kFixedDt);
 
-                if (desc.onFixedUpdate)
-                    desc.onFixedUpdate(ctx, dt);
+                systemRegistry.runFixedUpdate(ctx, dt);
 
                 accumulator -= kFixedDt;
             }
@@ -304,12 +306,17 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
                 accumulator = 0.0;
             }
 
+            // Per-frame logic: camera, audio, animation
+            systemRegistry.runUpdate(ctx, static_cast<float>(frameTime));
+            systemRegistry.runPostUpdate(ctx, static_cast<float>(frameTime));
+
             // Per-frame input reset
             inputRouterPtr->beginFrame();
 
-            // Application render callback
-            if (desc.onRender)
-                desc.onRender(ctx, static_cast<float>(frameTime));
+            // Rendering phases
+            systemRegistry.runPreRender(ctx);
+            systemRegistry.runRender(ctx);
+            systemRegistry.runPostRender(ctx);
 
             // RmlUi overlay
             {
