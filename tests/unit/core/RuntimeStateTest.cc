@@ -57,4 +57,80 @@ TEST(RuntimeStateTest, SubsystemCounters) {
     EXPECT_FLOAT_EQ(state.vramUsageMB, 256.5f);
 }
 
+// -- Boundary values --
+
+TEST(RuntimeStateTest, MaxUint32WindowDimensions) {
+    RuntimeState state;
+    state.pixelWidth = UINT32_MAX;
+    state.pixelHeight = UINT32_MAX;
+    EXPECT_EQ(state.pixelWidth, UINT32_MAX);
+    EXPECT_EQ(state.pixelHeight, UINT32_MAX);
+}
+
+TEST(RuntimeStateTest, ZeroWindowDimensions) {
+    RuntimeState state;
+    // Default is zero, verify it reads as zero (not uninitialized)
+    EXPECT_EQ(state.pixelWidth, 0u);
+    EXPECT_EQ(state.pixelHeight, 0u);
+}
+
+TEST(RuntimeStateTest, NegativePerformanceCounters) {
+    RuntimeState state;
+    state.fps = -1.0f;
+    state.frameTimeMs = -0.001f;
+    state.gpuTimeMs = -100.0f;
+    state.drawCallCount = -1;
+
+    EXPECT_FLOAT_EQ(state.fps, -1.0f);
+    EXPECT_FLOAT_EQ(state.frameTimeMs, -0.001f);
+    EXPECT_FLOAT_EQ(state.gpuTimeMs, -100.0f);
+    EXPECT_EQ(state.drawCallCount, -1);
+}
+
+TEST(RuntimeStateTest, LargeSubsystemCounters) {
+    RuntimeState state;
+    state.physicsBodyCount = INT32_MAX;
+    state.totalChunks = INT32_MAX;
+    state.meshQueueSize = INT32_MAX;
+    state.vramUsageMB = 16384.0f; // 16 GB
+
+    EXPECT_EQ(state.physicsBodyCount, INT32_MAX);
+    EXPECT_EQ(state.totalChunks, INT32_MAX);
+    EXPECT_EQ(state.meshQueueSize, INT32_MAX);
+    EXPECT_FLOAT_EQ(state.vramUsageMB, 16384.0f);
+}
+
+TEST(RuntimeStateTest, EmptyCurrentMode) {
+    RuntimeState state;
+    state.currentMode = "";
+    EXPECT_TRUE(state.currentMode.empty());
+}
+
+TEST(RuntimeStateTest, AllDefaultFieldsCovered) {
+    RuntimeState state;
+    // Fields not checked in the original DefaultValues test
+    EXPECT_FLOAT_EQ(state.gpuTimeMs, 0.0f);
+    EXPECT_EQ(state.physicsBodyCount, 0);
+    EXPECT_EQ(state.audioVoiceCount, 0);
+    EXPECT_EQ(state.visibleChunks, 0);
+    EXPECT_EQ(state.totalChunks, 0);
+    EXPECT_EQ(state.meshQueueSize, 0);
+    EXPECT_FLOAT_EQ(state.vramUsageMB, 0.0f);
+}
+
+TEST(RuntimeStateTest, DpiScaleBoundary) {
+    RuntimeState state;
+    state.dpiScale = 0.0f;
+    EXPECT_FLOAT_EQ(state.dpiScale, 0.0f);
+
+    state.dpiScale = 4.0f; // 4x Retina
+    EXPECT_FLOAT_EQ(state.dpiScale, 4.0f);
+}
+
+TEST(RuntimeStateTest, ResetFlagsMaxValue) {
+    RuntimeState state;
+    state.resetFlags = UINT32_MAX;
+    EXPECT_EQ(state.resetFlags, UINT32_MAX);
+}
+
 } // namespace fabric
