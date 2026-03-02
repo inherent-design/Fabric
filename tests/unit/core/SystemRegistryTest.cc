@@ -1,5 +1,7 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/core/AppContext.hh"
+#include "fabric/core/AssetRegistry.hh"
+#include "fabric/core/ConfigManager.hh"
 #include "fabric/core/ResourceHub.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <gtest/gtest.h>
@@ -151,7 +153,21 @@ class SystemRegistryTest : public ::testing::Test {
 
     void TearDown() override { g_callLog = nullptr; }
 
-    AppContext makeContext() { return AppContext{world, timeline, dispatcher, hub}; }
+    AssetRegistry assetRegistry{hub};
+    SystemRegistry sysReg_;
+    ConfigManager configManager;
+
+    AppContext makeContext() {
+        return AppContext{
+            .world = world,
+            .timeline = timeline,
+            .dispatcher = dispatcher,
+            .resourceHub = hub,
+            .assetRegistry = assetRegistry,
+            .systemRegistry = sysReg_,
+            .configManager = configManager,
+        };
+    }
 
     std::vector<std::string> callLog;
 };

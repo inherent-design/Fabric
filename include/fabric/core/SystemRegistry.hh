@@ -26,6 +26,10 @@ class SystemRegistry {
         return ref;
     }
 
+    /// Register a pre-built system. Used by FabricApp::run() to register
+    /// systems created by FabricAppDesc factory lambdas.
+    void registerSystem(SystemPhase phase, std::unique_ptr<SystemBase> system);
+
     /// Resolve all dependencies and compute execution order.
     /// Must be called after all registrations, before init.
     /// Returns false if a dependency cycle is detected.
