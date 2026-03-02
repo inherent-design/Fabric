@@ -299,6 +299,9 @@ int main(int argc, char* argv[]) {
             }
         });
 
+        // Apply initial mode flags (no transition fires for the startup state)
+        SDL_SetWindowRelativeMouseMode(window, fabric::AppModeManager::flags(appModeManager.current()).captureMouse);
+
         //----------------------------------------------------------------------
         // Camera + Controller
         //----------------------------------------------------------------------
