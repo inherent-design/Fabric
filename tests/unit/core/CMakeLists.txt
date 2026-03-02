@@ -83,6 +83,10 @@ target_sources(UnitTests
   ContentBrowserTest.cc
   AppModeManagerTest.cc
   VulkanRegressionTest.cc
+  InputSourceTest.cc
+  InputActionTest.cc
+  InputAxisTest.cc
+  PlatformInfoTest.cc
 )
 
 set_source_files_properties(
