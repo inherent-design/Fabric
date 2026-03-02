@@ -93,6 +93,7 @@ target_sources(UnitTests
   CursorManagerTest.cc
   SystemBaseTest.cc
   SystemRegistryTest.cc
+  AssetRegistryTest.cc
 )
 
 set_source_files_properties(
