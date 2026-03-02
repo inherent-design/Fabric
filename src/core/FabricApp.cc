@@ -249,10 +249,6 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
                 while (SDL_PollEvent(&event)) {
                     inputRouterPtr->routeEvent(event, rmlContext);
 
-                    if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE && !event.key.repeat) {
-                        appModeManager->togglePause();
-                    }
-
                     if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT) {
                         if (appModeManager->current() == AppMode::Paused) {
                             appModeManager->transition(AppMode::Game);
