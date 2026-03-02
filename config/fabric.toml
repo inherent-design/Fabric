@@ -1,0 +1,16 @@
+# Fabric engine defaults.
+# Overrides compiled defaults (Layer 0). Application config overrides these.
+
+[window]
+title = "Fabric"
+width = 1280
+height = 720
+resizable = true
+hidpi = true
+
+[renderer]
+backend = "vulkan"
+vsync = true
+
+[logging]
+level = "info"
