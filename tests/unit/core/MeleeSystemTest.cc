@@ -1,7 +1,8 @@
-#include "fabric/core/MeleeSystem.hh"
+#include "recurse/gameplay/MeleeSystem.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class MeleeSystemTest : public ::testing::Test {
   protected:

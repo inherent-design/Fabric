@@ -1,8 +1,9 @@
-#include "fabric/core/Animation.hh"
+#include "recurse/animation/Animation.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class AnimationTest : public ::testing::Test {};
 

@@ -152,88 +152,106 @@ CPMAddPackage(
 #------------------------------------------------------------------------------
 # Source Files and Library Configuration
 #------------------------------------------------------------------------------
-# Core library components
-set(FABRIC_CORE_SOURCE_FILES
+
+#------------------------------------------------------------------------------
+# Engine Source Files (fabric:: namespace)
+#------------------------------------------------------------------------------
+set(FABRIC_ENGINE_SOURCE_FILES
+    src/core/AppModeManager.cc
+    src/core/Async.cc
+    src/core/BgfxCallback.cc
+    src/core/Camera.cc
     src/core/Component.cc
+    src/core/ConfigManager.cc
+    src/core/ECS.cc
     src/core/Event.cc
+    src/core/InputManager.cc
+    src/core/InputRouter.cc
     src/core/Lifecycle.cc
     src/core/Log.cc
     src/core/Pipeline.cc
     src/core/Plugin.cc
+    src/core/RenderCaps.cc
+    src/core/Rendering.cc
     src/core/Resource.cc
-    src/core/SceneSerializer.cc
-    src/core/StructuralIntegrity.cc
-    src/core/DebrisPool.cc
+    src/core/ResourceHub.cc
+    src/core/SceneView.cc
+    src/core/Simulation.cc
     src/core/Spatial.cc
     src/core/Temporal.cc
-    src/core/ResourceHub.cc
-    src/core/Async.cc
-    src/core/Rendering.cc
-    src/core/RenderCaps.cc
-    src/core/Camera.cc
-    src/core/InputManager.cc
-    src/core/InputRouter.cc
-    src/core/SceneView.cc
-    src/core/ECS.cc
-    src/core/Simulation.cc
-    src/core/VoxelMesher.cc
-    src/core/VoxelRaycast.cc
-    src/core/ChunkStreaming.cc
-    src/core/ChunkMeshManager.cc
-    src/core/MovementFSM.cc
-    src/core/CharacterController.cc
-    src/core/CameraController.cc
-    src/core/VoxelInteraction.cc
-    src/core/MeleeSystem.cc
-    src/core/FlightController.cc
-    src/core/TransitionController.cc
-    src/core/DashController.cc
-    src/core/EssencePalette.cc
-    src/core/ShadowSystem.cc
-    src/core/TerrainGenerator.cc
-    src/core/MeshLoader.cc
-    src/core/Animation.cc
-    src/core/SkinnedRenderer.cc
-    src/core/IKSolver.cc
-    src/core/CaveCarver.cc
-    src/core/VoxelRenderer.cc
-    src/core/PhysicsWorld.cc
-    src/core/Ragdoll.cc
-    src/core/BehaviorAI.cc
-    src/core/BTDebugPanel.cc
-    src/core/ContentBrowser.cc
-    src/core/Pathfinding.cc
-    src/core/AudioSystem.cc
-    src/core/AnimationEvents.cc
-    src/core/WaterSimulation.cc
-    src/core/DataLoader.cc
-    src/core/DebugDraw.cc
-    src/core/SkyRenderer.cc
-    src/core/VertexPool.cc
-    src/core/FileWatcher.cc
-    src/core/PostProcess.cc
-    src/core/DevConsole.cc
-    src/core/ParticleSystem.cc
-    src/core/ReverbZone.cc
-    src/core/LSystemVegetation.cc
-    src/core/WFCGenerator.cc
-    src/core/InputRecorder.cc
-    src/core/WaterRenderer.cc
-    src/core/OITCompositor.cc
-    src/core/MaterialSounds.cc
-    src/core/SaveManager.cc
-    src/core/AppModeManager.cc
-    src/core/BgfxCallback.cc
     src/core/InputSource.cc
     src/core/InputAxis.cc
     src/core/SystemPhase.cc
     src/core/SystemBase.cc
     src/core/SystemRegistry.cc
-    src/core/ConfigManager.cc
-    src/core/AssetRegistry.cc
-    src/core/FabricApp.cc
     src/core/InputContext.cc
     src/core/InputSystem.cc
+    src/core/AssetRegistry.cc
+    src/core/FabricApp.cc
+)
+
+#------------------------------------------------------------------------------
+# Game Source Files (recurse:: namespace)
+#------------------------------------------------------------------------------
+set(RECURSE_GAME_SOURCE_FILES
+    # world/
+    src/recurse/world/VoxelMesher.cc
+    src/recurse/world/VoxelRaycast.cc
+    src/recurse/world/ChunkStreaming.cc
+    src/recurse/world/ChunkMeshManager.cc
+    src/recurse/world/TerrainGenerator.cc
+    src/recurse/world/CaveCarver.cc
+    src/recurse/world/EssencePalette.cc
+    src/recurse/world/LSystemVegetation.cc
+    src/recurse/world/WFCGenerator.cc
+    src/recurse/world/StructuralIntegrity.cc
+    # gameplay/
+    src/recurse/gameplay/CharacterController.cc
+    src/recurse/gameplay/FlightController.cc
+    src/recurse/gameplay/MovementFSM.cc
+    src/recurse/gameplay/TransitionController.cc
+    src/recurse/gameplay/DashController.cc
+    src/recurse/gameplay/CameraController.cc
+    src/recurse/gameplay/VoxelInteraction.cc
+    src/recurse/gameplay/MeleeSystem.cc
+    # physics/
+    src/recurse/physics/PhysicsWorld.cc
+    src/recurse/physics/Ragdoll.cc
+    # ai/
+    src/recurse/ai/BehaviorAI.cc
+    src/recurse/ai/Pathfinding.cc
+    src/recurse/ai/BTDebugPanel.cc
+    # audio/
+    src/recurse/audio/AudioSystem.cc
+    src/recurse/audio/ReverbZone.cc
+    src/recurse/audio/MaterialSounds.cc
+    # animation/
+    src/recurse/animation/Animation.cc
+    src/recurse/animation/AnimationEvents.cc
+    src/recurse/animation/SkinnedRenderer.cc
+    src/recurse/animation/IKSolver.cc
+    src/recurse/animation/MeshLoader.cc
+    # render/
+    src/recurse/render/SkyRenderer.cc
+    src/recurse/render/WaterSimulation.cc
+    src/recurse/render/WaterRenderer.cc
+    src/recurse/render/OITCompositor.cc
+    src/recurse/render/PostProcess.cc
+    src/recurse/render/ParticleSystem.cc
+    src/recurse/render/ShadowSystem.cc
+    src/recurse/render/VertexPool.cc
+    src/recurse/render/DebugDraw.cc
+    src/recurse/render/VoxelRenderer.cc
+    # persistence/
+    src/recurse/persistence/SaveManager.cc
+    src/recurse/persistence/DataLoader.cc
+    src/recurse/persistence/FileWatcher.cc
+    src/recurse/persistence/SceneSerializer.cc
+    src/recurse/persistence/InputRecorder.cc
+    # ui/
+    src/recurse/ui/ContentBrowser.cc
+    src/recurse/ui/DevConsole.cc
+    src/recurse/ui/DebrisPool.cc
 )
 
 # Utils library components
@@ -279,7 +297,8 @@ set(FABRIC_BGFX_DEBUGDRAW_SOURCE
 
 # Create internal static library (compile sources once, link into all targets)
 add_library(FabricLib STATIC
-    ${FABRIC_CORE_SOURCE_FILES}
+    ${FABRIC_ENGINE_SOURCE_FILES}
+    ${RECURSE_GAME_SOURCE_FILES}
     ${FABRIC_UTILS_SOURCE_FILES}
     ${FABRIC_PLATFORM_SOURCE_FILES}
     ${FABRIC_PARSER_SOURCE_FILES}
@@ -391,7 +410,8 @@ endif()
 
 # Mark public API source files
 set_source_files_properties(
-    ${FABRIC_CORE_SOURCE_FILES}
+    ${FABRIC_ENGINE_SOURCE_FILES}
+    ${RECURSE_GAME_SOURCE_FILES}
     PROPERTIES
     COMPILE_DEFINITIONS "FABRIC_CORE_API"
 )

@@ -1,10 +1,10 @@
-#include "fabric/core/ChunkedGrid.hh"
+#include "recurse/world/ChunkedGrid.hh"
 #include <gtest/gtest.h>
 #include <set>
 #include <tuple>
 #include <vector>
 
-using namespace fabric;
+using namespace recurse;
 
 class ChunkedGridTest : public ::testing::Test {
   protected:

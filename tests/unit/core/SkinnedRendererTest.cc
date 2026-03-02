@@ -1,7 +1,8 @@
-#include "fabric/core/SkinnedRenderer.hh"
+#include "recurse/animation/SkinnedRenderer.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class SkinnedRendererTest : public ::testing::Test {};
 

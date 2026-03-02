@@ -1,8 +1,8 @@
-#include "fabric/core/ChunkStreaming.hh"
+#include "recurse/world/ChunkStreaming.hh"
 #include <gtest/gtest.h>
 #include <set>
 
-using namespace fabric;
+using namespace recurse;
 
 class ChunkStreamingTest : public ::testing::Test {
   protected:

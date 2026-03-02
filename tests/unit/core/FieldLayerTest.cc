@@ -1,8 +1,9 @@
-#include "fabric/core/FieldLayer.hh"
+#include "recurse/world/FieldLayer.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class FieldLayerTest : public ::testing::Test {};
 

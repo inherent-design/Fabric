@@ -1,10 +1,11 @@
-#include "fabric/core/BTDebugPanel.hh"
-#include "fabric/core/BehaviorAI.hh"
+#include "recurse/ai/BTDebugPanel.hh"
 #include "fabric/core/ECS.hh"
+#include "recurse/ai/BehaviorAI.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 // BTNodeInfo construction and defaults
 

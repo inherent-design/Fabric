@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fabric/core/Component.hh"
-#include "fabric/core/FileWatcher.hh"
+#include "recurse/persistence/FileWatcher.hh"
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -12,6 +12,9 @@
 #include <vector>
 
 namespace fabric {
+
+// Recurse types imported for backward compatibility during transition
+using recurse::FileWatcher;
 
 class Plugin {
   public:

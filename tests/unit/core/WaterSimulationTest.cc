@@ -1,10 +1,11 @@
-#include "fabric/core/WaterSimulation.hh"
-#include "fabric/core/ChunkedGrid.hh"
-#include "fabric/core/FieldLayer.hh"
+#include "recurse/render/WaterSimulation.hh"
+#include "recurse/world/ChunkedGrid.hh"
+#include "recurse/world/FieldLayer.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class WaterSimulationTest : public ::testing::Test {
   protected:

@@ -6,6 +6,8 @@
 
 namespace fabric {
 
+using recurse::kChunkSize;
+
 void SimulationHarness::registerRule(const std::string& name, SimRule rule) {
     rules_.emplace_back(name, std::move(rule));
 }

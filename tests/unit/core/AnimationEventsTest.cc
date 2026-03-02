@@ -1,8 +1,8 @@
-#include "fabric/core/AnimationEvents.hh"
+#include "recurse/animation/AnimationEvents.hh"
 
 #include <gtest/gtest.h>
 
-using namespace fabric;
+using namespace recurse;
 
 TEST(AnimationEventsTest, InitShutdown) {
     AnimationEvents ae;

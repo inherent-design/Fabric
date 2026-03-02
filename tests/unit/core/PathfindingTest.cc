@@ -1,10 +1,11 @@
-#include "fabric/core/Pathfinding.hh"
+#include "recurse/ai/Pathfinding.hh"
 
 #include <cmath>
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 namespace {
 

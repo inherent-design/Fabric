@@ -1,49 +1,21 @@
-#include "fabric/core/AnimationEvents.hh"
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/AppModeManager.hh"
 #include "fabric/core/AssetRegistry.hh"
 #include "fabric/core/Async.hh"
-#include "fabric/core/AudioSystem.hh"
-#include "fabric/core/BehaviorAI.hh"
-#include "fabric/core/BTDebugPanel.hh"
 #include "fabric/core/Camera.hh"
-#include "fabric/core/CameraController.hh"
-#include "fabric/core/CaveCarver.hh"
-#include "fabric/core/CharacterController.hh"
-#include "fabric/core/CharacterTypes.hh"
-#include "fabric/core/ChunkMeshManager.hh"
-#include "fabric/core/ChunkStreaming.hh"
 #include "fabric/core/ConfigManager.hh"
 #include "fabric/core/Constants.g.hh"
-#include "fabric/core/ContentBrowser.hh"
-#include "fabric/core/DebrisPool.hh"
-#include "fabric/core/DebugDraw.hh"
-#include "fabric/core/DevConsole.hh"
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Event.hh"
-#include "fabric/core/FieldLayer.hh"
-#include "fabric/core/FlightController.hh"
 #include "fabric/core/InputManager.hh"
 #include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
-#include "fabric/core/MovementFSM.hh"
-#include "fabric/core/OITCompositor.hh"
-#include "fabric/core/ParticleSystem.hh"
-#include "fabric/core/Pathfinding.hh"
-#include "fabric/core/PhysicsWorld.hh"
-#include "fabric/core/Ragdoll.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/ResourceHub.hh"
-#include "fabric/core/SaveManager.hh"
 #include "fabric/core/SceneView.hh"
-#include "fabric/core/ShadowSystem.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/core/Temporal.hh"
-#include "fabric/core/TerrainGenerator.hh"
-#include "fabric/core/VoxelInteraction.hh"
-#include "fabric/core/VoxelMesher.hh"
-#include "fabric/core/VoxelRenderer.hh"
 #include "fabric/parser/ArgumentParser.hh"
 #include "fabric/ui/BgfxRenderInterface.hh"
 #include "fabric/ui/BgfxSystemInterface.hh"
@@ -51,6 +23,34 @@
 #include "fabric/ui/ToastManager.hh"
 #include "fabric/utils/BVH.hh"
 #include "fabric/utils/Profiler.hh"
+#include "recurse/ai/BehaviorAI.hh"
+#include "recurse/ai/BTDebugPanel.hh"
+#include "recurse/ai/Pathfinding.hh"
+#include "recurse/animation/AnimationEvents.hh"
+#include "recurse/audio/AudioSystem.hh"
+#include "recurse/gameplay/CameraController.hh"
+#include "recurse/gameplay/CharacterController.hh"
+#include "recurse/gameplay/CharacterTypes.hh"
+#include "recurse/gameplay/FlightController.hh"
+#include "recurse/gameplay/MovementFSM.hh"
+#include "recurse/gameplay/VoxelInteraction.hh"
+#include "recurse/persistence/SaveManager.hh"
+#include "recurse/physics/PhysicsWorld.hh"
+#include "recurse/physics/Ragdoll.hh"
+#include "recurse/render/DebugDraw.hh"
+#include "recurse/render/OITCompositor.hh"
+#include "recurse/render/ParticleSystem.hh"
+#include "recurse/render/ShadowSystem.hh"
+#include "recurse/render/VoxelRenderer.hh"
+#include "recurse/ui/ContentBrowser.hh"
+#include "recurse/ui/DebrisPool.hh"
+#include "recurse/ui/DevConsole.hh"
+#include "recurse/world/CaveCarver.hh"
+#include "recurse/world/ChunkMeshManager.hh"
+#include "recurse/world/ChunkStreaming.hh"
+#include "recurse/world/FieldLayer.hh"
+#include "recurse/world/TerrainGenerator.hh"
+#include "recurse/world/VoxelMesher.hh"
 
 #include <RmlUi/Core.h>
 
@@ -66,6 +66,8 @@
 #include <limits>
 #include <unordered_map>
 #include <unordered_set>
+
+using namespace recurse;
 
 namespace {
 
@@ -94,14 +96,14 @@ bgfx::PlatformData getPlatformData(SDL_Window* window) {
 }
 
 // Upload CPU mesh data to GPU via bgfx handles
-fabric::ChunkMesh uploadChunkMesh(const fabric::ChunkMeshData& data) {
-    fabric::ChunkMesh mesh;
+recurse::ChunkMesh uploadChunkMesh(const recurse::ChunkMeshData& data) {
+    recurse::ChunkMesh mesh;
     if (data.vertices.empty())
         return mesh;
 
-    auto layout = fabric::VoxelMesher::getVertexLayout();
+    auto layout = recurse::VoxelMesher::getVertexLayout();
     mesh.vbh = bgfx::createVertexBuffer(
-        bgfx::copy(data.vertices.data(), static_cast<uint32_t>(data.vertices.size() * sizeof(fabric::VoxelVertex))),
+        bgfx::copy(data.vertices.data(), static_cast<uint32_t>(data.vertices.size() * sizeof(recurse::VoxelVertex))),
         layout);
     mesh.ibh = bgfx::createIndexBuffer(
         bgfx::copy(data.indices.data(), static_cast<uint32_t>(data.indices.size() * sizeof(uint32_t))),
@@ -113,14 +115,14 @@ fabric::ChunkMesh uploadChunkMesh(const fabric::ChunkMeshData& data) {
 }
 
 // Generate terrain for a single chunk region
-void generateChunkTerrain(int cx, int cy, int cz, fabric::TerrainGenerator& gen, fabric::CaveCarver& carver,
-                          fabric::DensityField& density, fabric::EssenceField& essence) {
-    float x0 = static_cast<float>(cx * fabric::kChunkSize);
-    float y0 = static_cast<float>(cy * fabric::kChunkSize);
-    float z0 = static_cast<float>(cz * fabric::kChunkSize);
-    float x1 = x0 + static_cast<float>(fabric::kChunkSize);
-    float y1 = y0 + static_cast<float>(fabric::kChunkSize);
-    float z1 = z0 + static_cast<float>(fabric::kChunkSize);
+void generateChunkTerrain(int cx, int cy, int cz, recurse::TerrainGenerator& gen, recurse::CaveCarver& carver,
+                          recurse::DensityField& density, recurse::EssenceField& essence) {
+    float x0 = static_cast<float>(cx * recurse::kChunkSize);
+    float y0 = static_cast<float>(cy * recurse::kChunkSize);
+    float z0 = static_cast<float>(cz * recurse::kChunkSize);
+    float x1 = x0 + static_cast<float>(recurse::kChunkSize);
+    float y1 = y0 + static_cast<float>(recurse::kChunkSize);
+    float z1 = z0 + static_cast<float>(recurse::kChunkSize);
     fabric::AABB region(fabric::Vec3f(x0, y0, z0), fabric::Vec3f(x1, y1, z1));
     gen.generate(density, essence, region);
     carver.carve(density, region);
@@ -200,7 +202,7 @@ int main(int argc, char* argv[]) {
         FABRIC_LOG_INFO("bgfx renderer: {}", bgfx::getRendererName(bgfx::getRendererType()));
 
         // Debug draw overlay (F4 wireframe toggle)
-        fabric::DebugDraw debugDraw;
+        recurse::DebugDraw debugDraw;
         debugDraw.init();
 
         // RmlUi backend interfaces
@@ -313,7 +315,7 @@ int main(int argc, char* argv[]) {
         float aspect = static_cast<float>(pw) / static_cast<float>(ph);
         camera.setPerspective(60.0f, aspect, 0.1f, 1000.0f, homogeneousNdc);
 
-        fabric::CameraController cameraCtrl(camera);
+        recurse::CameraController cameraCtrl(camera);
 
         //----------------------------------------------------------------------
         // ECS + SceneView + ResourceHub
@@ -345,28 +347,28 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         // Terrain: density + essence fields, generator, cave carver
         //----------------------------------------------------------------------
-        fabric::DensityField density;
-        fabric::EssenceField essence;
+        recurse::DensityField density;
+        recurse::EssenceField essence;
 
-        fabric::TerrainConfig terrainConfig;
+        recurse::TerrainConfig terrainConfig;
         terrainConfig.seed = 42;
         terrainConfig.frequency = 0.02f;
         terrainConfig.octaves = 4;
-        fabric::TerrainGenerator terrainGen(terrainConfig);
+        recurse::TerrainGenerator terrainGen(terrainConfig);
 
-        fabric::CaveConfig caveConfig;
+        recurse::CaveConfig caveConfig;
         caveConfig.seed = 42;
-        fabric::CaveCarver caveCarver(caveConfig);
+        recurse::CaveCarver caveCarver(caveConfig);
 
         //----------------------------------------------------------------------
         // Chunk mesh management (CPU side, budgeted re-meshing)
         //----------------------------------------------------------------------
-        fabric::ChunkMeshManager meshManager(dispatcher, density.grid(), essence.grid());
+        recurse::ChunkMeshManager meshManager(dispatcher, density.grid(), essence.grid());
 
         //----------------------------------------------------------------------
         // Chunk streaming
         //----------------------------------------------------------------------
-        fabric::StreamingConfig streamConfig;
+        recurse::StreamingConfig streamConfig;
         streamConfig.baseRadius = 3;
         streamConfig.maxRadius = 5;
         // TODO(async-terrain): Increase back to 4-8 once terrain gen is async.
@@ -374,27 +376,27 @@ int main(int argc, char* argv[]) {
         // In Release, 8 × 1.4ms = 11ms — safe. But keeping low until async is implemented.
         streamConfig.maxLoadsPerTick = 2;
         streamConfig.maxUnloadsPerTick = 4;
-        fabric::ChunkStreamingManager streaming(streamConfig);
+        recurse::ChunkStreamingManager streaming(streamConfig);
 
         //----------------------------------------------------------------------
         // Voxel renderer + GPU mesh cache
         //----------------------------------------------------------------------
-        fabric::VoxelRenderer voxelRenderer;
+        recurse::VoxelRenderer voxelRenderer;
 
-        std::unordered_map<fabric::ChunkCoord, fabric::ChunkMesh, fabric::ChunkCoordHash> gpuMeshes;
-        std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> gpuUploadQueue;
+        std::unordered_map<recurse::ChunkCoord, recurse::ChunkMesh, recurse::ChunkCoordHash> gpuMeshes;
+        std::unordered_set<recurse::ChunkCoord, recurse::ChunkCoordHash> gpuUploadQueue;
 
         // Flecs entities per chunk (BoundingBox + SceneEntity tag for frustum culling)
-        std::unordered_map<fabric::ChunkCoord, flecs::entity, fabric::ChunkCoordHash> chunkEntities;
+        std::unordered_map<recurse::ChunkCoord, flecs::entity, recurse::ChunkCoordHash> chunkEntities;
 
         //----------------------------------------------------------------------
         // Physics (must precede VoxelChanged handler)
         //----------------------------------------------------------------------
-        fabric::PhysicsWorld physicsWorld;
+        recurse::PhysicsWorld physicsWorld;
         physicsWorld.init(4096, 0);
 
         // Invalidate GPU mesh and physics collision when voxel data changes
-        dispatcher.addEventListener(fabric::kVoxelChangedEvent,
+        dispatcher.addEventListener(recurse::kVoxelChangedEvent,
                                     [&gpuUploadQueue, &physicsWorld, &density](fabric::Event& e) {
                                         int cx = e.getData<int>("cx");
                                         int cy = e.getData<int>("cy");
@@ -420,12 +422,12 @@ int main(int argc, char* argv[]) {
 
                 // Flecs entity with world-space AABB for frustum culling
                 auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
-                    {static_cast<float>(coord.cx * fabric::kChunkSize),
-                     static_cast<float>(coord.cy * fabric::kChunkSize),
-                     static_cast<float>(coord.cz * fabric::kChunkSize),
-                     static_cast<float>((coord.cx + 1) * fabric::kChunkSize),
-                     static_cast<float>((coord.cy + 1) * fabric::kChunkSize),
-                     static_cast<float>((coord.cz + 1) * fabric::kChunkSize)});
+                    {static_cast<float>(coord.cx * recurse::kChunkSize),
+                     static_cast<float>(coord.cy * recurse::kChunkSize),
+                     static_cast<float>(coord.cz * recurse::kChunkSize),
+                     static_cast<float>((coord.cx + 1) * recurse::kChunkSize),
+                     static_cast<float>((coord.cy + 1) * recurse::kChunkSize),
+                     static_cast<float>((coord.cz + 1) * recurse::kChunkSize)});
                 chunkEntities[coord] = ent;
             }
 
@@ -486,23 +488,23 @@ int main(int argc, char* argv[]) {
         constexpr float kCharHeight = 1.8f;
         constexpr float kCharDepth = 0.6f;
 
-        fabric::CharacterController charCtrl(kCharWidth, kCharHeight, kCharDepth);
-        fabric::FlightController flightCtrl(kCharWidth, kCharHeight, kCharDepth);
-        fabric::MovementFSM movementFSM;
-        fabric::CharacterConfig charConfig;
+        recurse::CharacterController charCtrl(kCharWidth, kCharHeight, kCharDepth);
+        recurse::FlightController flightCtrl(kCharWidth, kCharHeight, kCharDepth);
+        recurse::MovementFSM movementFSM;
+        recurse::CharacterConfig charConfig;
 
         fabric::Vec3f playerPos(kSpawnX, kSpawnY, kSpawnZ);
-        fabric::Velocity playerVel;
+        recurse::Velocity playerVel;
 
         //----------------------------------------------------------------------
         // Voxel interaction
         //----------------------------------------------------------------------
-        fabric::VoxelInteraction voxelInteraction(density, essence, dispatcher);
+        recurse::VoxelInteraction voxelInteraction(density, essence, dispatcher);
 
         //----------------------------------------------------------------------
         // Shadow system
         //----------------------------------------------------------------------
-        fabric::ShadowSystem shadowSystem(fabric::presetConfig(fabric::ShadowQualityPreset::Medium));
+        recurse::ShadowSystem shadowSystem(recurse::presetConfig(recurse::ShadowQualityPreset::Medium));
 
         fabric::Vec3f lightDir(0.5f, 0.8f, 0.3f);
         {
@@ -513,27 +515,27 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         // OIT (order-independent transparency) compositor
         //----------------------------------------------------------------------
-        fabric::OITCompositor oitCompositor;
+        recurse::OITCompositor oitCompositor;
         oitCompositor.init(static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
 
         //----------------------------------------------------------------------
         // Sprint 7 systems: ragdoll, AI, audio
         //----------------------------------------------------------------------
-        fabric::Ragdoll ragdoll;
+        recurse::Ragdoll ragdoll;
         ragdoll.init(&physicsWorld);
 
-        fabric::AudioSystem audioSystem;
+        recurse::AudioSystem audioSystem;
         audioSystem.setThreadedMode(true);
         audioSystem.init();
         audioSystem.setDensityGrid(&density.grid());
 
-        fabric::BehaviorAI behaviorAI;
+        recurse::BehaviorAI behaviorAI;
         behaviorAI.init(ecsWorld.get());
 
-        fabric::Pathfinding pathfinding;
+        recurse::Pathfinding pathfinding;
         pathfinding.init();
 
-        fabric::AnimationEvents animEvents;
+        recurse::AnimationEvents animEvents;
         animEvents.init();
 
         //----------------------------------------------------------------------
@@ -545,20 +547,20 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         // BT Debug Panel
         //----------------------------------------------------------------------
-        fabric::BTDebugPanel btDebugPanel;
+        recurse::BTDebugPanel btDebugPanel;
         btDebugPanel.init(rmlContext);
         flecs::entity btDebugSelectedNpc;
 
         //----------------------------------------------------------------------
         // Content Browser
         //----------------------------------------------------------------------
-        fabric::ContentBrowser contentBrowser;
+        recurse::ContentBrowser contentBrowser;
         contentBrowser.init("assets/");
 
         //----------------------------------------------------------------------
         // Developer Console
         //----------------------------------------------------------------------
-        fabric::DevConsole devConsole;
+        recurse::DevConsole devConsole;
         devConsole.init(rmlContext);
 
         // Backtick toggles console via AppModeManager (Game <-> Console)
@@ -580,13 +582,13 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         // Save system + toast notifications
         //----------------------------------------------------------------------
-        fabric::SaveManager saveManager("saves");
-        fabric::SceneSerializer saveSerializer;
+        recurse::SaveManager saveManager("saves");
+        recurse::SceneSerializer saveSerializer;
         fabric::ToastManager toastManager;
 
         // F5 = quicksave, F9 = quickload (via InputRouter key callbacks)
         inputRouter.registerKeyCallback(SDLK_F5, [&]() {
-            fabric::SceneSerializer qsSerializer;
+            recurse::SceneSerializer qsSerializer;
             if (saveManager.save(
                     "quicksave", qsSerializer, ecsWorld, density, essence, timeline,
                     std::optional<fabric::Position>(fabric::Position{playerPos.x, playerPos.y, playerPos.z}),
@@ -600,7 +602,7 @@ int main(int argc, char* argv[]) {
         });
 
         inputRouter.registerKeyCallback(SDLK_F9, [&]() {
-            fabric::SceneSerializer qlSerializer;
+            recurse::SceneSerializer qlSerializer;
             std::optional<fabric::Position> loadedPos;
             std::optional<fabric::Position> loadedVel;
             if (saveManager.load("quicksave", qlSerializer, ecsWorld, density, essence, timeline, loadedPos,
@@ -609,7 +611,7 @@ int main(int argc, char* argv[]) {
                     playerPos = fabric::Vec3f(loadedPos->x, loadedPos->y, loadedPos->z);
                 }
                 if (loadedVel) {
-                    playerVel = fabric::Velocity{loadedVel->x, loadedVel->y, loadedVel->z};
+                    playerVel = recurse::Velocity{loadedVel->x, loadedVel->y, loadedVel->z};
                 }
                 toastManager.show("Quick load complete", 2.0f);
                 FABRIC_LOG_INFO("Quick load complete");
@@ -622,14 +624,14 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         // Particle system + DebrisPool emitter wiring
         //----------------------------------------------------------------------
-        fabric::ParticleSystem particleSystem;
+        recurse::ParticleSystem particleSystem;
         particleSystem.init();
 
-        fabric::DebrisPool debrisPool;
+        recurse::DebrisPool debrisPool;
         debrisPool.enableParticleConversion(true);
         debrisPool.setParticleEmitter(
             [&particleSystem](const fabric::Vector3<float, fabric::Space::World>& pos, float radius, int count) {
-                particleSystem.emit(pos, radius, count, fabric::ParticleType::DebrisPuff);
+                particleSystem.emit(pos, radius, count, recurse::ParticleType::DebrisPuff);
             });
 
         //----------------------------------------------------------------------
@@ -637,10 +639,10 @@ int main(int argc, char* argv[]) {
         //----------------------------------------------------------------------
         dispatcher.addEventListener("toggle_fly", [&](fabric::Event&) {
             if (movementFSM.isFlying()) {
-                movementFSM.tryTransition(fabric::CharacterState::Falling);
+                movementFSM.tryTransition(recurse::CharacterState::Falling);
                 FABRIC_LOG_INFO("Flight mode: off");
             } else {
-                movementFSM.tryTransition(fabric::CharacterState::Flying);
+                movementFSM.tryTransition(recurse::CharacterState::Flying);
                 playerVel = {};
                 FABRIC_LOG_INFO("Flight mode: on");
             }
@@ -654,22 +656,22 @@ int main(int argc, char* argv[]) {
         });
 
         dispatcher.addEventListener("toggle_camera", [&](fabric::Event&) {
-            if (cameraCtrl.mode() == fabric::CameraMode::FirstPerson) {
-                cameraCtrl.setMode(fabric::CameraMode::ThirdPerson);
+            if (cameraCtrl.mode() == recurse::CameraMode::FirstPerson) {
+                cameraCtrl.setMode(recurse::CameraMode::ThirdPerson);
             } else {
-                cameraCtrl.setMode(fabric::CameraMode::FirstPerson);
+                cameraCtrl.setMode(recurse::CameraMode::FirstPerson);
             }
         });
 
         dispatcher.addEventListener("toggle_collision_debug", [&](fabric::Event&) {
-            debugDraw.toggleFlag(fabric::DebugDrawFlags::CollisionShapes);
+            debugDraw.toggleFlag(recurse::DebugDrawFlags::CollisionShapes);
             FABRIC_LOG_INFO("Collision shapes: {}",
-                            debugDraw.hasFlag(fabric::DebugDrawFlags::CollisionShapes) ? "on" : "off");
+                            debugDraw.hasFlag(recurse::DebugDrawFlags::CollisionShapes) ? "on" : "off");
         });
 
         dispatcher.addEventListener("toggle_bvh_debug", [&](fabric::Event&) {
-            debugDraw.toggleFlag(fabric::DebugDrawFlags::BVHOverlay);
-            FABRIC_LOG_INFO("BVH overlay: {}", debugDraw.hasFlag(fabric::DebugDrawFlags::BVHOverlay) ? "on" : "off");
+            debugDraw.toggleFlag(recurse::DebugDrawFlags::BVHOverlay);
+            FABRIC_LOG_INFO("BVH overlay: {}", debugDraw.hasFlag(recurse::DebugDrawFlags::BVHOverlay) ? "on" : "off");
         });
 
         dispatcher.addEventListener("toggle_content_browser", [&](fabric::Event&) {
@@ -702,7 +704,7 @@ int main(int argc, char* argv[]) {
         // Jump on space press (grounded only; in flight, move_up is continuous)
         dispatcher.addEventListener("move_up", [&](fabric::Event&) {
             if (movementFSM.isGrounded()) {
-                movementFSM.tryTransition(fabric::CharacterState::Jumping);
+                movementFSM.tryTransition(recurse::CharacterState::Jumping);
                 playerVel.y = charConfig.jumpForce;
             }
         });
@@ -816,12 +818,12 @@ int main(int argc, char* argv[]) {
 
                     if (chunkEntities.find(coord) == chunkEntities.end()) {
                         auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
-                            {static_cast<float>(coord.cx * fabric::kChunkSize),
-                             static_cast<float>(coord.cy * fabric::kChunkSize),
-                             static_cast<float>(coord.cz * fabric::kChunkSize),
-                             static_cast<float>((coord.cx + 1) * fabric::kChunkSize),
-                             static_cast<float>((coord.cy + 1) * fabric::kChunkSize),
-                             static_cast<float>((coord.cz + 1) * fabric::kChunkSize)});
+                            {static_cast<float>(coord.cx * recurse::kChunkSize),
+                             static_cast<float>(coord.cy * recurse::kChunkSize),
+                             static_cast<float>(coord.cz * recurse::kChunkSize),
+                             static_cast<float>((coord.cx + 1) * recurse::kChunkSize),
+                             static_cast<float>((coord.cy + 1) * recurse::kChunkSize),
+                             static_cast<float>((coord.cz + 1) * recurse::kChunkSize)});
                         chunkEntities[coord] = ent;
                     }
                 }
@@ -835,7 +837,7 @@ int main(int argc, char* argv[]) {
                         chunkEntities.erase(it);
                     }
                     if (auto it = gpuMeshes.find(coord); it != gpuMeshes.end()) {
-                        fabric::VoxelMesher::destroyMesh(it->second);
+                        recurse::VoxelMesher::destroyMesh(it->second);
                         gpuMeshes.erase(it);
                     }
                     density.grid().removeChunk(coord.cx, coord.cy, coord.cz);
@@ -912,12 +914,12 @@ int main(int argc, char* argv[]) {
 
                     if (result.onGround) {
                         playerVel.y = 0.0f;
-                        if (movementFSM.currentState() == fabric::CharacterState::Falling ||
-                            movementFSM.currentState() == fabric::CharacterState::Jumping) {
-                            movementFSM.tryTransition(fabric::CharacterState::Grounded);
+                        if (movementFSM.currentState() == recurse::CharacterState::Falling ||
+                            movementFSM.currentState() == recurse::CharacterState::Jumping) {
+                            movementFSM.tryTransition(recurse::CharacterState::Grounded);
                         }
                     } else if (movementFSM.isGrounded()) {
-                        movementFSM.tryTransition(fabric::CharacterState::Falling);
+                        movementFSM.tryTransition(recurse::CharacterState::Falling);
                     }
 
                     // Ceiling collision: kill upward velocity
@@ -979,7 +981,7 @@ int main(int argc, char* argv[]) {
                         if (!meshManager.isDirty(*it)) {
                             const auto* data = meshManager.meshFor(*it);
                             if (auto git = gpuMeshes.find(*it); git != gpuMeshes.end()) {
-                                fabric::VoxelMesher::destroyMesh(git->second);
+                                recurse::VoxelMesher::destroyMesh(git->second);
                                 gpuMeshes.erase(git);
                             }
                             if (data && !data->vertices.empty()) {
@@ -1078,32 +1080,32 @@ int main(int argc, char* argv[]) {
                 debugDraw.begin(sceneView.geometryViewId());
 
                 // Collision shape overlays (F10)
-                if (debugDraw.hasFlag(fabric::DebugDrawFlags::CollisionShapes)) {
+                if (debugDraw.hasFlag(recurse::DebugDrawFlags::CollisionShapes)) {
                     debugDraw.setColor(0xff00ff00); // green (ABGR)
                     for (const auto& [coord, ent] : chunkEntities) {
                         if (physicsWorld.chunkCollisionShapeCount(coord.cx, coord.cy, coord.cz) > 0) {
-                            float x0 = static_cast<float>(coord.cx * fabric::kChunkSize);
-                            float y0 = static_cast<float>(coord.cy * fabric::kChunkSize);
-                            float z0 = static_cast<float>(coord.cz * fabric::kChunkSize);
-                            float x1 = x0 + static_cast<float>(fabric::kChunkSize);
-                            float y1 = y0 + static_cast<float>(fabric::kChunkSize);
-                            float z1 = z0 + static_cast<float>(fabric::kChunkSize);
+                            float x0 = static_cast<float>(coord.cx * recurse::kChunkSize);
+                            float y0 = static_cast<float>(coord.cy * recurse::kChunkSize);
+                            float z0 = static_cast<float>(coord.cz * recurse::kChunkSize);
+                            float x1 = x0 + static_cast<float>(recurse::kChunkSize);
+                            float y1 = y0 + static_cast<float>(recurse::kChunkSize);
+                            float z1 = z0 + static_cast<float>(recurse::kChunkSize);
                             debugDraw.drawWireBox(x0, y0, z0, x1, y1, z1);
                         }
                     }
                 }
 
                 // BVH overlay with depth coloring (F6)
-                if (debugDraw.hasFlag(fabric::DebugDrawFlags::BVHOverlay)) {
+                if (debugDraw.hasFlag(recurse::DebugDrawFlags::BVHOverlay)) {
                     fabric::BVH<int> chunkBVH;
                     int idx = 0;
                     for (const auto& [coord, ent] : chunkEntities) {
-                        float x0 = static_cast<float>(coord.cx * fabric::kChunkSize);
-                        float y0 = static_cast<float>(coord.cy * fabric::kChunkSize);
-                        float z0 = static_cast<float>(coord.cz * fabric::kChunkSize);
-                        float x1 = x0 + static_cast<float>(fabric::kChunkSize);
-                        float y1 = y0 + static_cast<float>(fabric::kChunkSize);
-                        float z1 = z0 + static_cast<float>(fabric::kChunkSize);
+                        float x0 = static_cast<float>(coord.cx * recurse::kChunkSize);
+                        float y0 = static_cast<float>(coord.cy * recurse::kChunkSize);
+                        float z0 = static_cast<float>(coord.cz * recurse::kChunkSize);
+                        float x1 = x0 + static_cast<float>(recurse::kChunkSize);
+                        float y1 = y0 + static_cast<float>(recurse::kChunkSize);
+                        float z1 = z0 + static_cast<float>(recurse::kChunkSize);
                         chunkBVH.insert(fabric::AABB(fabric::Vec3f(x0, y0, z0), fabric::Vec3f(x1, y1, z1)), idx++);
                     }
                     chunkBVH.build();
@@ -1146,7 +1148,7 @@ int main(int argc, char* argv[]) {
                 debugData.totalChunks = static_cast<int>(density.grid().chunkCount());
                 debugData.cameraPosition = cameraCtrl.position();
                 debugData.currentRadius = streaming.currentRadius();
-                debugData.currentState = fabric::MovementFSM::stateToString(movementFSM.currentState());
+                debugData.currentState = recurse::MovementFSM::stateToString(movementFSM.currentState());
 
                 int triCount = 0;
                 for (const auto& [_, m] : gpuMeshes)
@@ -1211,7 +1213,7 @@ int main(int argc, char* argv[]) {
         physicsWorld.shutdown();
 
         for (auto& [_, mesh] : gpuMeshes) {
-            fabric::VoxelMesher::destroyMesh(mesh);
+            recurse::VoxelMesher::destroyMesh(mesh);
         }
         gpuMeshes.clear();
 

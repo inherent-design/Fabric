@@ -1,8 +1,9 @@
-#include "fabric/core/DebrisPool.hh"
+#include "recurse/ui/DebrisPool.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 TEST(DebrisPoolTest, ConstructDefault) {
     DebrisPool pool;

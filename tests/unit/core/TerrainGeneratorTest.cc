@@ -1,7 +1,8 @@
-#include "fabric/core/TerrainGenerator.hh"
+#include "recurse/world/TerrainGenerator.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class TerrainGeneratorTest : public ::testing::Test {
   protected:

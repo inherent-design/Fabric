@@ -1,10 +1,10 @@
-#include "fabric/core/FileWatcher.hh"
+#include "recurse/persistence/FileWatcher.hh"
 #include <gtest/gtest.h>
 #include <string>
 #include <thread>
 #include <vector>
 
-using namespace fabric;
+using namespace recurse;
 
 class FileWatcherTest : public ::testing::Test {
   protected:

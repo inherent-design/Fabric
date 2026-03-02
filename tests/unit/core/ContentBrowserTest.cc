@@ -1,4 +1,4 @@
-#include "fabric/core/ContentBrowser.hh"
+#include "recurse/ui/ContentBrowser.hh"
 
 #include <gtest/gtest.h>
 
@@ -6,8 +6,9 @@
 #include <filesystem>
 #include <fstream>
 
+using namespace recurse;
+
 namespace fs = std::filesystem;
-using namespace fabric;
 
 namespace {
 

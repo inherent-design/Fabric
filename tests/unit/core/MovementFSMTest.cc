@@ -1,7 +1,8 @@
-#include "fabric/core/MovementFSM.hh"
+#include "recurse/gameplay/MovementFSM.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class MovementFSMTest : public ::testing::Test {
   protected:

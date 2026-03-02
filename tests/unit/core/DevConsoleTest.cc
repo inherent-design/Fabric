@@ -1,7 +1,7 @@
-#include "fabric/core/DevConsole.hh"
+#include "recurse/ui/DevConsole.hh"
 #include <gtest/gtest.h>
 
-using namespace fabric;
+using namespace recurse;
 
 TEST(DevConsoleTest, NotValidBeforeInit) {
     DevConsole console;

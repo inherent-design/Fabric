@@ -1,7 +1,8 @@
-#include "fabric/core/ChunkMeshManager.hh"
+#include "recurse/world/ChunkMeshManager.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 using Essence = Vector4<float, Space::World>;
 
 class ChunkMeshManagerTest : public ::testing::Test {

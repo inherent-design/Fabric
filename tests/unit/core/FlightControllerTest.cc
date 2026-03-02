@@ -1,8 +1,9 @@
-#include "fabric/core/FlightController.hh"
+#include "recurse/gameplay/FlightController.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class FlightControllerTest : public ::testing::Test {
   protected:

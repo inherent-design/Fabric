@@ -1,9 +1,10 @@
-#include "fabric/core/BehaviorAI.hh"
+#include "recurse/ai/BehaviorAI.hh"
 #include "fabric/core/ECS.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class BehaviorAITest : public ::testing::Test {
   protected:

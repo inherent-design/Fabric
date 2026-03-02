@@ -11,9 +11,13 @@ class Context;
 class Element;
 } // namespace Rml
 
+namespace recurse {
+class InputRecorder;
+} // namespace recurse
+
 namespace fabric {
 
-class InputRecorder;
+using recurse::InputRecorder;
 
 enum class InputMode {
     GameOnly,

@@ -1,7 +1,7 @@
-#include "fabric/core/VoxelRaycast.hh"
+#include "recurse/world/VoxelRaycast.hh"
 #include <gtest/gtest.h>
 
-using namespace fabric;
+using namespace recurse;
 
 class VoxelRaycastTest : public ::testing::Test {
   protected:

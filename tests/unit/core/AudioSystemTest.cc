@@ -1,10 +1,11 @@
-#include "fabric/core/AudioSystem.hh"
-#include "fabric/core/ChunkedGrid.hh"
-#include "fabric/core/ReverbZone.hh"
+#include "recurse/audio/AudioSystem.hh"
+#include "recurse/audio/ReverbZone.hh"
+#include "recurse/world/ChunkedGrid.hh"
 
 #include <gtest/gtest.h>
 
 using namespace fabric;
+using namespace recurse;
 
 class AudioSystemTest : public ::testing::Test {
   protected:
