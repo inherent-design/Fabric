@@ -85,13 +85,13 @@ TEST(FabricAppDescTest, SetCallbacks) {
     EXPECT_TRUE(static_cast<bool>(desc.onShutdown));
 }
 
-TEST(FabricAppDescTest, DuplicateTypeRegistrationAccumulates) {
+TEST(FabricAppDescTest, DuplicateTypeRegistrationThrows) {
     FabricAppDesc desc;
     desc.registerSystem<TestSystemA>(SystemPhase::Update);
-    desc.registerSystem<TestSystemA>(SystemPhase::FixedUpdate);
-    // FabricAppDesc does not deduplicate; it just accumulates factories.
-    // SystemRegistry::registerSystemImpl will throw when the second one is registered.
-    EXPECT_EQ(desc.systemRegistrations_.size(), 2u);
+
+    // Second registration of the same type must be rejected
+    EXPECT_THROW(desc.registerSystem<TestSystemA>(SystemPhase::FixedUpdate), std::runtime_error);
+    EXPECT_EQ(desc.systemRegistrations_.size(), 1u);
 }
 
 TEST(FabricAppDescTest, MultipleSystemsSamePhase) {

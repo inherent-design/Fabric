@@ -133,6 +133,25 @@ void InputSystem::evaluate() {
                 continue;
 
             bool active = evaluateAction(binding);
+
+            // oneShot suppression: if already fired and source still held, suppress
+            if (binding.oneShot && active && oneShotFired_.count(binding.name)) {
+                ActionSnapshot snap;
+                snap.state = ActionState::Released;
+                if (actionSnapshots_.find(binding.name) == actionSnapshots_.end()) {
+                    actionSnapshots_[binding.name] = snap;
+                }
+                if (ctx->consumeInput()) {
+                    consumedActions.insert(binding.name);
+                }
+                continue;
+            }
+
+            // Clear fired flag when source is released
+            if (binding.oneShot && !active) {
+                oneShotFired_.erase(binding.name);
+            }
+
             if (active) {
                 currentActive.insert(binding.name);
             }
@@ -145,6 +164,9 @@ void InputSystem::evaluate() {
                 snap.state = ActionState::JustPressed;
             } else if (active && wasActive) {
                 snap.state = binding.oneShot ? ActionState::JustReleased : ActionState::Held;
+                if (binding.oneShot) {
+                    oneShotFired_.insert(binding.name);
+                }
             } else if (!active && wasActive) {
                 snap.state = ActionState::JustReleased;
             } else {

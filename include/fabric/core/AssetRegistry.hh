@@ -122,18 +122,20 @@ template <typename T> void AssetRegistry::registerLoader(std::unique_ptr<AssetLo
 
         auto& cache = std::any_cast<std::unordered_map<std::string, std::shared_ptr<AssetStateBlock<T>>>&>(slot.cache);
 
-        // Collect loaded entries sorted by last access (oldest first)
-        std::vector<std::pair<std::string, std::shared_ptr<AssetStateBlock<T>>>> loaded;
+        // Collect evictable entries: loaded and not held by external handles.
+        // Check use_count before copying into the vector, when only the cache
+        // holds the shared_ptr (use_count == 1 means no external handles).
+        std::vector<std::pair<std::string, std::shared_ptr<AssetStateBlock<T>>>> evictable;
         for (auto& [p, block] : cache) {
-            if (block->state.load(std::memory_order_acquire) == AssetState::Loaded)
-                loaded.emplace_back(p, block);
+            if (block->state.load(std::memory_order_acquire) == AssetState::Loaded && block.use_count() == 1)
+                evictable.emplace_back(p, block);
         }
-        std::sort(loaded.begin(), loaded.end(), [](const auto& a, const auto& b) {
+        std::sort(evictable.begin(), evictable.end(), [](const auto& a, const auto& b) {
             return a.second->lastAccessTick.load(std::memory_order_relaxed) <
                    b.second->lastAccessTick.load(std::memory_order_relaxed);
         });
 
-        for (auto& [p, block] : loaded) {
+        for (auto& [p, block] : evictable) {
             if (usage <= slot.memoryBudget)
                 break;
             auto freed = block->memoryUsage();
@@ -183,8 +185,15 @@ template <typename T> Handle<T> AssetRegistry::load(const std::filesystem::path&
     // Load outside the lock so other registry operations are not blocked
     try {
         block->asset = loaderPtr->load(std::filesystem::path(canonical), hub_);
-        block->state.store(AssetState::Loaded, std::memory_order_release);
-        block->notifyLoaded();
+        if (!block->asset) {
+            block->error = "loader returned null";
+            block->state.store(AssetState::Failed, std::memory_order_release);
+            block->notifyFailed();
+            FABRIC_LOG_ERROR("Asset load failed [{}]: loader returned null", canonical);
+        } else {
+            block->state.store(AssetState::Loaded, std::memory_order_release);
+            block->notifyLoaded();
+        }
     } catch (const std::exception& e) {
         block->error = e.what();
         block->state.store(AssetState::Failed, std::memory_order_release);
@@ -269,8 +278,15 @@ template <typename T> void AssetRegistry::reload(const std::filesystem::path& pa
 
     try {
         block->asset = loaderPtr->load(std::filesystem::path(canonical), hub_);
-        block->state.store(AssetState::Loaded, std::memory_order_release);
-        block->notifyLoaded();
+        if (!block->asset) {
+            block->error = "loader returned null";
+            block->state.store(AssetState::Failed, std::memory_order_release);
+            block->notifyFailed();
+            FABRIC_LOG_ERROR("Asset reload failed [{}]: loader returned null", canonical);
+        } else {
+            block->state.store(AssetState::Loaded, std::memory_order_release);
+            block->notifyLoaded();
+        }
     } catch (const std::exception& e) {
         block->error = e.what();
         block->state.store(AssetState::Failed, std::memory_order_release);

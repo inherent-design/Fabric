@@ -184,26 +184,31 @@ TEST(InputContextTest, DefaultPriorityIsZero) {
     EXPECT_EQ(ctx.priority(), 0);
 }
 
-TEST(InputContextTest, AddActionDuplicateNameOverwritesIndex) {
+TEST(InputContextTest, AddActionDuplicateNameOverwritesInPlace) {
     InputContext ctx("test");
 
     ActionBinding first;
-    first.name = "jump";
+    first.name = "Jump";
     first.sources.push_back(KeySource{SDLK_SPACE});
     ctx.addAction(first);
 
     ActionBinding second;
-    second.name = "jump";
+    second.name = "Jump";
     second.sources.push_back(KeySource{SDLK_UP});
     ctx.addAction(second);
 
-    // Both are in the vector
-    EXPECT_EQ(ctx.actions().size(), 2u);
-    // findAction returns the last added (index points to second)
-    const auto* found = ctx.findAction("jump");
+    // Duplicate name overwrites in place: only one entry
+    EXPECT_EQ(ctx.actions().size(), 1u);
+    // findAction returns the updated binding with source B
+    const auto* found = ctx.findAction("Jump");
     ASSERT_NE(found, nullptr);
     EXPECT_EQ(found->sources.size(), 1u);
     EXPECT_EQ(std::get<KeySource>(found->sources[0]).key, SDLK_UP);
+
+    // Clean removal: no orphans
+    ctx.removeAction("Jump");
+    EXPECT_EQ(ctx.actions().size(), 0u);
+    EXPECT_EQ(ctx.findAction("Jump"), nullptr);
 }
 
 TEST(InputContextTest, RemoveMiddleActionRebuildsIndex) {

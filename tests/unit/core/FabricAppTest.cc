@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -217,6 +218,58 @@ TEST_F(FabricAppTest, DependencyOrderedInitShutdownThroughRun) {
     EXPECT_LT(initA, initB);
     // B shuts down before A (reverse)
     EXPECT_LT(shutB, shutA);
+}
+
+// ── Init failure recovery: A inits ok, B throws, C never inits ────────
+
+class InitOkSystem : public System<InitOkSystem> {
+  public:
+    void init(AppContext& /*ctx*/) override { lifecycleLog.push_back("InitOk::init"); }
+    void shutdown() override { lifecycleLog.push_back("InitOk::shutdown"); }
+};
+
+class InitFailSystem : public System<InitFailSystem> {
+  public:
+    void configureDependencies() override { after<InitOkSystem>(); }
+    void init(AppContext& /*ctx*/) override {
+        lifecycleLog.push_back("InitFail::init");
+        throw std::runtime_error("InitFailSystem blew up");
+    }
+    void shutdown() override { lifecycleLog.push_back("InitFail::shutdown"); }
+};
+
+class InitNeverSystem : public System<InitNeverSystem> {
+  public:
+    void configureDependencies() override { after<InitFailSystem>(); }
+    void init(AppContext& /*ctx*/) override { lifecycleLog.push_back("InitNever::init"); }
+    void shutdown() override { lifecycleLog.push_back("InitNever::shutdown"); }
+};
+
+TEST_F(FabricAppTest, InitFailureRecovery) {
+    FabricAppDesc desc;
+    desc.name = "InitFailApp";
+    desc.registerSystem<InitOkSystem>(SystemPhase::Update);
+    desc.registerSystem<InitFailSystem>(SystemPhase::Update);
+    desc.registerSystem<InitNeverSystem>(SystemPhase::Update);
+
+    char arg0[] = "test";
+    char* args[] = {arg0};
+    int result = FabricApp::run(1, args, std::move(desc));
+
+    // run() should return non-zero on init failure
+    EXPECT_NE(result, 0);
+
+    // A (InitOk) initialized and was cleaned up
+    EXPECT_NE(std::find(lifecycleLog.begin(), lifecycleLog.end(), "InitOk::init"), lifecycleLog.end());
+    EXPECT_NE(std::find(lifecycleLog.begin(), lifecycleLog.end(), "InitOk::shutdown"), lifecycleLog.end());
+
+    // B (InitFail) attempted init but should NOT be shut down (never completed init)
+    EXPECT_NE(std::find(lifecycleLog.begin(), lifecycleLog.end(), "InitFail::init"), lifecycleLog.end());
+    EXPECT_EQ(std::find(lifecycleLog.begin(), lifecycleLog.end(), "InitFail::shutdown"), lifecycleLog.end());
+
+    // C (InitNever) should never have init() or shutdown() called
+    EXPECT_EQ(std::find(lifecycleLog.begin(), lifecycleLog.end(), "InitNever::init"), lifecycleLog.end());
+    EXPECT_EQ(std::find(lifecycleLog.begin(), lifecycleLog.end(), "InitNever::shutdown"), lifecycleLog.end());
 }
 
 // ── AppContext construction and optional member tests ──────────────────

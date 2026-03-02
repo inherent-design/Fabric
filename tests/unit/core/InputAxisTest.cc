@@ -1,4 +1,5 @@
 #include "fabric/core/InputAxis.hh"
+#include <cmath>
 #include <gtest/gtest.h>
 #include <limits>
 
@@ -228,4 +229,17 @@ TEST(InputAxisTest, TriggerRangeClamp) {
     EXPECT_FLOAT_EQ(processAxisValue(0.05f, binding), 0.0f);
     EXPECT_GT(processAxisValue(0.5f, binding), 0.0f);
     EXPECT_LE(processAxisValue(0.5f, binding), 1.0f);
+}
+
+// --- BUG-NAN: NaN input must not propagate through axis pipeline ---
+
+TEST(InputAxisTest, ProcessAxisNaNReturnsZero) {
+    AxisBinding binding;
+    binding.name = "test";
+    binding.deadZone = 0.2f;
+
+    float nan = std::numeric_limits<float>::quiet_NaN();
+    float result = processAxisValue(nan, binding);
+    EXPECT_FALSE(std::isnan(result));
+    EXPECT_FLOAT_EQ(result, 0.0f);
 }
