@@ -275,9 +275,38 @@ TEST_F(AssetRegistryTest, GetReturnsExistingHandle) {
 // -- LRU eviction --
 
 TEST_F(AssetRegistryTest, LRUEvictionUnderBudget) {
-    // TODO(human): Implement LRU eviction test strategy
-    // See guidance below the test fixture
-    GTEST_SKIP() << "Awaiting human implementation";
+    AssetRegistry registry(hub);
+    registry.registerLoader<TestAsset>(std::make_unique<TestAssetLoader>());
+
+    // Load 3 assets. Each reports sizeof(TestAsset) bytes when loaded.
+    auto p1 = writeTempFile("lru1.test", "first");
+    auto p2 = writeTempFile("lru2.test", "second");
+    auto p3 = writeTempFile("lru3.test", "third");
+
+    registry.load<TestAsset>(p1); // tick 0, oldest
+    registry.update();            // tick becomes 1
+    registry.load<TestAsset>(p2); // tick 1
+    registry.update();            // tick becomes 2
+    registry.load<TestAsset>(p3); // tick 2, newest
+
+    EXPECT_EQ(registry.count<TestAsset>(), 3u);
+
+    // Set budget to fit only 2 assets, then trigger eviction
+    size_t perAsset = sizeof(TestAsset);
+    registry.setMemoryBudget<TestAsset>(perAsset * 2);
+    registry.update(); // tick 3, runs eviction
+
+    // Oldest asset (p1, lastAccessTick=0) should be evicted
+    EXPECT_EQ(registry.count<TestAsset>(), 2u);
+
+    // p1 should be gone, p2 and p3 should remain
+    auto h1 = registry.get<TestAsset>(p1);
+    auto h2 = registry.get<TestAsset>(p2);
+    auto h3 = registry.get<TestAsset>(p3);
+
+    EXPECT_FALSE(static_cast<bool>(h1));
+    EXPECT_TRUE(static_cast<bool>(h2));
+    EXPECT_TRUE(static_cast<bool>(h3));
 }
 
 // -- Memory usage --
