@@ -1,4 +1,5 @@
 #include "recurse/systems/VoxelInteractionSystem.hh"
+#include "recurse/systems/CameraGameSystem.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 
@@ -8,12 +9,9 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "recurse/gameplay/VoxelInteraction.hh"
 
-// Forward declare; CameraGameSystem is created by W1B
 namespace recurse::systems {
-class CameraGameSystem;
-} // namespace recurse::systems
 
-namespace recurse::systems {
+VoxelInteractionSystem::~VoxelInteractionSystem() = default;
 
 void VoxelInteractionSystem::init(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
@@ -29,14 +27,13 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
 
     interactionCooldown_ -= fixedDt;
     if (interactionCooldown_ <= 0.0f) {
-        // Camera position/forward for raycasts.
-        // Until W2 wiring connects CameraGameSystem, use safe defaults.
+        // Camera position/forward for raycasts
         fabric::Vec3f camPos(16.0f, 48.0f, 16.0f);
         fabric::Vec3f camFwd(0.0f, 0.0f, -1.0f);
 
         if (camera_) {
-            // Will be wired in Wave 2: camPos = camera_->position();
-            // camFwd = camera_->forward();
+            camPos = camera_->position();
+            camFwd = camera_->forward();
         }
 
         if (inputManager->mouseButton(1)) {

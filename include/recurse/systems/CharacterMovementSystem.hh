@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/core/Spatial.hh"
+#include "fabric/core/Rendering.hh"
 #include "fabric/core/SystemBase.hh"
 #include "recurse/gameplay/CharacterTypes.hh"
 #include "recurse/gameplay/MovementFSM.hh"
@@ -23,6 +23,7 @@ class CameraGameSystem;
 class CharacterMovementSystem : public fabric::System<CharacterMovementSystem> {
   public:
     CharacterMovementSystem() = default;
+    ~CharacterMovementSystem() override;
 
     void init(fabric::AppContext& ctx) override;
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;

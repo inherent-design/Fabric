@@ -19,6 +19,7 @@ class CharacterMovementSystem;
 class SaveGameSystem : public fabric::System<SaveGameSystem> {
   public:
     SaveGameSystem() = default;
+    ~SaveGameSystem() override;
 
     void init(fabric::AppContext& ctx) override;
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
