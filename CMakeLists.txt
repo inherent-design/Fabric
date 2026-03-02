@@ -226,6 +226,7 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/BgfxCallback.cc
     src/core/InputSource.cc
     src/core/InputAxis.cc
+    src/core/ConfigManager.cc
 )
 
 # Utils library components
@@ -245,6 +246,8 @@ set(FABRIC_PARSER_SOURCE_FILES
 # Platform library components
 set(FABRIC_PLATFORM_SOURCE_FILES
     src/platform/PlatformInfo.cc
+    src/platform/WindowDesc.cc
+    src/platform/CursorManager.cc
 )
 
 # Codec library components

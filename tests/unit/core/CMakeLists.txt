@@ -87,6 +87,10 @@ target_sources(UnitTests
   InputActionTest.cc
   InputAxisTest.cc
   PlatformInfoTest.cc
+  ConfigManagerTest.cc
+  RuntimeStateTest.cc
+  WindowDescTest.cc
+  CursorManagerTest.cc
 )
 
 set_source_files_properties(
