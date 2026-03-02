@@ -1,5 +1,6 @@
 #include "fabric/core/InputAxis.hh"
 #include <gtest/gtest.h>
+#include <limits>
 
 using namespace fabric;
 
@@ -104,4 +105,127 @@ TEST(InputAxisTest, AxisSourceDefaults) {
 
     EXPECT_FALSE(as.useKeyPair);
     EXPECT_FLOAT_EQ(as.scale, 1.0f);
+}
+
+// --- Audit: dead zone boundary values ---
+
+TEST(InputAxisTest, DeadZoneBoundaryExactlyAtThreshold) {
+    EXPECT_FLOAT_EQ(applyDeadZone(0.2f, 0.2f), 0.0f);
+    EXPECT_FLOAT_EQ(applyDeadZone(-0.2f, 0.2f), 0.0f);
+}
+
+TEST(InputAxisTest, DeadZoneJustAboveThreshold) {
+    float result = applyDeadZone(0.21f, 0.2f);
+    EXPECT_GT(result, 0.0f);
+    EXPECT_LT(result, 0.05f);
+
+    float negResult = applyDeadZone(-0.21f, 0.2f);
+    EXPECT_LT(negResult, 0.0f);
+    EXPECT_GT(negResult, -0.05f);
+}
+
+TEST(InputAxisTest, DeadZoneAtOrAboveOne) {
+    EXPECT_FLOAT_EQ(applyDeadZone(0.5f, 1.0f), 0.0f);
+    EXPECT_FLOAT_EQ(applyDeadZone(1.0f, 1.0f), 0.0f);
+    EXPECT_FLOAT_EQ(applyDeadZone(-1.0f, 1.0f), 0.0f);
+    EXPECT_FLOAT_EQ(applyDeadZone(0.99f, 1.5f), 0.0f);
+}
+
+TEST(InputAxisTest, DeadZoneNegativePassesThrough) {
+    EXPECT_FLOAT_EQ(applyDeadZone(0.5f, -0.1f), 0.5f);
+    EXPECT_FLOAT_EQ(applyDeadZone(-0.5f, -0.1f), -0.5f);
+}
+
+// --- Audit: response curve extremes ---
+
+TEST(InputAxisTest, ResponseCurveExtremesLinear) {
+    EXPECT_FLOAT_EQ(applyResponseCurve(0.0f, ResponseCurve::Linear), 0.0f);
+    EXPECT_FLOAT_EQ(applyResponseCurve(1.0f, ResponseCurve::Linear), 1.0f);
+    EXPECT_FLOAT_EQ(applyResponseCurve(-1.0f, ResponseCurve::Linear), -1.0f);
+}
+
+TEST(InputAxisTest, ResponseCurveExtremesQuadratic) {
+    EXPECT_FLOAT_EQ(applyResponseCurve(0.0f, ResponseCurve::Quadratic), 0.0f);
+    EXPECT_FLOAT_EQ(applyResponseCurve(1.0f, ResponseCurve::Quadratic), 1.0f);
+    EXPECT_FLOAT_EQ(applyResponseCurve(-1.0f, ResponseCurve::Quadratic), -1.0f);
+}
+
+TEST(InputAxisTest, ResponseCurveExtremesCubic) {
+    EXPECT_FLOAT_EQ(applyResponseCurve(0.0f, ResponseCurve::Cubic), 0.0f);
+    EXPECT_FLOAT_EQ(applyResponseCurve(1.0f, ResponseCurve::Cubic), 1.0f);
+    EXPECT_FLOAT_EQ(applyResponseCurve(-1.0f, ResponseCurve::Cubic), -1.0f);
+}
+
+TEST(InputAxisTest, ResponseCurveBeyondOneQuadratic) {
+    EXPECT_FLOAT_EQ(applyResponseCurve(2.0f, ResponseCurve::Quadratic), 4.0f);
+    EXPECT_FLOAT_EQ(applyResponseCurve(-2.0f, ResponseCurve::Quadratic), -4.0f);
+}
+
+TEST(InputAxisTest, ResponseCurveBeyondOneCubic) {
+    EXPECT_FLOAT_EQ(applyResponseCurve(2.0f, ResponseCurve::Cubic), 8.0f);
+    EXPECT_FLOAT_EQ(applyResponseCurve(-2.0f, ResponseCurve::Cubic), -8.0f);
+}
+
+// --- Audit: inversion combined with dead zone ---
+
+TEST(InputAxisTest, InversionCombinedWithDeadZone) {
+    AxisBinding binding;
+    binding.name = "test";
+    binding.deadZone = 0.2f;
+    binding.inverted = true;
+
+    EXPECT_NEAR(processAxisValue(0.6f, binding), -0.5f, 1e-5f);
+    EXPECT_NEAR(processAxisValue(-0.6f, binding), 0.5f, 1e-5f);
+    EXPECT_FLOAT_EQ(processAxisValue(0.1f, binding), 0.0f);
+}
+
+// --- Audit: extreme input values ---
+
+TEST(InputAxisTest, ProcessAxisInfinity) {
+    AxisBinding binding;
+    binding.name = "test";
+
+    float posResult = processAxisValue(std::numeric_limits<float>::infinity(), binding);
+    EXPECT_FLOAT_EQ(posResult, 1.0f);
+
+    float negResult = processAxisValue(-std::numeric_limits<float>::infinity(), binding);
+    EXPECT_FLOAT_EQ(negResult, -1.0f);
+}
+
+// --- Audit: full pipeline variants ---
+
+TEST(InputAxisTest, FullPipelineCubicWithInversion) {
+    AxisBinding binding;
+    binding.name = "test";
+    binding.deadZone = 0.1f;
+    binding.responseCurve = ResponseCurve::Cubic;
+    binding.inverted = true;
+
+    EXPECT_NEAR(processAxisValue(1.0f, binding), -1.0f, 1e-5f);
+}
+
+TEST(InputAxisTest, KeyPairSourceEquality) {
+    KeyPairSource a{SDLK_A, SDLK_D};
+    KeyPairSource b{SDLK_A, SDLK_D};
+    KeyPairSource c{SDLK_S, SDLK_W};
+    EXPECT_EQ(a, b);
+    EXPECT_NE(a, c);
+}
+
+TEST(InputAxisTest, KeyPairSourceDefaultEquality) {
+    KeyPairSource a;
+    KeyPairSource b;
+    EXPECT_EQ(a, b);
+}
+
+TEST(InputAxisTest, TriggerRangeClamp) {
+    AxisBinding binding;
+    binding.name = "trigger";
+    binding.rangeMin = 0.0f;
+    binding.rangeMax = 1.0f;
+    binding.deadZone = 0.1f;
+
+    EXPECT_FLOAT_EQ(processAxisValue(0.05f, binding), 0.0f);
+    EXPECT_GT(processAxisValue(0.5f, binding), 0.0f);
+    EXPECT_LE(processAxisValue(0.5f, binding), 1.0f);
 }

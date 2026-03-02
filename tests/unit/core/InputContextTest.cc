@@ -176,3 +176,123 @@ TEST(InputContextTest, ConsumeAndRouteFlags) {
     EXPECT_FALSE(ctx.consumeInput());
     EXPECT_FALSE(ctx.routeToUI());
 }
+
+// --- Audit: edge cases ---
+
+TEST(InputContextTest, DefaultPriorityIsZero) {
+    InputContext ctx("default_test");
+    EXPECT_EQ(ctx.priority(), 0);
+}
+
+TEST(InputContextTest, AddActionDuplicateNameOverwritesIndex) {
+    InputContext ctx("test");
+
+    ActionBinding first;
+    first.name = "jump";
+    first.sources.push_back(KeySource{SDLK_SPACE});
+    ctx.addAction(first);
+
+    ActionBinding second;
+    second.name = "jump";
+    second.sources.push_back(KeySource{SDLK_UP});
+    ctx.addAction(second);
+
+    // Both are in the vector
+    EXPECT_EQ(ctx.actions().size(), 2u);
+    // findAction returns the last added (index points to second)
+    const auto* found = ctx.findAction("jump");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->sources.size(), 1u);
+    EXPECT_EQ(std::get<KeySource>(found->sources[0]).key, SDLK_UP);
+}
+
+TEST(InputContextTest, RemoveMiddleActionRebuildsIndex) {
+    InputContext ctx("test");
+
+    ActionBinding a;
+    a.name = "a";
+    ctx.addAction(a);
+    ActionBinding b;
+    b.name = "b";
+    ctx.addAction(b);
+    ActionBinding c;
+    c.name = "c";
+    ctx.addAction(c);
+
+    ctx.removeAction("b");
+    EXPECT_EQ(ctx.actions().size(), 2u);
+    EXPECT_NE(ctx.findAction("a"), nullptr);
+    EXPECT_EQ(ctx.findAction("b"), nullptr);
+    EXPECT_NE(ctx.findAction("c"), nullptr);
+}
+
+TEST(InputContextTest, RemoveMiddleAxisRebuildsIndex) {
+    InputContext ctx("test");
+
+    AxisBinding x;
+    x.name = "x";
+    ctx.addAxis(x);
+    AxisBinding y;
+    y.name = "y";
+    ctx.addAxis(y);
+    AxisBinding z;
+    z.name = "z";
+    ctx.addAxis(z);
+
+    ctx.removeAxis("y");
+    EXPECT_EQ(ctx.axes().size(), 2u);
+    EXPECT_NE(ctx.findAxis("x"), nullptr);
+    EXPECT_EQ(ctx.findAxis("y"), nullptr);
+    EXPECT_NE(ctx.findAxis("z"), nullptr);
+}
+
+TEST(InputContextTest, RebindActionToEmptySources) {
+    InputContext ctx("test");
+
+    ActionBinding jump;
+    jump.name = "jump";
+    jump.sources.push_back(KeySource{SDLK_SPACE});
+    ctx.addAction(jump);
+
+    std::vector<InputSource> empty;
+    EXPECT_TRUE(ctx.rebindAction("jump", empty));
+    EXPECT_TRUE(ctx.findAction("jump")->sources.empty());
+}
+
+TEST(InputContextTest, RebindAxisToEmptySources) {
+    InputContext ctx("test");
+
+    AxisBinding moveX;
+    moveX.name = "move_x";
+    AxisSource src;
+    src.useKeyPair = true;
+    src.keyPair = {SDLK_A, SDLK_D};
+    moveX.sources.push_back(src);
+    ctx.addAxis(moveX);
+
+    std::vector<AxisSource> empty;
+    EXPECT_TRUE(ctx.rebindAxis("move_x", empty));
+    EXPECT_TRUE(ctx.findAxis("move_x")->sources.empty());
+}
+
+TEST(InputContextTest, AddAfterClear) {
+    InputContext ctx("test");
+
+    ActionBinding a;
+    a.name = "a";
+    ctx.addAction(a);
+    ctx.clear();
+
+    ActionBinding b;
+    b.name = "b";
+    ctx.addAction(b);
+
+    EXPECT_EQ(ctx.actions().size(), 1u);
+    EXPECT_NE(ctx.findAction("b"), nullptr);
+    EXPECT_EQ(ctx.findAction("a"), nullptr);
+}
+
+TEST(InputContextTest, NegativePriority) {
+    InputContext ctx("background", -10);
+    EXPECT_EQ(ctx.priority(), -10);
+}
