@@ -43,7 +43,7 @@ find_package(Threads REQUIRED)
 #------------------------------------------------------------------------------
 # Generate Constants Header
 #------------------------------------------------------------------------------
-set(APP_NAME "Fabric")
+set(APP_NAME "Recurse")
 set(APP_VERSION "${PROJECT_VERSION}")
 
 configure_file(
