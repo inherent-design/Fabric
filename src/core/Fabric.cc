@@ -735,6 +735,13 @@ int main(int argc, char* argv[]) {
                         appModeManager.togglePause();
                     }
 
+                    // Click to resume from Paused mode (re-capture mouse)
+                    if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT) {
+                        if (appModeManager.current() == fabric::AppMode::Paused) {
+                            appModeManager.transition(fabric::AppMode::Game);
+                        }
+                    }
+
                     if (event.type == SDL_EVENT_QUIT)
                         running = false;
 
