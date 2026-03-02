@@ -117,9 +117,13 @@ bool InputRouter::routeEvent(const SDL_Event& event, Rml::Context* rmlContext) {
         }
     }
 
-    // Escape toggles GameOnly <-> UIOnly before any other routing
+    // Escape: use callback if registered, fall back to direct toggle
     if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && event.key.key == SDLK_ESCAPE) {
-        toggleUIMode();
+        if (escapeCallback_) {
+            escapeCallback_();
+        } else {
+            toggleUIMode();
+        }
         return true;
     }
 

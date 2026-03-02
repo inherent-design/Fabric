@@ -46,6 +46,7 @@ MovementFSM::MovementFSM()
     sm_->addTransition(CharacterState::Grounded, CharacterState::Dashing);
 
     sm_->addTransition(CharacterState::Jumping, CharacterState::Falling);
+    sm_->addTransition(CharacterState::Jumping, CharacterState::Grounded);
     sm_->addTransition(CharacterState::Jumping, CharacterState::Flying);
 
     sm_->addTransition(CharacterState::Falling, CharacterState::Grounded);

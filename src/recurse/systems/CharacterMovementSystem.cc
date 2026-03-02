@@ -137,7 +137,7 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
                 movementFSM_.currentState() == CharacterState::Jumping) {
                 movementFSM_.tryTransition(CharacterState::Grounded);
             }
-        } else if (movementFSM_.isGrounded()) {
+        } else if (movementFSM_.isGrounded() || movementFSM_.currentState() == CharacterState::Jumping) {
             movementFSM_.tryTransition(CharacterState::Falling);
         }
 

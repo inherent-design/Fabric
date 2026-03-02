@@ -43,6 +43,9 @@ class InputRouter {
     // Console toggle callback (backtick key)
     void setConsoleToggleCallback(std::function<void()> cb) { consoleToggleCallback_ = std::move(cb); }
 
+    // Escape callback (overrides default toggleUIMode behavior)
+    void setEscapeCallback(std::function<void()> cb) { escapeCallback_ = std::move(cb); }
+
     /// Attach an InputRecorder for capture/playback. Pass nullptr to detach.
     void setRecorder(recurse::InputRecorder* recorder);
 
@@ -63,6 +66,7 @@ class InputRouter {
     InputMode mode_ = InputMode::GameOnly;
     recurse::InputRecorder* recorder_ = nullptr;
     std::function<void()> consoleToggleCallback_;
+    std::function<void()> escapeCallback_;
     std::unordered_map<SDL_Keycode, std::function<void()>> keyCallbacks_;
 
     bool forwardToRmlUI(const SDL_Event& event, Rml::Context* ctx);

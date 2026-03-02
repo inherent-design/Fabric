@@ -136,15 +136,35 @@ fabric::FabricAppDesc buildRecurseDesc() {
             FABRIC_LOG_INFO("Time scale: {:.2f}", timeline.getGlobalTimeScale());
         });
 
-        // AppMode observer: mouse capture and simulation pause on mode transitions
+        // AppMode observer: mouse capture, simulation pause, and InputRouter sync
         auto* window = ctx.window;
-        ctx.appModeManager->addObserver([&timeline, window](fabric::AppMode, fabric::AppMode to) {
+        auto* inputRouter = ctx.inputRouter;
+        ctx.appModeManager->addObserver([&timeline, window, inputRouter](fabric::AppMode, fabric::AppMode to) {
             const auto& modeFlags = fabric::AppModeManager::flags(to);
             SDL_SetWindowRelativeMouseMode(window, modeFlags.captureMouse);
             if (modeFlags.pauseSimulation) {
                 timeline.pause();
             } else {
                 timeline.resume();
+            }
+            // Sync InputRouter mode with AppMode routing flags
+            if (modeFlags.routeToGame && !modeFlags.routeToUI) {
+                inputRouter->setMode(fabric::InputMode::GameOnly);
+            } else if (!modeFlags.routeToGame && modeFlags.routeToUI) {
+                inputRouter->setMode(fabric::InputMode::UIOnly);
+            } else {
+                inputRouter->setMode(fabric::InputMode::GameAndUI);
+            }
+        });
+
+        // Escape: toggle Game <-> Paused via AppMode (observer syncs everything)
+        auto* appMode = ctx.appModeManager;
+        ctx.inputRouter->setEscapeCallback([appMode]() {
+            auto mode = appMode->current();
+            if (mode == fabric::AppMode::Game) {
+                appMode->transition(fabric::AppMode::Paused);
+            } else if (mode == fabric::AppMode::Paused) {
+                appMode->transition(fabric::AppMode::Game);
             }
         });
 
