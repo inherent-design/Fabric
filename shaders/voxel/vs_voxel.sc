@@ -18,17 +18,22 @@ vec3 decodeNormal(float idx) {
 }
 
 void main() {
+    // UNORM recovery: bgfx Vulkan maps Uint8(normalized=true) to UNORM [0,1].
+    // Multiply by 255.0 to recover original integer byte values.
+    vec4 tc0 = a_texcoord0 * 255.0;
+    vec4 tc1 = a_texcoord1 * 255.0;
+
     // Unpack position (chunk-local 0-32) from first 3 bytes
-    vec3 pos = a_texcoord0.xyz;
+    vec3 pos = tc0.xyz;
 
     // Byte 3: normalIdx[2:0] | aoLevel[4:3]
     // Use float math to avoid bitwise ops (GLSL 1.20 compatibility)
-    float bits = a_texcoord0.w;
+    float bits = tc0.w;
     float normalIdx = floor(mod(bits, 8.0));
     float aoLevel = floor(mod(bits / 8.0, 4.0));
 
     // Palette index from first 2 bytes of second attribute (clamped to array bounds)
-    float palIdx = min(a_texcoord1.x + a_texcoord1.y * 256.0, 255.0);
+    float palIdx = min(tc1.x + tc1.y * 256.0, 255.0);
 
     gl_Position = mul(u_modelViewProj, vec4(pos, 1.0));
     v_color0 = u_palette[int(palIdx)];

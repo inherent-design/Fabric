@@ -9,27 +9,21 @@
 #include <bx/math.h>
 #include <vector>
 
-// Vulkan-only: suppress all non-SPIR-V shader profiles.
+// Vulkan-only: suppress all non-SPIR-V shader profiles so
+// BGFX_EMBEDDED_SHADER only references *_spv symbol arrays.
 #define BGFX_PLATFORM_SUPPORTS_DXBC 0
 #define BGFX_PLATFORM_SUPPORTS_DXIL 0
+#define BGFX_PLATFORM_SUPPORTS_ESSL 0
+#define BGFX_PLATFORM_SUPPORTS_GLSL 0
+#define BGFX_PLATFORM_SUPPORTS_METAL 0
+#define BGFX_PLATFORM_SUPPORTS_NVN 0
+#define BGFX_PLATFORM_SUPPORTS_PSSL 0
 #define BGFX_PLATFORM_SUPPORTS_WGSL 0
 #include <bgfx/embedded_shader.h>
 
-// Compiled shader bytecode generated at build time from .sc sources.
-#include "essl/fs_voxel.sc.bin.h"
-#include "essl/vs_voxel.sc.bin.h"
-#include "glsl/fs_voxel.sc.bin.h"
-#include "glsl/vs_voxel.sc.bin.h"
+// Compiled SPIR-V shader bytecode generated at build time from .sc sources.
 #include "spv/fs_voxel.sc.bin.h"
 #include "spv/vs_voxel.sc.bin.h"
-#if BX_PLATFORM_WINDOWS
-#include "dxbc/fs_voxel.sc.bin.h"
-#include "dxbc/vs_voxel.sc.bin.h"
-#endif
-#if BX_PLATFORM_OSX || BX_PLATFORM_IOS || BX_PLATFORM_VISIONOS
-#include "mtl/fs_voxel.sc.bin.h"
-#include "mtl/vs_voxel.sc.bin.h"
-#endif
 
 static const bgfx::EmbeddedShader s_voxelShaders[] = {BGFX_EMBEDDED_SHADER(vs_voxel), BGFX_EMBEDDED_SHADER(fs_voxel),
                                                       BGFX_EMBEDDED_SHADER_END()};
