@@ -3,6 +3,7 @@
 #include "fabric/core/AssetRegistry.hh"
 #include "fabric/core/ConfigManager.hh"
 #include "fabric/core/ResourceHub.hh"
+#include "fabric/core/SystemPhase.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include <gtest/gtest.h>
 
@@ -78,4 +79,53 @@ TEST(SystemBaseTest, ConfigureDependenciesDoesNotCrash) {
     BetaSystem beta;
     // Calls after<AlphaSystem>() internally, should not throw
     beta.configureDependencies();
+}
+
+// ── SystemPhase coverage ──────────────────────────────────────────────
+
+TEST(SystemPhaseTest, ToStringAllValues) {
+    EXPECT_EQ(systemPhaseToString(SystemPhase::PreUpdate), "PreUpdate");
+    EXPECT_EQ(systemPhaseToString(SystemPhase::FixedUpdate), "FixedUpdate");
+    EXPECT_EQ(systemPhaseToString(SystemPhase::Update), "Update");
+    EXPECT_EQ(systemPhaseToString(SystemPhase::PostUpdate), "PostUpdate");
+    EXPECT_EQ(systemPhaseToString(SystemPhase::PreRender), "PreRender");
+    EXPECT_EQ(systemPhaseToString(SystemPhase::Render), "Render");
+    EXPECT_EQ(systemPhaseToString(SystemPhase::PostRender), "PostRender");
+}
+
+TEST(SystemPhaseTest, PhaseCountMatchesEnum) {
+    EXPECT_EQ(kSystemPhaseCount, 7u);
+    // Verify the last enum value is at index 6
+    EXPECT_EQ(static_cast<std::size_t>(SystemPhase::PostRender), 6u);
+}
+
+// ── SystemBase CRTP additional coverage ───────────────────────────────
+
+TEST(SystemBaseTest, DuplicateDependencyDeclaration) {
+    // Calling after<T>() twice should accumulate (no dedup in SystemBase)
+    BetaSystem beta;
+    beta.configureDependencies();
+    beta.configureDependencies();
+    // Should not crash; registry handles dedup during resolve
+}
+
+TEST(SystemBaseTest, NameContainsTypeName) {
+    BetaSystem beta;
+    GammaSystem gamma;
+    std::string betaName = beta.name();
+    std::string gammaName = gamma.name();
+    EXPECT_NE(betaName.find("Beta"), std::string::npos);
+    EXPECT_NE(gammaName.find("Gamma"), std::string::npos);
+    EXPECT_NE(betaName, gammaName);
+}
+
+TEST(SystemBaseTest, PhaseAccessorOnRegisteredSystem) {
+    // Phase is stored on SystemRegistry, not SystemBase. Verify via registry.
+    SystemRegistry reg;
+    reg.registerSystem<AlphaSystem>(SystemPhase::Render);
+    ASSERT_TRUE(reg.resolve());
+
+    auto systems = reg.listSystems();
+    ASSERT_EQ(systems.size(), 1u);
+    EXPECT_EQ(systems[0].phase, SystemPhase::Render);
 }

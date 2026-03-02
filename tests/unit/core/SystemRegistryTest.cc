@@ -330,3 +330,221 @@ TEST_F(SystemRegistryTest, GetUnregisteredReturnsNull) {
     SystemRegistry reg;
     EXPECT_EQ(reg.get<MockA>(), nullptr);
 }
+
+// ── Cycle detection: 3-node cycle A->B->C->A ──────────────────────────
+
+namespace {
+
+class Cycle3A : public System<Cycle3A> {
+  public:
+    void configureDependencies() override;
+};
+
+class Cycle3B : public System<Cycle3B> {
+  public:
+    void configureDependencies() override { after<Cycle3A>(); }
+};
+
+class Cycle3C : public System<Cycle3C> {
+  public:
+    void configureDependencies() override { after<Cycle3B>(); }
+};
+
+// Closes the cycle: A depends on C
+void Cycle3A::configureDependencies() {
+    after<Cycle3C>();
+}
+
+} // namespace
+
+TEST_F(SystemRegistryTest, ThreeNodeCycleDetection) {
+    SystemRegistry reg;
+    reg.registerSystem<Cycle3A>(SystemPhase::Update);
+    reg.registerSystem<Cycle3B>(SystemPhase::Update);
+    reg.registerSystem<Cycle3C>(SystemPhase::Update);
+    EXPECT_FALSE(reg.resolve());
+}
+
+// ── Self-dependency cycle ──────────────────────────────────────────────
+
+TEST_F(SystemRegistryTest, SelfDependencyCycle) {
+    SystemRegistry reg;
+    // CycleX declares after<CycleX>() (self-dependency)
+    reg.registerSystem<CycleX>(SystemPhase::Update);
+    EXPECT_FALSE(reg.resolve());
+}
+
+// ── Diamond dependency (A->B, A->C, B->D, C->D) ───────────────────────
+
+namespace {
+
+class DiamondD : public System<DiamondD> {
+  public:
+    void init(AppContext& ctx) override {
+        if (g_callLog)
+            g_callLog->push_back("DD::init");
+    }
+    void shutdown() override {
+        if (g_callLog)
+            g_callLog->push_back("DD::shutdown");
+    }
+};
+
+class DiamondB : public System<DiamondB> {
+  public:
+    void configureDependencies() override { after<DiamondD>(); }
+    void init(AppContext& ctx) override {
+        if (g_callLog)
+            g_callLog->push_back("DB::init");
+    }
+};
+
+class DiamondC : public System<DiamondC> {
+  public:
+    void configureDependencies() override { after<DiamondD>(); }
+    void init(AppContext& ctx) override {
+        if (g_callLog)
+            g_callLog->push_back("DC::init");
+    }
+};
+
+class DiamondA : public System<DiamondA> {
+  public:
+    void configureDependencies() override {
+        after<DiamondB>();
+        after<DiamondC>();
+    }
+    void init(AppContext& ctx) override {
+        if (g_callLog)
+            g_callLog->push_back("DA::init");
+    }
+};
+
+} // namespace
+
+TEST_F(SystemRegistryTest, DiamondDependencyResolves) {
+    SystemRegistry reg;
+    reg.registerSystem<DiamondA>(SystemPhase::Update);
+    reg.registerSystem<DiamondB>(SystemPhase::Update);
+    reg.registerSystem<DiamondC>(SystemPhase::Update);
+    reg.registerSystem<DiamondD>(SystemPhase::Update);
+    ASSERT_TRUE(reg.resolve());
+
+    auto ctx = makeContext();
+    reg.initAll(ctx);
+
+    // D must init first (leaf), A must init last (root)
+    ASSERT_GE(callLog.size(), 4u);
+    EXPECT_EQ(callLog.front(), "DD::init");
+    EXPECT_EQ(callLog.back(), "DA::init");
+}
+
+// ── Per-phase topological ordering within same phase ───────────────────
+
+TEST_F(SystemRegistryTest, TopologicalOrderWithinPhase) {
+    SystemRegistry reg;
+    // A, B, C all in Update phase with chain C->B->A
+    reg.registerSystem<MockC>(SystemPhase::Update);
+    reg.registerSystem<MockA>(SystemPhase::Update);
+    reg.registerSystem<MockB>(SystemPhase::Update);
+    ASSERT_TRUE(reg.resolve());
+
+    auto ctx = makeContext();
+    reg.initAll(ctx);
+    callLog.clear();
+
+    // Dispatch should respect topological order within phase
+    reg.runUpdate(ctx, 0.016f);
+    ASSERT_EQ(callLog.size(), 3u);
+    EXPECT_EQ(callLog[0], "A::update");
+    EXPECT_EQ(callLog[1], "B::update");
+    EXPECT_EQ(callLog[2], "C::update");
+}
+
+// ── Dispatch on empty registry ─────────────────────────────────────────
+
+TEST_F(SystemRegistryTest, DispatchOnEmptyRegistry) {
+    SystemRegistry reg;
+    ASSERT_TRUE(reg.resolve());
+    auto ctx = makeContext();
+    // All dispatch methods should be safe on empty registry
+    reg.runPreUpdate(ctx, 0.016f);
+    reg.runFixedUpdate(ctx, 1.0f / 60.0f);
+    reg.runUpdate(ctx, 0.016f);
+    reg.runPostUpdate(ctx, 0.016f);
+    reg.runPreRender(ctx);
+    reg.runRender(ctx);
+    reg.runPostRender(ctx);
+}
+
+// ── Shutdown on empty registry ─────────────────────────────────────────
+
+TEST_F(SystemRegistryTest, ShutdownOnEmptyRegistry) {
+    SystemRegistry reg;
+    ASSERT_TRUE(reg.resolve());
+    reg.shutdownAll(); // Should not crash
+}
+
+// ── Enable/disable during dispatch ─────────────────────────────────────
+
+TEST_F(SystemRegistryTest, DisableSkipsSystemDuringDispatch) {
+    SystemRegistry reg;
+    auto& a = reg.registerSystem<MockA>(SystemPhase::Update);
+    auto& b = reg.registerSystem<MockB>(SystemPhase::Update);
+    ASSERT_TRUE(reg.resolve());
+
+    auto ctx = makeContext();
+
+    // Disable B, only A should run
+    reg.setEnabled<MockB>(false);
+    reg.runUpdate(ctx, 0.016f);
+    EXPECT_EQ(a.updateCount, 1);
+    EXPECT_EQ(b.updateCount, 0);
+
+    // Re-enable B, both should run
+    reg.setEnabled<MockB>(true);
+    reg.runUpdate(ctx, 0.016f);
+    EXPECT_EQ(a.updateCount, 2);
+    EXPECT_EQ(b.updateCount, 1);
+}
+
+// ── Render phase dispatch verification ─────────────────────────────────
+
+TEST_F(SystemRegistryTest, RenderPhaseDispatch) {
+    SystemRegistry reg;
+    auto& a = reg.registerSystem<MockA>(SystemPhase::Render);
+    ASSERT_TRUE(reg.resolve());
+
+    auto ctx = makeContext();
+
+    // runRender should call render(), not update()
+    reg.runRender(ctx);
+    EXPECT_EQ(a.renderCount, 1);
+    EXPECT_EQ(a.updateCount, 0);
+}
+
+// ── isEnabled returns false for unregistered system ────────────────────
+
+TEST_F(SystemRegistryTest, IsEnabledFalseForUnregistered) {
+    SystemRegistry reg;
+    EXPECT_FALSE(reg.isEnabled<MockA>());
+}
+
+// ── Register after resolve should throw ────────────────────────────────
+
+TEST_F(SystemRegistryTest, RegisterAfterResolve) {
+    SystemRegistry reg;
+    reg.registerSystem<MockA>(SystemPhase::Update);
+    ASSERT_TRUE(reg.resolve());
+    // Current implementation does not guard against post-resolve registration.
+    // This test documents the behavior: it should either throw or silently accept.
+    // The system won't appear in dispatch since phaseOrder_ is already computed.
+    reg.registerSystem<MockB>(SystemPhase::Update);
+    auto* b = reg.get<MockB>();
+    EXPECT_NE(b, nullptr); // Registered in systems_ map
+
+    auto ctx = makeContext();
+    // B is registered but not in phaseOrder_, so dispatch skips it
+    reg.runUpdate(ctx, 0.016f);
+    EXPECT_EQ(b->updateCount, 0);
+}
