@@ -6,6 +6,14 @@
 - C++20 compatible compiler (Clang 13+, GCC 10+, MSVC 19.29+)
 - Platform-specific tooling (see [Build Guide](docs/BUILD.md))
 
+### Platform Requirements
+
+All platforms use Vulkan as the sole rendering backend (SPIR-V shaders).
+
+- **macOS**: Vulkan runs via MoltenVK. Install with `brew install molten-vk vulkan-loader`. The build sets `BUILD_RPATH` to `/opt/homebrew/lib` so the Vulkan loader is found at runtime.
+- **Linux**: Install Vulkan SDK and drivers for your GPU.
+- **Windows**: Install the LunarG Vulkan SDK.
+
 ## Getting Started
 
 ```bash
@@ -25,12 +33,20 @@ All tasks are defined in `mise.toml` and run via `mise run <task>`.
 | `build` | `b` | Configure and build (Debug) |
 | `build:release` | `br` | Configure and build (Release) |
 | `clean` | *none* | Remove build artifacts |
-| `lint` | *none* | Run clang-tidy on source files |
+| `format` | *none* | Check clang-format |
+| `format:fix` | *none* | Auto-format with clang-format |
+| `lint` | *none* | Run clang-tidy on all source files (slow) |
+| `lint:changed` | *none* | Run clang-tidy on git-dirty files only (fast) |
 | `lint:fix` | `fix` | Run clang-tidy with auto-fix |
-| `test` | `t` | Run unit tests |
-| `test:e2e` | *none* | Run E2E tests (slow) |
+| `cppcheck` | *none* | Run cppcheck static analysis |
+| `test` | `t` | Run unit tests (with timeout) |
+| `test:e2e` | *none* | Run E2E tests |
 | `test:all` | *none* | Run unit + E2E tests |
 | `test:filter` | `tf` | Run unit tests with gtest filter |
+| `sanitize` | *none* | ASan + UBSan build and run |
+| `sanitize:tsan` | *none* | ThreadSanitizer build and run |
+| `coverage` | *none* | Code coverage with lcov report |
+| `codeql` | *none* | CodeQL security analysis |
 
 ## Development Workflow
 
@@ -39,11 +55,22 @@ All tasks are defined in `mise.toml` and run via `mise run <task>`.
    ```bash
    mise run build && mise run test
    ```
-3. Run linting:
+3. Run linting (fast mode for iteration, full before submitting):
    ```bash
-   mise run lint
+   mise run lint:changed   # only git-dirty files
+   mise run lint           # all files (pre-submit)
    ```
 4. Submit a pull request with a clear description
+
+## Dependency Management
+
+All third-party libraries are fetched via [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) v0.42.1. Each library has a dedicated module in `cmake/modules/` using `CPMAddPackage()`. There are 25 cmake modules in total: 18 CPM dependency modules and 7 shader compilation modules.
+
+Set `CPM_SOURCE_CACHE=~/.cache/CPM` (configured in `mise.toml`) to share downloaded sources across builds and avoid redundant downloads. The build also uses `ccache` when available for compiler output caching.
+
+### CPM PATCHES
+
+Some dependencies require vendored fixes. The `cmake/patches/` directory holds patch files applied via the CPM `PATCHES` argument. For example, `bgfx-vk-suboptimal.patch` fixes a case where bgfx treats `VK_SUBOPTIMAL_KHR` as a fatal error, causing crashes on window resize with MoltenVK.
 
 ## Project Structure
 
@@ -52,19 +79,38 @@ fabric/
 ├── include/fabric/
 │   ├── core/           # Component, Command, Event, Lifecycle, Plugin,
 │   │                   # Resource, ResourceHub, Temporal, Spatial, Types,
-│   │                   # Log, Async, JsonTypes, Constants.g
+│   │                   # Log, Async, JsonTypes, Constants, StateMachine,
+│   │                   # Pipeline, Camera, Rendering, BVH, ChunkedGrid
+│   ├── codec/          # Codec encode/decode framework
 │   ├── parser/         # ArgumentParser, SyntaxTree, Token
-│   ├── ui/             # WebView
-│   └── utils/          # CoordinatedGraph, ThreadPoolExecutor,
-│                       # TimeoutLock, Profiler, ErrorHandling, Testing, Utils
-├── src/                # Implementation files (.cc)
+│   ├── ui/             # WebView, BgfxRenderInterface (RmlUi)
+│   └── utils/          # CoordinatedGraph, ImmutableDAG, BufferPool,
+│                       # ThreadPoolExecutor, TimeoutLock, Profiler,
+│                       # ErrorHandling, Testing, Utils
+├── src/
+│   ├── core/           # Implementation files (.cc)
+│   └── ui/             # UI implementation
+├── shaders/
+│   ├── oit/            # Order-independent transparency
+│   ├── particle/       # Particle system
+│   ├── post/           # Post-processing
+│   ├── rmlui/          # RmlUi render interface
+│   ├── skinned/        # Skeletal animation
+│   ├── sky/            # Atmospheric rendering
+│   ├── voxel/          # Voxel mesh
+│   └── water/          # Water surface
+├── assets/
+│   ├── ui/             # RmlUi documents (.rml, .rcss)
+│   └── fonts/          # Font files
 ├── tests/
-│   ├── unit/           # Per-component unit tests
+│   ├── unit/           # Per-component unit tests (1429 tests, 111+ suites)
 │   └── e2e/            # End-to-end tests
-├── cmake/modules/      # FetchContent modules (7 libraries)
+├── cmake/
+│   ├── modules/        # 25 CMake modules (18 CPM deps + 7 shader compilation)
+│   └── patches/        # Vendored dependency patches
 ├── tasks/              # POSIX shell scripts for mise
 ├── CMakeLists.txt      # Build config (FabricLib static library)
-├── CMakePresets.json    # 7 presets (dev + CI)
+├── CMakePresets.json    # 11 configure presets (1 hidden base, 10 visible)
 └── mise.toml           # Task runner config
 ```
 
