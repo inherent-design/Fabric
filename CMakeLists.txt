@@ -224,6 +224,8 @@ set(FABRIC_CORE_SOURCE_FILES
     src/core/SaveManager.cc
     src/core/AppModeManager.cc
     src/core/BgfxCallback.cc
+    src/core/InputSource.cc
+    src/core/InputAxis.cc
 )
 
 # Utils library components
@@ -238,6 +240,11 @@ set(FABRIC_UTILS_SOURCE_FILES
 set(FABRIC_PARSER_SOURCE_FILES
     src/parser/ArgumentParser.cc
     src/parser/SyntaxTree.cc
+)
+
+# Platform library components
+set(FABRIC_PLATFORM_SOURCE_FILES
+    src/platform/PlatformInfo.cc
 )
 
 # Codec library components
@@ -264,6 +271,7 @@ set(FABRIC_BGFX_DEBUGDRAW_SOURCE
 add_library(FabricLib STATIC
     ${FABRIC_CORE_SOURCE_FILES}
     ${FABRIC_UTILS_SOURCE_FILES}
+    ${FABRIC_PLATFORM_SOURCE_FILES}
     ${FABRIC_PARSER_SOURCE_FILES}
     ${FABRIC_CODEC_SOURCE_FILES}
     ${FABRIC_UI_SOURCE_FILES}
