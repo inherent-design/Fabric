@@ -27,6 +27,8 @@ CPMAddPackage(
         "BGFX_INSTALL OFF"
         "BGFX_CUSTOM_TARGETS OFF"
         "BGFX_AMALGAMATED ON"
+    PATCHES
+        "${CMAKE_CURRENT_LIST_DIR}/../patches/bgfx-vk-suboptimal.patch"
     SYSTEM
     EXCLUDE_FROM_ALL
 )

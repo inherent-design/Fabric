@@ -1,0 +1,39 @@
+diff --git a/bgfx/src/renderer_vk.cpp b/bgfx/src/renderer_vk.cpp
+index dbc343e6a..b6e3ff44d 100644
+--- a/bgfx/src/renderer_vk.cpp
++++ b/bgfx/src/renderer_vk.cpp
+@@ -8214,10 +8214,17 @@ retry:
+ 				return false;
+
+ 			case VK_ERROR_OUT_OF_DATE_KHR:
+-			case VK_SUBOPTIMAL_KHR:
+ 				m_needToRecreateSwapchain = true;
+ 				return false;
+
++			case VK_SUBOPTIMAL_KHR:
++				// VK_SUBOPTIMAL_KHR is a success code; the acquired image is
++				// valid for rendering.  MoltenVK returns this persistently on
++				// macOS HiDPI when contentScale mismatches the swapchain extent.
++				// Recreating does not resolve the mismatch and loops forever.
++				// Ref: bgfx PR #2205 (original fix), MoltenVK #1753, #2542.
++				break;
++
+ 			default:
+ 				BX_ASSERT(VK_SUCCESS == result, "vkAcquireNextImageKHR(...); VK error 0x%x: %s", result, getName(result) );
+ 				return false;
+@@ -8280,10 +8287,14 @@ retry:
+ 				break;
+
+ 			case VK_ERROR_OUT_OF_DATE_KHR:
+-			case VK_SUBOPTIMAL_KHR:
+ 				m_needToRecreateSwapchain = true;
+ 				break;
+
++			case VK_SUBOPTIMAL_KHR:
++				// Presentation succeeded; the structural mismatch on MoltenVK
++				// means recreation never converges.  See acquire-side comment.
++				break;
++
+ 			default:
+ 				BX_ASSERT(VK_SUCCESS == result, "vkQueuePresentKHR(...); VK error 0x%x: %s", result, getName(result) );
+ 				break;

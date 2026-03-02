@@ -160,7 +160,7 @@ int main(int argc, char* argv[]) {
         constexpr int kWindowHeight = 720;
 
         SDL_Window* window = SDL_CreateWindow(fabric::APP_NAME, kWindowWidth, kWindowHeight,
-                                              SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE);
+                                              SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE);
 
         if (!window) {
             FABRIC_LOG_CRITICAL("Window creation failed: {}", SDL_GetError());
@@ -181,7 +181,7 @@ int main(int argc, char* argv[]) {
         bgfxInit.platformData = getPlatformData(window);
         bgfxInit.resolution.width = static_cast<uint32_t>(pw);
         bgfxInit.resolution.height = static_cast<uint32_t>(ph);
-        bgfxInit.resolution.reset = BGFX_RESET_VSYNC;
+        bgfxInit.resolution.reset = BGFX_RESET_VSYNC | BGFX_RESET_HIDPI;
 
         if (!bgfx::init(bgfxInit)) {
             FABRIC_LOG_CRITICAL("bgfx init failed");
@@ -740,7 +740,7 @@ int main(int argc, char* argv[]) {
                         auto h = static_cast<uint32_t>(event.window.data2);
                         if (w == 0 || h == 0)
                             continue;
-                        bgfx::reset(w, h, BGFX_RESET_VSYNC);
+                        bgfx::reset(w, h, BGFX_RESET_VSYNC | BGFX_RESET_HIDPI);
                         bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(w), static_cast<uint16_t>(h));
                         sceneView.setViewport(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
                         float newAspect = static_cast<float>(w) / static_cast<float>(h);
@@ -1025,8 +1025,10 @@ int main(int argc, char* argv[]) {
                 }
 
                 // OIT accumulation pass (weighted blended transparency)
-                // Runs after opaque geometry, composites before particles.
-                if (oitCompositor.isValid()) {
+                // Skipped when no transparent draws exist: the composite shader
+                // outputs opaque black from an empty accumulation buffer, which
+                // overwrites all geometry on the backbuffer (BUG-BLACKSCREEN).
+                if (oitCompositor.isValid() && !sceneView.transparentEntities().empty()) {
                     int oitPW, oitPH;
                     SDL_GetWindowSizeInPixels(window, &oitPW, &oitPH);
                     oitCompositor.beginAccumulation(fabric::kOITAccumViewId, camera.viewMatrix(),
