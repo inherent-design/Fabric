@@ -41,6 +41,11 @@ void InputContext::setEnabled(bool enabled) {
 // --- Actions ---
 
 void InputContext::addAction(const ActionBinding& binding) {
+    auto it = actionIndex_.find(binding.name);
+    if (it != actionIndex_.end()) {
+        actions_[it->second] = binding;
+        return;
+    }
     actionIndex_[binding.name] = actions_.size();
     actions_.push_back(binding);
 }

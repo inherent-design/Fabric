@@ -7,8 +7,10 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <tuple>
+#include <typeindex>
 #include <vector>
 
 namespace fabric {
@@ -29,12 +31,19 @@ struct FabricAppDesc {
     /// Constructor args are captured in a lambda; the system is instantiated
     /// after engine infrastructure is ready.
     template <typename T, typename... Args> void registerSystem(SystemPhase phase, Args&&... args) {
+        auto tid = std::type_index(typeid(T));
+        for (const auto& reg : systemRegistrations_) {
+            if (reg.typeId == tid) {
+                throw std::runtime_error("Duplicate system type registration in FabricAppDesc");
+            }
+        }
         systemRegistrations_.push_back(
             {phase,
              [args_tuple = std::make_tuple(std::forward<Args>(args)...)]() mutable -> std::unique_ptr<SystemBase> {
                  return std::apply([](auto&&... a) { return std::make_unique<T>(std::forward<decltype(a)>(a)...); },
                                    std::move(args_tuple));
-             }});
+             },
+             tid});
     }
 
     // Lifecycle callbacks (all optional, receive AppContext&)
@@ -50,6 +59,7 @@ struct FabricAppDesc {
     struct SystemRegistration {
         SystemPhase phase;
         std::function<std::unique_ptr<SystemBase>()> factory;
+        std::type_index typeId = std::type_index(typeid(void));
     };
     std::vector<SystemRegistration> systemRegistrations_;
 };

@@ -71,7 +71,12 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
     }
 
     // ── Phase 6: System Init ────────────────────────────────────
-    systemRegistry.initAll(ctx);
+    try {
+        systemRegistry.initAll(ctx);
+    } catch (const std::exception& e) {
+        FABRIC_LOG_CRITICAL("System initialization failed: {}", e.what());
+        return 1;
+    }
 
     // ── Phase 7: Application Init ───────────────────────────────
     if (desc.onInit)

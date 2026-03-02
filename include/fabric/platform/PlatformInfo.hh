@@ -82,6 +82,9 @@ struct PlatformInfo {
     void refresh();
 };
 
+// Map PCI vendor ID to human-readable name.
+std::string vendorNameFromId(uint16_t vendorId);
+
 // Resolve platform-standard directories with XDG env var overrides.
 // Follows native convention per platform, but respects XDG_* if set.
 PlatformDirs resolvePlatformDirs();

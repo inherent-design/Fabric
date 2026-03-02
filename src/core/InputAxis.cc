@@ -5,6 +5,8 @@
 namespace fabric {
 
 float applyDeadZone(float rawValue, float deadZone) {
+    if (std::isnan(rawValue))
+        return 0.0f;
     if (deadZone <= 0.0f)
         return rawValue;
     if (deadZone >= 1.0f)
@@ -35,6 +37,8 @@ float applyResponseCurve(float value, ResponseCurve curve) {
 }
 
 float processAxisValue(float rawValue, const AxisBinding& binding) {
+    if (std::isnan(rawValue))
+        return 0.0f;
     float value = applyDeadZone(rawValue, binding.deadZone);
     value = applyResponseCurve(value, binding.responseCurve);
     if (binding.inverted)

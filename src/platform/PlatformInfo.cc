@@ -23,8 +23,20 @@ std::string detectArch() {
 #endif
 }
 
+std::string getEnvOr(const char* name, const std::string& fallback) {
+    const char* val = std::getenv(name);
+    if (val != nullptr && val[0] != '\0') {
+        return val;
+    }
+    return fallback;
+}
+
+} // namespace
+
 std::string vendorNameFromId(uint16_t vendorId) {
     switch (vendorId) {
+        case 0x106b:
+            return "Apple";
         case 0x10de:
             return "NVIDIA";
         case 0x1002:
@@ -37,16 +49,6 @@ std::string vendorNameFromId(uint16_t vendorId) {
             return "Unknown";
     }
 }
-
-std::string getEnvOr(const char* name, const std::string& fallback) {
-    const char* val = std::getenv(name);
-    if (val != nullptr && val[0] != '\0') {
-        return val;
-    }
-    return fallback;
-}
-
-} // namespace
 
 PlatformDirs resolvePlatformDirs() {
     PlatformDirs dirs;

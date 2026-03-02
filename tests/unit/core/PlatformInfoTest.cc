@@ -251,6 +251,26 @@ TEST(PlatformInfoTest, PlatformDirsDefaultConstruction) {
 
 // -- Vulkan API version --
 
+// ── vendorNameFromId ───────────────────────────────────────────────────
+
+TEST(PlatformInfoTest, VendorNameFromIdApple) {
+    EXPECT_EQ(vendorNameFromId(0x106b), "Apple");
+}
+
+TEST(PlatformInfoTest, VendorNameFromIdKnownVendors) {
+    EXPECT_EQ(vendorNameFromId(0x10de), "NVIDIA");
+    EXPECT_EQ(vendorNameFromId(0x1002), "AMD");
+    EXPECT_EQ(vendorNameFromId(0x8086), "Intel");
+    EXPECT_EQ(vendorNameFromId(0x13b5), "ARM");
+}
+
+TEST(PlatformInfoTest, VendorNameFromIdUnknown) {
+    EXPECT_EQ(vendorNameFromId(0xFFFF), "Unknown");
+    EXPECT_EQ(vendorNameFromId(0x0000), "Unknown");
+}
+
+// ── Vulkan API version ────────────────────────────────────────────────
+
 TEST(PlatformInfoTest, VulkanApiVersionStorage) {
     PlatformInfo info;
     // VK_MAKE_VERSION(1, 3, 0) = (1 << 22) | (3 << 12) | 0

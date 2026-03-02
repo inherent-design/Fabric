@@ -536,15 +536,7 @@ TEST_F(SystemRegistryTest, RegisterAfterResolve) {
     SystemRegistry reg;
     reg.registerSystem<MockA>(SystemPhase::Update);
     ASSERT_TRUE(reg.resolve());
-    // Current implementation does not guard against post-resolve registration.
-    // This test documents the behavior: it should either throw or silently accept.
-    // The system won't appear in dispatch since phaseOrder_ is already computed.
-    reg.registerSystem<MockB>(SystemPhase::Update);
-    auto* b = reg.get<MockB>();
-    EXPECT_NE(b, nullptr); // Registered in systems_ map
 
-    auto ctx = makeContext();
-    // B is registered but not in phaseOrder_, so dispatch skips it
-    reg.runUpdate(ctx, 0.016f);
-    EXPECT_EQ(b->updateCount, 0);
+    // Registration after resolve() must be rejected
+    EXPECT_THROW(reg.registerSystem<MockB>(SystemPhase::Update), FabricException);
 }

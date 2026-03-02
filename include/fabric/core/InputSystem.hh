@@ -163,6 +163,9 @@ class InputSystem : public System<InputSystem> {
     // Previous frame's active actions (for JustPressed/JustReleased detection)
     std::unordered_set<std::string> prevActiveActions_;
 
+    // Tracks oneShot actions that have fired and are waiting for source release
+    std::unordered_set<std::string> oneShotFired_;
+
     void handleGamepadAdded(SDL_JoystickID id);
     void handleGamepadRemoved(SDL_JoystickID id);
 
