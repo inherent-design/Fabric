@@ -82,6 +82,7 @@ target_sources(UnitTests
   SaveManagerTest.cc
   ContentBrowserTest.cc
   AppModeManagerTest.cc
+  VulkanRegressionTest.cc
 )
 
 set_source_files_properties(

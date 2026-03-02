@@ -44,8 +44,8 @@ constexpr bool kVertUV[6][4][2] = {
 bgfx::VertexLayout VoxelMesher::getVertexLayout() {
     bgfx::VertexLayout layout;
     layout.begin()
-        .add(bgfx::Attrib::TexCoord0, 4, bgfx::AttribType::Uint8, false, false)
-        .add(bgfx::Attrib::TexCoord1, 4, bgfx::AttribType::Uint8, false, false)
+        .add(bgfx::Attrib::TexCoord0, 4, bgfx::AttribType::Uint8, true, false)
+        .add(bgfx::Attrib::TexCoord1, 4, bgfx::AttribType::Uint8, true, false)
         .end();
     return layout;
 }
@@ -292,9 +292,9 @@ void VoxelMesher::destroyMesh(ChunkMesh& mesh) {
 bgfx::VertexLayout VoxelMesher::getWaterVertexLayout() {
     bgfx::VertexLayout layout;
     layout.begin()
-        .add(bgfx::Attrib::TexCoord0, 4, bgfx::AttribType::Uint8, false, false) // posNormalAO
-        .add(bgfx::Attrib::TexCoord1, 4, bgfx::AttribType::Uint8, false, false) // material
-        .add(bgfx::Attrib::TexCoord2, 2, bgfx::AttribType::Uint8, false,
+        .add(bgfx::Attrib::TexCoord0, 4, bgfx::AttribType::Uint8, true, false) // posNormalAO
+        .add(bgfx::Attrib::TexCoord1, 4, bgfx::AttribType::Uint8, true, false) // material
+        .add(bgfx::Attrib::TexCoord2, 2, bgfx::AttribType::Uint8, true,
              false) // flowDx, flowDz (reinterpret as signed in shader)
         .end();
     return layout;
