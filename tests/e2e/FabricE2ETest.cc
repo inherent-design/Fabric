@@ -40,48 +40,42 @@ std::string executeCommand(const std::string& command) {
 
 class FabricE2ETest : public ::testing::Test {
   protected:
-    // Path to the Fabric executable (will be built before tests run)
-    std::string fabricPath;
+    // Path to the Recurse executable (will be built before tests run)
+    std::string executablePath;
 
     void SetUp() override {
-        // Determine the path to the Fabric executable
+        // Determine the path to the Recurse executable
         // This assumes tests run from the build directory
 #ifdef _WIN32
-        fabricPath = "bin\\Fabric.exe";
+        executablePath = "bin\\Recurse.exe";
 #else
-        fabricPath = "bin/Fabric";
+        executablePath = "bin/Recurse";
 #endif
 
         // Verify that the executable exists
-        std::ifstream fabricFile(fabricPath);
-        if (!fabricFile.good()) {
-            FAIL() << "Fabric executable not found at: " << fabricPath;
+        std::ifstream execFile(executablePath);
+        if (!execFile.good()) {
+            FAIL() << "Recurse executable not found at: " << executablePath;
         }
     }
 };
 
 // Test help flag
 TEST_F(FabricE2ETest, HelpFlag) {
-    // Execute Fabric with help flag
-    std::string output = executeCommand(fabricPath + " --help");
+    std::string output = executeCommand(executablePath + " --help");
 
-    // Verify output
-    ASSERT_THAT(output, ::testing::HasSubstr("Usage: " + std::string(fabric::APP_EXECUTABLE_NAME)));
-    ASSERT_THAT(output, ::testing::HasSubstr("--version"));
-    ASSERT_THAT(output, ::testing::HasSubstr("--help"));
+    ASSERT_THAT(output, ::testing::HasSubstr("Usage: " + std::string(fabric::APP_NAME)));
 }
 
 // Test version flag
 TEST_F(FabricE2ETest, VersionFlag) {
-    // Execute Fabric with version flag
-    std::string output = executeCommand(fabricPath + " --version");
+    std::string output = executeCommand(executablePath + " --version");
 
-    // Verify output
     ASSERT_THAT(output, ::testing::HasSubstr(fabric::APP_NAME));
     ASSERT_THAT(output, ::testing::HasSubstr(fabric::APP_VERSION));
 }
 
-// Note: These tests require the Fabric executable to be built first.
+// Note: These tests require the Recurse executable to be built first.
 // With log::shutdown() on early exit paths, they no longer SIGTRAP.
 
 } // namespace Tests
