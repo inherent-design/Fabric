@@ -16,6 +16,7 @@ namespace recurse::systems {
 
 class TerrainSystem;
 class PhysicsGameSystem;
+class CharacterMovementSystem;
 
 /// Owns chunk streaming, CPU meshing, and GPU upload pipeline.
 /// Handles chunk load/unload lifecycle including ECS entity creation,
@@ -23,6 +24,7 @@ class PhysicsGameSystem;
 class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
   public:
     ChunkPipelineSystem() = default;
+    ~ChunkPipelineSystem() override;
 
     void init(fabric::AppContext& ctx) override;
     void shutdown() override;
@@ -44,6 +46,7 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
 
     TerrainSystem* terrain_ = nullptr;
     PhysicsGameSystem* physics_ = nullptr;
+    CharacterMovementSystem* charMovement_ = nullptr;
 
     std::unique_ptr<ChunkStreamingManager> streaming_;
     std::unique_ptr<ChunkMeshManager> meshManager_;

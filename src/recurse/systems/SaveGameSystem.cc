@@ -10,6 +10,8 @@
 
 namespace recurse::systems {
 
+SaveGameSystem::~SaveGameSystem() = default;
+
 void SaveGameSystem::init(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();

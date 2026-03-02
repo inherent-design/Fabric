@@ -18,6 +18,7 @@ class CameraGameSystem;
 class VoxelInteractionSystem : public fabric::System<VoxelInteractionSystem> {
   public:
     VoxelInteractionSystem() = default;
+    ~VoxelInteractionSystem() override;
 
     void init(fabric::AppContext& ctx) override;
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
