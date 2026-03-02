@@ -1,0 +1,9 @@
+# Recurse application config.
+# Overrides engine defaults. User preferences (user.toml) override these.
+
+[window]
+title = "Recurse"
+
+[terrain]
+seed = 42
+chunk_radius = 8
