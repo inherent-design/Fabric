@@ -94,6 +94,8 @@ target_sources(UnitTests
   SystemBaseTest.cc
   SystemRegistryTest.cc
   AssetRegistryTest.cc
+  FabricAppDescTest.cc
+  FabricAppTest.cc
 )
 
 set_source_files_properties(

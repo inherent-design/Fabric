@@ -5,6 +5,10 @@
 
 namespace fabric {
 
+void SystemRegistry::registerSystem(SystemPhase phase, std::unique_ptr<SystemBase> system) {
+    registerSystemImpl(phase, std::move(system));
+}
+
 void SystemRegistry::registerSystemImpl(SystemPhase phase, std::unique_ptr<SystemBase> system) {
     auto typeId = system->typeId();
     if (systems_.count(typeId)) {

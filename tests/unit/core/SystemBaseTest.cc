@@ -1,6 +1,9 @@
 #include "fabric/core/SystemBase.hh"
 #include "fabric/core/AppContext.hh"
+#include "fabric/core/AssetRegistry.hh"
+#include "fabric/core/ConfigManager.hh"
 #include "fabric/core/ResourceHub.hh"
+#include "fabric/core/SystemRegistry.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
@@ -38,7 +41,18 @@ TEST(SystemBaseTest, DefaultMethodsAreNoOp) {
     EventDispatcher dispatcher;
     ResourceHub hub;
     hub.disableWorkerThreadsForTesting();
-    AppContext ctx{world, timeline, dispatcher, hub};
+    AssetRegistry assetRegistry(hub);
+    SystemRegistry systemRegistry;
+    ConfigManager configManager;
+    AppContext ctx{
+        .world = world,
+        .timeline = timeline,
+        .dispatcher = dispatcher,
+        .resourceHub = hub,
+        .assetRegistry = assetRegistry,
+        .systemRegistry = systemRegistry,
+        .configManager = configManager,
+    };
 
     GammaSystem sys;
     sys.init(ctx);

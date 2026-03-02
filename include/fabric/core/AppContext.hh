@@ -4,15 +4,45 @@
 #include "fabric/core/Event.hh"
 #include "fabric/core/Temporal.hh"
 
+struct SDL_Window;
+
 namespace fabric {
 
-class ResourceHub; // forward declare to avoid heavy include
+// Forward declarations to keep AppContext lightweight
+class ResourceHub;
+class AssetRegistry;
+class SystemRegistry;
+class ConfigManager;
+class InputSystem;
+class RuntimeState;
+class PlatformInfo;
+struct RenderCaps;
+class AppModeManager;
+class CursorManager;
 
+/// Non-owning view into engine services. Constructed once at startup,
+/// passed to systems via init/update/render. Immutable after construction.
+///
+/// Required members use references (always present).
+/// Optional members use raw pointers (nullptr when unavailable, e.g., headless mode).
 struct AppContext {
+    // Required services (always present)
     World& world;
     Timeline& timeline;
     EventDispatcher& dispatcher;
     ResourceHub& resourceHub;
+    AssetRegistry& assetRegistry;
+    SystemRegistry& systemRegistry;
+    ConfigManager& configManager;
+
+    // Optional services (nullptr when unavailable)
+    InputSystem* inputSystem = nullptr;
+    RuntimeState* runtimeState = nullptr;
+    PlatformInfo* platformInfo = nullptr;
+    RenderCaps* renderCaps = nullptr;
+    AppModeManager* appModeManager = nullptr;
+    SDL_Window* window = nullptr;
+    CursorManager* cursorManager = nullptr;
 };
 
 } // namespace fabric
