@@ -1,4 +1,4 @@
-#include "recurse/render/SkyRenderer.hh"
+#include "fabric/core/SkyRenderer.hh"
 
 #include "fabric/core/Log.hh"
 #include "fabric/core/Rendering.hh"
@@ -31,9 +31,7 @@ static const float s_skyVertices[] = {
 };
 
 
-using namespace fabric;
-
-namespace recurse {
+namespace fabric {
 
 SkyRenderer::SkyRenderer()
     : program_(BGFX_INVALID_HANDLE),
@@ -137,4 +135,4 @@ bool SkyRenderer::isValid() const {
     return bgfx::isValid(program_);
 }
 
-} // namespace recurse
+} // namespace fabric

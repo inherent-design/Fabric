@@ -1,6 +1,6 @@
 #pragma once
 
-#include "recurse/world/FieldLayer.hh"
+#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Rendering.hh"
 
 #include <array>
@@ -14,7 +14,8 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
-
+using fabric::DensityField;
+using fabric::EssenceField;
 
 /// Side length (in voxels) of a single WFC tile volume.
 constexpr int kWFCTileSize = 4;

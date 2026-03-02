@@ -188,6 +188,9 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/InputSystem.cc
     src/core/AssetRegistry.cc
     src/core/FabricApp.cc
+    src/core/FileWatcher.cc
+    src/core/PostProcess.cc
+    src/core/SkyRenderer.cc
 )
 
 #------------------------------------------------------------------------------
@@ -232,11 +235,9 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/animation/IKSolver.cc
     src/recurse/animation/MeshLoader.cc
     # render/
-    src/recurse/render/SkyRenderer.cc
     src/recurse/render/WaterSimulation.cc
     src/recurse/render/WaterRenderer.cc
     src/recurse/render/OITCompositor.cc
-    src/recurse/render/PostProcess.cc
     src/recurse/render/ParticleSystem.cc
     src/recurse/render/ShadowSystem.cc
     src/recurse/render/VertexPool.cc
@@ -245,7 +246,6 @@ set(RECURSE_GAME_SOURCE_FILES
     # persistence/
     src/recurse/persistence/SaveManager.cc
     src/recurse/persistence/DataLoader.cc
-    src/recurse/persistence/FileWatcher.cc
     src/recurse/persistence/SceneSerializer.cc
     src/recurse/persistence/InputRecorder.cc
     # ui/

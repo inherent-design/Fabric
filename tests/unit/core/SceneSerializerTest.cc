@@ -1,6 +1,6 @@
 #include "recurse/persistence/SceneSerializer.hh"
+#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Temporal.hh"
-#include "recurse/world/FieldLayer.hh"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>

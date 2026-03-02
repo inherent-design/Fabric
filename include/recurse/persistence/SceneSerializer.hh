@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fabric/core/ECS.hh"
-#include "recurse/world/FieldLayer.hh"
+#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Temporal.hh"
 #include <array>
 #include <cstdint>
@@ -13,11 +13,12 @@
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
+using fabric::DensityField;
+using fabric::EssenceField;
 using fabric::Position;
-using fabric::TimeState;
 using fabric::Timeline;
+using fabric::TimeState;
 using fabric::World;
-
 
 /// Physics shape type for serialization (mirrors Jolt shape kinds)
 enum class PhysicsShapeType : uint8_t {

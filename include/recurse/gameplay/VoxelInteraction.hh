@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fabric/core/Event.hh"
-#include "recurse/world/FieldLayer.hh"
+#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Rendering.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
@@ -9,10 +9,11 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
+using fabric::DensityField;
+using fabric::EssenceField;
 using fabric::EventDispatcher;
 namespace Space = fabric::Space;
 using fabric::Vector4;
-
 
 struct InteractionResult {
     bool success;

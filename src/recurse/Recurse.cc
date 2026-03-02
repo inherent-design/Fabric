@@ -28,6 +28,7 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/core/Temporal.hh"
 
+#include "fabric/core/FieldLayer.hh"
 #include "recurse/ai/BehaviorAI.hh"
 #include "recurse/ai/BTDebugPanel.hh"
 #include "recurse/ai/Pathfinding.hh"
@@ -53,7 +54,6 @@
 #include "recurse/world/CaveCarver.hh"
 #include "recurse/world/ChunkMeshManager.hh"
 #include "recurse/world/ChunkStreaming.hh"
-#include "recurse/world/FieldLayer.hh"
 #include "recurse/world/TerrainGenerator.hh"
 #include "recurse/world/VoxelMesher.hh"
 
@@ -94,7 +94,7 @@ recurse::ChunkMesh uploadChunkMesh(const recurse::ChunkMeshData& data) {
 // Generate terrain for a single chunk region.
 // Application-specific helper (not engine concern).
 void generateChunkTerrain(int cx, int cy, int cz, recurse::TerrainGenerator& gen, recurse::CaveCarver& carver,
-                          recurse::DensityField& density, recurse::EssenceField& essence) {
+                          fabric::DensityField& density, fabric::EssenceField& essence) {
     float x0 = static_cast<float>(cx * recurse::kChunkSize);
     float y0 = static_cast<float>(cy * recurse::kChunkSize);
     float z0 = static_cast<float>(cz * recurse::kChunkSize);
