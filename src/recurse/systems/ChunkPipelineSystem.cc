@@ -134,6 +134,7 @@ void ChunkPipelineSystem::shutdown() {
 }
 
 void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/) {
+    FABRIC_ZONE_SCOPED_N("chunk_pipeline");
     auto& ecsWorld = ctx.world;
 
     // Streaming: load/unload chunks around player position
@@ -196,10 +197,17 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
     }
 
     // LOD: compute per-chunk LOD from player distance (marks dirty on change)
-    meshManager_->updateLOD(px, py, pz);
+    {
+        FABRIC_ZONE_SCOPED_N("chunk_lod_update");
+        meshManager_->updateLOD(px, py, pz);
+    }
 
     // Mesh manager: budgeted CPU re-meshing of dirty chunks
-    meshManager_->update();
+    {
+        FABRIC_ZONE_SCOPED_N("chunk_cpu_mesh");
+        int remeshed = meshManager_->update();
+        FABRIC_ZONE_VALUE(static_cast<int64_t>(remeshed));
+    }
 
     // GPU mesh sync: upload re-meshed chunks
     {

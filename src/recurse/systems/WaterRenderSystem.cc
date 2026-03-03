@@ -75,8 +75,8 @@ void WaterRenderSystem::render(fabric::AppContext& ctx) {
     bgfx::setViewClear(waterView, BGFX_CLEAR_NONE);
     bgfx::touch(waterView);
 
-    // Water rendering disabled pending flamegraph profiling.
-    static constexpr bool kWaterRenderingEnabled = false;
+    // Water rendering re-enabled for profiling with sub-zone instrumentation.
+    static constexpr bool kWaterRenderingEnabled = true;
     if (!kWaterRenderingEnabled)
         return;
 

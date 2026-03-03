@@ -6,6 +6,7 @@
 #include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/utils/Profiler.hh"
 #include "recurse/persistence/SaveManager.hh"
 
 namespace recurse::systems {
@@ -62,6 +63,7 @@ void SaveGameSystem::init(fabric::AppContext& ctx) {
 }
 
 void SaveGameSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
+    FABRIC_ZONE_SCOPED_N("save_game");
     auto& pos = charMovement_->playerPosition();
     auto& vel = charMovement_->playerVelocity();
     saveManager_->tickAutosave(fixedDt, saveSerializer_, ctx.world, terrain_->density(), terrain_->essence(),
