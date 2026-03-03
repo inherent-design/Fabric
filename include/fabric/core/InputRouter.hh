@@ -11,10 +11,6 @@ class Context;
 class Element;
 } // namespace Rml
 
-namespace recurse {
-class InputRecorder;
-} // namespace recurse
-
 namespace fabric {
 
 enum class InputMode {
@@ -46,8 +42,15 @@ class InputRouter {
     // Escape callback (overrides default toggleUIMode behavior)
     void setEscapeCallback(std::function<void()> cb) { escapeCallback_ = std::move(cb); }
 
-    /// Attach an InputRecorder for capture/playback. Pass nullptr to detach.
-    void setRecorder(recurse::InputRecorder* recorder);
+    /// Set a hook that receives every SDL event before routing.
+    /// The hook is called with the raw SDL_Event for serialization/recording.
+    /// Pass nullptr to detach.
+    void setEventCaptureHook(std::function<void(const SDL_Event&)> hook);
+
+    /// Set a hook called once per frame from beginFrame().
+    /// Used for frame boundary tracking in recording/playback.
+    /// Pass nullptr to detach.
+    void setFrameHook(std::function<void()> hook);
 
     /// Register a callback that fires on non-repeat key-down events.
     /// Callbacks are suppressed in UIOnly mode. Replaces any previous
@@ -64,7 +67,8 @@ class InputRouter {
   private:
     InputManager& inputMgr_;
     InputMode mode_ = InputMode::GameOnly;
-    recurse::InputRecorder* recorder_ = nullptr;
+    std::function<void(const SDL_Event&)> eventCaptureHook_;
+    std::function<void()> frameHook_;
     std::function<void()> consoleToggleCallback_;
     std::function<void()> escapeCallback_;
     std::unordered_map<SDL_Keycode, std::function<void()>> keyCallbacks_;
