@@ -310,8 +310,7 @@ TEST_F(CoordinatedGraphTest, InformationalMethodsExceptions) {
         if (lockThread.joinable()) {
             lockThread.join();
         }
-        std::cerr << "Warning: Lock for InformationalMethodsExceptions couldn't be acquired, skipping test."
-                  << std::endl;
+        GTEST_LOG_(WARNING) << "Lock for InformationalMethodsExceptions couldn't be acquired, skipping test.";
         return;
     }
 
@@ -703,7 +702,7 @@ TEST_F(CoordinatedGraphTest, ConcurrentLockOperations) {
                     failureCount++;
                 } catch (const std::exception& e) {
                     // Log unexpected exceptions
-                    std::cerr << "Thread " << i << ": Exception: " << e.what() << std::endl;
+                    GTEST_LOG_(ERROR) << "Thread " << i << ": Exception: " << e.what();
                     failureCount++;
                 }
             }

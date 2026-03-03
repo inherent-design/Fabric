@@ -117,7 +117,7 @@ std::string EventDispatcher::addEventListener(const std::string& eventType, cons
                                 [](const HandlerEntry& a, const HandlerEntry& b) { return a.priority < b.priority; });
     vec.insert(pos, entry);
 
-    FABRIC_LOG_DEBUG("Added event listener for type '{}' with ID '{}' (priority {})", eventType, entry.id, priority);
+    FABRIC_LOG_TRACE("Added event listener for type '{}' with ID '{}' (priority {})", eventType, entry.id, priority);
 
     return entry.id;
 }
