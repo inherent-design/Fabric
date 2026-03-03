@@ -101,6 +101,12 @@ WindowDesc windowDescFromConfig(const toml::table& table) {
     if (auto v = table["maximized"].value<bool>()) {
         desc.maximized = *v;
     }
+    if (auto v = table["fullscreen_desktop"].value<bool>()) {
+        desc.fullscreenDesktop = *v;
+    }
+    if (auto v = table["hidden"].value<bool>()) {
+        desc.hidden = *v;
+    }
 
     return desc;
 }

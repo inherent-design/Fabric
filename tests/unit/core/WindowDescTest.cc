@@ -321,3 +321,25 @@ TEST(WindowDescTest, DisplayIndexFromConfig) {
     WindowDesc desc = windowDescFromConfig(table);
     EXPECT_EQ(desc.displayIndex, 2u);
 }
+
+// -- fullscreenDesktop from TOML config --
+
+TEST(WindowDescTest, FullscreenDesktopFromConfig) {
+    auto table = toml::parse("fullscreen_desktop = true");
+    WindowDesc desc = windowDescFromConfig(table);
+    EXPECT_TRUE(desc.fullscreenDesktop);
+}
+
+TEST(WindowDescTest, FullscreenDesktopDefaultFalseFromConfig) {
+    auto table = toml::parse("");
+    WindowDesc desc = windowDescFromConfig(table);
+    EXPECT_FALSE(desc.fullscreenDesktop);
+}
+
+// -- hidden from TOML config --
+
+TEST(WindowDescTest, HiddenFromConfig) {
+    auto table = toml::parse("hidden = true");
+    WindowDesc desc = windowDescFromConfig(table);
+    EXPECT_TRUE(desc.hidden);
+}
