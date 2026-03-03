@@ -1,6 +1,5 @@
 #include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
-#include "recurse/persistence/InputRecorder.hh"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Element.h>
@@ -9,79 +8,14 @@
 
 namespace fabric {
 
-using recurse::InputEventType;
-using recurse::InputRecorder;
-using recurse::SerializedEvent;
-
-namespace {
-
-/// Convert an SDL_Event to a SerializedEvent for the recorder
-SerializedEvent serializeSDLEvent(const SDL_Event& event) {
-    SerializedEvent se;
-
-    switch (event.type) {
-        case SDL_EVENT_KEY_DOWN:
-            se.eventType = static_cast<uint32_t>(InputEventType::KEY_DOWN);
-            se.keycode = static_cast<int32_t>(event.key.key);
-            se.modifiers = static_cast<uint16_t>(event.key.mod);
-            break;
-
-        case SDL_EVENT_KEY_UP:
-            se.eventType = static_cast<uint32_t>(InputEventType::KEY_UP);
-            se.keycode = static_cast<int32_t>(event.key.key);
-            se.modifiers = static_cast<uint16_t>(event.key.mod);
-            break;
-
-        case SDL_EVENT_MOUSE_MOTION:
-            se.eventType = static_cast<uint32_t>(InputEventType::MOUSE_MOTION);
-            se.mouseX = static_cast<int32_t>(event.motion.x);
-            se.mouseY = static_cast<int32_t>(event.motion.y);
-            se.mouseDeltaX = static_cast<int32_t>(event.motion.xrel);
-            se.mouseDeltaY = static_cast<int32_t>(event.motion.yrel);
-            break;
-
-        case SDL_EVENT_MOUSE_BUTTON_DOWN:
-            se.eventType = static_cast<uint32_t>(InputEventType::MOUSE_BUTTON_DOWN);
-            se.mouseX = static_cast<int32_t>(event.button.x);
-            se.mouseY = static_cast<int32_t>(event.button.y);
-            se.button = event.button.button;
-            break;
-
-        case SDL_EVENT_MOUSE_BUTTON_UP:
-            se.eventType = static_cast<uint32_t>(InputEventType::MOUSE_BUTTON_UP);
-            se.mouseX = static_cast<int32_t>(event.button.x);
-            se.mouseY = static_cast<int32_t>(event.button.y);
-            se.button = event.button.button;
-            break;
-
-        case SDL_EVENT_MOUSE_WHEEL:
-            se.eventType = static_cast<uint32_t>(InputEventType::MOUSE_WHEEL);
-            se.mouseDeltaX = static_cast<int32_t>(event.wheel.x);
-            se.mouseDeltaY = static_cast<int32_t>(event.wheel.y);
-            break;
-
-        case SDL_EVENT_TEXT_INPUT:
-            se.eventType = static_cast<uint32_t>(InputEventType::TEXT_INPUT);
-            if (event.text.text) {
-                se.text = event.text.text;
-            }
-            break;
-
-        default:
-            // Unhandled event type — store raw type value
-            se.eventType = event.type;
-            break;
-    }
-
-    return se;
-}
-
-} // namespace
-
 InputRouter::InputRouter(InputManager& inputMgr) : inputMgr_(inputMgr) {}
 
-void InputRouter::setRecorder(InputRecorder* recorder) {
-    recorder_ = recorder;
+void InputRouter::setEventCaptureHook(std::function<void(const SDL_Event&)> hook) {
+    eventCaptureHook_ = std::move(hook);
+}
+
+void InputRouter::setFrameHook(std::function<void()> hook) {
+    frameHook_ = std::move(hook);
 }
 
 void InputRouter::setMode(InputMode mode) {
@@ -105,8 +39,8 @@ void InputRouter::unregisterKeyCallback(SDL_Keycode key) {
 
 bool InputRouter::routeEvent(const SDL_Event& event, Rml::Context* rmlContext) {
     // Capture event for recording (before any routing consumes it)
-    if (recorder_ && recorder_->isRecording()) {
-        recorder_->captureEvent(serializeSDLEvent(event));
+    if (eventCaptureHook_) {
+        eventCaptureHook_(event);
     }
 
     // Backtick toggles developer console (intercept before any other routing)
@@ -192,10 +126,8 @@ bool InputRouter::routeEvent(const SDL_Event& event, Rml::Context* rmlContext) {
 void InputRouter::beginFrame() {
     inputMgr_.beginFrame();
 
-    // Advance the recorder frame (finalizes current recording frame or
-    // advances the playback cursor).
-    if (recorder_) {
-        recorder_->advanceFrame(0.0f);
+    if (frameHook_) {
+        frameHook_();
     }
 }
 
