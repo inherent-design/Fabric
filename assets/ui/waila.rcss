@@ -7,9 +7,10 @@ body {
 #waila-panel {
     position: fixed;
     top: 8dp;
-    left: 50%;
-    margin-left: -140dp;
+    left: 0;
+    right: 0;
     width: 280dp;
+    margin: 0 auto;
     padding: 6dp 10dp;
     background-color: #00000088;
     border: 1dp #ffffff22;
@@ -18,9 +19,10 @@ body {
 #waila-sky {
     position: fixed;
     top: 8dp;
-    left: 50%;
-    margin-left: -40dp;
+    left: 0;
+    right: 0;
     width: 80dp;
+    margin: 0 auto;
     padding: 6dp 10dp;
     background-color: #00000088;
     border: 1dp #ffffff22;
