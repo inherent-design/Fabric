@@ -7,6 +7,7 @@
 #include "fabric/core/InputManager.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/utils/Profiler.hh"
 #include "recurse/gameplay/VoxelInteraction.hh"
 
 namespace recurse::systems {
@@ -23,6 +24,7 @@ void VoxelInteractionSystem::init(fabric::AppContext& ctx) {
 }
 
 void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
+    FABRIC_ZONE_SCOPED_N("voxel_interaction");
     auto* inputManager = ctx.inputManager;
 
     interactionCooldown_ -= fixedDt;

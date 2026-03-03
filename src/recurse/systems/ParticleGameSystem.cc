@@ -2,6 +2,7 @@
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/utils/Profiler.hh"
 
 namespace recurse::systems {
 
@@ -18,6 +19,7 @@ void ParticleGameSystem::init(fabric::AppContext& /*ctx*/) {
 }
 
 void ParticleGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) {
+    FABRIC_ZONE_SCOPED_N("particle_game");
     debrisPool_.update(fixedDt);
     particleSystem_.update(fixedDt);
 }

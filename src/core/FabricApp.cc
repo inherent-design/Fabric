@@ -330,8 +330,14 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
                 FABRIC_ZONE_SCOPED_N("fixed_timestep");
                 float dt = static_cast<float>(kFixedDt);
 
-                async::poll();
-                timeline.update(kFixedDt);
+                {
+                    FABRIC_ZONE_SCOPED_N("async_poll");
+                    async::poll();
+                }
+                {
+                    FABRIC_ZONE_SCOPED_N("timeline_update");
+                    timeline.update(kFixedDt);
+                }
 
                 systemRegistry.runFixedUpdate(ctx, dt);
 

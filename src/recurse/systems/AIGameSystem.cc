@@ -3,6 +3,7 @@
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/utils/Profiler.hh"
 
 namespace recurse::systems {
 
@@ -21,6 +22,7 @@ void AIGameSystem::shutdown() {
 }
 
 void AIGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) {
+    FABRIC_ZONE_SCOPED_N("ai_update");
     behaviorAI_.update(fixedDt);
 }
 

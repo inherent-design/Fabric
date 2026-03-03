@@ -8,6 +8,7 @@
 #include "fabric/core/InputManager.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/utils/Profiler.hh"
 #include "recurse/gameplay/CameraController.hh"
 #include "recurse/gameplay/CharacterController.hh"
 #include "recurse/gameplay/FlightController.hh"
@@ -55,6 +56,7 @@ void CharacterMovementSystem::init(fabric::AppContext& ctx) {
 }
 
 void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
+    FABRIC_ZONE_SCOPED_N("character_movement");
     auto* inputManager = ctx.inputManager;
 
     // Camera direction from previous frame (CameraGameSystem runs in Update phase)
