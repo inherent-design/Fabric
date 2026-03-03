@@ -181,7 +181,7 @@ bool ResourceHub::unloadRecursive(const std::string& resourceId) {
 void ResourceHub::preload(const std::vector<std::string>& typeIds, const std::vector<std::string>& resourceIds,
                           ResourcePriority priority) {
     if (typeIds.size() != resourceIds.size()) {
-        throw std::invalid_argument("typeIds and resourceIds must have the same size");
+        throwError("typeIds and resourceIds must have the same size");
     }
 
     for (size_t i = 0; i < resourceIds.size(); ++i) {
@@ -849,7 +849,7 @@ unsigned int ResourceHub::getWorkerThreadCount() const {
 
 void ResourceHub::setWorkerThreadCount(unsigned int count) {
     if (count == 0) {
-        throw std::invalid_argument("Worker thread count must be at least 1");
+        throwError("Worker thread count must be at least 1");
     }
 
     // Use thread control mutex to synchronize thread adjustments
