@@ -4,7 +4,7 @@ $input v_worldPos, v_normal, v_flow
 
 uniform vec4 u_waterColor; // xyz = base color, w = alpha
 uniform vec4 u_time;       // x = elapsed seconds
-uniform vec4 u_lightDir;   // xyz = normalized direction toward light
+uniform vec4 u_waterLightDir;   // xyz = normalized direction toward light
 
 void main() {
     vec3 normal = normalize(v_normal);
@@ -25,7 +25,7 @@ void main() {
     vec3 perturbedNormal = normalize(normal + vec3(ripple * 0.15, 0.0, ripple * 0.15));
 
     // Directional lighting: ambient + diffuse
-    float ndotl = max(dot(perturbedNormal, u_lightDir.xyz), 0.0);
+    float ndotl = max(dot(perturbedNormal, u_waterLightDir.xyz), 0.0);
     float light = 0.35 + 0.65 * ndotl;
 
     // Fresnel approximation: view angle dependent blend

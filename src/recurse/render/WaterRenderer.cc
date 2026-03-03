@@ -68,7 +68,7 @@ void WaterRenderer::initProgram() {
 
     uniformWaterColor_ = bgfx::createUniform("u_waterColor", bgfx::UniformType::Vec4);
     uniformTime_ = bgfx::createUniform("u_time", bgfx::UniformType::Vec4);
-    uniformLightDir_ = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
+    uniformLightDir_ = bgfx::createUniform("u_waterLightDir", bgfx::UniformType::Vec4);
 
     if (!bgfx::isValid(program_) || !bgfx::isValid(uniformWaterColor_) || !bgfx::isValid(uniformTime_) ||
         !bgfx::isValid(uniformLightDir_)) {

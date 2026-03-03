@@ -21,7 +21,7 @@ using fabric::Vector3;
 // Uniforms:
 //   u_waterColor (vec4) - base water color (RGB) + alpha (A)
 //   u_time       (vec4) - x = elapsed seconds, yzw unused
-//   u_lightDir   (vec4) - normalized direction toward the light source
+//   u_waterLightDir (vec4) - normalized direction toward the light source
 //
 // Requires bgfx to be initialized before first render call; shader source
 // is embedded at compile time via the bgfx shader compiler (offline).
