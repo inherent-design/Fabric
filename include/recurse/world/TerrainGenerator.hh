@@ -29,6 +29,7 @@ struct TerrainConfig {
     float lacunarity = 2.0f;
     float gain = 0.5f;
     NoiseType noiseType = NoiseType::Simplex;
+    float seaLevel = 24.0f;
 };
 
 // Fills density and essence field layers over a given AABB region using
@@ -39,6 +40,12 @@ class TerrainGenerator {
     explicit TerrainGenerator(const TerrainConfig& config);
 
     void generate(FieldLayer<float>& density, FieldLayer<Vector4<float, Space::World>>& essence, const AABB& region);
+
+    // Populate a water FieldLayer from existing density data. Cells below
+    // seaLevel with density at or below the solid threshold are filled with
+    // a water level proportional to depth below the sea surface.
+    void generateWater(const FieldLayer<float>& density, FieldLayer<float>& water, const AABB& region,
+                       float solidThreshold = 0.5f) const;
 
     const TerrainConfig& config() const;
     void setConfig(const TerrainConfig& config);

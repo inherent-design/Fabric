@@ -109,4 +109,41 @@ void TerrainGenerator::generate(FieldLayer<float>& density, FieldLayer<Vector4<f
     }
 }
 
+void TerrainGenerator::generateWater(const FieldLayer<float>& density, FieldLayer<float>& water, const AABB& region,
+                                     float solidThreshold) const {
+    FABRIC_ZONE_SCOPED;
+
+    float seaLevel = config_.seaLevel;
+
+    int minX = static_cast<int>(std::floor(region.min.x));
+    int minY = static_cast<int>(std::floor(region.min.y));
+    int minZ = static_cast<int>(std::floor(region.min.z));
+    int maxX = static_cast<int>(std::ceil(region.max.x));
+    int maxY = static_cast<int>(std::ceil(region.max.y));
+    int maxZ = static_cast<int>(std::ceil(region.max.z));
+
+    for (int z = minZ; z < maxZ; ++z) {
+        for (int y = minY; y < maxY; ++y) {
+            float fy = static_cast<float>(y);
+            if (fy >= seaLevel) {
+                // Above sea level: no water
+                for (int x = minX; x < maxX; ++x) {
+                    water.write(x, y, z, 0.0f);
+                }
+                continue;
+            }
+            for (int x = minX; x < maxX; ++x) {
+                float d = density.read(x, y, z);
+                if (d <= solidThreshold) {
+                    // Air below sea level: fill with water proportional to depth
+                    float level = std::clamp((seaLevel - fy) / seaLevel, 0.0f, 1.0f);
+                    water.write(x, y, z, level);
+                } else {
+                    water.write(x, y, z, 0.0f);
+                }
+            }
+        }
+    }
+}
+
 } // namespace recurse
