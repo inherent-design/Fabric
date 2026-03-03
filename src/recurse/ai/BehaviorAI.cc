@@ -5,7 +5,6 @@
 
 #include <cmath>
 
-
 using namespace fabric;
 
 namespace recurse {

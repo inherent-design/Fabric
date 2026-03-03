@@ -4,7 +4,6 @@
 #include <cmath>
 #include <numbers>
 
-
 using namespace fabric;
 
 namespace recurse {

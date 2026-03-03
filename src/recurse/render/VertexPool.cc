@@ -1,8 +1,7 @@
 #include "recurse/render/VertexPool.hh"
 
-#include "recurse/world/VoxelMesher.hh"
 #include "fabric/utils/ErrorHandling.hh"
-
+#include "recurse/world/VoxelMesher.hh"
 
 using namespace fabric;
 

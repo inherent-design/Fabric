@@ -6,7 +6,6 @@
 
 #include <ozz/base/maths/simd_math.h>
 
-
 using namespace fabric;
 
 namespace recurse {

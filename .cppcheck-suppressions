@@ -13,8 +13,8 @@ unmatchedSuppression
 toomanyconfigs
 
 // cppcheck parser bug: can't handle enum class with bitshift initializers
-// DebugDraw.hh: enum class DebugDrawFlags : uint8_t { ... = 1 << N }
-syntaxError:include/fabric/core/DebugDraw.hh
+// DebugDraw.hh: enum class DebugDrawFlags : uint32_t { ... = 1 << N }
+syntaxError:include/recurse/render/DebugDraw.hh
 
 // Pool pattern: std::array<Particle, 10000> intentionally uninitialized.
 // Write-before-read gated by activeCount_. Zeroing 600KB is wasteful.

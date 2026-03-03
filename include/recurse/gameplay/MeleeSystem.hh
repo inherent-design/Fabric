@@ -15,7 +15,6 @@ using fabric::EventDispatcher;
 namespace Space = fabric::Space;
 using fabric::Vector3;
 
-
 struct MeleeConfig {
     float reach = 3.0f;
     float width = 2.0f;

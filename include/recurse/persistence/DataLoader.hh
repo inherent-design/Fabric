@@ -16,7 +16,6 @@ namespace recurse {
 // Engine types imported from fabric:: namespace
 using fabric::Result;
 
-
 // Wraps a parsed TOML table with typed extraction helpers.
 // Each accessor returns Result<T> so callers get file:key context on failure.
 class DataLoader {

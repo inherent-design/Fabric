@@ -1,7 +1,7 @@
 #include "recurse/physics/PhysicsWorld.hh"
 #include "fabric/core/Log.hh"
-#include "recurse/world/VoxelRaycast.hh"
 #include "fabric/utils/Profiler.hh"
+#include "recurse/world/VoxelRaycast.hh"
 
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Physics/Body/Body.h>
@@ -13,7 +13,6 @@
 #include <algorithm>
 #include <cmath>
 #include <mutex>
-
 
 using namespace fabric;
 

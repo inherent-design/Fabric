@@ -11,7 +11,6 @@ namespace recurse {
 namespace Space = fabric::Space;
 using fabric::Vector3;
 
-
 // Renders water chunk meshes with animated UV scrolling, transparency,
 // and Fresnel-based sky tinting.
 //

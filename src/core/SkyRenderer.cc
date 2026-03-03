@@ -30,7 +30,6 @@ static const float s_skyVertices[] = {
     -1.0f, -1.0f, 0.0f, 3.0f, -1.0f, 0.0f, -1.0f, 3.0f, 0.0f,
 };
 
-
 namespace fabric {
 
 SkyRenderer::SkyRenderer()

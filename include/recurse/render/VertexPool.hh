@@ -8,7 +8,6 @@
 
 namespace recurse {
 
-
 struct PoolSlot {
     uint32_t vertexOffset = 0;
     uint32_t indexOffset = 0;

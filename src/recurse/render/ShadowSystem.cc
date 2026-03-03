@@ -8,7 +8,6 @@
 #include <cmath>
 #include <cstring>
 
-
 using namespace fabric;
 
 namespace recurse {

@@ -1,9 +1,9 @@
 #include "recurse/render/WaterRenderer.hh"
 
-#include "recurse/world/ChunkedGrid.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/utils/Profiler.hh"
+#include "recurse/world/ChunkedGrid.hh"
 
 #include <bx/math.h>
 
@@ -25,7 +25,6 @@
 
 static const bgfx::EmbeddedShader s_waterShaders[] = {BGFX_EMBEDDED_SHADER(vs_water), BGFX_EMBEDDED_SHADER(fs_water),
                                                       BGFX_EMBEDDED_SHADER_END()};
-
 
 using namespace fabric;
 

@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cmath>
 
-
 using namespace fabric;
 
 namespace recurse {

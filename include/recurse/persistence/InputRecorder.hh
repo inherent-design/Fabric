@@ -7,7 +7,6 @@
 
 namespace recurse {
 
-
 /// Recorder state machine modes
 enum class RecorderMode {
     Idle,

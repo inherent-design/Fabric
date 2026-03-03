@@ -1,7 +1,7 @@
 #pragma once
 
-#include "recurse/world/ChunkedGrid.hh"
 #include "fabric/core/Spatial.hh"
+#include "recurse/world/ChunkedGrid.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 #include <cstdint>
@@ -15,7 +15,6 @@ namespace recurse {
 // Engine types imported from fabric:: namespace
 namespace Space = fabric::Space;
 using fabric::Vector4;
-
 
 enum class MaterialType : uint8_t {
     Stone,

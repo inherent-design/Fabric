@@ -10,7 +10,6 @@
 
 namespace recurse {
 
-
 inline constexpr int kChunkSize = 32;
 inline constexpr int kChunkShift = 5;
 inline constexpr int kChunkMask = kChunkSize - 1;

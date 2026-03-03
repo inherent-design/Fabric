@@ -1,7 +1,7 @@
 #pragma once
 
-#include "recurse/gameplay/CharacterTypes.hh"
 #include "fabric/core/StateMachine.hh"
+#include "recurse/gameplay/CharacterTypes.hh"
 #include <memory>
 #include <string>
 
@@ -9,7 +9,6 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::StateMachine;
-
 
 class MovementFSM {
   public:

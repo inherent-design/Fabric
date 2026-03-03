@@ -25,7 +25,6 @@
 
 namespace recurse {
 
-
 namespace physics {
 
 inline constexpr JPH::ObjectLayer kLayerStatic = 0;

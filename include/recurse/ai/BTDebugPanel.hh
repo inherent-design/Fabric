@@ -13,7 +13,6 @@ class ElementDocument;
 
 namespace recurse {
 
-
 class BehaviorAI;
 
 struct BTNodeInfo {

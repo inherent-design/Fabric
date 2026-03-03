@@ -1,13 +1,12 @@
 #pragma once
 
-#include "recurse/gameplay/CharacterTypes.hh"
 #include "fabric/core/Rendering.hh"
+#include "recurse/gameplay/CharacterTypes.hh"
 
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::Vec3f;
-
 
 class DashController {
   public:

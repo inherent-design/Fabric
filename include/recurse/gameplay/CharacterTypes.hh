@@ -4,7 +4,6 @@
 
 namespace recurse {
 
-
 enum class CharacterState : uint8_t {
     Grounded,
     Falling,

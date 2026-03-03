@@ -1,13 +1,12 @@
 #include "recurse/ai/BTDebugPanel.hh"
 
-#include "recurse/ai/BehaviorAI.hh"
 #include "fabric/core/Log.hh"
+#include "recurse/ai/BehaviorAI.hh"
 #include <behaviortree_cpp/loggers/bt_observer.h>
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <sstream>
-
 
 using namespace fabric;
 

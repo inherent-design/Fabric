@@ -138,9 +138,7 @@ void InputSystem::evaluate() {
             if (binding.oneShot && active && oneShotFired_.count(binding.name)) {
                 ActionSnapshot snap;
                 snap.state = ActionState::Released;
-                if (actionSnapshots_.find(binding.name) == actionSnapshots_.end()) {
-                    actionSnapshots_[binding.name] = snap;
-                }
+                actionSnapshots_.try_emplace(binding.name, snap);
                 if (ctx->consumeInput()) {
                     consumedActions.insert(binding.name);
                 }
@@ -174,9 +172,7 @@ void InputSystem::evaluate() {
             }
 
             // Only store if not already set by a higher-priority context
-            if (actionSnapshots_.find(binding.name) == actionSnapshots_.end()) {
-                actionSnapshots_[binding.name] = snap;
-            }
+            actionSnapshots_.try_emplace(binding.name, snap);
 
             if (ctx->consumeInput()) {
                 consumedActions.insert(binding.name);
@@ -190,9 +186,7 @@ void InputSystem::evaluate() {
 
             float value = evaluateAxis(binding);
 
-            if (axisValues_.find(binding.name) == axisValues_.end()) {
-                axisValues_[binding.name] = value;
-            }
+            axisValues_.try_emplace(binding.name, value);
 
             if (ctx->consumeInput()) {
                 consumedAxes.insert(binding.name);
