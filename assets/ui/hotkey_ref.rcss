@@ -1,0 +1,51 @@
+body {
+    font-family: 'Roboto Mono';
+    font-size: 11dp;
+    color: #cccccc;
+}
+
+#hotkey-panel {
+    position: fixed;
+    bottom: 8dp;
+    right: 8dp;
+    padding: 6dp 10dp;
+    background-color: #00000077;
+    border: 1dp #ffffff1a;
+    width: 220dp;
+}
+
+.hk-title {
+    color: #aaaaaa;
+    font-size: 12dp;
+    margin-bottom: 4dp;
+    border-bottom: 1dp #ffffff22;
+    padding-bottom: 3dp;
+    text-transform: uppercase;
+    letter-spacing: 1dp;
+}
+
+.hk-section {
+    color: #888888;
+    font-size: 10dp;
+    margin-top: 5dp;
+    margin-bottom: 2dp;
+    text-transform: uppercase;
+}
+
+.hk-row {
+    display: block;
+    margin-bottom: 1dp;
+}
+
+.hk-key {
+    display: inline-block;
+    width: 80dp;
+    color: #ffcc44;
+    font-size: 11dp;
+}
+
+.hk-action {
+    display: inline;
+    color: #cccccc;
+    font-size: 11dp;
+}

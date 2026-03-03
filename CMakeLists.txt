@@ -305,6 +305,7 @@ set(FABRIC_UI_SOURCE_FILES
     src/ui/StbImage.cc
     src/ui/DebugHUD.cc
     src/ui/WAILAPanel.cc
+    src/ui/HotkeyPanel.cc
     src/ui/ToastManager.cc
 )
 
