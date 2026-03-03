@@ -1,16 +1,15 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
 
-#include "recurse/audio/AudioSystem.hh"
 #include "fabric/core/Log.hh"
-#include "recurse/world/VoxelRaycast.hh"
 #include "fabric/utils/ErrorHandling.hh"
+#include "recurse/audio/AudioSystem.hh"
+#include "recurse/world/VoxelRaycast.hh"
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <filesystem>
-
 
 using namespace fabric;
 

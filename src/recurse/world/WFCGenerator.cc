@@ -4,7 +4,6 @@
 #include <deque>
 #include <limits>
 
-
 using namespace fabric;
 
 namespace recurse {

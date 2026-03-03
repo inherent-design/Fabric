@@ -52,13 +52,12 @@ float randomFloat(float lo, float hi) {
 
 } // namespace
 
-
 using namespace fabric;
 
 namespace recurse {
 
 ParticleSystem::ParticleSystem()
-    : program_(BGFX_INVALID_HANDLE), vbh_(BGFX_INVALID_HANDLE), ibh_(BGFX_INVALID_HANDLE) {}
+    : program_(BGFX_INVALID_HANDLE), vbh_(BGFX_INVALID_HANDLE), ibh_(BGFX_INVALID_HANDLE), particles_{} {}
 
 ParticleSystem::~ParticleSystem() {
     shutdown();
@@ -238,7 +237,9 @@ void ParticleSystem::render(const float* viewMtx, const float* projMtx, uint16_t
         // Fade out alpha over lifetime
         float alpha = p.colorA * (1.0f - ageRatio * ageRatio);
 
-        float* inst = reinterpret_cast<float*>(data);
+        // Pack instance data into a local array, then memcpy to the
+        // buffer to avoid strict-aliasing violations (uint8_t* -> float*).
+        float inst[12];
         // i_data0: position.xyz + size
         inst[0] = p.position.x;
         inst[1] = p.position.y;
@@ -256,6 +257,8 @@ void ParticleSystem::render(const float* viewMtx, const float* projMtx, uint16_t
         inst[9] = ageRatio;
         inst[10] = 0.0f;
         inst[11] = 0.0f;
+
+        std::memcpy(data, inst, sizeof(inst));
 
         data += instanceStride;
     }

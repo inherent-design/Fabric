@@ -31,7 +31,6 @@ static const float s_fullscreenVertices[] = {
     -1.0f, -1.0f, 0.0f, 3.0f, -1.0f, 0.0f, -1.0f, 3.0f, 0.0f,
 };
 
-
 using namespace fabric;
 
 namespace recurse {

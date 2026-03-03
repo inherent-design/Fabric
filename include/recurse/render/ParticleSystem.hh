@@ -13,7 +13,6 @@ namespace recurse {
 namespace Space = fabric::Space;
 using fabric::Vector3;
 
-
 enum class ParticleType : uint8_t {
     DebrisPuff,
     AmbientDust,

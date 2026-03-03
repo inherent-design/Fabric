@@ -1,7 +1,6 @@
 #include "recurse/gameplay/DashController.hh"
 #include <algorithm>
 
-
 using namespace fabric;
 
 namespace recurse {

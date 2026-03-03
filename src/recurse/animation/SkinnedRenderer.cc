@@ -23,7 +23,6 @@
 static const bgfx::EmbeddedShader s_skinnedShaders[] = {BGFX_EMBEDDED_SHADER(vs_skinned),
                                                         BGFX_EMBEDDED_SHADER(fs_skinned), BGFX_EMBEDDED_SHADER_END()};
 
-
 using namespace fabric;
 
 namespace recurse {

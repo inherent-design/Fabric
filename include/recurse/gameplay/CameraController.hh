@@ -1,8 +1,8 @@
 #pragma once
 
 #include "fabric/core/Camera.hh"
-#include "recurse/world/ChunkedGrid.hh"
 #include "fabric/core/Spatial.hh"
+#include "recurse/world/ChunkedGrid.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 namespace recurse {
@@ -12,7 +12,6 @@ namespace Space = fabric::Space;
 using fabric::Camera;
 using fabric::Quaternion;
 using fabric::Vector3;
-
 
 enum class CameraMode {
     FirstPerson,

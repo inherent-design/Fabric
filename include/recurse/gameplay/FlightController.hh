@@ -1,15 +1,14 @@
 #pragma once
 
-#include "recurse/world/ChunkedGrid.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/Spatial.hh"
+#include "recurse/world/ChunkedGrid.hh"
 
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
 using fabric::Vec3f;
-
 
 class FlightController {
   public:

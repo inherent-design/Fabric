@@ -9,7 +9,6 @@
 #include <cctype>
 #include <sstream>
 
-
 using namespace fabric;
 
 namespace recurse {

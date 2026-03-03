@@ -1,8 +1,8 @@
 #pragma once
 
+#include "fabric/core/Spatial.hh"
 #include "recurse/animation/Animation.hh"
 #include "recurse/animation/MeshLoader.hh"
-#include "fabric/core/Spatial.hh"
 #include <bgfx/bgfx.h>
 #include <cstdint>
 #include <unordered_map>
@@ -11,7 +11,6 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::Matrix4x4;
-
 
 // Maximum joints uploadable to the GPU skinning shader uniform array.
 // Derived from kMaxJoints in Animation.hh to keep a single source of truth.

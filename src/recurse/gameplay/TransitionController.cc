@@ -1,7 +1,6 @@
 #include "recurse/gameplay/TransitionController.hh"
 #include <cmath>
 
-
 using namespace fabric;
 
 namespace recurse {

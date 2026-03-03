@@ -5,7 +5,6 @@
 
 namespace recurse {
 
-
 // Weighted blended order-independent transparency compositor.
 // Implements the McGuire & Bavoil 2013 technique using two render targets:
 //   - Accumulation buffer (RGBA16F): premultiplied color * weight, alpha * weight

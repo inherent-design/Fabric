@@ -9,7 +9,6 @@
 
 namespace recurse {
 
-
 struct StreamingConfig {
     int baseRadius = 8;
     int maxRadius = 16;

@@ -1,15 +1,14 @@
 #include "recurse/animation/Animation.hh"
 
-#include "recurse/animation/IKSolver.hh"
 #include "fabric/core/Log.hh"
-#include "recurse/world/VoxelRaycast.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "fabric/utils/Profiler.hh"
+#include "recurse/animation/IKSolver.hh"
+#include "recurse/world/VoxelRaycast.hh"
 #include <algorithm>
 #include <cctype>
 #include <cstring>
 #include <ozz/base/maths/simd_math.h>
-
 
 using namespace fabric;
 

@@ -5,7 +5,6 @@
 #include "fabric/utils/Profiler.hh"
 #include <cmath>
 
-
 using namespace fabric;
 
 namespace recurse {

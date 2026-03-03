@@ -9,9 +9,8 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 namespace Space = fabric::Space;
-using fabric::Vector3;
 using fabric::Camera;
-
+using fabric::Vector3;
 
 enum class ShadowQualityPreset : uint8_t {
     Low,

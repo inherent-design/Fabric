@@ -7,7 +7,6 @@
 #include <random>
 #include <stack>
 
-
 using namespace fabric;
 
 namespace recurse {

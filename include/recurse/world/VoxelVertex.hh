@@ -4,7 +4,6 @@
 
 namespace recurse {
 
-
 // Packed 8-byte voxel vertex for GPU bandwidth efficiency.
 // posNormalAO: px[7:0] | py[15:8] | pz[23:16] | normalIdx[26:24] | ao[28:27] | pad[31:29]
 // material:    paletteIndex[15:0] | reserved[31:16]

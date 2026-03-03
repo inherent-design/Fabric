@@ -1,8 +1,8 @@
 #pragma once
 
-#include "recurse/world/ChunkStreaming.hh"
 #include "fabric/core/Event.hh"
 #include "recurse/render/VertexPool.hh"
+#include "recurse/world/ChunkStreaming.hh"
 #include "recurse/world/VoxelMesher.hh"
 
 #include <unordered_map>
@@ -15,7 +15,6 @@ using fabric::Event;
 using fabric::EventDispatcher;
 namespace Space = fabric::Space;
 using fabric::Vector4;
-
 
 inline constexpr const char* kVoxelChangedEvent = "voxel_changed";
 

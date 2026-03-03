@@ -1,7 +1,7 @@
 #pragma once
 
-#include "recurse/world/ChunkedGrid.hh"
 #include "fabric/core/Spatial.hh"
+#include "recurse/world/ChunkedGrid.hh"
 #include <array>
 #include <atomic>
 #include <condition_variable>

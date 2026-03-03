@@ -14,7 +14,6 @@ class ElementDocument;
 
 namespace recurse {
 
-
 class DevConsole {
   public:
     using CommandCallback = std::function<void(const std::vector<std::string>& args)>;

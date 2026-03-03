@@ -6,7 +6,6 @@
 #include <cmath>
 #include <unordered_map>
 
-
 using namespace fabric;
 
 namespace recurse {

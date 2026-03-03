@@ -1,9 +1,9 @@
 #include "recurse/render/VoxelRenderer.hh"
 
-#include "recurse/world/ChunkedGrid.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/utils/Profiler.hh"
+#include "recurse/world/ChunkedGrid.hh"
 
 #include <algorithm>
 #include <bx/math.h>
@@ -27,7 +27,6 @@
 
 static const bgfx::EmbeddedShader s_voxelShaders[] = {BGFX_EMBEDDED_SHADER(vs_voxel), BGFX_EMBEDDED_SHADER(fs_voxel),
                                                       BGFX_EMBEDDED_SHADER_END()};
-
 
 using namespace fabric;
 

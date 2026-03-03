@@ -8,7 +8,6 @@
 
 namespace recurse {
 
-
 struct RagdollHandle {
     uint32_t id;
     bool valid() const { return id != 0; }
