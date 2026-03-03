@@ -46,6 +46,7 @@ void CameraGameSystem::shutdown() {
 
 void CameraGameSystem::configureDependencies() {
     after<CharacterMovementSystem>();
+    after<TerrainSystem>();
 }
 
 fabric::Vector3<float, fabric::Space::World> CameraGameSystem::position() const {

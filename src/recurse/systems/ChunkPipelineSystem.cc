@@ -226,6 +226,8 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
 
 void ChunkPipelineSystem::configureDependencies() {
     after<TerrainSystem>();
+    after<PhysicsGameSystem>();
+    after<CharacterMovementSystem>();
 }
 
 size_t ChunkPipelineSystem::dirtyCount() const {
