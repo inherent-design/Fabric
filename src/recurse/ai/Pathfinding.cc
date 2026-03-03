@@ -1,5 +1,7 @@
 #include "recurse/ai/Pathfinding.hh"
 
+#include "fabric/core/Log.hh"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -34,6 +36,7 @@ PathResult Pathfinding::findPath(const ChunkedGrid<float>& grid, int sx, int sy,
     PathResult result;
 
     if (!isWalkable(grid, sx, sy, sz, threshold) || !isWalkable(grid, gx, gy, gz, threshold)) {
+        FABRIC_LOG_DEBUG("A* path failed: start ({},{},{}) or goal ({},{},{}) is unwalkable", sx, sy, sz, gx, gy, gz);
         return result;
     }
 
@@ -83,6 +86,8 @@ PathResult Pathfinding::findPath(const ChunkedGrid<float>& grid, int sx, int sy,
         }
 
         if (result.nodesExpanded >= maxNodes) {
+            FABRIC_LOG_DEBUG("A* path failed: maxNodes ({}) exhausted from ({},{},{}) to ({},{},{})", maxNodes, sx, sy,
+                             sz, gx, gy, gz);
             return result;
         }
         ++result.nodesExpanded;
@@ -122,6 +127,8 @@ PathResult Pathfinding::findPath(const ChunkedGrid<float>& grid, int sx, int sy,
         }
     }
 
+    FABRIC_LOG_DEBUG("A* path failed: open set exhausted after {} nodes from ({},{},{}) to ({},{},{})",
+                     result.nodesExpanded, sx, sy, sz, gx, gy, gz);
     return result;
 }
 
