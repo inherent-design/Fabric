@@ -94,14 +94,11 @@ TEST(PostProcessTest, HdrFramebufferInvalidBeforeInit) {
     EXPECT_FALSE(bgfx::isValid(fb));
 }
 
-TEST_F(BgfxNoopFixture, PostProcessInitFailsGracefully) {
+TEST_F(BgfxNoopFixture, PostProcessInitSucceeds) {
     PostProcess pp;
     pp.init(320, 240);
-    // PostProcess::initPrograms() only creates brightProgram_ but validates
-    // blurProgram_ and tonemapProgram_ too, which remain invalid.
-    // BUG: blur/tonemap program creation is missing from initPrograms().
-    // TODO: fix PostProcess::initPrograms() to create all three programs.
-    EXPECT_FALSE(pp.isValid());
+    // All three programs (bright, blur, tonemap) are now created in initPrograms().
+    EXPECT_TRUE(pp.isValid());
 }
 
 TEST(PostProcessTest, InitWithZeroDimensionsDoesNotCrash) {
