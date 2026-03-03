@@ -1,5 +1,5 @@
 // Recurse.cc -- Main entry point for the Recurse game.
-// Registers 14 application systems via FabricAppDesc and delegates to
+// Registers 15 application systems via FabricAppDesc and delegates to
 // FabricApp::run(). All game logic lives in registered SystemBase subclasses.
 
 // Engine includes
@@ -24,11 +24,12 @@
 #include "recurse/gameplay/FlightController.hh"
 #include "recurse/gameplay/VoxelInteraction.hh"
 #include "recurse/persistence/SaveManager.hh"
+#include "recurse/render/WaterSimulation.hh"
 #include "recurse/world/CaveCarver.hh"
 #include "recurse/world/ChunkMeshManager.hh"
 #include "recurse/world/TerrainGenerator.hh"
 
-// System includes (all 14)
+// System includes (all 15)
 #include "recurse/systems/AIGameSystem.hh"
 #include "recurse/systems/AudioGameSystem.hh"
 #include "recurse/systems/CameraGameSystem.hh"
@@ -43,6 +44,7 @@
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelInteractionSystem.hh"
 #include "recurse/systems/VoxelRenderSystem.hh"
+#include "recurse/systems/WaterRenderSystem.hh"
 
 #include <SDL3/SDL.h>
 
@@ -54,7 +56,7 @@ fabric::FabricAppDesc buildRecurseDesc() {
     desc.configPath = "recurse.toml";
     desc.headless = false;
 
-    // Register 14 application systems with phase assignments.
+    // Register 15 application systems with phase assignments.
     // Dependencies declared in each system's configureDependencies().
     desc.registerSystem<recurse::systems::TerrainSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::ChunkPipelineSystem>(SystemPhase::FixedUpdate);
@@ -68,6 +70,7 @@ fabric::FabricAppDesc buildRecurseDesc() {
     desc.registerSystem<recurse::systems::AudioGameSystem>(SystemPhase::Update);
     desc.registerSystem<recurse::systems::ShadowRenderSystem>(SystemPhase::PreRender);
     desc.registerSystem<recurse::systems::VoxelRenderSystem>(SystemPhase::Render);
+    desc.registerSystem<recurse::systems::WaterRenderSystem>(SystemPhase::Render);
     desc.registerSystem<recurse::systems::OITRenderSystem>(SystemPhase::Render);
     desc.registerSystem<recurse::systems::DebugOverlaySystem>(SystemPhase::Render);
 
