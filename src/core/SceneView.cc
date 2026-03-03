@@ -157,6 +157,14 @@ void SceneView::setViewport(uint16_t width, uint16_t height) {
     viewHeight_ = height;
 }
 
+uint16_t SceneView::viewWidth() const {
+    return viewWidth_;
+}
+
+uint16_t SceneView::viewHeight() const {
+    return viewHeight_;
+}
+
 void SceneView::enablePostProcess(uint16_t width, uint16_t height) {
     postProcess_.init(width, height);
 }

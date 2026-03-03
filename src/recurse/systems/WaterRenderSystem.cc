@@ -120,8 +120,16 @@ void WaterRenderSystem::render(fabric::AppContext& ctx) {
         visibleEntityIds.insert(entity.id());
     }
 
-    // Submit water meshes to the transparent view
+    // Configure the transparent view for water rendering. SceneView only
+    // sets up view 2 when ECS entities carry TransparentTag. Water chunks
+    // are not ECS entities; they are submitted by this system directly.
+    // Without this setup, bgfx silently discards all submits to view 2.
     bgfx::ViewId waterView = sceneView->transparentViewId();
+    bgfx::setViewRect(waterView, 0, 0, sceneView->viewWidth(), sceneView->viewHeight());
+    bgfx::setViewTransform(waterView, sceneView->camera().viewMatrix(), sceneView->camera().projectionMatrix());
+    bgfx::setViewClear(waterView, BGFX_CLEAR_NONE);
+    bgfx::touch(waterView);
+
     for (const auto& [coord, mesh] : waterMeshes_) {
         if (!mesh.valid || mesh.indexCount == 0)
             continue;
