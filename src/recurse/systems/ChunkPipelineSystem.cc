@@ -152,6 +152,19 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
         meshManager_->markDirty(coord.cx, coord.cy, coord.cz);
         gpuUploadQueue_.insert(coord);
 
+        // Re-mesh 6 neighbors so cross-boundary faces are re-culled
+        // against the newly loaded chunk data (fixes BUG-CHUNKFACE).
+        static constexpr int kNeighborOffsets[6][3] = {
+            {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
+        };
+        for (const auto& off : kNeighborOffsets) {
+            ChunkCoord neighbor{coord.cx + off[0], coord.cy + off[1], coord.cz + off[2]};
+            if (chunkEntities_.find(neighbor) != chunkEntities_.end()) {
+                meshManager_->markDirty(neighbor.cx, neighbor.cy, neighbor.cz);
+                gpuUploadQueue_.insert(neighbor);
+            }
+        }
+
         if (chunkEntities_.find(coord) == chunkEntities_.end()) {
             auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
                 {static_cast<float>(coord.cx * kChunkSize), static_cast<float>(coord.cy * kChunkSize),
