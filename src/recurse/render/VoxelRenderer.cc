@@ -137,21 +137,15 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, int chunkX,
     uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                      BGFX_STATE_MSAA | BGFX_STATE_CULL_CCW;
     bgfx::setState(state);
-
+    bgfx::setUniform(uniformLightDir_, lightDir_);
     bgfx::submit(view, program_);
 }
 
 void VoxelRenderer::setLightDirection(const Vector3<float, Space::World>& dir) {
-    if (!initialized_) {
-        initProgram();
-    }
-
-    if (!isValid() || !bgfx::isValid(uniformLightDir_)) {
-        return;
-    }
-
-    float lightDir[4] = {dir.x, dir.y, dir.z, 0.0f};
-    bgfx::setUniform(uniformLightDir_, lightDir);
+    lightDir_[0] = dir.x;
+    lightDir_[1] = dir.y;
+    lightDir_[2] = dir.z;
+    lightDir_[3] = 0.0f;
 }
 
 bool VoxelRenderer::isValid() const {
@@ -237,6 +231,7 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
             auto cnt = static_cast<uint16_t>(std::min(group.palette->size(), static_cast<size_t>(256)));
             bgfx::setUniform(uniformPalette_, group.palette->data(), cnt);
         }
+        bgfx::setUniform(uniformLightDir_, lightDir_);
         bgfx::setState(state);
 
         for (size_t j = 0; j < group.indices.size(); ++j) {
