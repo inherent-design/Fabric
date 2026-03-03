@@ -133,12 +133,28 @@ void ChunkMeshManager::emitVoxelChanged(EventDispatcher& dispatcher, int cx, int
 
 void ChunkMeshManager::setChunkLOD(const ChunkCoord& coord, int level) {
     auto [it, inserted] = chunkLODs_.emplace(coord, level);
+    bool changed = false;
     if (!inserted && it->second != level) {
         it->second = level;
         dirty_.insert(coord);
+        changed = true;
     }
     if (inserted && level != 0) {
         dirty_.insert(coord);
+        changed = true;
+    }
+    if (changed) {
+        // Mark 6-connected neighbors dirty so their skirt geometry
+        // is regenerated against the updated LOD of this chunk.
+        static constexpr int kOff[6][3] = {
+            {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
+        };
+        for (const auto& off : kOff) {
+            ChunkCoord neighbor{coord.cx + off[0], coord.cy + off[1], coord.cz + off[2]};
+            if (meshes_.contains(neighbor)) {
+                dirty_.insert(neighbor);
+            }
+        }
     }
 }
 
@@ -270,8 +286,10 @@ void ChunkMeshManager::appendSkirtGeometry(ChunkMeshData& data, const ChunkCoord
                 if (density_.get(wx, wy, wz) <= config_.threshold)
                     continue;
 
-                // Compute vertical extent of the skirt quad
-                int yTop = cell[1];
+                // Compute vertical extent of the skirt quad.
+                // Use the top of the voxel cell (cell[1] + stride) so
+                // the bottom row (vy=0) still produces geometry.
+                int yTop = cell[1] + stride;
                 int yBot = std::max(0, yTop - skirtDrop);
                 if (yBot >= yTop)
                     continue;
