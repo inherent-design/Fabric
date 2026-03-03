@@ -46,3 +46,6 @@ CMakeUserPresets.json
 # Runtime log output
 logs/
 cmake_test_discovery_*.json
+
+# Tracy profiler captures
+tracy/
