@@ -69,6 +69,10 @@ void ChunkPipelineSystem::init(fabric::AppContext& ctx) {
             chunkEntities_[coord] = ent;
         }
 
+        // Assign correct LOD levels before meshing so initial chunks
+        // are generated at the right resolution from the start.
+        meshManager_->updateLOD(kSpawnX, kSpawnY, kSpawnZ);
+
         // Flush dirty chunks for initial load with bounded passes
         constexpr int kMaxInitialRemeshPasses = 512;
         constexpr int kMaxInitialNoProgressPasses = 8;
