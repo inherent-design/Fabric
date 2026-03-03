@@ -51,6 +51,9 @@ class SceneView {
     // Must be called after bgfx::init() and again on window resize.
     void setViewport(uint16_t width, uint16_t height);
 
+    uint16_t viewWidth() const;
+    uint16_t viewHeight() const;
+
     // Enable HDR post-processing. Must be called after bgfx::init().
     void enablePostProcess(uint16_t width, uint16_t height);
 
