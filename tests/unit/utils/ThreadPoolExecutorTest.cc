@@ -93,6 +93,9 @@ TEST(ThreadPoolExecutorTest, SubmitWithTimeoutExpires) {
     blocker.set_value();
 
     EXPECT_THROW(result.get(), ThreadPoolTimeoutException);
+
+    // Shut down before blockFuture goes out of scope
+    pool.shutdown();
 }
 
 // -- Shutdown --
@@ -200,8 +203,10 @@ TEST(ThreadPoolExecutorTest, QueuedTaskCountReflectsState) {
 
     EXPECT_EQ(pool.getQueuedTaskCount(), 2u);
 
-    // Unblock and let everything drain
+    // Unblock and shut down before blockFuture goes out of scope,
+    // since the blocking task captures it by reference
     blocker.set_value();
+    pool.shutdown();
 }
 
 // -- Concurrent correctness --
