@@ -44,8 +44,10 @@ void CharacterMovementSystem::init(fabric::AppContext& ctx) {
     // Jump on space press (grounded only)
     ctx.dispatcher.addEventListener("move_up", [this](fabric::Event&) {
         if (movementFSM_.isGrounded()) {
-            movementFSM_.tryTransition(CharacterState::Jumping);
-            playerVel_.y = charConfig_.jumpForce;
+            if (movementFSM_.tryTransition(CharacterState::Jumping)) {
+                FABRIC_LOG_DEBUG("Movement state: Grounded -> Jumping (jump input)");
+                playerVel_.y = charConfig_.jumpForce;
+            }
         }
     });
 
@@ -135,10 +137,16 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
             playerVel_.y = 0.0f;
             if (movementFSM_.currentState() == CharacterState::Falling ||
                 movementFSM_.currentState() == CharacterState::Jumping) {
-                movementFSM_.tryTransition(CharacterState::Grounded);
+                auto prev = movementFSM_.currentState();
+                if (movementFSM_.tryTransition(CharacterState::Grounded)) {
+                    FABRIC_LOG_DEBUG("Movement state: {} -> Grounded (landed)", MovementFSM::stateToString(prev));
+                }
             }
         } else if (movementFSM_.isGrounded() || movementFSM_.currentState() == CharacterState::Jumping) {
-            movementFSM_.tryTransition(CharacterState::Falling);
+            auto prev = movementFSM_.currentState();
+            if (movementFSM_.tryTransition(CharacterState::Falling)) {
+                FABRIC_LOG_DEBUG("Movement state: {} -> Falling (left ground)", MovementFSM::stateToString(prev));
+            }
         }
 
         // Ceiling collision: kill upward velocity
