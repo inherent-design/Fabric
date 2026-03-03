@@ -16,6 +16,7 @@
 #include "recurse/world/TerrainGenerator.hh"
 #include "recurse/world/VoxelMesher.hh"
 
+#include <bgfx/bgfx.h>
 #include <unordered_set>
 
 namespace recurse::systems {
@@ -64,6 +65,21 @@ void WaterRenderSystem::render(fabric::AppContext& ctx) {
     FABRIC_ZONE_SCOPED_N("water_render");
 
     auto* sceneView = ctx.sceneView;
+
+    // Configure transparent view for water submission. SceneView only sets up
+    // view 2 when ECS entities carry TransparentTag; water chunks are
+    // system-managed meshes, not ECS entities.
+    bgfx::ViewId waterView = sceneView->transparentViewId();
+    bgfx::setViewRect(waterView, 0, 0, sceneView->viewWidth(), sceneView->viewHeight());
+    bgfx::setViewTransform(waterView, sceneView->camera().viewMatrix(), sceneView->camera().projectionMatrix());
+    bgfx::setViewClear(waterView, BGFX_CLEAR_NONE);
+    bgfx::touch(waterView);
+
+    // Water rendering disabled pending flamegraph profiling.
+    static constexpr bool kWaterRenderingEnabled = false;
+    if (!kWaterRenderingEnabled)
+        return;
+
     float elapsed = static_cast<float>(ctx.timeline.getCurrentTime());
 
     // Advance water simulation using the density grid and a fixed dt
@@ -120,16 +136,7 @@ void WaterRenderSystem::render(fabric::AppContext& ctx) {
         visibleEntityIds.insert(entity.id());
     }
 
-    // Configure the transparent view for water rendering. SceneView only
-    // sets up view 2 when ECS entities carry TransparentTag. Water chunks
-    // are not ECS entities; they are submitted by this system directly.
-    // Without this setup, bgfx silently discards all submits to view 2.
-    bgfx::ViewId waterView = sceneView->transparentViewId();
-    bgfx::setViewRect(waterView, 0, 0, sceneView->viewWidth(), sceneView->viewHeight());
-    bgfx::setViewTransform(waterView, sceneView->camera().viewMatrix(), sceneView->camera().projectionMatrix());
-    bgfx::setViewClear(waterView, BGFX_CLEAR_NONE);
-    bgfx::touch(waterView);
-
+    // Submit water meshes to the transparent view (waterView declared above)
     for (const auto& [coord, mesh] : waterMeshes_) {
         if (!mesh.valid || mesh.indexCount == 0)
             continue;
