@@ -20,6 +20,10 @@ syntaxError:include/recurse/render/DebugDraw.hh
 // Write-before-read gated by activeCount_. Zeroing 600KB is wasteful.
 uninitMemberVar:src/core/ParticleSystem.cc
 
+// cppcheck template resolution bug: ResourceLockHandle::release() returns void
+// but cppcheck infers non-void through unresolved template instantiation.
+ignoredReturnValue:include/fabric/utils/CoordinatedGraphLocking.hh
+
 // bgfx instance buffer pattern: reinterpret_cast<float*>(data) on void*.
 // Standard graphics API usage. memcpy alternative exists but unnecessary.
 invalidPointerCast:src/core/ParticleSystem.cc
