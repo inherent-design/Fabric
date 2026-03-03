@@ -48,6 +48,7 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
     debugDraw_.init();
     debugHUD_.init(ctx.rmlContext);
     wailaPanel_.init(ctx.rmlContext);
+    hotkeyPanel_.init(ctx.rmlContext);
     btDebugPanel_.init(ctx.rmlContext);
     contentBrowser_.init("assets/");
     devConsole_.init(ctx.rmlContext);
@@ -78,6 +79,7 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
     dispatcher.addEventListener("toggle_debug", [this](fabric::Event&) {
         debugHUD_.toggle();
         wailaPanel_.toggle();
+        hotkeyPanel_.toggle();
     });
 
     dispatcher.addEventListener("toggle_wireframe", [this](fabric::Event&) {
@@ -280,6 +282,7 @@ void DebugOverlaySystem::shutdown() {
     devConsole_.shutdown();
     contentBrowser_.shutdown();
     btDebugPanel_.shutdown();
+    hotkeyPanel_.shutdown();
     wailaPanel_.shutdown();
     debugHUD_.shutdown();
     debugDraw_.shutdown();
