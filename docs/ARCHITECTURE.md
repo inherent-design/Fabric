@@ -2,392 +2,342 @@
 
 ## Overview
 
-Fabric is a C++20 cross-platform runtime for building interactive spatial-temporal applications. Programming primitives (math, time, events, commands) compose into structural primitives (scenes, entities, graphs, simulations) that applications use to create games, editors, simulations, and multimedia tools. All public symbols reside in the `fabric::` namespace, with sub-namespaces for utilities (`fabric::Utils`, `fabric::Testing`) and subsystems (`fabric::log`, `fabric::async`).
+Fabric is a C++20 cross-platform runtime for building interactive spatial-temporal applications. Programming primitives (math, time, events, commands) compose into structural primitives (scenes, entities, graphs, simulations) that applications use to create games, editors, simulations, and multimedia tools. All engine symbols reside in the `fabric::` namespace.
+
+Recurse is a single-player voxel exploration game built on Fabric. It provides `main()` via `src/recurse/Recurse.cc`, registers 15 application systems through `FabricAppDesc`, and delegates execution to `FabricApp::run()`. All game symbols reside in the `recurse::` namespace.
 
 Rendering uses Vulkan on all platforms. macOS translates Vulkan calls to Metal via MoltenVK. All shaders compile to SPIR-V.
 
 ## Layer Architecture
 
-```
-L0: Platform Abstraction
-    SDL3             Windowing, input, timers, filesystem, native handles for bgfx
-    bgfx             Rendering backend: Vulkan-only, SPIR-V shaders, MoltenVK on macOS
-    WebView          Embedded browser, JS bridge (optional, FABRIC_USE_WEBVIEW)
-    mimalloc         Memory allocator, available for explicit use (MI_OVERRIDE OFF by default)
+```mermaid
+graph TD
+    subgraph L0["L0: Platform Abstraction"]
+        SDL3["SDL3 3.4.2<br/>Windowing, input, timers"]
+        bgfx["bgfx 1.139.9155<br/>Vulkan rendering, SPIR-V"]
+        WebView["WebView 0.12.0<br/>Embedded browser, JS bridge"]
+        mimalloc["mimalloc 2.2.7<br/>Allocator (MI_OVERRIDE OFF)"]
+    end
 
-L1: Infrastructure
-    Log              Quill async SPSC logging, FABRIC_LOG_* macros, compile-time filtering
-    Profiler         Tracy abstraction, zero-cost when FABRIC_ENABLE_PROFILING is OFF
-    Async            Standalone Asio io_context, C++20 coroutine support, strands, timers
-    ErrorHandling    FabricException, throwError(), ErrorCode enum, Result<T> template
-    StateMachine     Generic state machine template with transition guards, entry/exit actions, observers
+    subgraph L1["L1: Infrastructure"]
+        Log["Log<br/>Quill async SPSC"]
+        Profiler["Profiler<br/>Tracy abstraction"]
+        Async["Async<br/>Standalone Asio, C++20 coroutines"]
+        ErrorHandling["ErrorHandling<br/>FabricException, Result&lt;T&gt;"]
+        StateMachine["StateMachine<br/>Guards, observers"]
+    end
 
-L2: Primitives
-    Spatial          Type-safe vec/mat/quat/transform with compile-time coordinate space tags; GLM bridge
-    Temporal         Multi-timeline time processing, snapshots, variable flow
-    Event            Typed thread-safe publish/subscribe with propagation control
-    Command          Undo/redo command pattern with composite commands and history
-    Pipeline         Typed multi-stage data processing with fan-out and conditional stages
-    Types            Core Variant, StringMap, Optional type aliases
-    JsonTypes        nlohmann/json ADL serializers for Vector, Quaternion types
+    subgraph L2["L2: Primitives"]
+        Spatial["Spatial<br/>Type-safe vec/mat/quat, GLM bridge"]
+        Temporal["Temporal<br/>Multi-timeline, snapshots"]
+        Event["Event<br/>Typed thread-safe pub/sub"]
+        Command["Command<br/>Undo/redo, composite"]
+        Pipeline["Pipeline<br/>Multi-stage data processing"]
+        Types["Types, JsonTypes"]
+        Codec["Codec (L2.5)<br/>Encode/decode pipeline"]
+    end
 
-L2.5: Codec
-    Codec            Encode/decode pipeline for binary, text, and structured data formats
+    subgraph L3["L3: Structural"]
+        ECS["ECS<br/>Flecs v4.1.4, ChildOf, CASCADE"]
+        Resource["Resource, ResourceHub<br/>State machine, workers"]
+        Camera["Camera<br/>Projection, view matrix"]
+        Rendering["Rendering<br/>AABB, Frustum, DrawCall"]
+        Graphs["CoordinatedGraph, ImmutableDAG"]
+        BVH["BVH<br/>Median-split, frustum queries"]
+        VoxelWorld["Voxel World<br/>ChunkedGrid, FieldLayer, Mesher"]
+        Character["Character, Physics, AI, Audio"]
+        AnimRender["Animation, Rendering Pipeline"]
+        Simulation["Simulation, Persistence"]
+    end
 
-L3: Structural
-    ECS              Flecs v4.1.4: world wrapper, ChildOf hierarchy, CASCADE queries, LocalToWorld
-    Component        Type-safe component architecture with variant properties and hierarchy
-    Resource         Resource base with state machine, dependency tracking, priority loading
-    ResourceHub      Centralized resource management, worker threads, memory budgets (de-singletoned)
-    Lifecycle        StateMachine-backed component lifecycle transitions
-    CoordinatedGraph Thread-safe DAG with intent-based locking, deadlock detection
-    ImmutableDAG     Lock-free persistent DAG with structural sharing, snapshot isolation
-    BufferPool       Fixed-size buffer pool with thread-safe allocation and RAII handles
-    BVH              Bounding volume hierarchy, median-split, AABB and frustum queries
+    subgraph L4["L4: Framework"]
+        AppLoop["FabricApp<br/>SDL3 events, fixed timestep"]
+        SceneView["SceneView<br/>Cull, render, Flecs queries"]
+        RmlUi["RmlUi<br/>BgfxRenderInterface, view 255"]
+        SystemReg["SystemRegistry<br/>Kahn toposort, phase runners"]
+    end
 
-    Camera           Projection and view matrix (bx::mtxProj, homogeneousDepth, perspective/ortho)
-    Rendering        AABB, Frustum, DrawCall, RenderList, FrustumCuller
-    RenderCaps       Renderer capability detection and query
+    subgraph L5["L5: Application"]
+        Recurse["Recurse<br/>main(), 15 systems, FabricAppDesc"]
+    end
 
-    Voxel World
-        ChunkedGrid      Sparse 32^3 chunk-based 3D grid template
-        FieldLayer       Typed field over ChunkedGrid (DensityField, EssenceField)
-        VoxelMesher      Greedy meshing, per-vertex AO (4 levels), packed 8-byte VoxelVertex, palette
-        VoxelRaycast     DDA Amanatides-Woo algorithm (castRay, castRayAll)
-        VoxelRenderer    Chunk rendering with bgfx
-        ChunkStreaming   Dynamic radius, speed-based prefetch, load/unload budgets
-        ChunkMeshManager Dirty-chunk tracking via VoxelChanged event, re-mesh queue
-        TerrainGenerator Procedural terrain via FastNoise2 (FBm, Cellular, DomainWarp)
-        CaveCarver       Cellular automata cave generation
-        EssencePalette   Continuous-to-discrete material quantization for greedy merging
-        LSystemVegetation L-system procedural vegetation
-        WFCGenerator     Wave function collapse structure generation
-        StructuralIntegrity Voxel structural support analysis
-
-    Character and Movement
-        CharacterController  AABB ground collision, per-axis resolution, step-up
-        FlightController     6DOF arcade flight with exponential drag
-        MovementFSM          12-state machine via StateMachine<CharacterState>, transition guards
-        TransitionController Ground-air momentum preservation, ground scan
-        DashController       Burst movement with cooldown (ground dash, air boost)
-        CameraController     First-person and third-person with DDA spring arm collision
-        VoxelInteraction     Create/destroy matter via raycast-to-field, VoxelChanged events
-        MeleeSystem          Axis-aligned hitbox, AABB intersection, cooldown, damage events
-
-    Physics
-        PhysicsWorld     Jolt v5.5.0: rigid body dynamics, chunk collision shapes, ghost prevention
-        Ragdoll          Multi-joint capsule bodies, fixed constraints, activate/deactivate
-
-    AI
-        BehaviorAI       BehaviorTree.CPP 4.8.4: NPC behavior trees (patrol, chase, flee, attack)
-        Pathfinding      A* on ChunkedGrid density, 6-connected, maxNodes budget, PathFollower
-
-    Audio
-        AudioSystem      miniaudio 0.11.22: spatial 3D, DDA occlusion, SPSC ring buffer, buses
-        ReverbZone       Spatial reverb regions
-        MaterialSounds   Material-based impact sounds
-
-    Animation
-        Animation        ozz-animation sampling, blending, LocalToModel
-        AnimationEvents  Clip markers, time-wrap processing, typed callbacks
-        SkinnedRenderer  GPU-skinned mesh rendering with bgfx
-        IKSolver         Analytical two-bone inverse kinematics
-        MeshLoader       fastgltf-based glTF 2.0 model loading
-
-    Rendering Pipeline
-        SkyRenderer      Procedural sky rendering
-        WaterSimulation  Water physics simulation
-        WaterRenderer    Water surface rendering with OIT
-        OITCompositor    Order-independent transparency (weighted blended)
-        PostProcess      Bloom pipeline (bright extract, blur, tonemap)
-        ParticleSystem   GPU particle emission and rendering
-        ShadowSystem     Shadow map generation with texel snapping
-        VertexPool       Shared vertex buffer management
-        DebugDraw        bgfx debug overlay rendering (lines, shapes)
-
-    Input
-        InputManager     SDL3 events to Fabric Event dispatch, key bindings
-        InputRouter      SDL3-to-RmlUI event forwarding, InputMode FSM
-        InputRecorder    Input recording and playback
-
-    Simulation
-        SimulationHarness Tick-based field processor, named rules, deterministic ordering, double-buffer
-
-    Persistence
-        SaveManager      Game state save and load
-        DataLoader       TOML-based data file loading
-        FileWatcher      Hot-reload via efsw file system watcher
-        SceneSerializer  Scene graph serialization
-
-    Application State
-        AppModeManager   Application mode FSM (game, editor, menu)
-        DebrisPool       Pooled debris entity management
-
-L4: Framework
-    App loop         SDL3 events, fixed timestep, bgfx render submission
-    SceneView        bgfx view owner, cull and render orchestration via Flecs queries
-    RmlUi            BgfxRenderInterface (8 methods, view 255 UI overlay), FreeType font engine
-    Plugin           Dependency-aware plugin loading, pass by reference
-    ArgumentParser   Builder-pattern CLI argument parser with validation
-    SyntaxTree/Token AST and tokenizer for config and data file parsing
-
-L5: Application
-    Fabric           Main executable: camera WASD, time controls, ECS world, RmlUi context
+    L5 --> L4
+    L4 --> L3
+    L3 --> L2
+    L2 --> L1
+    L1 --> L0
 ```
 
-## Component Inventory
+Each layer depends only on layers below it. `recurse::` code at L5 depends on `fabric::` code at L0 through L4; the reverse dependency never occurs.
 
-### Core (`include/fabric/core/`)
+## System Registration and Lifecycle
 
-| Header | Purpose |
-|--------|---------|
-| `Animation.hh` | ozz-animation sampling, blending, and LocalToModel transform |
-| `AnimationEvents.hh` | Clip markers with time-wrap processing and typed callbacks |
-| `AppContext.hh` | Struct holding World, Timeline, EventDispatcher, ResourceHub references |
-| `AppModeManager.hh` | Application mode FSM (game, editor, menu) with per-mode flag table |
-| `Async.hh` | Standalone Asio io_context; `fabric::async::init()`, `poll()`, `run()`, `shutdown()`, `makeStrand()`, `makeTimer()`, `use_nothrow` |
-| `AudioSystem.hh` | miniaudio spatial 3D audio, DDA occlusion through ChunkedGrid, SPSC ring buffer, sound categories and buses |
-| `BehaviorAI.hh` | BehaviorTree.CPP NPC AI; patrol, chase, flee, attack behavior trees; perception queries; cached Flecs queries |
-| `BgfxCallback.hh` | bgfx debug callback handler for logging and profiling |
-| `BTDebugPanel.hh` | Behavior tree debug visualization panel (RmlUi) |
-| `Camera.hh` | Projection and view matrix generation via bx::mtxProj with bgfx homogeneousDepth; perspective and ortho |
-| `CameraController.hh` | First-person and third-person camera; DDA spring arm collision through ChunkedGrid; pitch clamp |
-| `CaveCarver.hh` | Cellular automata cave generation on ChunkedGrid |
-| `CharacterController.hh` | AABB ground collision with per-axis resolution, step-up, velocity integration |
-| `CharacterTypes.hh` | Shared POD: CharacterState enum, Velocity, DashState, CharacterConfig |
-| `ChunkedGrid.hh` | Sparse 32^3 chunk-based 3D grid template with cross-chunk neighbor access |
-| `ChunkMeshManager.hh` | Dirty-chunk tracking via VoxelChanged event, budgeted re-mesh queue |
-| `ChunkStreaming.hh` | Dynamic-radius chunk loading with speed-based prefetch, load/unload budgets |
-| `Command.hh` | Execute/undo/redo command pattern with composite commands and history |
-| `Component.hh` | Base component class with variant-based property storage, lifecycle methods, child management |
-| `Constants.g.hh` | Generated constants (APP_NAME, APP_VERSION); output to build dir from `cmake/Constants.g.hh.in` |
-| `ContentBrowser.hh` | Asset browser for runtime content inspection |
-| `DashController.hh` | Burst movement with cooldown; ground dash and air boost variants |
-| `DataLoader.hh` | TOML-based data file loading via toml++ |
-| `DebrisPool.hh` | Pooled debris entity lifecycle management |
-| `DebugDraw.hh` | bgfx debug overlay rendering (lines, boxes, spheres) via bgfx examples/common/debugdraw |
-| `DevConsole.hh` | In-game developer console (RmlUi) |
-| `ECS.hh` | Flecs v4.1.4 world wrapper; Position, Rotation, Scale, BoundingBox POD components; ChildOf hierarchy; CASCADE LocalToWorld |
-| `EssencePalette.hh` | Continuous vec4 essence to discrete palette index quantization for greedy mesh merging |
-| `Event.hh` | Thread-safe typed event handling with priority-sorted handlers, cancellation, propagation control, std::any payloads |
-| `FieldLayer.hh` | Typed field over ChunkedGrid (DensityField, EssenceField type aliases); sample, fill, iterate |
-| `FileWatcher.hh` | Hot-reload via efsw cross-platform file system watcher |
-| `FlightController.hh` | 6DOF arcade flight with equal-priority axes and exponential drag |
-| `IKSolver.hh` | Analytical two-bone inverse kinematics solver |
-| `InputManager.hh` | SDL3 events to Fabric Event dispatch; WASD, mouse look, key bindings |
-| `InputRecorder.hh` | Input event recording and deterministic playback |
-| `InputRouter.hh` | SDL3-to-RmlUI event forwarding; InputMode FSM; ~45 key mappings |
-| `JsonTypes.hh` | ADL-visible `to_json`/`from_json` for Vector2, Vector3, Vector4, Quaternion via nlohmann/json |
-| `Lifecycle.hh` | StateMachine-backed component lifecycle (Created, Initialized, Rendered, Updating, Suspended, Destroyed) |
-| `Log.hh` | Quill v11 wrapper; `fabric::log::init()`, `shutdown()`, `setLevel()`; FABRIC_LOG_{TRACE,DEBUG,INFO,WARN,ERROR,CRITICAL} macros |
-| `LSystemVegetation.hh` | L-system procedural vegetation generation |
-| `MaterialSounds.hh` | Material-based impact and interaction sound mapping |
-| `MeleeSystem.hh` | Axis-aligned hitbox combat; AABB intersection, cooldown timer, damage events |
-| `MeshLoader.hh` | fastgltf-based glTF 2.0 model loading (meshes, materials, textures) |
-| `MovementFSM.hh` | 12-state movement FSM via StateMachine\<CharacterState\>; transition guards for each state pair |
-| `OITCompositor.hh` | Order-independent transparency compositor (weighted blended); accumulation and composite passes |
-| `ParticleSystem.hh` | GPU particle emission, simulation, and rendering |
-| `Pathfinding.hh` | A* on ChunkedGrid density; 6-connected neighbors; maxNodes budget; PathFollower with seek/arrive steering |
-| `PhysicsWorld.hh` | Jolt v5.5.0 rigid body dynamics; chunk collision shapes; debris constraints; ghost prevention |
-| `Pipeline.hh` | Typed multi-stage data processing pipeline with fan-out, conditional stages, error handling |
-| `Plugin.hh` | Dependency-aware plugin loading with resource management |
-| `PostProcess.hh` | Bloom pipeline: bright extract, Gaussian blur, tonemap composite |
-| `Ragdoll.hh` | Multi-joint capsule body ragdoll; fixed constraints; activate/deactivate on demand |
-| `RenderCaps.hh` | Renderer capability detection and feature queries |
-| `Rendering.hh` | AABB, Frustum, DrawCall, RenderList, FrustumCuller for scene rendering |
-| `Resource.hh` | Resource base with state machine (Unloaded, Loading, Loaded, LoadingFailed, Unloading), dependency tracking |
-| `ResourceHub.hh` | Centralized resource management; CoordinatedGraph-backed dependencies; worker threads; memory budgets; de-singletoned |
-| `ReverbZone.hh` | Spatial reverb region definition and blending |
-| `SaveManager.hh` | Game state serialization, save, and load |
-| `SceneSerializer.hh` | Scene graph serialization and deserialization |
-| `SceneView.hh` | bgfx view owner; Camera reference; ECS world; frustum cull and render list submission |
-| `ShadowSystem.hh` | Shadow map generation with texel-snapping to prevent shimmer |
-| `Simulation.hh` | Tick-based field processor with named rules, deterministic ordering, double-buffer mode |
-| `SkinnedRenderer.hh` | GPU-skinned mesh rendering via bgfx; bone matrix upload; mesh buffer cache |
-| `SkyRenderer.hh` | Procedural sky rendering (atmosphere, sun position) |
-| `Spatial.hh` | Type-safe Vector2/3/4, Quaternion, Matrix4x4, Transform; compile-time coordinate space tags (Local, World, Screen, Parent); GLM bridge for `inverse()` |
-| `StateMachine.hh` | Generic state machine template parameterized on enum; transition validation, guards, entry/exit actions, observers |
-| `StructuralIntegrity.hh` | Voxel structural support analysis and collapse detection |
-| `Temporal.hh` | Multi-timeline time processing with snapshots, variable time flow, region support |
-| `TerrainGenerator.hh` | Procedural terrain via FastNoise2 (FBm, Cellular, DomainWarp) |
-| `TransitionController.hh` | Ground-air transition with momentum preservation and ground scan |
-| `Types.hh` | Core Variant (`nullptr_t, bool, int, float, double, string`), StringMap, Optional aliases |
-| `VertexPool.hh` | Shared bgfx vertex buffer management and allocation |
-| `VoxelInteraction.hh` | Create/destroy matter via raycast-to-field; fires VoxelChanged events |
-| `VoxelMesher.hh` | Greedy meshing (Lysenko algorithm); per-vertex AO (3-neighbor, 4 levels); packed VoxelVertex (8 bytes); palette-based materials |
-| `VoxelRaycast.hh` | DDA Amanatides-Woo voxel raycasting; castRay (first hit) and castRayAll (all intersections) |
-| `VoxelRenderer.hh` | Chunk voxel mesh rendering with bgfx |
-| `VoxelVertex.hh` | Packed 8-byte vertex layout: position (3x8), normal (3-bit), AO (2-bit), materialId (8-bit) |
-| `WaterRenderer.hh` | Water surface rendering with OIT transparency |
-| `WaterSimulation.hh` | Water physics simulation (flow, height field) |
-| `WFCGenerator.hh` | Wave function collapse procedural structure generation |
+### FabricAppDesc Pattern
 
-### Codec (`include/fabric/codec/`)
+Recurse constructs a `FabricAppDesc`, registers 15 game systems via `desc.registerSystem<T>(phase)`, and passes the descriptor to `FabricApp::run()`. Each system is a subclass of `fabric::SystemBase` and implements `init()`, `shutdown()`, and one of `fixedUpdate()`, `update()`, or `render()`. Dependencies between systems are declared in `configureDependencies()` using `after<T>()` and `before<T>()` constraints.
 
-| Header | Purpose |
-|--------|---------|
-| `Codec.hh` | Encode/decode pipeline for binary, text, and structured data; codec registry and chaining |
+### Dependency Resolution
 
-### Parser (`include/fabric/parser/`)
+`SystemRegistry` resolves inter-system dependencies within each phase using Kahn's algorithm (topological sort). Registration order does not determine execution order; the toposort does. Circular dependencies are detected at registration time and cause a fatal error.
 
-| Header | Purpose |
-|--------|---------|
-| `ArgumentParser.hh` | Builder-pattern CLI argument parser with named arguments, flags, and validation |
-| `SyntaxTree.hh` | AST for config and data file parsing |
-| `Token.hh` | Tokenizer with extensible type system for the parser |
+### 9-Phase Application Lifecycle
 
-### UI (`include/fabric/ui/`)
+`FabricApp::run()` owns the entire application lifecycle. All state is local to `run()`; there are no member variables or singletons.
 
-| Header | Purpose |
-|--------|---------|
-| `BgfxRenderInterface.hh` | RmlUi RenderInterface for bgfx (8 methods, view 255, premultiplied alpha, SPIR-V shaders) |
-| `BgfxSystemInterface.hh` | RmlUi SystemInterface (logging bridge, elapsed time) |
-| `DebugHUD.hh` | RmlUi-based debug overlay (FPS, memory, ECS stats) |
-| `ToastManager.hh` | Notification toast display and lifecycle |
-| `WebView.hh` | Embedded browser with JavaScript bridge (optional, via `FABRIC_USE_WEBVIEW`) |
+| Phase | Description |
+|-------|-------------|
+| 1. Bootstrap | Parse CLI arguments, init logging (Quill) |
+| 2. Platform Init | SDL_Init, PlatformInfo::populate(), config loading, window creation, bgfx::init() |
+| 3. Infrastructure | Create AppContext, ECS world, Timeline, EventDispatcher, ResourceHub, SystemRegistry |
+| 4. System Registration | Execute FabricAppDesc system factories (registerSystem calls) |
+| 5. Dependency Resolution | Kahn toposort within each SystemPhase |
+| 6. System Init | Call init() on all systems in dependency order (wrapped in try-catch) |
+| 7. Application Init | Execute FabricAppDesc::onInit callback (key bindings, ECS setup) |
+| 8. Main Loop | Fixed timestep loop: SDL events, phase runners (PreUpdate through PostRender) |
+| 9. Shutdown | Systems shutdown in reverse order, bgfx shutdown, SDL_Quit |
 
-### Utils (`include/fabric/utils/`)
+### System Phases
 
-| Header | Purpose |
-|--------|---------|
-| `BufferPool.hh` | Fixed-size buffer pool with thread-safe allocation, RAII handles, configurable block sizes |
-| `BVH.hh` | Bounding volume hierarchy; median-split construction; AABB and frustum queries |
-| `CoordinatedGraph.hh` | Thread-safe DAG with intent-based locking (Read, NodeModify, GraphStructure); deadlock detection; BFS/DFS/topological sort |
-| `ErrorHandling.hh` | FabricException class, `throwError()`, `ErrorCode` enum (Ok, BufferOverrun, InvalidState, Timeout, etc.), `Result<T>` template |
-| `ImmutableDAG.hh` | Lock-free persistent DAG with structural sharing, snapshot isolation, BFS/DFS/topological sort, LCA queries |
-| `Profiler.hh` | Tracy v0.13.1 abstraction; FABRIC_ZONE_*, FABRIC_FRAME_*, FABRIC_ALLOC/FREE, FABRIC_LOCKABLE; compiles to nothing when off |
-| `Testing.hh` | MockComponent, test utilities, helpers for concurrent test scenarios |
-| `ThreadPoolExecutor.hh` | Thread pool with task submission, timeout support, testing mode (synchronous execution) |
-| `TimeoutLock.hh` | Timeout-protected lock acquisition for shared_mutex and mutex types |
-| `Utils.hh` | `generateUniqueId()` with thread-safe random hex generation |
+The main loop dispatches systems across seven phases. FixedUpdate runs N times per frame at a fixed timestep; all other phases run once per frame.
 
-### Source-only Files
+| Phase | Cadence | Purpose |
+|-------|---------|---------|
+| PreUpdate | Per frame | Input polling, event dispatch, mode transitions |
+| FixedUpdate | N per frame | Physics, AI, simulation at fixed timestep |
+| Update | Per frame | Camera, audio, per-frame logic |
+| PostUpdate | Per frame | Post-simulation cleanup, state sync |
+| PreRender | Per frame | Shadow cascades, LOD selection, culling |
+| Render | Per frame | Scene submission, voxel rendering, particles |
+| PostRender | Per frame | UI overlay, debug HUD, frame flip |
 
-| File | Purpose |
-|------|---------|
-| `src/core/Fabric.cc` | Main executable entry point: SDL3 init, bgfx init, ECS world, main loop |
-| `src/core/MimallocOverride.cc` | Forces linker to pull mimalloc malloc/free/new/delete overrides; compiled into Fabric executable only |
+## System Execution Graph
 
-## Dependencies
+```mermaid
+graph LR
+    subgraph FixedUpdate
+        TS[TerrainSystem]
+        PGS[PhysicsGameSystem]
+        CMS[CharacterMovementSystem]
+        CPS[ChunkPipelineSystem]
+        VIS[VoxelInteractionSystem]
+        SGS[SaveGameSystem]
+        AIGS[AIGameSystem]
+        PAGS[ParticleGameSystem]
 
-All dependencies are fetched via [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) v0.42.1. Each library has a dedicated module in `cmake/modules/`. Set `CPM_SOURCE_CACHE=~/.cache/CPM` (configured in `mise.toml`) to share sources across builds.
+        TS --> PGS
+        PGS --> CMS
+        CMS --> CPS
+        CMS --> VIS
+        CMS --> SGS
+    end
 
-| Dependency | Version | Module | Type | Purpose |
-|------------|---------|--------|------|---------|
-| [bgfx](https://github.com/bkaradzic/bgfx.cmake) | 1.139.9155-513 | FabricBgfx | Static | Vulkan rendering (SPIR-V shaders, MoltenVK on macOS) |
-| [SDL3](https://github.com/libsdl-org/SDL) | 3.4.2 | (inline) | Static | Windowing, input, timers, native handles for bgfx |
-| [Flecs](https://github.com/SanderMertens/flecs) | 4.1.4 | FabricFlecs | Static | Entity Component System (archetype SoA, query caching) |
-| [RmlUi](https://github.com/mikke89/RmlUi) | 6.2 | FabricRmlUi | Static | In-game UI (HTML/CSS layout, bgfx RenderInterface) |
-| [FreeType](https://github.com/freetype/freetype) | 2.14.1 | FabricRmlUi | Static (fallback) | Font rendering (fetched from source when system package not found) |
-| [Jolt Physics](https://github.com/jrouwe/JoltPhysics) | 5.5.0 | FabricJolt | Static | Rigid body dynamics, collision shapes, ragdoll |
-| [BehaviorTree.CPP](https://github.com/BehaviorTree/BehaviorTree.CPP) | 4.8.4 | FabricBehaviorTree | Static | XML behavior trees, action/condition nodes |
-| [ozz-animation](https://github.com/guillaumeblanc/ozz-animation) | 0.16.0 | FabricOzzAnimation | Static | SoA SIMD skeleton animation (sampling, blending, LocalToModel) |
-| [fastgltf](https://github.com/spnda/fastgltf) | 0.9.0 | FabricFastgltf | Static | High-performance glTF 2.0 parser, C++20, zero-copy |
-| [FastNoise2](https://github.com/Auburn/FastNoise2) | 1.1.1 | FabricFastNoise2 | Static | SIMD-accelerated noise (FBm, Cellular, DomainWarp) |
-| [efsw](https://github.com/SpartanJ/efsw) | 1.5.1 | FabricEfsw | Static | Cross-platform file system watcher for hot-reload |
-| [miniaudio](https://github.com/mackron/miniaudio) | 0.11.22 | FabricMiniaudio | Header only | Cross-platform audio, spatial 3D |
-| [Quill](https://github.com/odygrd/quill) | 11.0.2 | FabricQuill | Static | Async structured logging (bundles fmtlib v12.1.0 as fmtquill) |
-| [GLM](https://github.com/g-truc/glm) | 1.0.3 | FabricGLM | Header only | OpenGL Mathematics (vectors, matrices, quaternions) |
-| [nlohmann/json](https://github.com/nlohmann/json) | 3.12.0 | FabricNlohmannJson | Header only | JSON serialization for spatial types |
-| [Standalone Asio](https://github.com/chriskohlhoff/asio) | 1.36.0 | FabricAsio | Header only | Async I/O with C++20 coroutines (standalone, no Boost) |
-| [toml++](https://github.com/marzer/tomlplusplus) | 3.4.0 | FabricToml | Header only | TOML v1.0 parser for configuration and data files |
-| [Tracy](https://github.com/wolfpld/tracy) | 0.13.1 | FabricTracy | Static (optional) | Frame profiler; only fetched when `FABRIC_ENABLE_PROFILING=ON` |
-| [mimalloc](https://github.com/microsoft/mimalloc) | 2.2.7 | FabricMimalloc | Static (optional) | Allocator override; only fetched when `FABRIC_USE_MIMALLOC=ON` |
-| [webview](https://github.com/webview/webview) | 0.12.0 | (inline) | Static | Embedded browser view, JS bridge |
-| [GoogleTest](https://github.com/google/googletest) | 1.17.0 | FabricGoogleTest | Static (dev) | Testing framework (GTest + GMock) |
+    subgraph Update
+        CGS[CameraGameSystem]
+        AGS[AudioGameSystem]
 
-### Dependency Notes
+        CGS --> AGS
+    end
 
-- **mimalloc**: MI_OVERRIDE is OFF by default because the global malloc replacement conflicts with dlopen'd MoltenVK on macOS. Metal's internal allocators bypass mimalloc's malloc zone, causing crashes in mi_free_size.
-- **Tracy**: conditionally fetched. When profiling is off, all FABRIC_ZONE_* and FABRIC_FRAME_* macros expand to nothing.
-- **Asio**: standalone mode (ASIO_STANDALONE) with C++20 coroutine support (ASIO_HAS_CO_AWAIT, ASIO_HAS_STD_COROUTINE).
-- **GLM**: configured with GLM_FORCE_RADIANS, GLM_FORCE_DEPTH_ZERO_TO_ONE, GLM_FORCE_SILENT_WARNINGS.
-- **FreeType**: fetched from source only when the system package is not found. macOS and most Linux distributions use the system FreeType.
-- **Jolt**: CPP_RTTI_ENABLED=ON is required. Fabric subclasses Jolt types (BroadPhaseLayerInterface, ContactListener); Linux linker rejects missing typeinfo without RTTI.
+    subgraph PreRender
+        SRS[ShadowRenderSystem]
+    end
 
-### CPM PATCHES
+    subgraph Render
+        VRS[VoxelRenderSystem]
+        WRS["WaterRenderSystem<br/>(DISABLED)"]
+        OITRS[OITRenderSystem]
+        DOS[DebugOverlaySystem]
 
-The `cmake/patches/` directory holds vendored patches applied via the CPM `PATCHES` argument during fetch.
+        VRS --> WRS
+        WRS --> OITRS
+        VRS --> DOS
+    end
+```
 
-| Patch | Target | Description |
-|-------|--------|-------------|
-| `bgfx-vk-suboptimal.patch` | bgfx | Treats VK_SUBOPTIMAL_KHR as non-fatal; prevents infinite swapchain recreation on MoltenVK |
+AIGameSystem and ParticleGameSystem run in FixedUpdate but have no declared dependencies on other application systems; the toposort places them at any valid position within the phase.
 
-Patches persist across builds (sources stay modified on disk) and re-apply on version bumps. Existing CPM caches populated before PATCHES was added require manual cache clearing for first application.
+WaterRenderSystem is registered but disabled at runtime pending a VP0 rewrite (Noita-inspired voxel water). The current water simulation consumes 180ms/frame due to an O(total_water_cells) `collectActiveCells` scan.
 
-## Build System
+## Rendering Pipeline
 
-CMake 3.25+ with target-based configuration throughout. Ninja is the default generator. FabricLib is a static library compiled once from all core, utils, parser, codec, and UI sources. All targets link against it.
+### View ID Budget
 
-### Build Targets
+bgfx uses integer view IDs to order render passes. Fabric allocates view IDs across a 0 through 255 range:
 
-| Target | Type | Links | Description |
-|--------|------|-------|-------------|
-| `FabricLib` | Static library | SDL3, bgfx/bx/bimg, webview, GLM, Quill, nlohmann/json, Asio, RmlUi, Flecs, FastNoise2, fastgltf, ozz-animation, Jolt, BehaviorTree.CPP, miniaudio, toml++, efsw, Tracy (optional) | All core, utils, parser, codec, and UI sources |
-| `Fabric` | Executable | FabricLib, mimalloc (optional) | Main application entry point |
-| `UnitTests` | Executable | FabricLib, GTest, GMock, ozz_animation_offline | Unit test runner with custom TestMain |
-| `E2ETests` | Executable | FabricLib, GTest, GMock, ozz_animation_offline | End-to-end test runner with custom TestMain |
+```mermaid
+graph LR
+    Sky["Sky (0)"] --> Geometry["Geometry (1)"]
+    Geometry --> Transparent["Transparent (2)"]
+    Transparent --> Particles["Particles (10)"]
+    Particles --> PostProcess["PostProcess (200-204)"]
+    PostProcess --> OIT["OIT (210-211)"]
+    OIT --> Shadows["Shadows (240+)"]
+    Shadows --> UI["UI (255)"]
+```
 
-### CMake Options
+| View ID | Pass | Notes |
+|---------|------|-------|
+| 0 | Sky | SkyRenderer procedural atmosphere |
+| 1 | Geometry | Opaque voxel chunks, skinned meshes |
+| 2 | Transparent | Alpha-sorted transparent geometry |
+| 10 | Particles | Billboard particle instancing |
+| 200-204 | PostProcess | Bright extract, Gaussian blur, tonemap (dormant) |
+| 210 | OIT Accumulation | RGBA16F weighted blended accumulation |
+| 211 | OIT Composite | Revealage resolve |
+| 240+ | Shadows | Cascaded shadow maps with texel snapping |
+| 255 | UI | RmlUi overlay (BgfxRenderInterface) |
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `FABRIC_BUILD_TESTS` | `ON` | Build UnitTests and E2ETests executables |
-| `FABRIC_USE_WEBVIEW` | `ON` | Enable WebView support; defines `FABRIC_USE_WEBVIEW` preprocessor symbol |
-| `FABRIC_BUILD_UNIVERSAL` | `OFF` | Build universal binaries (arm64 + x86_64), macOS only |
-| `FABRIC_USE_MIMALLOC` | `OFF` | Link mimalloc as global allocator override; OFF by default (MI_OVERRIDE conflicts with MoltenVK) |
-| `FABRIC_ENABLE_PROFILING` | `OFF` | Enable Tracy profiler instrumentation; defines `FABRIC_PROFILING_ENABLED` |
+### Framebuffer Topology
 
-### Shader Compilation
+OIT uses a two-pass MRT: an accumulation pass writes to RGBA16F (weighted color) and R8 (revealage) targets at view 210, then a composite pass at view 211 blends the result into the backbuffer. PostProcess (bloom pipeline: bright extract, Gaussian blur, ACES tonemap) is implemented but dormant; `initPrograms()` only creates `brightProgram_` and skips the remaining two.
 
-Seven CMake modules compile `.sc` shader sources to embedded `.bin.h` headers using bgfx shaderc. All shaders compile to SPIR-V only (platform argument: `linux`, profile: `spirv`). Output headers use the `BGFX_EMBEDDED_SHADER` macro.
+## Build Target Graph
 
-| Module | Shaders | Purpose |
-|--------|---------|---------|
-| FabricRmlUi (shaders) | vs_rmlui, fs_rmlui | UI overlay rendering |
-| FabricSkinnedShaders | vs_skinned, fs_skinned | GPU skeletal mesh skinning |
-| FabricVoxelShaders | vs_voxel, fs_voxel | Voxel chunk terrain |
-| FabricSkyShaders | vs_sky, fs_sky | Procedural sky |
-| FabricPostShaders | vs_fullscreen, fs_bright, fs_blur, fs_tonemap | Bloom pipeline |
-| FabricParticleShaders | vs_particle, fs_particle | Particle rendering |
-| FabricWaterShaders | vs_water, fs_water | Water surface |
-| FabricOITShaders | vs_oit_accum, fs_oit_accum, vs_oit_composite, fs_oit_composite | Order-independent transparency |
+```mermaid
+graph TD
+    subgraph Libraries
+        FabricLib["FabricLib (static library)<br/>Engine + game sources"]
+    end
 
-Shader source files live in `shaders/<category>/` with a `varying.def.sc` per category. FabricLib depends on all shader targets so compilation finishes before source files compile.
+    subgraph Executables
+        Recurse["Recurse (executable)<br/>main() in Recurse.cc"]
+        UnitTests["UnitTests (executable)<br/>GoogleTest + custom TestMain"]
+        E2ETests["E2ETests (executable)<br/>GoogleTest + custom TestMain"]
+    end
 
-### Generated Files
+    subgraph Shaders["Shader Compilation (8 targets)"]
+        RmlUiSh["FabricRmlUi shaders"]
+        SkinnedSh["FabricSkinnedShaders"]
+        VoxelSh["FabricVoxelShaders"]
+        SkySh["FabricSkyShaders"]
+        PostSh["FabricPostShaders"]
+        ParticleSh["FabricParticleShaders"]
+        WaterSh["FabricWaterShaders"]
+        OITSh["FabricOITShaders"]
+    end
 
-`cmake/Constants.g.hh.in` is processed at configure time to produce `${CMAKE_BINARY_DIR}/include/fabric/core/Constants.g.hh`, containing `APP_NAME` and `APP_VERSION` from the CMake project definition. The build directory include path takes precedence over the source tree copy.
+    FabricLib --> Recurse
+    FabricLib --> UnitTests
+    FabricLib --> E2ETests
 
-## Testing
+    RmlUiSh --> FabricLib
+    SkinnedSh --> FabricLib
+    VoxelSh --> FabricLib
+    SkySh --> FabricLib
+    PostSh --> FabricLib
+    ParticleSh --> FabricLib
+    WaterSh --> FabricLib
+    OITSh --> FabricLib
+```
 
-GoogleTest 1.17.0 for all tests. 1429+ tests across 111+ suites, organized into unit and E2E categories. Both test executables use a custom `tests/TestMain.cc` that initializes Quill logging before test execution. See [TESTING.md](TESTING.md) for test conventions, suite inventory, and patterns.
+FabricLib is a single static library containing all engine and game sources. Shader `.sc` files compile to SPIR-V embedded `.bin.h` headers via bgfx `shaderc`. FabricLib depends on all 8 shader targets so that embedded headers exist before C++ compilation.
 
-## Platform Support
+## Directory Structure
 
-| Platform | Minimum | Compiler | Notes |
-|----------|---------|----------|-------|
-| macOS | 15.0+ | Apple Clang | Xcode CLT; Cocoa, WebKit, Metal, QuartzCore frameworks; Vulkan via MoltenVK |
-| Linux | Recent kernel | GCC 10+ or Clang 13+ | webkit2gtk-4.1 (falls back to 4.0); Vulkan SDK and GPU drivers |
-| Windows | 10+ | MSVC 19.29+ | Windows 10 SDK; D3D12, DXGI, shlwapi, version libs; Vulkan drivers |
+```
+fabric/
+├── include/
+│   ├── fabric/                    # Engine headers (namespace fabric::)
+│   │   ├── core/                  # Core systems: ECS, Event, Camera, Audio, Physics, AI, etc.
+│   │   ├── codec/                 # Encode/decode pipeline
+│   │   ├── parser/                # ArgumentParser, SyntaxTree, Token
+│   │   ├── platform/              # WindowDesc, PlatformInfo, CursorManager
+│   │   ├── ui/                    # BgfxRenderInterface, BgfxSystemInterface, DebugHUD, WebView
+│   │   └── utils/                 # BVH, BufferPool, CoordinatedGraph, ErrorHandling, Profiler
+│   └── recurse/                   # Game headers (namespace recurse::)
+│       ├── ai/                    # BehaviorAI, Pathfinding
+│       ├── animation/             # Animation, AnimationEvents, IKSolver, SkinnedRenderer
+│       ├── audio/                 # AudioSystem, ReverbZone, MaterialSounds
+│       ├── gameplay/              # CharacterController, FlightController, VoxelInteraction, Melee
+│       ├── persistence/           # SaveManager, DataLoader
+│       ├── physics/               # PhysicsWorld, Ragdoll
+│       ├── render/                # SkyRenderer, WaterRenderer, OITCompositor, PostProcess, etc.
+│       ├── systems/               # 15 SystemBase subclasses (one per game system)
+│       ├── ui/                    # InputRouter, ToastManager, ContentBrowser
+│       └── world/                 # ChunkedGrid, ChunkStreaming, TerrainGenerator, VoxelMesher, etc.
+├── src/
+│   ├── core/                      # Engine source files
+│   ├── codec/
+│   ├── parser/
+│   ├── ui/
+│   ├── utils/
+│   └── recurse/                   # Game source files (mirrors include/recurse/ subdirectories)
+│       ├── Recurse.cc             # main() entry point
+│       ├── ai/, animation/, audio/, gameplay/, persistence/
+│       ├── physics/, render/, systems/, ui/, world/
+├── shaders/                       # bgfx .sc shader sources
+│   ├── oit/                       # OIT accumulation and composite
+│   ├── particle/                  # Particle billboard rendering
+│   ├── post/                      # Bloom pipeline (bright, blur, tonemap)
+│   ├── rmlui/                     # UI overlay
+│   ├── skinned/                   # GPU skeletal mesh skinning
+│   ├── sky/                       # Procedural sky
+│   ├── voxel/                     # Voxel chunk terrain
+│   └── water/                     # Water surface
+├── tests/
+│   ├── unit/                      # Unit tests (codec/, core/, parser/, ui/, utils/)
+│   ├── e2e/                       # End-to-end tests
+│   └── TestMain.cc                # Shared main() with Quill init
+├── cmake/
+│   ├── CPM.cmake                  # CPM.cmake v0.42.1
+│   ├── modules/                   # 25 CMake modules (dependency + shader targets)
+│   └── patches/                   # Vendored dependency patches
+├── tasks/                         # Shell (.sh) and PowerShell (.ps1) task scripts
+├── assets/                        # Runtime assets (UI .rml/.rcss files)
+├── CMakeLists.txt
+├── CMakePresets.json              # 12 configure presets (dev + CI + sanitize + coverage)
+├── mise.toml                      # Task runner (build, test, lint, profile, analysis)
+└── mise.windows.toml              # Windows environment overrides
+```
 
-### Platform Contracts
+## Namespace Conventions
 
-The Vulkan-only backend imposes constraints that must be satisfied at runtime.
+| Namespace | Scope | Examples |
+|-----------|-------|---------|
+| `fabric::` | Engine types, components, utilities | `fabric::Event`, `fabric::Camera`, `fabric::FabricApp` |
+| `fabric::log` | Logging subsystem | `fabric::log::init()`, `FABRIC_LOG_INFO(...)` |
+| `fabric::async` | Async I/O subsystem | `fabric::async::init()`, `fabric::async::makeStrand()` |
+| `fabric::Utils` | General utilities | `fabric::Utils::generateUniqueId()` |
+| `fabric::Testing` | Test utilities | `fabric::Testing::MockComponent` |
+| `recurse::` | Game-specific types | `recurse::TerrainGenerator`, `recurse::PhysicsWorld` |
+| `recurse::systems` | SystemBase subclasses | `recurse::systems::TerrainSystem` |
 
-| Contract | Requirement | Consequence of violation |
-|----------|-------------|------------------------|
-| SDL window flags | `SDL_WINDOW_VULKAN` on SDL3 window creation | bgfx cannot create a Vulkan surface |
-| HiDPI reset flag | `BGFX_RESET_HIDPI` on both `bgfx::init()` and every `bgfx::reset()` | Half-resolution rendering on Retina/HiDPI |
-| Single-threaded init | `bgfx::renderFrame()` before `bgfx::init()` on macOS | Render thread deadlock with Metal/MoltenVK |
-| MoltenVK runtime | macOS: `brew install molten-vk vulkan-loader`; BUILD_RPATH set to `/opt/homebrew/lib` | Vulkan loader not found at runtime |
-| VK_SUBOPTIMAL_KHR | Patched via CPM PATCHES (`bgfx-vk-suboptimal.patch`) | Window resize or display switch crashes |
+The dependency direction is strictly one-way: `recurse::` depends on `fabric::`, never the reverse.
 
-## Known Issues
+## Configuration
 
-1. **Temporal scaffolding**: approximately 10-15% remaining unused scaffolding. Core timeline and snapshot functionality works. Generic Interpolator template and makeTimeBehavior factory are functional but underused.
-2. **OIT double-init**: OITCompositor initialized twice at startup (duplicate bgfx uniforms). Likely a spurious SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED on the first frame.
-3. **Missing .rml assets**: DebugHUD, BTDebugPanel, DevConsole fail to load .rml files at runtime. Build runs from `build/dev-debug/bin/` but assets are in source tree.
-4. **Mesh buffer cache key**: SkinnedRenderer uses raw mesh pointer as cache key. Vulnerable to use-after-free if MeshData relocates. Needs a stable mesh ID.
-5. **miniaudio resource manager UAF**: v0.11.22 has heap-use-after-free when loading nonexistent files in headless mode. Workaround: std::filesystem::exists() pre-check in executePlay.
-6. **No runtime configuration**: Window size, clear color, reset flags, view IDs, initial AppMode, and physics timestep are all hardcoded in Fabric.cc. toml++ is a dependency but unused for engine config. Runtime config is designed for Sprint 15.
+### 5-Layer TOML Configuration
+
+Configuration loads in ascending precedence:
+
+| Layer | Source | Scope |
+|-------|--------|-------|
+| 1. Compiled defaults | Hardcoded in engine | Fallback values |
+| 2. `fabric.toml` | Engine config file | Renderer, platform, logging |
+| 3. `recurse.toml` | Application config file | Window size, FOV, timestep, initial mode |
+| 4. `user.toml` | Platform-standard user path | Persistent user preferences |
+| 5. CLI flags | Command-line arguments | Override everything |
+
+User preferences persist to platform-standard locations: `~/.config/fabric/user.toml` on Linux, `~/Library/Application Support/Fabric/` on macOS, `%APPDATA%/Fabric/` on Windows.
+
+### RuntimeState
+
+A transient `RuntimeState` struct holds non-persistent system state (resize events, DPI changes, debug flags). RuntimeState is not written to disk and not part of the configuration hierarchy.
+
+## Known Limitations
+
+1. **Water system disabled**: WaterRenderSystem is registered but disabled at runtime. The water simulation consumes 180ms/frame due to O(total_water_cells) scanning in `collectActiveCells`. Architecture requires a full rewrite (VP0, Noita-inspired voxel water).
+
+2. **PostProcess dormant**: The bloom pipeline (`initPrograms()`) only creates `brightProgram_`; the blur and tonemap programs are never initialized. PostProcess is disabled by default. Fix deferred to VP0 HDR pipeline work.
+
+3. **Visual bugs partially fixed**: BUG-LIGHTSTREAK (uniform consumed by DISCARD_ALL) and BUG-CHUNKFACE (LOD neighbor dirtying) have code fixes applied but unconfirmed at runtime. Validation requires a render state inspection layer that does not yet exist.
+
+4. **Memory usage approximately 500MB**: Cause unconfirmed. Suspected contributors: 14 worker thread stacks, chunk density/essence field allocations, bgfx Metal resource pool.
+
+5. **OIT double-init**: OITCompositor initializes twice at startup (duplicate bgfx uniforms), likely from a spurious `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED` on the first frame.
+
+6. **Missing .rml assets at runtime**: DebugHUD, BTDebugPanel, and DevConsole fail to load `.rml` files because the build binary runs from `build/dev-debug/bin/` while assets live in the source tree.
+
+7. **4 AppContext optional fields never wired**: `inputSystem`, `platformInfo`, `renderCaps`, and `cursorManager` are declared in AppContext but never populated in `FabricApp::run()`.
+
+8. **No render state validation**: Unit tests run against a bgfx noop backend and verify CPU-side logic. There is no mechanism to assert uniform values, draw state, or view configuration at submit time. Visual correctness remains unverifiable in CI.
