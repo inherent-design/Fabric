@@ -6,7 +6,6 @@
 // bgfx debugdraw from examples/common (compiled into FabricLib via CMake)
 #include "debugdraw.h"
 
-
 using namespace fabric;
 
 namespace recurse {

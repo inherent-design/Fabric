@@ -5,7 +5,6 @@
 
 #include "fabric/core/Log.hh"
 
-
 using namespace fabric;
 
 namespace recurse {

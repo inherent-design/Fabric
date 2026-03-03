@@ -8,7 +8,6 @@
 #include <unordered_map>
 #include <vector>
 
-
 using namespace fabric;
 
 namespace recurse {

@@ -8,7 +8,6 @@
 
 namespace recurse {
 
-
 enum class AnimEventType : uint8_t {
     Footstep,
     Impact,

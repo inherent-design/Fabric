@@ -7,7 +7,6 @@
 #include <FastNoise/FastNoise.h>
 #include <vector>
 
-
 using namespace fabric;
 
 namespace recurse {

@@ -10,7 +10,6 @@ namespace recurse {
 namespace Space = fabric::Space;
 using fabric::Vector4;
 
-
 // Maps continuous vec4 essence values to discrete palette indices for greedy
 // meshing. Entries within epsilon distance are merged to the same index.
 // Max palette size: 65536 (uint16_t range).

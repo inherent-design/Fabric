@@ -3,7 +3,6 @@
 
 #include <algorithm>
 
-
 using namespace fabric;
 
 namespace recurse {

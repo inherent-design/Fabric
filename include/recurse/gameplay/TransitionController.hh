@@ -1,14 +1,13 @@
 #pragma once
 
+#include "fabric/core/Rendering.hh"
 #include "recurse/gameplay/CharacterTypes.hh"
 #include "recurse/world/ChunkedGrid.hh"
-#include "fabric/core/Rendering.hh"
 
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::Vec3f;
-
 
 class TransitionController {
   public:

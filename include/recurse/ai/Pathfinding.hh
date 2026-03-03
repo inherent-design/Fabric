@@ -1,7 +1,7 @@
 #pragma once
 
-#include "recurse/world/ChunkedGrid.hh"
 #include "fabric/core/Rendering.hh"
+#include "recurse/world/ChunkedGrid.hh"
 
 #include <vector>
 
@@ -9,7 +9,6 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::Vec3f;
-
 
 struct PathNode {
     int x = 0;

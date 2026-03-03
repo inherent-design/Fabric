@@ -4,7 +4,6 @@
 
 namespace recurse {
 
-
 /// Flags controlling which debug overlays are active.
 enum class DebugDrawFlags : uint32_t {
     None = 0,

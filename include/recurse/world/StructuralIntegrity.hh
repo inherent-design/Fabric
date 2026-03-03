@@ -9,7 +9,6 @@
 
 namespace recurse {
 
-
 template <typename T> class ChunkedGrid;
 
 inline constexpr int kStructuralIntegrityChunkSize = 32;

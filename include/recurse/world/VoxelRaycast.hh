@@ -9,7 +9,6 @@
 
 namespace recurse {
 
-
 struct VoxelHit {
     int x, y, z;
     int nx, ny, nz;

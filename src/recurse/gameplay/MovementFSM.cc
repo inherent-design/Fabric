@@ -1,7 +1,6 @@
 #include "recurse/gameplay/MovementFSM.hh"
 #include "fabric/core/Log.hh"
 
-
 using namespace fabric;
 
 namespace recurse {

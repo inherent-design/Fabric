@@ -6,7 +6,6 @@
 
 namespace recurse {
 
-
 /// Content browser for navigating engine asset directories.
 /// Toggle visibility with F7. Uses std::filesystem to scan directories
 /// and filter by allowed asset extensions.

@@ -13,7 +13,6 @@
 #include <ozz/animation/offline/skeleton_builder.h>
 #include <ozz/base/memory/allocator.h>
 
-
 using namespace fabric;
 
 namespace recurse {

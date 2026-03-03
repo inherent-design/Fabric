@@ -6,7 +6,6 @@
 #include <iomanip>
 #include <sstream>
 
-
 using namespace fabric;
 
 namespace recurse {

@@ -9,7 +9,6 @@
 
 namespace recurse {
 
-
 /// Result of BFS flood-fill zone estimation.
 struct ZoneEstimate {
     int volume = 0;        ///< Number of air voxels visited.

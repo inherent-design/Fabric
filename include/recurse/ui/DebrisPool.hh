@@ -14,7 +14,6 @@ namespace recurse {
 namespace Space = fabric::Space;
 using fabric::Vector3;
 
-
 struct Debris {
     Vector3<float, Space::World> position;
     Vector3<float, Space::World> velocity;

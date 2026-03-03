@@ -11,7 +11,6 @@ namespace recurse {
 namespace Space = fabric::Space;
 using fabric::Vector3;
 
-
 // Per-chunk info for batch rendering.
 struct ChunkRenderInfo {
     const ChunkMesh* mesh;

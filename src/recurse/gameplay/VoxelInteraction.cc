@@ -1,7 +1,6 @@
 #include "recurse/gameplay/VoxelInteraction.hh"
 #include "recurse/world/ChunkMeshManager.hh"
 
-
 using namespace fabric;
 
 namespace recurse {

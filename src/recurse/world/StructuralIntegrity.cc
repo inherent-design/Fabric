@@ -4,7 +4,6 @@
 
 #include <chrono>
 
-
 namespace recurse {
 
 StructuralIntegrity::StructuralIntegrity() = default;
