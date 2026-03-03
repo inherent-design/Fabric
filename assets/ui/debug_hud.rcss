@@ -25,14 +25,20 @@ body {
 }
 
 .row {
-    margin-bottom: 2dp;
+    margin-bottom: 3dp;
+}
+
+.section {
+    margin-bottom: 8dp;
 }
 
 .section-title {
     color: #aaaaaa;
     font-size: 12dp;
-    margin-top: 4dp;
-    margin-bottom: 2dp;
+    margin-top: 0dp;
+    margin-bottom: 4dp;
     border-bottom: 1dp #ffffff22;
-    padding-bottom: 2dp;
+    padding-bottom: 3dp;
+    text-transform: uppercase;
+    letter-spacing: 1dp;
 }
