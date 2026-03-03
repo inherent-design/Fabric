@@ -1,0 +1,44 @@
+body {
+    font-family: 'Roboto Mono';
+    font-size: 13dp;
+    color: #e0e0e0;
+}
+
+#waila-panel {
+    position: fixed;
+    top: 8dp;
+    left: 50%;
+    margin-left: -140dp;
+    width: 280dp;
+    padding: 6dp 10dp;
+    background-color: #00000088;
+    border: 1dp #ffffff22;
+}
+
+#waila-sky {
+    position: fixed;
+    top: 8dp;
+    left: 50%;
+    margin-left: -40dp;
+    width: 80dp;
+    padding: 6dp 10dp;
+    background-color: #00000088;
+    border: 1dp #ffffff22;
+    text-align: center;
+}
+
+.waila-row {
+    margin-bottom: 1dp;
+}
+
+.waila-label {
+    color: #888888;
+    display: inline;
+    font-size: 12dp;
+}
+
+.waila-value {
+    color: #ffffff;
+    display: inline;
+    font-size: 12dp;
+}

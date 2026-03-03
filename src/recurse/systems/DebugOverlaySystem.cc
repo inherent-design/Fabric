@@ -25,6 +25,7 @@
 #include "recurse/world/ChunkMeshManager.hh"
 #include "recurse/world/ChunkStreaming.hh"
 #include "recurse/world/VoxelMesher.hh"
+#include "recurse/world/VoxelRaycast.hh"
 
 #include <bgfx/bgfx.h>
 #include <SDL3/SDL.h>
@@ -46,6 +47,7 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
 
     debugDraw_.init();
     debugHUD_.init(ctx.rmlContext);
+    wailaPanel_.init(ctx.rmlContext);
     btDebugPanel_.init(ctx.rmlContext);
     contentBrowser_.init("assets/");
     devConsole_.init(ctx.rmlContext);
@@ -73,7 +75,10 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
     // Event listeners for debug toggles
     auto& dispatcher = ctx.dispatcher;
 
-    dispatcher.addEventListener("toggle_debug", [this](fabric::Event&) { debugHUD_.toggle(); });
+    dispatcher.addEventListener("toggle_debug", [this](fabric::Event&) {
+        debugHUD_.toggle();
+        wailaPanel_.toggle();
+    });
 
     dispatcher.addEventListener("toggle_wireframe", [this](fabric::Event&) {
         debugDraw_.toggleWireframe();
@@ -237,6 +242,34 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         }
     }
 
+    // WAILA crosshair raycast (every frame when visible)
+    if (wailaPanel_.isVisible()) {
+        fabric::WAILAData waila;
+        auto camPos = camera_->position();
+        auto camFwd = camera_->forward();
+        auto hit = recurse::castRay(terrain_->densityGrid(), camPos.x, camPos.y, camPos.z, camFwd.x, camFwd.y, camFwd.z,
+                                    20.0f);
+        if (hit.has_value()) {
+            waila.hasHit = true;
+            waila.voxelX = hit->x;
+            waila.voxelY = hit->y;
+            waila.voxelZ = hit->z;
+            waila.chunkX = hit->x >> recurse::kChunkShift;
+            waila.chunkY = hit->y >> recurse::kChunkShift;
+            waila.chunkZ = hit->z >> recurse::kChunkShift;
+            waila.normalX = hit->nx;
+            waila.normalY = hit->ny;
+            waila.normalZ = hit->nz;
+            waila.distance = hit->t;
+            waila.density = terrain_->densityGrid().get(hit->x, hit->y, hit->z);
+            auto ess = terrain_->essenceGrid().get(hit->x, hit->y, hit->z);
+            waila.essenceR = ess.x;
+            waila.essenceG = ess.y;
+            waila.essenceB = ess.z;
+        }
+        wailaPanel_.update(waila);
+    }
+
     // BT debug panel
     if (btDebugPanel_.isVisible()) {
         btDebugPanel_.update(ai_->behaviorAI(), btDebugSelectedNpc_);
@@ -247,6 +280,7 @@ void DebugOverlaySystem::shutdown() {
     devConsole_.shutdown();
     contentBrowser_.shutdown();
     btDebugPanel_.shutdown();
+    wailaPanel_.shutdown();
     debugHUD_.shutdown();
     debugDraw_.shutdown();
     FABRIC_LOG_INFO("DebugOverlaySystem shut down");

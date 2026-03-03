@@ -266,6 +266,7 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/systems/AudioGameSystem.cc
     src/recurse/systems/ShadowRenderSystem.cc
     src/recurse/systems/VoxelRenderSystem.cc
+    src/recurse/systems/WaterRenderSystem.cc
     src/recurse/systems/OITRenderSystem.cc
     src/recurse/systems/DebugOverlaySystem.cc
 )
@@ -303,6 +304,7 @@ set(FABRIC_UI_SOURCE_FILES
     src/ui/BgfxSystemInterface.cc
     src/ui/StbImage.cc
     src/ui/DebugHUD.cc
+    src/ui/WAILAPanel.cc
     src/ui/ToastManager.cc
 )
 
