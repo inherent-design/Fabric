@@ -35,6 +35,7 @@ void AudioGameSystem::shutdown() {
 
 void AudioGameSystem::configureDependencies() {
     after<CameraGameSystem>();
+    after<TerrainSystem>();
 }
 
 } // namespace recurse::systems
