@@ -255,9 +255,14 @@ void PostProcess::render(uint8_t baseViewId) {
 void PostProcess::initPrograms() {
     bgfx::RendererType::Enum type = bgfx::getRendererType();
 
-    auto vs = bgfx::createEmbeddedShader(s_postShaders, type, "vs_fullscreen");
+    brightProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_postShaders, type, "vs_fullscreen"),
+                                         bgfx::createEmbeddedShader(s_postShaders, type, "fs_bright"), true);
 
-    brightProgram_ = bgfx::createProgram(vs, bgfx::createEmbeddedShader(s_postShaders, type, "fs_bright"), true);
+    blurProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_postShaders, type, "vs_fullscreen"),
+                                       bgfx::createEmbeddedShader(s_postShaders, type, "fs_blur"), true);
+
+    tonemapProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_postShaders, type, "vs_fullscreen"),
+                                          bgfx::createEmbeddedShader(s_postShaders, type, "fs_tonemap"), true);
 
     uniformBloomParams_ = bgfx::createUniform("u_bloomParams", bgfx::UniformType::Vec4);
     uniformTexelSize_ = bgfx::createUniform("u_texelSize", bgfx::UniformType::Vec4);
