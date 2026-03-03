@@ -7,11 +7,15 @@
 #include "fabric/core/ConfigManager.hh"
 #include "fabric/core/InputManager.hh"
 #include "fabric/core/InputRouter.hh"
+#include "fabric/core/InputSystem.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/core/RenderCaps.hh"
 #include "fabric/core/ResourceHub.hh"
 #include "fabric/core/RuntimeState.hh"
 #include "fabric/core/SceneView.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/platform/CursorManager.hh"
+#include "fabric/platform/PlatformInfo.hh"
 #include "fabric/platform/WindowDesc.hh"
 #include "fabric/ui/BgfxRenderInterface.hh"
 #include "fabric/ui/BgfxSystemInterface.hh"
@@ -155,14 +159,19 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
     // Engine objects (constructed only in non-headless mode)
     std::unique_ptr<InputManager> inputManagerPtr;
     std::unique_ptr<InputRouter> inputRouterPtr;
+    std::unique_ptr<InputSystem> inputSystemPtr;
     std::unique_ptr<Camera> camera;
     std::unique_ptr<AppModeManager> appModeManager;
     std::unique_ptr<SceneView> sceneView;
+    std::unique_ptr<PlatformInfo> platformInfoPtr;
+    std::unique_ptr<RenderCaps> renderCapsPtr;
+    std::unique_ptr<CursorManager> cursorManagerPtr;
 
     if (!desc.headless) {
         inputManagerPtr = std::make_unique<InputManager>(dispatcher);
         inputRouterPtr = std::make_unique<InputRouter>(*inputManagerPtr);
         inputRouterPtr->setMode(InputMode::GameOnly);
+        inputSystemPtr = std::make_unique<InputSystem>(dispatcher);
 
         int pw, ph;
         SDL_GetWindowSizeInPixels(window, &pw, &ph);
@@ -175,6 +184,15 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         appModeManager = std::make_unique<AppModeManager>();
         sceneView = std::make_unique<SceneView>(0, *camera, world.get());
         sceneView->setViewport(static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
+
+        platformInfoPtr = std::make_unique<PlatformInfo>();
+        platformInfoPtr->populate();
+        platformInfoPtr->populateGPU();
+
+        renderCapsPtr = std::make_unique<RenderCaps>();
+        renderCapsPtr->initFromBgfx();
+
+        cursorManagerPtr = std::make_unique<CursorManager>(window);
     }
 
     AppContext ctx{
@@ -185,9 +203,13 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         .assetRegistry = assetRegistry,
         .systemRegistry = systemRegistry,
         .configManager = configManager,
+        .inputSystem = inputSystemPtr.get(),
         .runtimeState = &runtimeState,
+        .platformInfo = platformInfoPtr.get(),
+        .renderCaps = renderCapsPtr.get(),
         .appModeManager = appModeManager.get(),
         .window = window,
+        .cursorManager = cursorManagerPtr.get(),
         .inputManager = inputManagerPtr.get(),
         .inputRouter = inputRouterPtr.get(),
         .camera = camera.get(),
@@ -212,6 +234,16 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         systemRegistry.initAll(ctx);
     } catch (const std::exception& e) {
         FABRIC_LOG_CRITICAL("System initialization failed: {}", e.what());
+
+        // Clean up platform resources initialized in Phase 2
+        if (!desc.headless) {
+            Rml::Shutdown();
+            rmlRenderer.shutdown();
+            bgfx::shutdown();
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+            async::shutdown();
+        }
         return 1;
     }
 
@@ -257,6 +289,16 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
 
                     if (event.type == SDL_EVENT_QUIT)
                         running = false;
+
+                    if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED) {
+                        if (desc.onFocusGained)
+                            desc.onFocusGained(ctx);
+                    }
+
+                    if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
+                        if (desc.onFocusLost)
+                            desc.onFocusLost(ctx);
+                    }
 
                     if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
                         auto w = static_cast<uint32_t>(event.window.data1);
