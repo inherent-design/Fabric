@@ -211,6 +211,8 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         if (stats->gpuTimerFreq > 0) {
             double gpuMs = 1000.0 * static_cast<double>(stats->gpuTimeEnd - stats->gpuTimeBegin) /
                            static_cast<double>(stats->gpuTimerFreq);
+            if (gpuMs < 0.0 || gpuMs > 1000.0)
+                gpuMs = 0.0;
             debugData.gpuTimeMs = static_cast<float>(gpuMs);
         }
         debugData.memoryUsageMB =
@@ -254,6 +256,13 @@ void DebugOverlaySystem::configureDependencies() {
     // Run after opaque + OIT rendering so debug lines appear on top
     after<VoxelRenderSystem>();
     after<OITRenderSystem>();
+    after<CameraGameSystem>();
+    after<ChunkPipelineSystem>();
+    after<PhysicsGameSystem>();
+    after<AudioGameSystem>();
+    after<AIGameSystem>();
+    after<TerrainSystem>();
+    after<CharacterMovementSystem>();
 }
 
 } // namespace recurse::systems
