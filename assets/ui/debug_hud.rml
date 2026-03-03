@@ -4,29 +4,39 @@
 </head>
 <body data-model="debug_hud">
 <div id="debug-panel">
-    <div class="section-title">Performance</div>
-    <div class="row"><span class="label">FPS: </span><span class="value">{{ fps | format(1) }}</span></div>
-    <div class="row"><span class="label">Frame: </span><span class="value">{{ frame_time_ms | format(2) }} ms</span></div>
-    <div class="row"><span class="label">Triangles: </span><span class="value">{{ triangle_count }}</span></div>
+    <div class="section">
+        <div class="section-title">Performance</div>
+        <div class="row"><span class="label">FPS: </span><span class="value">{{ fps | format(1) }}</span></div>
+        <div class="row"><span class="label">Frame: </span><span class="value">{{ frame_time_ms | format(2) }} ms</span></div>
+        <div class="row"><span class="label">Triangles: </span><span class="value">{{ triangle_count }}</span></div>
+    </div>
 
-    <div class="section-title">World</div>
-    <div class="row"><span class="label">Entities: </span><span class="value">{{ entity_count }}</span></div>
-    <div class="row"><span class="label">Chunks: </span><span class="value">{{ visible_chunks }}/{{ total_chunks }}</span></div>
-    <div class="row"><span class="label">Radius: </span><span class="value">{{ current_radius }}</span></div>
+    <div class="section">
+        <div class="section-title">World</div>
+        <div class="row"><span class="label">Entities: </span><span class="value">{{ entity_count }}</span></div>
+        <div class="row"><span class="label">Chunks: </span><span class="value">{{ visible_chunks }}/{{ total_chunks }}</span></div>
+        <div class="row"><span class="label">Radius: </span><span class="value">{{ current_radius }}</span></div>
+    </div>
 
-    <div class="section-title">Camera</div>
-    <div class="row"><span class="label">Pos: </span><span class="value">{{ cam_x | format(1) }}, {{ cam_y | format(1) }}, {{ cam_z | format(1) }}</span></div>
+    <div class="section">
+        <div class="section-title">Camera</div>
+        <div class="row"><span class="label">Pos: </span><span class="value">{{ cam_x | format(1) }}, {{ cam_y | format(1) }}, {{ cam_z | format(1) }}</span></div>
+    </div>
 
-    <div class="section-title">State</div>
-    <div class="row"><span class="label">FSM: </span><span class="value">{{ current_state }}</span></div>
+    <div class="section">
+        <div class="section-title">State</div>
+        <div class="row"><span class="label">FSM: </span><span class="value">{{ current_state }}</span></div>
+    </div>
 
-    <div class="section-title">Profiler</div>
-    <div class="row"><span class="label">Draw Calls: </span><span class="value">{{ draw_call_count }}</span></div>
-    <div class="row"><span class="label">GPU: </span><span class="value">{{ gpu_time_ms | format(2) }} ms</span></div>
-    <div class="row"><span class="label">Memory: </span><span class="value">{{ memory_usage_mb | format(1) }} MB</span></div>
-    <div class="row"><span class="label">Physics: </span><span class="value">{{ physics_body_count }} bodies</span></div>
-    <div class="row"><span class="label">Audio: </span><span class="value">{{ audio_voice_count }} voices</span></div>
-    <div class="row"><span class="label">Mesh Queue: </span><span class="value">{{ chunk_mesh_queue_size }}</span></div>
+    <div class="section">
+        <div class="section-title">Profiler</div>
+        <div class="row"><span class="label">Draw Calls: </span><span class="value">{{ draw_call_count }}</span></div>
+        <div class="row"><span class="label">GPU: </span><span class="value">{{ gpu_time_ms | format(2) }} ms</span></div>
+        <div class="row"><span class="label">Memory: </span><span class="value">{{ memory_usage_mb | format(1) }} MB</span></div>
+        <div class="row"><span class="label">Physics: </span><span class="value">{{ physics_body_count }} bodies</span></div>
+        <div class="row"><span class="label">Audio: </span><span class="value">{{ audio_voice_count }} voices</span></div>
+        <div class="row"><span class="label">Mesh Queue: </span><span class="value">{{ chunk_mesh_queue_size }}</span></div>
+    </div>
 </div>
 </body>
 </rml>
