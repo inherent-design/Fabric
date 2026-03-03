@@ -31,6 +31,26 @@
             }
         },
         {
+            "name": "dev-profile-debug",
+            "displayName": "Profile (Debug + Tracy)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "FABRIC_BUILD_TESTS": "OFF",
+                "FABRIC_ENABLE_PROFILING": "ON"
+            }
+        },
+        {
+            "name": "dev-profile-release",
+            "displayName": "Profile (RelWithDebInfo + Tracy)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "FABRIC_BUILD_TESTS": "OFF",
+                "FABRIC_ENABLE_PROFILING": "ON"
+            }
+        },
+        {
             "name": "dev-windows",
             "displayName": "Development (Windows Debug)",
             "inherits": "base",
@@ -133,6 +153,8 @@
     "buildPresets": [
         { "name": "dev-debug", "configurePreset": "dev-debug" },
         { "name": "dev-release", "configurePreset": "dev-release" },
+        { "name": "dev-profile-debug", "configurePreset": "dev-profile-debug" },
+        { "name": "dev-profile-release", "configurePreset": "dev-profile-release" },
         { "name": "dev-windows", "configurePreset": "dev-windows" },
         { "name": "ci-sanitize", "configurePreset": "ci-sanitize" },
         { "name": "ci-tsan", "configurePreset": "ci-tsan" },

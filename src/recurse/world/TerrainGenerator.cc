@@ -72,38 +72,44 @@ void TerrainGenerator::generate(FieldLayer<float>& density, FieldLayer<Vector4<f
     std::vector<float> noiseBuffer(static_cast<size_t>(sizeX) * static_cast<size_t>(sizeY) *
                                    static_cast<size_t>(sizeZ));
 
-    fractal->GenUniformGrid3D(noiseBuffer.data(), static_cast<float>(minX) * config_.frequency,
-                              static_cast<float>(minY) * config_.frequency,
-                              static_cast<float>(minZ) * config_.frequency, sizeX, sizeY, sizeZ, config_.frequency,
-                              config_.frequency, config_.frequency, config_.seed);
+    {
+        FABRIC_ZONE_SCOPED_N("terrain_noise_gen");
+        fractal->GenUniformGrid3D(noiseBuffer.data(), static_cast<float>(minX) * config_.frequency,
+                                  static_cast<float>(minY) * config_.frequency,
+                                  static_cast<float>(minZ) * config_.frequency, sizeX, sizeY, sizeZ, config_.frequency,
+                                  config_.frequency, config_.frequency, config_.seed);
+    }
 
     // Write density and essence into field layers.
     // FastNoise2 outputs roughly [-1, 1]; remap to [0, 1].
-    size_t idx = 0;
-    for (int z = minZ; z < maxZ; ++z) {
-        for (int y = minY; y < maxY; ++y) {
-            for (int x = minX; x < maxX; ++x) {
-                float raw = noiseBuffer[idx++];
-                float d = std::clamp(raw * 0.5f + 0.5f, 0.0f, 1.0f);
-                density.write(x, y, z, d);
+    {
+        FABRIC_ZONE_SCOPED_N("terrain_density_write");
+        size_t idx = 0;
+        for (int z = minZ; z < maxZ; ++z) {
+            for (int y = minY; y < maxY; ++y) {
+                for (int x = minX; x < maxX; ++x) {
+                    float raw = noiseBuffer[idx++];
+                    float d = std::clamp(raw * 0.5f + 0.5f, 0.0f, 1.0f);
+                    density.write(x, y, z, d);
 
-                // Classify material by density band (depth from surface).
-                // d ~0.5 = surface transition, d→1.0 = deep interior.
-                // Mesher threshold is 0.5, so d <= 0.5 → air (not rendered).
-                Vector4<float, Space::World> materialColor;
-                if (d <= 0.5f) {
-                    materialColor = Vector4<float, Space::World>(0.0f, 0.0f, 0.0f, 0.0f);
-                } else if (d <= 0.55f) {
-                    // Surface layer → grass green
-                    materialColor = Vector4<float, Space::World>(0.34f, 0.64f, 0.24f, 1.0f);
-                } else if (d <= 0.65f) {
-                    // Subsurface → dirt brown
-                    materialColor = Vector4<float, Space::World>(0.55f, 0.36f, 0.22f, 1.0f);
-                } else {
-                    // Deep interior → stone gray
-                    materialColor = Vector4<float, Space::World>(0.52f, 0.52f, 0.54f, 1.0f);
+                    // Classify material by density band (depth from surface).
+                    // d ~0.5 = surface transition, d→1.0 = deep interior.
+                    // Mesher threshold is 0.5, so d <= 0.5 → air (not rendered).
+                    Vector4<float, Space::World> materialColor;
+                    if (d <= 0.5f) {
+                        materialColor = Vector4<float, Space::World>(0.0f, 0.0f, 0.0f, 0.0f);
+                    } else if (d <= 0.55f) {
+                        // Surface layer → grass green
+                        materialColor = Vector4<float, Space::World>(0.34f, 0.64f, 0.24f, 1.0f);
+                    } else if (d <= 0.65f) {
+                        // Subsurface → dirt brown
+                        materialColor = Vector4<float, Space::World>(0.55f, 0.36f, 0.22f, 1.0f);
+                    } else {
+                        // Deep interior → stone gray
+                        materialColor = Vector4<float, Space::World>(0.52f, 0.52f, 0.54f, 1.0f);
+                    }
+                    essence.write(x, y, z, materialColor);
                 }
-                essence.write(x, y, z, materialColor);
             }
         }
     }
@@ -111,7 +117,7 @@ void TerrainGenerator::generate(FieldLayer<float>& density, FieldLayer<Vector4<f
 
 void TerrainGenerator::generateWater(const FieldLayer<float>& density, FieldLayer<float>& water, const AABB& region,
                                      float solidThreshold) const {
-    FABRIC_ZONE_SCOPED;
+    FABRIC_ZONE_SCOPED_N("generateWater");
 
     float seaLevel = config_.seaLevel;
 

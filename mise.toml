@@ -111,6 +111,59 @@ usage = 'arg "filter" help="gtest --gtest_filter value"'
 run = "TEST_FILTER=\"{{arg(name='filter')}}\" sh tasks/test.sh"
 run_windows = "$env:TEST_FILTER='{{arg(name=''filter'')}}'; & .\\tasks\\test.ps1"
 
+# Profiling
+
+[tasks.profile]
+alias = "prof"
+description = "Build with Tracy profiler (Debug)"
+run = "sh tasks/profile.sh"
+run_windows = "& .\\tasks\\profile.ps1"
+
+[tasks."profile:release"]
+alias = "profr"
+description = "Build with Tracy profiler (RelWithDebInfo)"
+run = "PROFILE_MODE=release sh tasks/profile.sh"
+run_windows = "$env:PROFILE_MODE='release'; & .\\tasks\\profile.ps1"
+
+[tasks."profile:capture"]
+alias = "cap"
+description = "Launch Recurse and capture a Tracy trace (30s)"
+run = "sh tasks/profile-capture.sh"
+run_windows = "& .\\tasks\\profile-capture.ps1"
+
+[tasks."profile:capture-release"]
+alias = "capr"
+description = "Launch Release build and capture a Tracy trace (30s)"
+run = "PROFILE_MODE=release sh tasks/profile-capture.sh"
+run_windows = "$env:PROFILE_MODE='release'; & .\\tasks\\profile-capture.ps1"
+
+[tasks."profile:view"]
+description = "Open the latest .tracy capture in Tracy Profiler"
+run = """
+latest="$(ls -t tracy/*.tracy 2>/dev/null | head -1)"
+if [ -z "$latest" ]; then echo "No .tracy files in tracy/"; exit 1; fi
+echo "Opening $latest"
+tracy-profiler "$latest"
+"""
+run_windows = """
+$latest = Get-ChildItem tracy\\*.tracy | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $latest) { Write-Error 'No .tracy files in tracy\\'; exit 1 }
+Write-Host "Opening $($latest.Name)"
+tracy-profiler $latest.FullName
+"""
+
+[tasks."profile:csv"]
+description = "Export the latest .tracy capture to CSV"
+run = """
+latest="$(ls -t tracy/*.tracy 2>/dev/null | head -1)"
+if [ -z "$latest" ]; then echo "No .tracy files in tracy/"; exit 1; fi
+echo "=== Zone stats (inclusive) ==="
+tracy-csvexport "$latest"
+echo ""
+echo "=== Zone stats (self-time) ==="
+tracy-csvexport -e "$latest"
+"""
+
 # Analysis
 
 [tasks.sanitize]

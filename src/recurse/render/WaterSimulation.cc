@@ -1,6 +1,7 @@
 #include "recurse/render/WaterSimulation.hh"
 
 #include "fabric/core/FieldLayer.hh"
+#include "fabric/utils/Profiler.hh"
 #include "recurse/world/ChunkedGrid.hh"
 
 #include <algorithm>
@@ -87,33 +88,47 @@ void WaterSimulation::collectActiveCells(const ChunkedGrid<float>& density) {
 void WaterSimulation::step(const ChunkedGrid<float>& density, float dt) {
     (void)dt;
 
-    collectActiveCells(density);
+    {
+        FABRIC_ZONE_SCOPED_N("water_collect_active");
+        collectActiveCells(density);
+        FABRIC_ZONE_VALUE(static_cast<int64_t>(activeCellsList_.size()));
+    }
 
     // Copy current state into next buffer for cells that won't be processed
-    for (int64_t key : activeCellsList_) {
-        int x, y, z;
-        unpackKey(key, x, y, z);
-        next_->write(x, y, z, current_->read(x, y, z));
+    {
+        FABRIC_ZONE_SCOPED_N("water_copy_current");
+        for (int64_t key : activeCellsList_) {
+            int x, y, z;
+            unpackKey(key, x, y, z);
+            next_->write(x, y, z, current_->read(x, y, z));
+        }
     }
 
     int limit = std::min(perFrameBudget_, static_cast<int>(activeCellsList_.size()));
     cellsProcessed_ = 0;
 
-    for (int i = 0; i < limit; ++i) {
-        int x, y, z;
-        unpackKey(activeCellsList_[static_cast<size_t>(i)], x, y, z);
-        applyWaterRules(x, y, z, density);
-        ++cellsProcessed_;
+    {
+        FABRIC_ZONE_SCOPED_N("water_apply_rules");
+        FABRIC_ZONE_VALUE(static_cast<int64_t>(limit));
+        for (int i = 0; i < limit; ++i) {
+            int x, y, z;
+            unpackKey(activeCellsList_[static_cast<size_t>(i)], x, y, z);
+            applyWaterRules(x, y, z, density);
+            ++cellsProcessed_;
+        }
     }
 
     // Emit change events and swap buffers
-    for (int64_t key : activeCellsList_) {
-        int x, y, z;
-        unpackKey(key, x, y, z);
-        float oldLevel = current_->read(x, y, z);
-        float newLevel = next_->read(x, y, z);
-        if (changeCallback_ && std::fabs(newLevel - oldLevel) > kMinWaterLevel) {
-            changeCallback_(WaterChangeEvent{x, y, z, oldLevel, newLevel});
+    {
+        FABRIC_ZONE_SCOPED_N("water_change_dispatch");
+        for (int64_t key : activeCellsList_) {
+            int x, y, z;
+            unpackKey(key, x, y, z);
+            float oldLevel = current_->read(x, y, z);
+            float newLevel = next_->read(x, y, z);
+            if (changeCallback_ && std::fabs(newLevel - oldLevel) > kMinWaterLevel) {
+                changeCallback_(WaterChangeEvent{x, y, z, oldLevel, newLevel});
+            }
         }
     }
 
