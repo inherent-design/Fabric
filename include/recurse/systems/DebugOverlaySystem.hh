@@ -2,6 +2,7 @@
 
 #include "fabric/core/SystemBase.hh"
 #include "fabric/ui/DebugHUD.hh"
+#include "fabric/ui/WAILAPanel.hh"
 #include "recurse/ai/BTDebugPanel.hh"
 #include "recurse/render/DebugDraw.hh"
 #include "recurse/ui/ContentBrowser.hh"
@@ -37,10 +38,12 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
     recurse::BTDebugPanel& btDebugPanel() { return btDebugPanel_; }
     recurse::ContentBrowser& contentBrowser() { return contentBrowser_; }
     recurse::DevConsole& devConsole() { return devConsole_; }
+    fabric::WAILAPanel& wailaPanel() { return wailaPanel_; }
 
   private:
     recurse::DebugDraw debugDraw_;
     fabric::DebugHUD debugHUD_;
+    fabric::WAILAPanel wailaPanel_;
     recurse::BTDebugPanel btDebugPanel_;
     recurse::ContentBrowser contentBrowser_;
     recurse::DevConsole devConsole_;

@@ -1,0 +1,18 @@
+<rml>
+<head>
+    <link type="text/rcss" href="waila.rcss" />
+</head>
+<body data-model="waila">
+<div id="waila-panel" data-if="has_hit">
+    <div class="waila-row"><span class="waila-label">Pos: </span><span class="waila-value">{{ voxel_x }}, {{ voxel_y }}, {{ voxel_z }}</span></div>
+    <div class="waila-row"><span class="waila-label">Chunk: </span><span class="waila-value">{{ chunk_x }}, {{ chunk_y }}, {{ chunk_z }}</span></div>
+    <div class="waila-row"><span class="waila-label">Normal: </span><span class="waila-value">{{ normal_str }}</span></div>
+    <div class="waila-row"><span class="waila-label">Dist: </span><span class="waila-value">{{ distance | format(1) }}</span></div>
+    <div class="waila-row"><span class="waila-label">Density: </span><span class="waila-value">{{ density | format(3) }}</span></div>
+    <div class="waila-row"><span class="waila-label">Essence: </span><span class="waila-value">{{ essence_str }}</span></div>
+</div>
+<div id="waila-sky" data-if="!has_hit">
+    <span class="waila-label">Sky</span>
+</div>
+</body>
+</rml>
