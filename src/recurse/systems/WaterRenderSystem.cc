@@ -75,8 +75,9 @@ void WaterRenderSystem::render(fabric::AppContext& ctx) {
     bgfx::setViewClear(waterView, BGFX_CLEAR_NONE);
     bgfx::touch(waterView);
 
-    // Water rendering re-enabled for profiling with sub-zone instrumentation.
-    static constexpr bool kWaterRenderingEnabled = true;
+    // Water rendering disabled pending VP0 rewrite (Noita-style voxel water).
+    // Profiling confirmed: collectActiveCells 180ms/frame in release, 3.7 FPS.
+    static constexpr bool kWaterRenderingEnabled = false;
     if (!kWaterRenderingEnabled)
         return;
 
