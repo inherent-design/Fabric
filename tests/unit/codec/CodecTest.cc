@@ -212,6 +212,69 @@ TEST(LengthDelimitedFrameTest, EmptyPayload) {
     EXPECT_EQ(consumed, 4u);
 }
 
+// --- ByteReader buffer overrun tests ---
+
+TEST(ByteReaderTest, OverrunOnEmptyBuffer) {
+    ByteReader reader(nullptr, 0);
+    EXPECT_EQ(reader.remaining(), 0u);
+    EXPECT_THROW(reader.readU8(), FabricException);
+}
+
+TEST(ByteReaderTest, OverrunU16OnSingleByte) {
+    std::vector<uint8_t> data = {0x42};
+    ByteReader reader(data.data(), data.size());
+    EXPECT_THROW(reader.readU16LE(), FabricException);
+}
+
+TEST(ByteReaderTest, OverrunU32OnTwoBytes) {
+    std::vector<uint8_t> data = {0x01, 0x02};
+    ByteReader reader(data.data(), data.size());
+    EXPECT_THROW(reader.readU32LE(), FabricException);
+}
+
+TEST(ByteReaderTest, OverrunU64OnFourBytes) {
+    std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0x04};
+    ByteReader reader(data.data(), data.size());
+    EXPECT_THROW(reader.readU64LE(), FabricException);
+}
+
+TEST(ByteReaderTest, OverrunReadBytesTooMany) {
+    std::vector<uint8_t> data = {0xAA, 0xBB};
+    ByteReader reader(data.data(), data.size());
+    EXPECT_THROW(reader.readBytes(3), FabricException);
+}
+
+TEST(ByteReaderTest, OverrunReadStringTooLong) {
+    std::vector<uint8_t> data = {0x68, 0x69}; // "hi"
+    ByteReader reader(data.data(), data.size());
+    EXPECT_THROW(reader.readString(5), FabricException);
+}
+
+TEST(ByteReaderTest, OverrunAfterPartialConsumption) {
+    std::vector<uint8_t> data = {0x01, 0x02, 0x03};
+    ByteReader reader(data.data(), data.size());
+    reader.readU8(); // consume 1 byte, 2 remaining
+    reader.readU8(); // consume 1 byte, 1 remaining
+    EXPECT_EQ(reader.remaining(), 1u);
+    EXPECT_THROW(reader.readU16LE(), FabricException); // needs 2, only 1
+}
+
+TEST(ByteReaderTest, ExactBoundaryRead) {
+    std::vector<uint8_t> data = {0x01, 0x02};
+    ByteReader reader(data.data(), data.size());
+    EXPECT_EQ(reader.readU16LE(), 0x0201);
+    EXPECT_EQ(reader.remaining(), 0u);
+    // One more byte read should fail
+    EXPECT_THROW(reader.readU8(), FabricException);
+}
+
+TEST(ByteReaderTest, TruncatedVarInt) {
+    // VarInt with continuation bit set but no following byte
+    std::vector<uint8_t> data = {0x80}; // continuation bit set, needs more
+    ByteReader reader(data.data(), data.size());
+    EXPECT_THROW(reader.readVarInt(), FabricException);
+}
+
 TEST(LengthDelimitedFrameTest, MultipleFramesInBuffer) {
     std::vector<uint8_t> p1 = {0xAA};
     std::vector<uint8_t> p2 = {0xBB, 0xCC};
