@@ -27,14 +27,13 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
 
     interactionCooldown_ -= fixedDt;
     if (interactionCooldown_ <= 0.0f) {
-        // Camera position/forward for raycasts
-        fabric::Vec3f camPos(16.0f, 48.0f, 16.0f);
-        fabric::Vec3f camFwd(0.0f, 0.0f, -1.0f);
-
-        if (camera_) {
-            camPos = camera_->position();
-            camFwd = camera_->forward();
+        if (!camera_) {
+            FABRIC_LOG_WARN("VoxelInteractionSystem: camera not available, skipping interaction");
+            return;
         }
+
+        fabric::Vec3f camPos = camera_->position();
+        fabric::Vec3f camFwd = camera_->forward();
 
         if (inputManager->mouseButton(1)) {
             auto r = voxelInteraction_->destroyMatterAt(terrain_->densityGrid(), camPos.x, camPos.y, camPos.z, camFwd.x,
@@ -55,6 +54,7 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
 void VoxelInteractionSystem::configureDependencies() {
     after<TerrainSystem>();
     after<CharacterMovementSystem>();
+    after<CameraGameSystem>();
 }
 
 } // namespace recurse::systems

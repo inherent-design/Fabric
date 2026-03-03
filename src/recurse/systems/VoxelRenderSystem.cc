@@ -76,6 +76,7 @@ void VoxelRenderSystem::shutdown() {
 void VoxelRenderSystem::configureDependencies() {
     after<ChunkPipelineSystem>();
     after<ShadowRenderSystem>();
+    after<ParticleGameSystem>();
 }
 
 } // namespace recurse::systems
