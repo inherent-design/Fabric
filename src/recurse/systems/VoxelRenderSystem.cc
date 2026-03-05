@@ -75,8 +75,8 @@ void VoxelRenderSystem::render(fabric::AppContext& ctx) {
         }
     }
 
-    // Particle billboard rendering
-    {
+    // Particle billboard rendering (optional - may be disabled via feature flag)
+    if (particles_) {
         int curPW, curPH;
         SDL_GetWindowSizeInPixels(window, &curPW, &curPH);
         particles_->renderParticles(camera->viewMatrix(), camera->projectionMatrix(), static_cast<uint16_t>(curPW),
