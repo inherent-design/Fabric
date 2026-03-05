@@ -2,7 +2,6 @@
 #include "fabric/core/Rendering.hh"
 #include "recurse/render/OITCompositor.hh"
 #include "recurse/render/ParticleSystem.hh"
-#include "recurse/world/VoxelMesher.hh"
 #include "recurse/world/VoxelVertex.hh"
 
 #include <bgfx/bgfx.h>
@@ -178,12 +177,12 @@ TEST(VulkanRegression, VoxelVertexRawBytesContainPositionValues) {
 
 TEST(VulkanRegression, VoxelVertexLayoutStride) {
     // The vertex layout stride must match sizeof(VoxelVertex).
-    auto layout = VoxelMesher::getVertexLayout();
+    auto layout = VoxelVertex::getVertexLayout();
     EXPECT_EQ(layout.getStride(), sizeof(VoxelVertex));
 }
 
 TEST(VulkanRegression, VoxelVertexLayoutHasExpectedAttributes) {
-    auto layout = VoxelMesher::getVertexLayout();
+    auto layout = VoxelVertex::getVertexLayout();
     EXPECT_TRUE(layout.has(bgfx::Attrib::TexCoord0));
     EXPECT_TRUE(layout.has(bgfx::Attrib::TexCoord1));
     // Position is packed into TexCoord0/1, NOT Attrib::Position.

@@ -204,7 +204,7 @@ class AudioSystem {
     bool initialized_ = false;
     bool commandBufferEnabled_ = false;
     bool threadedMode_ = false;
-    SoundHandle handleCounter_ = 0;
+    std::atomic<SoundHandle> handleCounter_{0};
 
     std::unordered_map<SoundHandle, ma_sound*> activeSounds_;
     std::unordered_map<SoundHandle, float> baseVolumes_;

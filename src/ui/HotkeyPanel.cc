@@ -27,6 +27,8 @@ void HotkeyPanel::init(Rml::Context* context) {
 
 void HotkeyPanel::toggle() {
     visible_ = !visible_;
+    if (!initialized_)
+        return;
     if (document_) {
         if (visible_) {
             document_->Show();

@@ -63,6 +63,14 @@ class ConfigManager {
     /// Return the full path to user.toml using the platform default.
     static std::filesystem::path defaultUserConfigPath();
 
+    /// Search for a config file in multiple locations.
+    /// Search order:
+    ///   1. Current working directory
+    ///   2. Executable directory
+    ///   3. Source config directory (config/ relative to CWD)
+    /// Returns the first found path, or the original filename if not found.
+    static std::filesystem::path findConfig(const std::filesystem::path& filename);
+
     /// Access the merged table (read-only, for enumeration / debugging).
     const toml::table& merged() const;
 

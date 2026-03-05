@@ -12,5 +12,48 @@ hidpi = true
 backend = "vulkan"
 vsync = true
 
+# =============================================================================
+# Logging Subsystem Configuration
+# =============================================================================
+# The logging subsystem supports per-destination log levels (console vs file),
+# pattern-based console filtering, and per-run timestamped log folders.
+#
+# Priority: CLI flags > Environment vars > This file > Compiled defaults
+
 [logging]
-level = "info"
+# Global settings
+per_run_folders = true           # Create timestamped log folders (logs/YYYY-MM-DD_HH-MM-SS/)
+
+# Console filtering patterns (glob-style)
+# console_include = ["fabric.*"] # Only show logs matching these patterns in console
+# console_exclude = ["bgfx.*"]   # Exclude logs matching these patterns from console
+
+# Default log levels
+console_level = "info"           # Console: info and above (off/critical/error/warning/info/debug/trace)
+file_level = "debug"             # File: debug and above
+
+# Per-logger overrides
+# Each logger can have independent console and file log levels.
+# Available loggers: fabric, render, physics, audio, bgfx
+
+[logging.loggers.fabric]
+console_level = "info"
+file_level = "debug"
+
+[logging.loggers.render]
+console_level = "info"
+file_level = "trace"
+
+[logging.loggers.physics]
+console_level = "info"
+file_level = "debug"
+
+[logging.loggers.audio]
+console_level = "info"
+file_level = "debug"
+
+[logging.loggers.bgfx]
+# bgfx (Vulkan backend) is very verbose, so we disable console output by default
+console_enabled = false          # No bgfx logs in console
+console_level = "off"
+file_level = "debug"             # But keep full debug in file for troubleshooting

@@ -65,6 +65,20 @@ void ResourceHub::shutdown() {
         }
     }
 
+    // Join pending load threads spawned by load() method
+    {
+        std::unique_lock<std::timed_mutex> lock(pendingThreadsMutex_, std::chrono::milliseconds(500));
+        if (lock.owns_lock()) {
+            for (auto& t : pendingLoadThreads_) {
+                if (t.joinable())
+                    t.join();
+            }
+            pendingLoadThreads_.clear();
+        } else {
+            FABRIC_LOG_WARN("ResourceHub::shutdown: could not acquire pending threads mutex");
+        }
+    }
+
     // Clear loaded resources
     try {
         clear();
@@ -730,54 +744,25 @@ void ResourceHub::disableWorkerThreadsForTesting() {
     // Notify all threads again
     queueCondition_.notify_all();
 
-    // Non-blocking thread termination approach
-    auto terminateThreads = [this]() {
-        const int MAX_JOIN_TIME_MS = 200; // Maximum time to wait for all threads
-        auto joinStart = std::chrono::steady_clock::now();
+    // Join worker threads with timeout protection - no detaching
+    const int MAX_JOIN_TIME_MS = 200;
+    auto joinStart = std::chrono::steady_clock::now();
 
-        // First attempt to join threads normally with a reasonable timeout
-        for (auto& thread : workerThreads_) {
-            if (thread && thread->joinable()) {
-                // Create a timeout for this specific join
-                auto joinThreadStart = std::chrono::steady_clock::now();
-
-                // Use a short timeout per thread
-                const int PER_THREAD_TIMEOUT_MS = 50;
-
-                // Keep trying until timeout
-                while (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
-                                                                             joinThreadStart)
-                           .count() < PER_THREAD_TIMEOUT_MS) {
-
-                    // Use try_join with a very small timeout to avoid blocking
-                    std::thread joiner([&thread]() {
-                        if (thread->joinable()) {
-                            thread->join();
-                        }
-                    });
-                    joiner.detach();
-
-                    // Short sleep to give joiner a chance
-                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-
-                    // Check overall timeout
-                    if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
-                                                                              joinStart)
-                            .count() > MAX_JOIN_TIME_MS) {
-                        FABRIC_LOG_WARN("Thread termination timeout in disableWorkerThreadsForTesting");
-                        return;
-                    }
-                }
+    for (auto& thread : workerThreads_) {
+        if (thread && thread->joinable()) {
+            // Check if we've exceeded total timeout
+            auto elapsed =
+                std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - joinStart)
+                    .count();
+            if (elapsed > MAX_JOIN_TIME_MS) {
+                FABRIC_LOG_WARN("Thread join timeout in disableWorkerThreadsForTesting");
+                break;
             }
+            thread->join();
         }
-    };
+    }
 
-    // Run thread termination with timeout protection
-    std::thread terminationThread(terminateThreads);
-    terminationThread.detach(); // Don't wait for it to complete
-
-    // Clear the worker threads vector regardless - threads will self-terminate
-    // due to the shutdown flag being set and queueCondition being notified
+    // Clear the worker threads vector
     workerThreads_.clear();
     workerThreadCount_ = 0;
 
@@ -1098,6 +1083,17 @@ void ResourceHub::clear() {
 void ResourceHub::reset() {
     // Disable worker threads
     disableWorkerThreadsForTesting();
+
+    // Join pending load threads before clearing
+    {
+        std::lock_guard<std::timed_mutex> lock(pendingThreadsMutex_);
+        for (auto& thread : pendingLoadThreads_) {
+            if (thread.joinable()) {
+                thread.join();
+            }
+        }
+        pendingLoadThreads_.clear();
+    }
 
     // Clear all resources
     clear();

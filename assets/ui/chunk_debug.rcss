@@ -1,0 +1,48 @@
+body {
+    font-family: 'Roboto Mono';
+    font-size: 14dp;
+    color: #e0e0e0;
+}
+
+#chunk-debug-panel {
+    position: fixed;
+    top: 200dp;
+    left: 8dp;
+    padding: 8dp 12dp;
+    background-color: #000000cc;
+    border: 1dp #ffffff66;
+    width: 260dp;
+}
+
+.label {
+    color: #888888;
+    display: inline;
+}
+
+.value {
+    color: #ffffff;
+    display: inline;
+}
+
+.value.highlight {
+    color: #66ff66;
+}
+
+.row {
+    margin-bottom: 3dp;
+}
+
+.section {
+    margin-bottom: 8dp;
+}
+
+.section-title {
+    color: #aaaaaa;
+    font-size: 12dp;
+    margin-top: 0dp;
+    margin-bottom: 4dp;
+    border-bottom: 1dp #ffffff22;
+    padding-bottom: 3dp;
+    text-transform: uppercase;
+    letter-spacing: 1dp;
+}

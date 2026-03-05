@@ -6,6 +6,7 @@
 namespace recurse::systems {
 
 class ChunkPipelineSystem;
+class VoxelMeshingSystem;
 class ShadowRenderSystem;
 class ParticleGameSystem;
 
@@ -24,6 +25,7 @@ class VoxelRenderSystem : public fabric::System<VoxelRenderSystem> {
     recurse::VoxelRenderer voxelRenderer_;
 
     ChunkPipelineSystem* chunks_ = nullptr;
+    VoxelMeshingSystem* meshSystem_ = nullptr;
     ShadowRenderSystem* shadow_ = nullptr;
     ParticleGameSystem* particles_ = nullptr;
 };

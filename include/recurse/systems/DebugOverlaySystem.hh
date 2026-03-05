@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
+#include "fabric/ui/ChunkDebugPanel.hh"
 #include "fabric/ui/DebugHUD.hh"
 #include "fabric/ui/HotkeyPanel.hh"
 #include "fabric/ui/WAILAPanel.hh"
@@ -22,6 +23,7 @@ class TerrainSystem;
 class CharacterMovementSystem;
 class VoxelRenderSystem;
 class OITRenderSystem;
+class VoxelMeshingSystem;
 
 /// Debug overlays, HUD, panels, and developer console.
 /// Registered to the Render phase (after VoxelRenderSystem and OITRenderSystem)
@@ -36,6 +38,7 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
 
     recurse::DebugDraw& debugDraw() { return debugDraw_; }
     fabric::DebugHUD& debugHUD() { return debugHUD_; }
+    fabric::ChunkDebugPanel& chunkDebugPanel() { return chunkDebugPanel_; }
     recurse::BTDebugPanel& btDebugPanel() { return btDebugPanel_; }
     recurse::ContentBrowser& contentBrowser() { return contentBrowser_; }
     recurse::DevConsole& devConsole() { return devConsole_; }
@@ -45,6 +48,7 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
   private:
     recurse::DebugDraw debugDraw_;
     fabric::DebugHUD debugHUD_;
+    fabric::ChunkDebugPanel chunkDebugPanel_;
     fabric::WAILAPanel wailaPanel_;
     fabric::HotkeyPanel hotkeyPanel_;
     recurse::BTDebugPanel btDebugPanel_;
@@ -61,6 +65,7 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
     AIGameSystem* ai_ = nullptr;
     TerrainSystem* terrain_ = nullptr;
     CharacterMovementSystem* charMovement_ = nullptr;
+    VoxelMeshingSystem* meshSystem_ = nullptr;
 };
 
 } // namespace recurse::systems

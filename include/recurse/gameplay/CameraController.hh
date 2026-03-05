@@ -49,6 +49,10 @@ class CameraController {
 
     void update(const Vector3<float, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid = nullptr,
                 float densityThreshold = 0.5f);
+    void update(const Vector3<double, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid = nullptr,
+                float densityThreshold = 0.5f);
+
+    Vector3<double, Space::World> positionD() const;
 
     Vector3<float, Space::World> position() const;
 
@@ -78,7 +82,7 @@ class CameraController {
     float pitch_ = 0.0f;
     float actualDistance_ = 0.0f;
 
-    Vector3<float, Space::World> cachedPosition_;
+    Vector3<double, Space::World> cachedPositionD_;
 };
 
 } // namespace recurse

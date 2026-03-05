@@ -44,24 +44,32 @@ void CameraController::processMouseInput(float deltaX, float deltaY) {
 
 void CameraController::update(const Vector3<float, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid,
                               float densityThreshold) {
-    using Vec3 = Vector3<float, Space::World>;
+    update(Vector3<double, Space::World>(static_cast<double>(targetPos.x), static_cast<double>(targetPos.y),
+                                         static_cast<double>(targetPos.z)),
+           dt, grid, densityThreshold);
+}
 
-    Vec3 eyePoint = targetPos + Vec3(0.0f, config_.eyeHeight, 0.0f);
+void CameraController::update(const Vector3<double, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid,
+                              float densityThreshold) {
+    using Vec3f = Vector3<float, Space::World>;
+
+    const auto eyePointD = targetPos + Vector3<double, Space::World>(0.0, static_cast<double>(config_.eyeHeight), 0.0);
     auto rot = buildRotation();
     // Left-handed: forward = +Z
-    Vec3 fwd = rot.rotateVector(Vec3(0.0f, 0.0f, 1.0f));
+    Vec3f fwd = rot.rotateVector(Vec3f(0.0f, 0.0f, 1.0f));
 
     if (mode_ == CameraMode::FirstPerson) {
-        cachedPosition_ = eyePoint;
+        cachedPositionD_ = eyePointD;
     } else {
         // Third person: camera behind the player (opposite of forward)
         float targetDist = config_.orbitDistance;
 
         if (grid) {
             // Cast ray from eye point backward (negative forward) to find obstructions
-            Vec3 rayDir = Vec3(0.0f, 0.0f, 0.0f) - fwd; // -forward
-            auto hit = castRay(*grid, eyePoint.x, eyePoint.y, eyePoint.z, rayDir.x, rayDir.y, rayDir.z,
-                               config_.orbitDistance, densityThreshold);
+            Vec3f rayDir = Vec3f(0.0f, 0.0f, 0.0f) - fwd; // -forward
+            auto hit = castRay(*grid, static_cast<float>(eyePointD.x), static_cast<float>(eyePointD.y),
+                               static_cast<float>(eyePointD.z), rayDir.x, rayDir.y, rayDir.z, config_.orbitDistance,
+                               densityThreshold);
             if (hit && hit->t < targetDist) {
                 targetDist = std::max(hit->t - kSpringArmClipOffset, config_.orbitMinDistance);
             }
@@ -71,18 +79,21 @@ void CameraController::update(const Vector3<float, Space::World>& targetPos, flo
         actualDistance_ += (targetDist - actualDistance_) * std::min(config_.springArmSmoothing * dt, 1.0f);
         actualDistance_ = std::max(actualDistance_, config_.orbitMinDistance);
 
-        cachedPosition_ = eyePoint - fwd * actualDistance_;
+        cachedPositionD_ = eyePointD - Vector3<double, Space::World>(static_cast<double>(fwd.x) * actualDistance_,
+                                                                     static_cast<double>(fwd.y) * actualDistance_,
+                                                                     static_cast<double>(fwd.z) * actualDistance_);
     }
 
-    // Build transform and update the underlying Camera
-    Transform<float> camTransform;
-    camTransform.setPosition(cachedPosition_);
-    camTransform.setRotation(rot);
-    camera_.updateView(camTransform);
+    camera_.updateView(cachedPositionD_, rot);
+}
+
+Vector3<double, Space::World> CameraController::positionD() const {
+    return cachedPositionD_;
 }
 
 Vector3<float, Space::World> CameraController::position() const {
-    return cachedPosition_;
+    return Vector3<float, Space::World>(static_cast<float>(cachedPositionD_.x), static_cast<float>(cachedPositionD_.y),
+                                        static_cast<float>(cachedPositionD_.z));
 }
 
 Vector3<float, Space::World> CameraController::forward() const {

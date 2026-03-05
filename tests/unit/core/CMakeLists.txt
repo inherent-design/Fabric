@@ -25,12 +25,9 @@ target_sources(UnitTests
   ChunkedGridTest.cc
   FieldLayerTest.cc
   SimulationTest.cc
-  VoxelMesherTest.cc
   VoxelRendererTest.cc
   VoxelRaycastTest.cc
   ChunkStreamingTest.cc
-  ChunkMeshManagerTest.cc
-  FabricRuntimeFlowTest.cc
   MovementFSMTest.cc
   CharacterControllerTest.cc
   CameraControllerTest.cc
@@ -41,13 +38,11 @@ target_sources(UnitTests
   DashControllerTest.cc
   EssencePaletteTest.cc
   ShadowSystemTest.cc
-  TerrainGeneratorTest.cc
   MeshLoaderTest.cc
   AnimationTest.cc
   AnimationSamplerTest.cc
   SkinnedRendererTest.cc
   IKSolverTest.cc
-  CaveCarverTest.cc
   Sprint7StubTest.cc
   PhysicsWorldTest.cc
   CCDTest.cc
@@ -60,23 +55,19 @@ target_sources(UnitTests
   SceneSerializerTest.cc
   StructuralIntegrityTest.cc
   DebrisPoolTest.cc
-  WaterSimulationTest.cc
   DataLoaderTest.cc
   DebugDrawTest.cc
-  VoxelMesherLODTest.cc
   SkyRendererTest.cc
   VertexPoolTest.cc
   FileWatcherTest.cc
   PostProcessTest.cc
   DevConsoleTest.cc
   ParticleSystemTest.cc
-  WaterMeshTest.cc
   BVHVisitorTest.cc
   ReverbZoneTest.cc
   LSystemVegetationTest.cc
   WFCGeneratorTest.cc
   InputRecorderTest.cc
-  WaterRendererTest.cc
   OITCompositorTest.cc
   MaterialSoundsTest.cc
   SaveManagerTest.cc
@@ -98,6 +89,18 @@ target_sources(UnitTests
   FabricAppTest.cc
   InputContextTest.cc
   InputSystemTest.cc
+  ChunkedGridInterpolationTest.cc
+  SimulationThreadPoolTest.cc
+  ChunkDensityCacheTest.cc
+  GradientNormalsTest.cc
+  SmoothVertexPoolTest.cc
+  SnapMCMesherTest.cc
+  SurfaceNetsMesherTest.cc
+  TestWorldGeneratorTest.cc
+  VoxelSimulationSystemTest.cc
+  VoxelMeshingSystemTest.cc
+  CrossChunkBoundaryTest.cc
+  FeatureFlagsTest.cc
 )
 
 set_source_files_properties(

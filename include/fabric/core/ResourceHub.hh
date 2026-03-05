@@ -198,7 +198,15 @@ class ResourceHub {
                         }
                     });
 
-                    loadThread.detach();
+                    // Track thread for proper cleanup in destructor instead of detaching
+                    {
+                        std::lock_guard<std::timed_mutex> lock(pendingThreadsMutex_);
+                        // Clean up finished threads periodically
+                        pendingLoadThreads_.erase(std::remove_if(pendingLoadThreads_.begin(), pendingLoadThreads_.end(),
+                                                                 [](std::thread& t) { return !t.joinable(); }),
+                                                  pendingLoadThreads_.end());
+                        pendingLoadThreads_.push_back(std::move(loadThread));
+                    }
 
                     // Wait for the future with timeout
                     bool loadSuccess = false;
@@ -534,6 +542,10 @@ class ResourceHub {
     std::timed_mutex threadControlMutex_; // Mutex for thread creation/destruction
     std::condition_variable_any queueCondition_;
     std::atomic<bool> shutdown_{false};
+
+    // Pending load threads - tracks threads spawned by load() for proper cleanup
+    std::vector<std::thread> pendingLoadThreads_;
+    std::timed_mutex pendingThreadsMutex_;
 };
 
 } // namespace fabric

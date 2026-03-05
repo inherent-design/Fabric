@@ -143,9 +143,9 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
 
     // ── Phase 3: Infrastructure ─────────────────────────────────
     ConfigManager configManager;
-    configManager.loadEngineConfig("fabric.toml");
+    configManager.loadEngineConfig(ConfigManager::findConfig("fabric.toml"));
     if (!desc.configPath.empty())
-        configManager.loadAppConfig(desc.configPath);
+        configManager.loadAppConfig(ConfigManager::findConfig(desc.configPath));
     configManager.applyCLIOverrides(argc, argv);
 
     EventDispatcher dispatcher;

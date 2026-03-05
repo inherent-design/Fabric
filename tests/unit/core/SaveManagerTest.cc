@@ -12,7 +12,8 @@ using namespace recurse;
 class SaveManagerTest : public ::testing::Test {
   protected:
     void SetUp() override {
-        testDir_ = std::filesystem::temp_directory_path() / "fabric_save_manager_test";
+        auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
+        testDir_ = std::filesystem::temp_directory_path() / ("fabric_save_manager_test_" + std::string(info->name()));
         std::filesystem::create_directories(testDir_);
         world_.registerCoreComponents();
     }

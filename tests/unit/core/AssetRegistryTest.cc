@@ -59,7 +59,8 @@ class AssetRegistryTest : public ::testing::Test {
 
     void SetUp() override {
         hub.disableWorkerThreadsForTesting();
-        tempDir = std::filesystem::temp_directory_path() / "fabric_asset_test";
+        auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
+        tempDir = std::filesystem::temp_directory_path() / ("fabric_asset_test_" + std::string(info->name()));
         std::filesystem::create_directories(tempDir);
     }
 

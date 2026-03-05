@@ -3,7 +3,6 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/utils/Profiler.hh"
-#include "recurse/world/ChunkedGrid.hh"
 
 #include <algorithm>
 #include <bx/math.h>
@@ -22,10 +21,10 @@
 #include <bgfx/embedded_shader.h>
 
 // Compiled SPIR-V shader bytecode generated at build time from .sc sources.
-#include "spv/fs_voxel.sc.bin.h"
-#include "spv/vs_voxel.sc.bin.h"
+#include "spv/fs_smooth.sc.bin.h"
+#include "spv/vs_smooth.sc.bin.h"
 
-static const bgfx::EmbeddedShader s_voxelShaders[] = {BGFX_EMBEDDED_SHADER(vs_voxel), BGFX_EMBEDDED_SHADER(fs_voxel),
+static const bgfx::EmbeddedShader s_voxelShaders[] = {BGFX_EMBEDDED_SHADER(vs_smooth), BGFX_EMBEDDED_SHADER(fs_smooth),
                                                       BGFX_EMBEDDED_SHADER_END()};
 
 using namespace fabric;
@@ -36,6 +35,11 @@ VoxelRenderer::VoxelRenderer()
     : program_(BGFX_INVALID_HANDLE),
       uniformPalette_(BGFX_INVALID_HANDLE),
       uniformLightDir_(BGFX_INVALID_HANDLE),
+      uniformViewPos_(BGFX_INVALID_HANDLE),
+      uniformLitColor_(BGFX_INVALID_HANDLE),
+      uniformShadowColor_(BGFX_INVALID_HANDLE),
+      uniformRimParams_(BGFX_INVALID_HANDLE),
+      uniformOceanParams_(BGFX_INVALID_HANDLE),
       indirectBuffer_(BGFX_INVALID_HANDLE) {}
 
 VoxelRenderer::~VoxelRenderer() {
@@ -45,6 +49,21 @@ VoxelRenderer::~VoxelRenderer() {
 void VoxelRenderer::shutdown() {
     if (bgfx::isValid(indirectBuffer_)) {
         bgfx::destroy(indirectBuffer_);
+    }
+    if (bgfx::isValid(uniformOceanParams_)) {
+        bgfx::destroy(uniformOceanParams_);
+    }
+    if (bgfx::isValid(uniformRimParams_)) {
+        bgfx::destroy(uniformRimParams_);
+    }
+    if (bgfx::isValid(uniformShadowColor_)) {
+        bgfx::destroy(uniformShadowColor_);
+    }
+    if (bgfx::isValid(uniformLitColor_)) {
+        bgfx::destroy(uniformLitColor_);
+    }
+    if (bgfx::isValid(uniformViewPos_)) {
+        bgfx::destroy(uniformViewPos_);
     }
     if (bgfx::isValid(uniformLightDir_)) {
         bgfx::destroy(uniformLightDir_);
@@ -57,6 +76,11 @@ void VoxelRenderer::shutdown() {
     }
 
     indirectBuffer_ = BGFX_INVALID_HANDLE;
+    uniformOceanParams_ = BGFX_INVALID_HANDLE;
+    uniformRimParams_ = BGFX_INVALID_HANDLE;
+    uniformShadowColor_ = BGFX_INVALID_HANDLE;
+    uniformLitColor_ = BGFX_INVALID_HANDLE;
+    uniformViewPos_ = BGFX_INVALID_HANDLE;
     uniformLightDir_ = BGFX_INVALID_HANDLE;
     uniformPalette_ = BGFX_INVALID_HANDLE;
     program_ = BGFX_INVALID_HANDLE;
@@ -66,18 +90,35 @@ void VoxelRenderer::shutdown() {
 
 void VoxelRenderer::initProgram() {
     bgfx::RendererType::Enum type = bgfx::getRendererType();
-    program_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_voxelShaders, type, "vs_voxel"),
-                                   bgfx::createEmbeddedShader(s_voxelShaders, type, "fs_voxel"), true);
+    program_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_voxelShaders, type, "vs_smooth"),
+                                   bgfx::createEmbeddedShader(s_voxelShaders, type, "fs_smooth"), true);
 
     uniformPalette_ = bgfx::createUniform("u_palette", bgfx::UniformType::Vec4, 256);
     uniformLightDir_ = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
+    uniformViewPos_ = bgfx::createUniform("u_viewPos", bgfx::UniformType::Vec4);
+    uniformLitColor_ = bgfx::createUniform("u_litColor", bgfx::UniformType::Vec4);
+    uniformShadowColor_ = bgfx::createUniform("u_shadowColor", bgfx::UniformType::Vec4);
+    uniformRimParams_ = bgfx::createUniform("u_rimParams", bgfx::UniformType::Vec4);
+    uniformOceanParams_ = bgfx::createUniform("u_oceanParams", bgfx::UniformType::Vec4);
 
-    if (!bgfx::isValid(program_) || !bgfx::isValid(uniformPalette_) || !bgfx::isValid(uniformLightDir_)) {
+    if (!bgfx::isValid(program_) || !bgfx::isValid(uniformPalette_) || !bgfx::isValid(uniformLightDir_) ||
+        !bgfx::isValid(uniformViewPos_) || !bgfx::isValid(uniformLitColor_) || !bgfx::isValid(uniformShadowColor_) ||
+        !bgfx::isValid(uniformRimParams_) || !bgfx::isValid(uniformOceanParams_)) {
         FABRIC_LOG_RENDER_ERROR("VoxelRenderer shader/uniform init failed for renderer {}",
                                 bgfx::getRendererName(type));
         shutdown();
         return;
     }
+
+    constexpr float kLitColor[4] = {0.95f, 0.85f, 0.55f, 1.0f};
+    constexpr float kShadowColor[4] = {0.45f, 0.35f, 0.55f, 1.0f};
+    constexpr float kRimParams[4] = {3.0f, 0.15f, 0.0f, 0.0f};   // Reduced rim strength: 0.6 -> 0.3 -> 0.15
+    constexpr float kOceanParams[4] = {16.0f, 0.2f, 0.0f, 0.0f}; // Reduced ocean specular: 0.8 -> 0.4 -> 0.2
+
+    std::copy(std::begin(kLitColor), std::end(kLitColor), litColor_);
+    std::copy(std::begin(kShadowColor), std::end(kShadowColor), shadowColor_);
+    std::copy(std::begin(kRimParams), std::end(kRimParams), rimParams_);
+    std::copy(std::begin(kOceanParams), std::end(kOceanParams), oceanParams_);
 
     initialized_ = true;
 
@@ -102,7 +143,7 @@ void VoxelRenderer::initProgram() {
     }
 }
 
-void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, int chunkX, int chunkY, int chunkZ) {
+void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, float offsetX, float offsetY, float offsetZ) {
     FABRIC_ZONE_SCOPED;
 
     if (!mesh.valid || mesh.indexCount == 0) {
@@ -117,12 +158,12 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, int chunkX,
         return;
     }
 
-    // Chunk world-space transform: translate by chunk coordinates * chunk size
+    // Camera-relative transform supplied by caller.
     float mtx[16];
     bx::mtxIdentity(mtx);
-    mtx[12] = static_cast<float>(chunkX * kChunkSize);
-    mtx[13] = static_cast<float>(chunkY * kChunkSize);
-    mtx[14] = static_cast<float>(chunkZ * kChunkSize);
+    mtx[12] = offsetX;
+    mtx[13] = offsetY;
+    mtx[14] = offsetZ;
     bgfx::setTransform(mtx);
 
     // Upload palette colors (up to 256 entries)
@@ -138,6 +179,11 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, int chunkX,
                      BGFX_STATE_MSAA | BGFX_STATE_CULL_CCW;
     bgfx::setState(state);
     bgfx::setUniform(uniformLightDir_, lightDir_);
+    bgfx::setUniform(uniformViewPos_, viewPos_);
+    bgfx::setUniform(uniformLitColor_, litColor_);
+    bgfx::setUniform(uniformShadowColor_, shadowColor_);
+    bgfx::setUniform(uniformRimParams_, rimParams_);
+    bgfx::setUniform(uniformOceanParams_, oceanParams_);
     bgfx::submit(view, program_);
 }
 
@@ -146,6 +192,13 @@ void VoxelRenderer::setLightDirection(const Vector3<float, Space::World>& dir) {
     lightDir_[1] = dir.y;
     lightDir_[2] = dir.z;
     lightDir_[3] = 0.0f;
+}
+
+void VoxelRenderer::setViewPosition(double x, double y, double z) {
+    viewPos_[0] = static_cast<float>(x);
+    viewPos_[1] = static_cast<float>(y);
+    viewPos_[2] = static_cast<float>(z);
+    viewPos_[3] = 1.0f;
 }
 
 bool VoxelRenderer::isValid() const {
@@ -176,7 +229,7 @@ void VoxelRenderer::renderBatch(bgfx::ViewId view, const ChunkRenderInfo* chunks
     } else {
         for (uint32_t i = 0; i < count; ++i) {
             const auto& ci = chunks[i];
-            render(view, *ci.mesh, ci.chunkX, ci.chunkY, ci.chunkZ);
+            render(view, *ci.mesh, ci.offsetX, ci.offsetY, ci.offsetZ);
         }
     }
 }
@@ -232,6 +285,11 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
             bgfx::setUniform(uniformPalette_, group.palette->data(), cnt);
         }
         bgfx::setUniform(uniformLightDir_, lightDir_);
+        bgfx::setUniform(uniformViewPos_, viewPos_);
+        bgfx::setUniform(uniformLitColor_, litColor_);
+        bgfx::setUniform(uniformShadowColor_, shadowColor_);
+        bgfx::setUniform(uniformRimParams_, rimParams_);
+        bgfx::setUniform(uniformOceanParams_, oceanParams_);
         bgfx::setState(state);
 
         for (size_t j = 0; j < group.indices.size(); ++j) {
@@ -239,9 +297,9 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
 
             float mtx[16];
             bx::mtxIdentity(mtx);
-            mtx[12] = static_cast<float>(ci.chunkX * kChunkSize);
-            mtx[13] = static_cast<float>(ci.chunkY * kChunkSize);
-            mtx[14] = static_cast<float>(ci.chunkZ * kChunkSize);
+            mtx[12] = ci.offsetX;
+            mtx[13] = ci.offsetY;
+            mtx[14] = ci.offsetZ;
             bgfx::setTransform(mtx);
 
             bgfx::setVertexBuffer(0, ci.mesh->vbh);

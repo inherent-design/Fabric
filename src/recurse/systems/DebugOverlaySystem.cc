@@ -21,10 +21,10 @@
 #include "recurse/systems/OITRenderSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
+#include "recurse/systems/VoxelMeshingSystem.hh"
 #include "recurse/systems/VoxelRenderSystem.hh"
-#include "recurse/world/ChunkMeshManager.hh"
 #include "recurse/world/ChunkStreaming.hh"
-#include "recurse/world/VoxelMesher.hh"
+#include "recurse/world/SmoothVoxelVertex.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 #include <bgfx/bgfx.h>
@@ -44,9 +44,11 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
     ai_ = ctx.systemRegistry.get<AIGameSystem>();
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
+    meshSystem_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
 
     debugDraw_.init();
     debugHUD_.init(ctx.rmlContext);
+    chunkDebugPanel_.init(ctx.rmlContext);
     wailaPanel_.init(ctx.rmlContext);
     hotkeyPanel_.init(ctx.rmlContext);
     btDebugPanel_.init(ctx.rmlContext);
@@ -81,6 +83,8 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
         wailaPanel_.toggle();
         hotkeyPanel_.toggle();
     });
+
+    dispatcher.addEventListener("toggle_chunk_debug", [this](fabric::Event&) { chunkDebugPanel_.toggle(); });
 
     dispatcher.addEventListener("toggle_wireframe", [this](fabric::Event&) {
         debugDraw_.toggleWireframe();
@@ -203,16 +207,20 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         fabric::DebugData debugData;
         debugData.fps = (cpuMs > 0.0f) ? 1000.0f / cpuMs : 0.0f;
         debugData.frameTimeMs = cpuMs;
-        debugData.visibleChunks = static_cast<int>(chunks_->gpuMeshes().size());
+        debugData.visibleChunks = meshSystem_ ? static_cast<int>(meshSystem_->gpuMeshes().size()) : 0;
         debugData.totalChunks = static_cast<int>(terrain_->densityGrid().chunkCount());
         debugData.cameraPosition = camera_->position();
         debugData.currentRadius = chunks_->streaming().currentRadius();
         debugData.currentState = recurse::MovementFSM::stateToString(charMovement_->movementFSM().currentState());
 
-        int triCount = 0;
-        for (const auto& [_, m] : chunks_->gpuMeshes())
-            triCount += static_cast<int>(m.indexCount / 3);
-        debugData.triangleCount = triCount;
+        // Calculate total triangle count from GPU mesh index counts
+        int triangleCount = 0;
+        if (meshSystem_) {
+            for (const auto& [coord, gpuMesh] : meshSystem_->gpuMeshes()) {
+                triangleCount += static_cast<int>(gpuMesh.indexCount / 3);
+            }
+        }
+        debugData.triangleCount = triangleCount;
 
         debugData.drawCallCount = static_cast<int>(stats->numDraw);
         if (stats->gpuTimerFreq > 0) {
@@ -229,7 +237,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             debugData.physicsBodyCount = static_cast<int>(jolt->GetNumBodies());
         }
         debugData.audioVoiceCount = static_cast<int>(audio_->activeSoundCount());
-        debugData.chunkMeshQueueSize = static_cast<int>(chunks_->dirtyCount());
+        debugData.chunkMeshQueueSize = 0; // No accessor available; would need VoxelMeshingSystem::pendingQueueSize()
 
         debugHUD_.update(debugData);
 
@@ -276,12 +284,32 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
     if (btDebugPanel_.isVisible()) {
         btDebugPanel_.update(ai_->behaviorAI(), btDebugSelectedNpc_);
     }
+
+    // Chunk debug panel
+    if (chunkDebugPanel_.isVisible() && meshSystem_) {
+        fabric::ChunkDebugData chunkData;
+        chunkData.activeChunks = meshSystem_->gpuMeshCount();
+        chunkData.gpuMeshCount = meshSystem_->gpuMeshCount();
+        chunkData.dirtyChunksPending = meshSystem_->pendingMeshCount();
+        chunkData.vertexCount = meshSystem_->vertexBufferSize();
+        chunkData.indexCount = meshSystem_->indexBufferSize();
+
+        // Calculate buffer sizes in MB (vertex: 36 bytes, index: 4 bytes)
+        constexpr float kVertexSize = sizeof(recurse::SmoothVoxelVertex);
+        constexpr float kIndexSize = sizeof(uint32_t);
+        constexpr float kMB = 1024.0f * 1024.0f;
+        chunkData.vertexBufferMB = static_cast<float>(chunkData.vertexCount) * kVertexSize / kMB;
+        chunkData.indexBufferMB = static_cast<float>(chunkData.indexCount) * kIndexSize / kMB;
+
+        chunkDebugPanel_.update(chunkData);
+    }
 }
 
 void DebugOverlaySystem::shutdown() {
     devConsole_.shutdown();
     contentBrowser_.shutdown();
     btDebugPanel_.shutdown();
+    chunkDebugPanel_.shutdown();
     hotkeyPanel_.shutdown();
     wailaPanel_.shutdown();
     debugHUD_.shutdown();

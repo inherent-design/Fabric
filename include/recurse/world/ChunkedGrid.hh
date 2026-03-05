@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -94,6 +95,38 @@ template <typename T> class ChunkedGrid {
     std::array<T, 6> getNeighbors6(int x, int y, int z) const {
         return {{get(x + 1, y, z), get(x - 1, y, z), get(x, y + 1, z), get(x, y - 1, z), get(x, y, z + 1),
                  get(x, y, z - 1)}};
+    }
+
+    /// Trilinear interpolation at arbitrary world-space position.
+    /// Returns interpolated value from 8 surrounding integer grid points.
+    /// Requires T to support arithmetic operations (float, double).
+    T sampleLinear(float wx, float wy, float wz) const {
+        int x0 = static_cast<int>(std::floor(wx));
+        int y0 = static_cast<int>(std::floor(wy));
+        int z0 = static_cast<int>(std::floor(wz));
+
+        float fx = wx - static_cast<float>(x0);
+        float fy = wy - static_cast<float>(y0);
+        float fz = wz - static_cast<float>(z0);
+
+        T c000 = get(x0, y0, z0);
+        T c100 = get(x0 + 1, y0, z0);
+        T c010 = get(x0, y0 + 1, z0);
+        T c110 = get(x0 + 1, y0 + 1, z0);
+        T c001 = get(x0, y0, z0 + 1);
+        T c101 = get(x0 + 1, y0, z0 + 1);
+        T c011 = get(x0, y0 + 1, z0 + 1);
+        T c111 = get(x0 + 1, y0 + 1, z0 + 1);
+
+        T c00 = c000 * (1.0f - fx) + c100 * fx;
+        T c10 = c010 * (1.0f - fx) + c110 * fx;
+        T c01 = c001 * (1.0f - fx) + c101 * fx;
+        T c11 = c011 * (1.0f - fx) + c111 * fx;
+
+        T c0 = c00 * (1.0f - fy) + c10 * fy;
+        T c1 = c01 * (1.0f - fy) + c11 * fy;
+
+        return c0 * (1.0f - fz) + c1 * fz;
     }
 
   private:

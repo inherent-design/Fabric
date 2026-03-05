@@ -1,0 +1,40 @@
+# Profile: minimal
+# Use case: Visual debugging - "Is the voxel pipeline working?"
+# Usage: ./recurse --config=config/profiles/minimal.toml
+#
+# Enables only the core voxel pipeline and UI for visual verification.
+# Disables all subsystems (audio, particles, shadows, AI, etc.)
+
+[features]
+# === VP0+ Voxel Pipeline ===
+voxel_simulation = true
+voxel_meshing = true
+voxel_rendering = true
+
+# === Legacy Systems (disabled - clean break) ===
+legacy_density_field = false
+legacy_water_sim = false
+legacy_terrain_gen = false
+
+# === Rendering (minimal) ===
+shadows = false
+oit = false
+post_process = false
+debug_draw = false
+
+# === Gameplay (disabled for visual debug) ===
+physics = false
+audio = false
+particles = false
+character_movement = false
+behavior_ai = false
+
+# === UI (enabled for debug visibility) ===
+rml_ui = true
+debug_hud = true
+waila = false
+dev_console = false
+
+# === Debug ===
+tracy_profiling = true
+verbose_logging = false

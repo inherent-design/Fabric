@@ -1,5 +1,4 @@
 #include "recurse/gameplay/VoxelInteraction.hh"
-#include "recurse/world/ChunkMeshManager.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;

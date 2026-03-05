@@ -5,8 +5,9 @@
 namespace fabric {
 
 Camera::Camera() {
-    // Initialize both matrices to identity
+    // Initialize matrices to identity
     bx::mtxIdentity(view_);
+    bx::mtxIdentity(viewWorld_);
     bx::mtxIdentity(projection_);
 }
 
@@ -29,30 +30,45 @@ void Camera::setOrthographic(float left, float right, float bottom, float top, f
 
 void Camera::updateView(const Transform<float>& transform) {
     auto pos = transform.getPosition();
+    updateView(Vector3<double, Space::World>(static_cast<double>(pos.x), static_cast<double>(pos.y),
+                                             static_cast<double>(pos.z)),
+               transform.getRotation());
+}
+
+void Camera::updateView(const Vector3<double, Space::World>& worldPos, const Quaternion<float>& rotation) {
+    worldPosD_ = worldPos;
 
     // Left-handed: forward is +Z
-    auto fwd = transform.getRotation().rotateVector(Vector3<float, Space::World>(0.0f, 0.0f, 1.0f));
-    auto up = transform.getRotation().rotateVector(Vector3<float, Space::World>(0.0f, 1.0f, 0.0f));
+    auto fwd = rotation.rotateVector(Vector3<float, Space::World>(0.0f, 0.0f, 1.0f));
+    auto up = rotation.rotateVector(Vector3<float, Space::World>(0.0f, 1.0f, 0.0f));
 
-    bx::Vec3 eye(pos.x, pos.y, pos.z);
-    bx::Vec3 at(pos.x + fwd.x, pos.y + fwd.y, pos.z + fwd.z);
-    bx::Vec3 upVec(up.x, up.y, up.z);
+    // Camera-relative view for rendering submissions.
+    bx::Vec3 relEye(0.0f, 0.0f, 0.0f);
+    bx::Vec3 relAt(fwd.x, fwd.y, fwd.z);
+    bx::Vec3 relUp(up.x, up.y, up.z);
+    bx::mtxLookAt(view_, relEye, relAt, relUp);
 
-    bx::mtxLookAt(view_, eye, at, upVec);
+    // World-space view for frustum extraction/culling.
+    bx::Vec3 worldEye(static_cast<float>(worldPosD_.x), static_cast<float>(worldPosD_.y),
+                      static_cast<float>(worldPosD_.z));
+    bx::Vec3 worldAt(worldEye.x + fwd.x, worldEye.y + fwd.y, worldEye.z + fwd.z);
+    bx::Vec3 worldUp(up.x, up.y, up.z);
+    bx::mtxLookAt(viewWorld_, worldEye, worldAt, worldUp);
 }
 
 Vector3<float, Space::World> Camera::getPosition() const {
-    // View matrix V = [R | t] where the camera position p satisfies t = -R*p.
-    // So p = -R^T * t. R is the upper-left 3x3, t is column 3.
-    // Column-major: element(row, col) = view_[col * 4 + row]
-    float rx = view_[0], ry = view_[4], rz = view_[8];
-    float ux = view_[1], uy = view_[5], uz = view_[9];
-    float fx = view_[2], fy = view_[6], fz = view_[10];
-    float tx = view_[12], ty = view_[13], tz = view_[14];
+    return Vector3<float, Space::World>(static_cast<float>(worldPosD_.x), static_cast<float>(worldPosD_.y),
+                                        static_cast<float>(worldPosD_.z));
+}
 
-    // p = -R^T * t  (R^T rows are columns of R in the view matrix)
-    return Vector3<float, Space::World>(-(rx * tx + ux * ty + fx * tz), -(ry * tx + uy * ty + fy * tz),
-                                        -(rz * tx + uz * ty + fz * tz));
+Vector3<double, Space::World> Camera::worldPositionD() const {
+    return worldPosD_;
+}
+
+Vector3<float, Space::World> Camera::cameraRelative(const Vector3<double, Space::World>& worldPos) const {
+    return Vector3<float, Space::World>(static_cast<float>(worldPos.x - worldPosD_.x),
+                                        static_cast<float>(worldPos.y - worldPosD_.y),
+                                        static_cast<float>(worldPos.z - worldPosD_.z));
 }
 
 const float* Camera::viewMatrix() const {
@@ -64,7 +80,7 @@ const float* Camera::projectionMatrix() const {
 }
 
 void Camera::getViewProjection(float* outVP) const {
-    bx::mtxMul(outVP, view_, projection_);
+    bx::mtxMul(outVP, viewWorld_, projection_);
 }
 
 float Camera::fovY() const {

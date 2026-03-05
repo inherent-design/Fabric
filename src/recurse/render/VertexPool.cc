@@ -1,7 +1,7 @@
 #include "recurse/render/VertexPool.hh"
 
 #include "fabric/utils/ErrorHandling.hh"
-#include "recurse/world/VoxelMesher.hh"
+#include "recurse/world/VoxelVertex.hh"
 
 using namespace fabric;
 
@@ -33,7 +33,7 @@ void VertexPool::init(const Config& config) {
         uint32_t totalVertices = config_.maxVerticesPerBucket * config_.initialBuckets;
         uint32_t totalIndices = config_.maxIndicesPerBucket * config_.initialBuckets;
 
-        vbh_ = bgfx::createDynamicVertexBuffer(totalVertices, VoxelMesher::getVertexLayout(), BGFX_BUFFER_ALLOW_RESIZE);
+        vbh_ = bgfx::createDynamicVertexBuffer(totalVertices, VoxelVertex::getVertexLayout(), BGFX_BUFFER_ALLOW_RESIZE);
         ibh_ = bgfx::createDynamicIndexBuffer(totalIndices, BGFX_BUFFER_INDEX32 | BGFX_BUFFER_ALLOW_RESIZE);
     }
 

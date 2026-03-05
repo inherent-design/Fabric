@@ -2,46 +2,62 @@
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Log.hh"
-#include "recurse/world/CaveCarver.hh"
-#include "recurse/world/ChunkedGrid.hh"
-#include "recurse/world/TerrainGenerator.hh"
+#include "fabric/simulation/SimulationGrid.hh"
+#include "recurse/world/TestWorldGenerator.hh"
+#include "recurse/world/WorldGenerator.hh"
 
 namespace recurse::systems {
 
+TerrainSystem::TerrainSystem() = default;
 TerrainSystem::~TerrainSystem() = default;
 
 void TerrainSystem::init(fabric::AppContext& /*ctx*/) {
-    TerrainConfig terrainConfig;
-    terrainConfig.seed = 42;
-    terrainConfig.frequency = 0.02f;
-    terrainConfig.octaves = 4;
-    terrainGen_ = std::make_unique<TerrainGenerator>(terrainConfig);
+    simGrid_ = std::make_unique<fabric::simulation::SimulationGrid>();
+    worldGen_ = std::make_unique<FlatWorldGenerator>();
 
-    CaveConfig caveConfig;
-    caveConfig.seed = 42;
-    caveCarver_ = std::make_unique<CaveCarver>(caveConfig);
+    // Generate initial 3x3x3 chunk region around origin
+    for (int cz = -1; cz <= 1; ++cz) {
+        for (int cy = -1; cy <= 1; ++cy) {
+            for (int cx = -1; cx <= 1; ++cx) {
+                worldGen_->generate(*simGrid_, cx, cy, cz);
+            }
+        }
+    }
+    simGrid_->advanceEpoch();
 
-    FABRIC_LOG_INFO("TerrainSystem initialized");
+    FABRIC_LOG_INFO("TerrainSystem initialized with {} ({} chunks)", worldGen_->name(), simGrid_->allChunks().size());
+}
+
+void TerrainSystem::shutdown() {
+    worldGen_.reset();
+    simGrid_.reset();
 }
 
 void TerrainSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fixedDt*/) {
-    // Init-only system; terrain generation is driven by ChunkPipelineSystem
+    // Init-only system: no per-tick work
 }
 
 void TerrainSystem::configureDependencies() {
-    // No dependencies; TerrainSystem is a root system
+    // Root system: no dependencies
 }
 
-void TerrainSystem::generateChunkTerrain(int cx, int cy, int cz) {
-    float x0 = static_cast<float>(cx * kChunkSize);
-    float y0 = static_cast<float>(cy * kChunkSize);
-    float z0 = static_cast<float>(cz * kChunkSize);
-    float x1 = x0 + static_cast<float>(kChunkSize);
-    float y1 = y0 + static_cast<float>(kChunkSize);
-    float z1 = z0 + static_cast<float>(kChunkSize);
-    fabric::AABB region(fabric::Vec3f(x0, y0, z0), fabric::Vec3f(x1, y1, z1));
-    terrainGen_->generate(density_, essence_, region);
-    caveCarver_->carve(density_, region);
+void TerrainSystem::generateChunk(int cx, int cy, int cz) {
+    if (!worldGen_ || !simGrid_)
+        return;
+    worldGen_->generate(*simGrid_, cx, cy, cz);
+    simGrid_->advanceEpoch();
+}
+
+fabric::simulation::SimulationGrid& TerrainSystem::simulationGrid() {
+    return *simGrid_;
+}
+
+const fabric::simulation::SimulationGrid& TerrainSystem::simulationGrid() const {
+    return *simGrid_;
+}
+
+void TerrainSystem::setWorldGenerator(std::unique_ptr<WorldGenerator> gen) {
+    worldGen_ = std::move(gen);
 }
 
 } // namespace recurse::systems

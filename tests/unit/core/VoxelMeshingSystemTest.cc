@@ -1,0 +1,146 @@
+#include "recurse/systems/VoxelMeshingSystem.hh"
+
+#include "fabric/simulation/ChunkActivityTracker.hh"
+#include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/world/ChunkedGrid.hh"
+
+#include <gtest/gtest.h>
+
+using fabric::ChunkCoord;
+using fabric::simulation::ChunkActivityTracker;
+using fabric::simulation::ChunkState;
+using fabric::simulation::SimulationGrid;
+using fabric::simulation::VoxelCell;
+namespace MaterialIds = fabric::simulation::MaterialIds;
+using recurse::kChunkSize;
+using recurse::systems::VoxelMeshingSystem;
+
+class VoxelMeshingSystemTest : public ::testing::Test {
+  protected:
+    SimulationGrid simGrid;
+    ChunkActivityTracker tracker;
+    VoxelMeshingSystem system;
+
+    void SetUp() override {
+        system.setSimulationGrid(&simGrid);
+        system.setActivityTracker(&tracker);
+        tracker.setReferencePoint(0, 0, 0);
+        // Unit tests don't set up neighbors; bypass the neighbor check.
+        system.setRequireNeighborsForMeshing(false);
+    }
+
+    void fillChunkSolid(const ChunkCoord& coord) {
+        VoxelCell solid;
+        solid.materialId = MaterialIds::Stone;
+        simGrid.fillChunk(coord.x, coord.y, coord.z, solid);
+    }
+};
+
+TEST_F(VoxelMeshingSystemTest, SystemLifecycle_InitRenderShutdown) {
+    system.processFrame();
+    system.shutdown();
+}
+
+TEST_F(VoxelMeshingSystemTest, DirtyChunkConsumed) {
+    ChunkCoord coord{0, 0, 0};
+    fillChunkSolid(coord);
+    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::Active);
+
+    system.processFrame();
+
+    EXPECT_EQ(tracker.getState({coord.x, coord.y, coord.z}), ChunkState::Sleeping);
+    const auto& meshes = system.gpuMeshes();
+    ASSERT_EQ(meshes.count(coord), 1u);
+    EXPECT_TRUE(meshes.at(coord).valid);
+    EXPECT_GT(meshes.at(coord).vertexCount, 0u);
+}
+
+TEST_F(VoxelMeshingSystemTest, BudgetLimitsChunksPerFrame) {
+    system.setMeshBudget(3);
+
+    for (int i = 0; i < 10; ++i) {
+        ChunkCoord coord{i, 0, 0};
+        fillChunkSolid(coord);
+        tracker.setState({coord.x, coord.y, coord.z}, ChunkState::Active);
+    }
+
+    system.processFrame();
+
+    EXPECT_EQ(system.gpuMeshes().size(), 3u);
+    EXPECT_EQ(tracker.collectActiveChunks().size(), 7u);
+}
+
+TEST_F(VoxelMeshingSystemTest, PriorityOrdering) {
+    ChunkCoord near{1, 0, 0};
+    ChunkCoord mid{5, 0, 0};
+    ChunkCoord far{10, 0, 0};
+
+    fillChunkSolid(near);
+    fillChunkSolid(mid);
+    fillChunkSolid(far);
+
+    tracker.setState({near.x, near.y, near.z}, ChunkState::Active);
+    tracker.setState({mid.x, mid.y, mid.z}, ChunkState::Active);
+    tracker.setState({far.x, far.y, far.z}, ChunkState::Active);
+
+    system.setMeshBudget(2);
+    system.processFrame();
+
+    const auto& meshes = system.gpuMeshes();
+    EXPECT_EQ(meshes.count(near), 1u);
+    EXPECT_EQ(meshes.count(mid), 1u);
+    EXPECT_EQ(meshes.count(far), 0u);
+    EXPECT_NE(tracker.getState({far.x, far.y, far.z}), ChunkState::Sleeping);
+}
+
+TEST_F(VoxelMeshingSystemTest, EmptyChunkNoMesh) {
+    ChunkCoord coord{0, 0, 0};
+    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::Active);
+
+    system.processFrame();
+
+    EXPECT_EQ(system.gpuMeshes().count(coord), 0u);
+    EXPECT_EQ(tracker.getState({coord.x, coord.y, coord.z}), ChunkState::Sleeping);
+}
+
+TEST_F(VoxelMeshingSystemTest, MeshUpdateReplacesOld) {
+    ChunkCoord coord{0, 0, 0};
+    fillChunkSolid(coord);
+    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::Active);
+    system.processFrame();
+
+    const auto& meshes = system.gpuMeshes();
+    ASSERT_EQ(meshes.count(coord), 1u);
+    EXPECT_TRUE(meshes.at(coord).valid);
+
+    // Re-mark dirty and remesh -- entry should be replaced, not duplicated
+    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::Active);
+    system.processFrame();
+
+    EXPECT_EQ(meshes.count(coord), 1u);
+    EXPECT_TRUE(meshes.at(coord).valid);
+}
+
+TEST_F(VoxelMeshingSystemTest, KnownDensityFieldMesh) {
+    ChunkCoord coord{0, 0, 0};
+    VoxelCell solid;
+    solid.materialId = MaterialIds::Stone;
+
+    // Fill bottom half (y < 16) with stone, top half remains air
+    for (int z = 0; z < kChunkSize; ++z)
+        for (int y = 0; y < 16; ++y)
+            for (int x = 0; x < kChunkSize; ++x)
+                simGrid.writeCell(x, y, z, solid);
+    simGrid.advanceEpoch();
+
+    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::Active);
+    system.processFrame();
+
+    const auto& meshes = system.gpuMeshes();
+    ASSERT_EQ(meshes.count(coord), 1u);
+    const auto& mesh = meshes.at(coord);
+    EXPECT_TRUE(mesh.valid);
+    EXPECT_GT(mesh.vertexCount, 0u);
+    EXPECT_GT(mesh.indexCount, 0u);
+}

@@ -4,24 +4,27 @@
 #include "fabric/core/Camera.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SceneView.hh"
+#include "fabric/core/Spatial.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/systems/ChunkPipelineSystem.hh"
 #include "recurse/systems/ParticleGameSystem.hh"
 #include "recurse/systems/ShadowRenderSystem.hh"
-#include "recurse/world/VoxelMesher.hh"
+#include "recurse/systems/VoxelMeshingSystem.hh"
 
 #include <SDL3/SDL.h>
-#include <unordered_set>
+
+#include <vector>
 
 namespace recurse::systems {
 
 void VoxelRenderSystem::init(fabric::AppContext& ctx) {
     chunks_ = ctx.systemRegistry.get<ChunkPipelineSystem>();
+    meshSystem_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
     shadow_ = ctx.systemRegistry.get<ShadowRenderSystem>();
     particles_ = ctx.systemRegistry.get<ParticleGameSystem>();
 
-    FABRIC_LOG_INFO("VoxelRenderSystem initialized");
+    FABRIC_LOG_INFO("VoxelRenderSystem initialized (mesh source: VoxelMeshingSystem)");
 }
 
 void VoxelRenderSystem::render(fabric::AppContext& ctx) {
@@ -38,20 +41,38 @@ void VoxelRenderSystem::render(fabric::AppContext& ctx) {
     // ECS entity rendering (cull, build render list, submit)
     sceneView->render();
 
-    std::unordered_set<flecs::entity_t> visibleEntityIds;
-    visibleEntityIds.reserve(sceneView->visibleEntities().size());
-    for (const auto& entity : sceneView->visibleEntities()) {
-        visibleEntityIds.insert(entity.id());
-    }
+    // Voxel chunk mesh rendering from VoxelMeshingSystem
+    if (meshSystem_) {
+        FABRIC_ZONE_SCOPED_N("voxel_chunk_render");
 
-    // Voxel chunk rendering (frustum-filtered via chunk entities)
-    for (const auto& [coord, mesh] : chunks_->gpuMeshes()) {
-        auto entIt = chunks_->chunkEntities().find(coord);
-        if (entIt == chunks_->chunkEntities().end())
-            continue;
-        if (visibleEntityIds.find(entIt->second.id()) == visibleEntityIds.end())
-            continue;
-        voxelRenderer_.render(sceneView->geometryViewId(), mesh, coord.cx, coord.cy, coord.cz);
+        std::vector<recurse::ChunkRenderInfo> renderBatch;
+        renderBatch.reserve(meshSystem_->gpuMeshes().size());
+
+        // Camera-relative render path: chunk transforms are submitted relative
+        // to camera, so shader-space camera position is origin.
+        voxelRenderer_.setViewPosition(0.0, 0.0, 0.0);
+
+        for (const auto& [coord, gpuMesh] : meshSystem_->gpuMeshes()) {
+            if (!gpuMesh.valid || gpuMesh.vertexCount == 0 || gpuMesh.indexCount == 0)
+                continue;
+
+            const auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
+                static_cast<double>(coord.x * recurse::kChunkSize), static_cast<double>(coord.y * recurse::kChunkSize),
+                static_cast<double>(coord.z * recurse::kChunkSize));
+            const auto relOrigin = camera->cameraRelative(worldOrigin);
+
+            renderBatch.push_back(recurse::ChunkRenderInfo{
+                .mesh = &gpuMesh.mesh,
+                .offsetX = relOrigin.x,
+                .offsetY = relOrigin.y,
+                .offsetZ = relOrigin.z,
+            });
+        }
+
+        if (!renderBatch.empty()) {
+            voxelRenderer_.renderBatch(sceneView->geometryViewId(), renderBatch.data(),
+                                       static_cast<uint32_t>(renderBatch.size()));
+        }
     }
 
     // Particle billboard rendering
@@ -65,16 +86,12 @@ void VoxelRenderSystem::render(fabric::AppContext& ctx) {
 
 void VoxelRenderSystem::shutdown() {
     voxelRenderer_.shutdown();
-    // Sky renderer is owned by SceneView but its GPU resources must be released
-    // before bgfx shuts down. The scene renderer is the appropriate place since
-    // it manages the SceneView render pipeline.
-    // Note: ctx is not available in shutdown(). Wave 2 will wire this into
-    // onShutdown or a ctx-aware shutdown path. Left as a reminder.
     FABRIC_LOG_INFO("VoxelRenderSystem shut down");
 }
 
 void VoxelRenderSystem::configureDependencies() {
     after<ChunkPipelineSystem>();
+    after<VoxelMeshingSystem>();
     after<ShadowRenderSystem>();
     after<ParticleGameSystem>();
 }

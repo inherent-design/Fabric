@@ -6,6 +6,12 @@ SAMPLER2D(s_hdrColor, 0);
 SAMPLER2D(s_bloomTex, 1);
 uniform vec4 u_tonemapParams; // x = bloom intensity, y = exposure
 
+// Interleaved gradient noise for dithering (Lagarde 2014)
+float interleavedGradientNoise(vec2 screenPos) {
+    vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
+    return fract(magic.z * fract(dot(screenPos, magic.xy)));
+}
+
 // ACES filmic tonemapping (Narkowicz 2015 fit)
 vec3 acesFilmic(vec3 x) {
     float a = 2.51;
@@ -35,5 +41,9 @@ void main() {
     // Linear to sRGB gamma (approximate)
     ldr = pow(ldr, vec3_splat(1.0 / 2.2));
 
-    gl_FragColor = vec4(ldr, 1.0);
+    // Apply dithering to break up banding from 8-bit quantization
+    float dither = interleavedGradientNoise(gl_FragCoord.xy) - 0.5;
+    vec3 dithered = ldr + dither / 255.0;
+
+    gl_FragColor = vec4(dithered, 1.0);
 }

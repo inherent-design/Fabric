@@ -6,7 +6,7 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/utils/Profiler.hh"
-#include "recurse/world/ChunkMeshManager.hh"
+#include "recurse/gameplay/VoxelInteraction.hh"
 
 namespace recurse::systems {
 

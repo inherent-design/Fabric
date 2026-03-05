@@ -1,0 +1,85 @@
+#pragma once
+
+#include "fabric/core/ChunkCoord.hh"
+#include "fabric/core/SystemBase.hh"
+#include "recurse/render/VoxelRenderer.hh"
+
+#include <array>
+#include <cstdint>
+#include <memory>
+#include <unordered_map>
+
+namespace fabric::simulation {
+class ChunkActivityTracker;
+class SimulationGrid;
+} // namespace fabric::simulation
+
+namespace recurse {
+class SnapMCMesher;
+class SmoothVertexPool;
+} // namespace recurse
+
+namespace recurse::systems {
+
+class ShadowRenderSystem;
+class VoxelSimulationSystem;
+
+struct ChunkGPUMesh {
+    recurse::ChunkMesh mesh;
+    uint32_t vertexCount = 0;
+    uint32_t indexCount = 0;
+    bool valid = false;
+};
+
+/// Bridges simulation activity flags to mesh updates via SnapMC meshing.
+/// Runs in PreRender phase. Collects active chunks from ChunkActivityTracker,
+/// sorts by priority, and meshes up to a per-frame chunk budget.
+class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
+  public:
+    VoxelMeshingSystem();
+    ~VoxelMeshingSystem() override;
+
+    void init(fabric::AppContext& ctx) override;
+    void shutdown() override;
+    void render(fabric::AppContext& ctx) override;
+    void configureDependencies() override;
+
+    void setSimulationGrid(fabric::simulation::SimulationGrid* grid);
+    void setActivityTracker(fabric::simulation::ChunkActivityTracker* tracker);
+    void setMeshBudget(int budget) { meshBudget_ = budget; }
+    int meshBudget() const { return meshBudget_; }
+
+    /// When true, requires all 6 face-adjacent neighbors to exist before meshing.
+    /// This prevents geometry gaps at chunk boundaries but requires notification
+    /// system to re-mesh when neighbors load. Default: false (mesh immediately).
+    void setRequireNeighborsForMeshing(bool require) { requireNeighborsForMeshing_ = require; }
+
+    /// Process one frame of meshing. Called by render(); exposed for testing.
+    void processFrame();
+
+    const auto& gpuMeshes() const { return gpuMeshes_; }
+
+    /// Statistics accessors for debug panel.
+    size_t gpuMeshCount() const { return gpuMeshes_.size(); }
+    size_t pendingMeshCount() const;
+    size_t vertexBufferSize() const;
+    size_t indexBufferSize() const;
+
+  private:
+    void meshChunk(const fabric::ChunkCoord& coord);
+    void destroyChunkMesh(ChunkGPUMesh& gpuMesh);
+    std::array<float, 4> materialColor(uint16_t materialId) const;
+
+    VoxelSimulationSystem* simSystem_ = nullptr;
+    fabric::simulation::SimulationGrid* simGrid_ = nullptr;
+    fabric::simulation::ChunkActivityTracker* activityTracker_ = nullptr;
+    std::unique_ptr<recurse::SnapMCMesher> mesher_;
+    std::unique_ptr<recurse::SmoothVertexPool> vertexPool_;
+
+    std::unordered_map<fabric::ChunkCoord, ChunkGPUMesh, fabric::ChunkCoordHash> gpuMeshes_;
+    int meshBudget_ = 3;
+    bool gpuUploadEnabled_ = false;
+    bool requireNeighborsForMeshing_ = false;
+};
+
+} // namespace recurse::systems

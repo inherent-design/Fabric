@@ -1,0 +1,11 @@
+target_sources(UnitTests
+  PRIVATE
+  MaterialRegistryTest.cc
+  SimulationGridTest.cc
+  ChunkActivityTrackerTest.cc
+  GhostCellsTest.cc
+  FallingSandGravityTest.cc
+  FallingSandLiquidTest.cc
+  VoxelSimulationSystemTest.cc
+  ParallelSimulationTest.cc
+)

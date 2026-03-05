@@ -1,0 +1,224 @@
+#include "fabric/simulation/GhostCells.hh"
+#include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/simulation/VoxelMaterial.hh"
+#include <gtest/gtest.h>
+
+using namespace fabric::simulation;
+using recurse::kChunkSize;
+
+class GhostCellsTest : public ::testing::Test {
+  protected:
+    SimulationGrid grid;
+    GhostCellManager ghosts;
+
+    void writeAndAdvance(int wx, int wy, int wz, VoxelCell cell) {
+        grid.writeCell(wx, wy, wz, cell);
+        grid.advanceEpoch();
+    }
+
+    VoxelCell makeSand() {
+        VoxelCell c;
+        c.materialId = MaterialIds::Sand;
+        return c;
+    }
+
+    VoxelCell makeStone() {
+        VoxelCell c;
+        c.materialId = MaterialIds::Stone;
+        return c;
+    }
+
+    VoxelCell makeWater() {
+        VoxelCell c;
+        c.materialId = MaterialIds::Water;
+        return c;
+    }
+};
+
+// 1. Ghost[+X][0][0] copies neighbor's local (0,0,0)
+TEST_F(GhostCellsTest, SyncCopiesNeighborBoundary) {
+    ChunkPos origin{0, 0, 0};
+    ChunkPos neighbor{1, 0, 0}; // +X neighbor
+
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.fillChunk(1, 0, 0, VoxelCell{});
+
+    // Write sand at neighbor's local (0, 0, 0) = world (32, 0, 0)
+    grid.writeCell(32, 0, 0, makeSand());
+    grid.advanceEpoch();
+
+    ghosts.syncGhostCells(origin, grid);
+
+    // +X face, u=ly=0, v=lz=0 should be Sand
+    VoxelCell ghost = ghosts.getStore(origin).get(Face::PosX, 0, 0);
+    EXPECT_EQ(ghost.materialId, MaterialIds::Sand);
+}
+
+// 2. Ghost reads from read buffer, not write buffer
+TEST_F(GhostCellsTest, GhostReflectsReadBuffer) {
+    ChunkPos origin{0, 0, 0};
+
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.fillChunk(1, 0, 0, VoxelCell{});
+
+    // Write stone to neighbor, advance so it's in read buffer
+    grid.writeCell(32, 0, 0, makeStone());
+    grid.advanceEpoch();
+
+    // Write sand to same cell in write buffer (not yet advanced)
+    grid.writeCell(32, 0, 0, makeSand());
+
+    ghosts.syncGhostCells(origin, grid);
+
+    // Should see Stone (read buffer), not Sand (write buffer)
+    VoxelCell ghost = ghosts.getStore(origin).get(Face::PosX, 0, 0);
+    EXPECT_EQ(ghost.materialId, MaterialIds::Stone);
+}
+
+// 3. Missing neighbor returns Air
+TEST_F(GhostCellsTest, MissingNeighborReturnsAir) {
+    ChunkPos origin{0, 0, 0};
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    // No +X neighbor loaded
+
+    ghosts.syncGhostCells(origin, grid);
+
+    VoxelCell ghost = ghosts.getStore(origin).get(Face::PosX, 5, 5);
+    EXPECT_EQ(ghost.materialId, MaterialIds::Air);
+}
+
+// 4. All 6 faces copy correct neighbor slices
+TEST_F(GhostCellsTest, AllSixFacesCorrect) {
+    ChunkPos origin{0, 0, 0};
+
+    // Fill all 7 chunks
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+
+    // Each neighbor gets a unique material at its boundary cell
+    // +X: neighbor(1,0,0) local(0,5,5) = world(32,5,5)
+    grid.fillChunk(1, 0, 0, VoxelCell{});
+    VoxelCell c1;
+    c1.materialId = MaterialIds::Sand;
+    grid.writeCell(32, 5, 5, c1);
+
+    // -X: neighbor(-1,0,0) local(31,5,5) = world(-1,5,5)
+    grid.fillChunk(-1, 0, 0, VoxelCell{});
+    VoxelCell c2;
+    c2.materialId = MaterialIds::Stone;
+    grid.writeCell(-1, 5, 5, c2);
+
+    // +Y: neighbor(0,1,0) local(5,0,5) = world(5,32,5)
+    grid.fillChunk(0, 1, 0, VoxelCell{});
+    VoxelCell c3;
+    c3.materialId = MaterialIds::Dirt;
+    grid.writeCell(5, 32, 5, c3);
+
+    // -Y: neighbor(0,-1,0) local(5,31,5) = world(5,-1,5)
+    grid.fillChunk(0, -1, 0, VoxelCell{});
+    VoxelCell c4;
+    c4.materialId = MaterialIds::Water;
+    grid.writeCell(5, -1, 5, c4);
+
+    // +Z: neighbor(0,0,1) local(5,5,0) = world(5,5,32)
+    grid.fillChunk(0, 0, 1, VoxelCell{});
+    VoxelCell c5;
+    c5.materialId = MaterialIds::Gravel;
+    grid.writeCell(5, 5, 32, c5);
+
+    // -Z: neighbor(0,0,-1) local(5,5,31) = world(5,5,-1)
+    grid.fillChunk(0, 0, -1, VoxelCell{});
+    VoxelCell c6;
+    c6.materialId = MaterialIds::Sand;
+    c6.flags = VoxelFlags::FreeFall; // distinguish from +X sand
+    grid.writeCell(5, 5, -1, c6);
+
+    grid.advanceEpoch();
+    ghosts.syncGhostCells(origin, grid);
+
+    auto& store = ghosts.getStore(origin);
+    EXPECT_EQ(store.get(Face::PosX, 5, 5).materialId, MaterialIds::Sand);
+    EXPECT_EQ(store.get(Face::NegX, 5, 5).materialId, MaterialIds::Stone);
+    EXPECT_EQ(store.get(Face::PosY, 5, 5).materialId, MaterialIds::Dirt);
+    EXPECT_EQ(store.get(Face::NegY, 5, 5).materialId, MaterialIds::Water);
+    EXPECT_EQ(store.get(Face::PosZ, 5, 5).materialId, MaterialIds::Gravel);
+    EXPECT_EQ(store.get(Face::NegZ, 5, 5).materialId, MaterialIds::Sand);
+    EXPECT_EQ(store.get(Face::NegZ, 5, 5).flags, VoxelFlags::FreeFall);
+}
+
+// 5. Resync after modification picks up new values
+TEST_F(GhostCellsTest, ResyncUpdatesValues) {
+    ChunkPos origin{0, 0, 0};
+
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.fillChunk(1, 0, 0, VoxelCell{});
+
+    // Initial: stone at neighbor boundary
+    grid.writeCell(32, 0, 0, makeStone());
+    grid.advanceEpoch();
+    ghosts.syncGhostCells(origin, grid);
+    EXPECT_EQ(ghosts.getStore(origin).get(Face::PosX, 0, 0).materialId, MaterialIds::Stone);
+
+    // Update: sand at same position
+    grid.writeCell(32, 0, 0, makeSand());
+    grid.advanceEpoch();
+    ghosts.syncGhostCells(origin, grid);
+    EXPECT_EQ(ghosts.getStore(origin).get(Face::PosX, 0, 0).materialId, MaterialIds::Sand);
+}
+
+// 6. Ghost cell count: 6 * 1024 = 6144
+TEST_F(GhostCellsTest, GhostCellCount) {
+    constexpr int kExpected = kFaceCount * kFaceArea;
+    EXPECT_EQ(kExpected, 6144);
+
+    // Verify storage size
+    GhostCellStore store{};
+    EXPECT_EQ(store.faces.size(), 6u);
+    EXPECT_EQ(store.faces[0].size(), static_cast<size_t>(kFaceArea));
+}
+
+// 7. readGhost maps out-of-bounds correctly
+TEST_F(GhostCellsTest, ReadGhostMapsOutOfBounds) {
+    ChunkPos origin{0, 0, 0};
+
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.fillChunk(-1, 0, 0, VoxelCell{});
+    grid.fillChunk(1, 0, 0, VoxelCell{});
+
+    // Put sand at neighbor(-1,0,0) local(31,5,5) = world(-1,5,5)
+    grid.writeCell(-1, 5, 5, makeSand());
+    // Put stone at neighbor(1,0,0) local(0,5,5) = world(32,5,5)
+    grid.writeCell(32, 5, 5, makeStone());
+    grid.advanceEpoch();
+
+    ghosts.syncGhostCells(origin, grid);
+
+    // lx=-1 -> NegX face, u=ly=5, v=lz=5
+    VoxelCell negX = ghosts.readGhost(origin, -1, 5, 5);
+    EXPECT_EQ(negX.materialId, MaterialIds::Sand);
+
+    // lx=32 -> PosX face, u=ly=5, v=lz=5
+    VoxelCell posX = ghosts.readGhost(origin, 32, 5, 5);
+    EXPECT_EQ(posX.materialId, MaterialIds::Stone);
+}
+
+// 8. Negative chunk coordinates work correctly
+TEST_F(GhostCellsTest, NegativeChunkCoordinates) {
+    ChunkPos origin{-1, -1, -1};
+    ChunkPos neighborPosX{0, -1, -1};
+
+    grid.fillChunk(-1, -1, -1, VoxelCell{});
+    grid.fillChunk(0, -1, -1, VoxelCell{});
+
+    // Place sand at neighbor's local(0,0,0) = world(0,-32,-32)
+    grid.writeCell(0, -32, -32, makeSand());
+    grid.advanceEpoch();
+
+    ghosts.syncGhostCells(origin, grid);
+
+    VoxelCell ghost = ghosts.getStore(origin).get(Face::PosX, 0, 0);
+    EXPECT_EQ(ghost.materialId, MaterialIds::Sand);
+
+    // Also check via readGhost
+    VoxelCell readG = ghosts.readGhost(origin, 32, 0, 0);
+    EXPECT_EQ(readG.materialId, MaterialIds::Sand);
+}

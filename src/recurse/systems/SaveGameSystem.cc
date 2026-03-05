@@ -46,7 +46,7 @@ void SaveGameSystem::init(fabric::AppContext& ctx) {
         if (saveManager_->load("quicksave", qlSerializer, ecsWorld, terrain_->density(), terrain_->essence(), timeline,
                                loadedPos, loadedVel)) {
             if (loadedPos) {
-                charMovement_->playerPosition() = fabric::Vec3f(loadedPos->x, loadedPos->y, loadedPos->z);
+                charMovement_->setPlayerWorldOffset(loadedPos->x, loadedPos->y, loadedPos->z);
             }
             if (loadedVel) {
                 charMovement_->playerVelocity() = Velocity{loadedVel->x, loadedVel->y, loadedVel->z};

@@ -19,6 +19,9 @@ class Camera {
     // Update view matrix from a Transform (call each frame)
     void updateView(const Transform<float>& transform);
 
+    // Update view from explicit world position (double precision) and rotation.
+    void updateView(const Vector3<double, Space::World>& worldPos, const Quaternion<float>& rotation);
+
     // Access matrices (float[16], bgfx-compatible)
     const float* viewMatrix() const;
     const float* projectionMatrix() const;
@@ -26,8 +29,10 @@ class Camera {
     // Combined view-projection (for frustum extraction)
     void getViewProjection(float* outVP) const;
 
-    // Extract world-space camera position from the view matrix
+    // World-space camera position (authoritative double, float convenience)
     Vector3<float, Space::World> getPosition() const;
+    Vector3<double, Space::World> worldPositionD() const;
+    Vector3<float, Space::World> cameraRelative(const Vector3<double, Space::World>& worldPos) const;
 
     // Projection parameters
     float fovY() const;
@@ -37,13 +42,17 @@ class Camera {
     bool isOrthographic() const;
 
   private:
+    // Camera-relative view used for GPU rendering submissions.
     float view_[16];
+    // World-space view used for world-space culling and VP queries.
+    float viewWorld_[16];
     float projection_[16];
     float fovY_ = 60.0f;
     float aspect_ = 16.0f / 9.0f;
     float near_ = 0.1f;
     float far_ = 1000.0f;
     bool orthographic_ = false;
+    Vector3<double, Space::World> worldPosD_{0.0, 0.0, 0.0};
 };
 
 } // namespace fabric

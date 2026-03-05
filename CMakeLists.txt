@@ -169,6 +169,7 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/InputRouter.cc
     src/core/Lifecycle.cc
     src/core/Log.cc
+    src/core/LogConfig.cc
     src/core/Pipeline.cc
     src/core/Plugin.cc
     src/core/RenderCaps.cc
@@ -188,9 +189,12 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/InputSystem.cc
     src/core/AssetRegistry.cc
     src/core/FabricApp.cc
+    src/core/FeatureFlags.cc
     src/core/FileWatcher.cc
+    src/core/FilteredConsoleSink.cc
     src/core/PostProcess.cc
     src/core/SkyRenderer.cc
+    src/core/SimulationThreadPool.cc
 )
 
 #------------------------------------------------------------------------------
@@ -198,12 +202,8 @@ set(FABRIC_ENGINE_SOURCE_FILES
 #------------------------------------------------------------------------------
 set(RECURSE_GAME_SOURCE_FILES
     # world/
-    src/recurse/world/VoxelMesher.cc
     src/recurse/world/VoxelRaycast.cc
     src/recurse/world/ChunkStreaming.cc
-    src/recurse/world/ChunkMeshManager.cc
-    src/recurse/world/TerrainGenerator.cc
-    src/recurse/world/CaveCarver.cc
     src/recurse/world/EssencePalette.cc
     src/recurse/world/LSystemVegetation.cc
     src/recurse/world/WFCGenerator.cc
@@ -234,10 +234,13 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/animation/SkinnedRenderer.cc
     src/recurse/animation/IKSolver.cc
     src/recurse/animation/MeshLoader.cc
+    # world/ (smooth pipeline)
+    src/recurse/world/ChunkDensityCache.cc
+    src/recurse/world/SnapMCMesher.cc
+    src/recurse/world/SurfaceNetsMesher.cc
     # render/
-    src/recurse/render/WaterSimulation.cc
-    src/recurse/render/WaterRenderer.cc
     src/recurse/render/OITCompositor.cc
+    src/recurse/render/SmoothVertexPool.cc
     src/recurse/render/ParticleSystem.cc
     src/recurse/render/ShadowSystem.cc
     src/recurse/render/VertexPool.cc
@@ -253,8 +256,13 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/ui/DevConsole.cc
     src/recurse/ui/DebrisPool.cc
 
+    # world/ (VP0+ generators)
+    src/recurse/world/TestWorldGenerator.cc
+
     # systems/ (SystemBase subclasses, phase-dispatched by SystemRegistry)
     src/recurse/systems/TerrainSystem.cc
+    src/recurse/systems/VoxelSimulationSystem.cc
+    src/recurse/systems/VoxelMeshingSystem.cc
     src/recurse/systems/ChunkPipelineSystem.cc
     src/recurse/systems/PhysicsGameSystem.cc
     src/recurse/systems/CharacterMovementSystem.cc
@@ -266,9 +274,27 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/systems/AudioGameSystem.cc
     src/recurse/systems/ShadowRenderSystem.cc
     src/recurse/systems/VoxelRenderSystem.cc
-    src/recurse/systems/WaterRenderSystem.cc
     src/recurse/systems/OITRenderSystem.cc
     src/recurse/systems/DebugOverlaySystem.cc
+)
+
+# Simulation library components (fabric::simulation namespace)
+set(FABRIC_SIMULATION_SOURCE_FILES
+    src/simulation/MaterialRegistry.cc
+    src/simulation/SimulationGrid.cc
+    src/simulation/ChunkActivityTracker.cc
+    src/simulation/GhostCells.cc
+    src/simulation/FallingSandSystem.cc
+    src/simulation/VoxelSimulationSystem.cc
+    src/simulation/SimWorkerPool.cc
+)
+
+# World library components (fabric::world namespace)
+set(FABRIC_WORLD_SOURCE_FILES
+    src/world/FlatGenerator.cc
+    src/world/LayeredGenerator.cc
+    src/world/SingleMaterialGenerator.cc
+    src/world/MinecraftNoiseGenerator.cc
 )
 
 # Utils library components
@@ -304,6 +330,7 @@ set(FABRIC_UI_SOURCE_FILES
     src/ui/BgfxSystemInterface.cc
     src/ui/StbImage.cc
     src/ui/DebugHUD.cc
+    src/ui/ChunkDebugPanel.cc
     src/ui/WAILAPanel.cc
     src/ui/HotkeyPanel.cc
     src/ui/ToastManager.cc
@@ -317,6 +344,8 @@ set(FABRIC_BGFX_DEBUGDRAW_SOURCE
 # Create internal static library (compile sources once, link into all targets)
 add_library(FabricLib STATIC
     ${FABRIC_ENGINE_SOURCE_FILES}
+    ${FABRIC_SIMULATION_SOURCE_FILES}
+    ${FABRIC_WORLD_SOURCE_FILES}
     ${RECURSE_GAME_SOURCE_FILES}
     ${FABRIC_UTILS_SOURCE_FILES}
     ${FABRIC_PLATFORM_SOURCE_FILES}
@@ -382,8 +411,8 @@ fabric_link_tracy(FabricLib)
 # Skinned mesh shaders (vs_skinned, fs_skinned)
 include(FabricSkinnedShaders)
 
-# Voxel mesh shaders (vs_voxel, fs_voxel)
-include(FabricVoxelShaders)
+# Smooth voxel shaders (vs_smooth, fs_smooth) - Journey-style 3-layer composition
+include(FabricSmoothShaders)
 
 # Sky shaders (vs_sky, fs_sky)
 include(FabricSkyShaders)
@@ -394,17 +423,14 @@ include(FabricPostShaders)
 # Particle shaders (vs_particle, fs_particle)
 include(FabricParticleShaders)
 
-# Water shaders (vs_water, fs_water)
-include(FabricWaterShaders)
-
 # OIT shaders (vs_oit_accum, fs_oit_accum, vs_oit_composite, fs_oit_composite)
 include(FabricOITShaders)
 
 # Add shader output to include path
-target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_VOXEL_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT} ${FABRIC_POST_SHADER_OUT} ${FABRIC_PARTICLE_SHADER_OUT} ${FABRIC_WATER_SHADER_OUT} ${FABRIC_OIT_SHADER_OUT})
+target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_SMOOTH_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT} ${FABRIC_POST_SHADER_OUT} ${FABRIC_PARTICLE_SHADER_OUT} ${FABRIC_OIT_SHADER_OUT})
 
 # Shader compilation must finish before FabricLib sources compile
-add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricVoxelShaders FabricSkyShaders FabricPostShaders FabricParticleShaders FabricWaterShaders FabricOITShaders)
+add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricSmoothShaders FabricSkyShaders FabricPostShaders FabricParticleShaders FabricOITShaders)
 
 # Per-target compile options (replaces global CMAKE_CXX_FLAGS_* variables)
 target_compile_options(FabricLib PRIVATE

@@ -2,31 +2,42 @@ body {
     font-family: 'Roboto Mono';
     font-size: 13dp;
     color: #e0e0e0;
+    /* Full viewport container for flexbox positioning */
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Full-screen overlay container for positioning UI elements */
+#ui-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;  /* Let clicks pass through to game */
 }
 
 #waila-panel {
-    position: fixed;
-    top: 8dp;
-    left: 0;
-    right: 0;
-    width: 280dp;
-    margin: 0 auto;
     padding: 6dp 10dp;
     background-color: #00000088;
     border: 1dp #ffffff22;
+    width: 280dp;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 #waila-sky {
-    position: fixed;
-    top: 8dp;
-    left: 0;
-    right: 0;
-    width: 80dp;
-    margin: 0 auto;
     padding: 6dp 10dp;
     background-color: #00000088;
     border: 1dp #ffffff22;
     text-align: center;
+    width: 80dp;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .waila-row {

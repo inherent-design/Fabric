@@ -1,0 +1,40 @@
+# Profile: rendering
+# Use case: Rendering pipeline debug - "Debug shadows/OIT/post-process"
+# Usage: ./recurse --config=config/profiles/rendering.toml
+#
+# Enables voxel pipeline and all advanced rendering features.
+# Disables physics, audio, particles, and AI for focused rendering tests.
+
+[features]
+# === VP0+ Voxel Pipeline ===
+voxel_simulation = true
+voxel_meshing = true
+voxel_rendering = true
+
+# === Legacy Systems (disabled - clean break) ===
+legacy_density_field = false
+legacy_water_sim = false
+legacy_terrain_gen = false
+
+# === Rendering (all enabled for debugging) ===
+shadows = true
+oit = true
+post_process = true
+debug_draw = true
+
+# === Gameplay (disabled for rendering focus) ===
+physics = false
+audio = false
+particles = false
+character_movement = false
+behavior_ai = false
+
+# === UI (minimal for debug) ===
+rml_ui = true
+debug_hud = true
+waila = false
+dev_console = true
+
+# === Debug ===
+tracy_profiling = true
+verbose_logging = true

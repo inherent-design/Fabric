@@ -19,7 +19,26 @@ namespace recurse::systems {
 
 CharacterMovementSystem::~CharacterMovementSystem() = default;
 
+void CharacterMovementSystem::setPlayerWorldOffset(double x, double y, double z) {
+    playerPosD_ = fabric::Vector3<double, fabric::Space::World>(x, y, z);
+    playerPos_ = fabric::Vec3f(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
+}
+
+namespace {
+
+void syncPlayerPositionViews(fabric::Vector3<double, fabric::Space::World>& playerPosD, fabric::Vec3f& playerPos,
+                             const fabric::Vec3f& resolved) {
+    playerPos = resolved;
+    playerPosD = fabric::Vector3<double, fabric::Space::World>(
+        static_cast<double>(resolved.x), static_cast<double>(resolved.y), static_cast<double>(resolved.z));
+}
+
+} // namespace
+
 void CharacterMovementSystem::init(fabric::AppContext& ctx) {
+    playerPosD_ = fabric::Vector3<double, fabric::Space::World>(
+        static_cast<double>(playerPos_.x), static_cast<double>(playerPos_.y), static_cast<double>(playerPos_.z));
+
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
 
@@ -95,7 +114,7 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
                                    moveDir.z * charConfig_.flightSpeed * fixedDt);
 
         auto result = flightCtrl_->move(playerPos_, displacement, terrain_->densityGrid());
-        playerPos_ = result.resolvedPosition;
+        syncPlayerPositionViews(playerPosD_, playerPos_, result.resolvedPosition);
 
     } else {
         // Ground mode: flatten forward/right to XZ plane
@@ -133,7 +152,7 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
                                    horizMove.z * charConfig_.walkSpeed * fixedDt);
 
         auto result = charCtrl_->move(playerPos_, displacement, terrain_->densityGrid());
-        playerPos_ = result.resolvedPosition;
+        syncPlayerPositionViews(playerPosD_, playerPos_, result.resolvedPosition);
 
         if (result.onGround) {
             playerVel_.y = 0.0f;

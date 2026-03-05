@@ -1,4 +1,5 @@
 #include "fabric/core/Log.hh"
+#include "fabric/core/FilteredConsoleSink.hh"
 
 #include <quill/Backend.h>
 #include <quill/Frontend.h>
@@ -6,7 +7,11 @@
 #include <quill/sinks/ConsoleSink.h>
 #include <quill/sinks/FileSink.h>
 
+#include <chrono>
+#include <ctime>
 #include <filesystem>
+#include <iomanip>
+#include <sstream>
 #include <string>
 
 namespace fabric::log {
@@ -43,41 +48,146 @@ void setAllLoggersInfoLevel() {
     }
 }
 
+/// Create a timestamped run folder and update "latest" symlink
+std::string createRunFolder(const std::string& baseDir) {
+    using namespace std::chrono;
+    auto now = system_clock::now();
+    auto time = system_clock::to_time_t(now);
+
+    std::ostringstream ss;
+    ss << std::put_time(std::localtime(&time), "%Y-%m-%d_%H-%M-%S");
+    std::string runId = ss.str();
+
+    std::filesystem::path runPath = std::filesystem::path(baseDir) / runId;
+    std::filesystem::create_directories(runPath);
+
+    // Create/update "latest" symlink to most recent run
+    std::filesystem::path latestPath = std::filesystem::path(baseDir) / "latest";
+
+    // Remove existing symlink if present (may be file or directory)
+    std::error_code ec;
+    std::filesystem::remove(latestPath, ec);
+
+    // Create new symlink (use relative path for portability)
+    std::filesystem::create_directory_symlink(runPath.filename(), latestPath, ec);
+
+    // If symlink failed (e.g., Windows without admin), continue without it
+    // The logs will still be in the timestamped folder
+
+    return runPath.string();
+}
+
+/// Convert LogLevel to Quill's LogLevel
+quill::LogLevel toQuillLevel(LogLevel level) {
+    switch (level) {
+        case LogLevel::Off:
+            return quill::LogLevel::None;
+        case LogLevel::Critical:
+            return quill::LogLevel::Critical;
+        case LogLevel::Error:
+            return quill::LogLevel::Error;
+        case LogLevel::Warning:
+            return quill::LogLevel::Warning;
+        case LogLevel::Info:
+            return quill::LogLevel::Info;
+        case LogLevel::Debug:
+            return quill::LogLevel::Debug;
+        case LogLevel::Trace:
+            return quill::LogLevel::TraceL1;
+        default:
+            return quill::LogLevel::Info;
+    }
+}
+
+/// Pattern for log messages
+quill::PatternFormatterOptions makePatternOptions() {
+    quill::PatternFormatterOptions pattern;
+    pattern.format_pattern = "%(time) [%(thread_id)] %(short_source_location:<28) "
+                             "%(log_level:<9) %(message)";
+    pattern.timestamp_pattern = "%H:%M:%S.%Qms";
+    return pattern;
+}
+
 } // namespace
 
-void init() {
+void init(const LogConfig& config) {
     quill::BackendOptions backend_opts;
     backend_opts.thread_name = "FabricLog";
     backend_opts.wait_for_queues_to_empty_before_exit = true;
 
     quill::Backend::start(backend_opts);
 
-    createLogDirectory();
+    // Determine log path (with per-run folder if enabled)
+    std::filesystem::path logPath = config.logs_dir;
+    if (config.use_per_run_folders) {
+        logPath = createRunFolder(config.logs_dir);
+    } else {
+        std::filesystem::create_directories(logPath);
+    }
 
-    auto console_sink = quill::Frontend::create_or_get_sink<quill::ConsoleSink>("console");
+    // Create filtered console sink with include/exclude patterns
+    auto filtered_console = std::make_shared<FilteredConsoleSink>();
+    filtered_console->setIncludePatterns(config.console_include_patterns);
+    filtered_console->setExcludePatterns(config.console_exclude_patterns);
 
-    quill::PatternFormatterOptions pattern;
-    pattern.format_pattern = "%(time) [%(thread_id)] %(short_source_location:<28) "
-                             "%(log_level:<9) %(message)";
-    pattern.timestamp_pattern = "%H:%M:%S.%Qms";
+    auto console_sink = filtered_console;
+    auto pattern = makePatternOptions();
 
-    // Per-subsystem file sinks
-    auto fabric_file = makeFileSink(kLogsDir + "/fabric.log");
-    auto render_file = makeFileSink(kLogsDir + "/render.log");
+    // Create loggers from config
+    for (const auto& [name, cfg] : config.loggers) {
+        std::vector<std::shared_ptr<quill::Sink>> sinks;
 
-    // Root logger: console + fabric.log
-    g_logger = quill::Frontend::create_or_get_logger("fabric", {console_sink, fabric_file}, pattern);
-    g_logger->set_log_level(quill::LogLevel::Info);
+        // Add console sink if enabled
+        if (cfg.console_enabled) {
+            sinks.push_back(console_sink);
+        }
 
-    // Render logger: console + render.log
-    g_logger_render = quill::Frontend::create_or_get_logger("render", {console_sink, render_file}, pattern);
+        // Add file sink if enabled
+        if (cfg.file_enabled) {
+            std::string fileName = cfg.file_name.empty() ? name + ".log" : cfg.file_name;
+            auto filePath = (logPath / fileName).string();
+            sinks.push_back(makeFileSink(filePath));
+        }
 
-    // Remaining subsystem loggers: console only
-    g_logger_physics = quill::Frontend::create_or_get_logger("physics", console_sink, pattern);
-    g_logger_audio = quill::Frontend::create_or_get_logger("audio", console_sink, pattern);
-    g_logger_bgfx = quill::Frontend::create_or_get_logger("bgfx", console_sink, pattern);
+        // Create logger (skip if no sinks)
+        if (sinks.empty()) {
+            continue;
+        }
 
-    setAllLoggersInfoLevel();
+        quill::Logger* logger = quill::Frontend::create_or_get_logger(name, sinks, pattern);
+
+        // Set log level (use the higher of console/file for the logger's level,
+        // since Quill uses a single level per logger)
+        LogLevel maxLevel = static_cast<uint8_t>(cfg.console_level) > static_cast<uint8_t>(cfg.file_level)
+                                ? cfg.console_level
+                                : cfg.file_level;
+        quill::LogLevel quillLevel = toQuillLevel(maxLevel);
+        logger->set_log_level(quillLevel);
+
+        // Store in global pointers for known loggers
+        if (name == "fabric") {
+            g_logger = logger;
+        } else if (name == "render") {
+            g_logger_render = logger;
+        } else if (name == "physics") {
+            g_logger_physics = logger;
+        } else if (name == "audio") {
+            g_logger_audio = logger;
+        } else if (name == "bgfx") {
+            g_logger_bgfx = logger;
+        }
+    }
+
+    // Ensure fabric logger exists even if not in config
+    if (!g_logger) {
+        g_logger = quill::Frontend::create_or_get_logger("fabric", console_sink, pattern);
+        g_logger->set_log_level(quill::LogLevel::Info);
+    }
+}
+
+void init() {
+    // Use default config with per-run folders
+    init(LogConfig::fromDefaults());
 }
 
 void init(const char* log_file_path) {

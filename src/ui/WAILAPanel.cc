@@ -91,6 +91,8 @@ void WAILAPanel::update(const WAILAData& data) {
 
 void WAILAPanel::toggle() {
     visible_ = !visible_;
+    if (!initialized_)
+        return;
     if (document_) {
         if (visible_) {
             document_->Show();
@@ -101,6 +103,7 @@ void WAILAPanel::toggle() {
 }
 
 void WAILAPanel::shutdown() {
+    initialized_ = false;
     if (document_) {
         document_->Close();
         document_ = nullptr;
@@ -109,7 +112,6 @@ void WAILAPanel::shutdown() {
         context_->RemoveDataModel("waila");
     }
     modelHandle_ = {};
-    initialized_ = false;
     visible_ = false;
     context_ = nullptr;
 }

@@ -63,7 +63,8 @@ void SceneView::render() {
 
     // 4. Sort transparent entities back-to-front
     if (!transparentEntities_.empty()) {
-        Vec3f camPos = camera_.getPosition();
+        const auto camPosD = camera_.worldPositionD();
+        Vec3f camPos(static_cast<float>(camPosD.x), static_cast<float>(camPosD.y), static_cast<float>(camPosD.z));
         transparentSort(transparentEntities_, camPos);
     }
 

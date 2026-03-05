@@ -1,0 +1,6494 @@
+{
+  "save_version": "1.0",
+  "scene": {
+    "chunks": [],
+    "entities": [
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 64.0,
+            "maxZ": 32.0,
+            "minX": 0.0,
+            "minY": 32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 565,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 64.0,
+            "maxZ": 0.0,
+            "minX": 0.0,
+            "minY": 32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 567,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 64.0,
+            "maxZ": 64.0,
+            "minX": 0.0,
+            "minY": 32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 568,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 32.0,
+            "maxZ": 32.0,
+            "minX": 0.0,
+            "minY": 0.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 569,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 96.0,
+            "maxZ": 32.0,
+            "minX": 0.0,
+            "minY": 64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 570,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 64.0,
+            "maxZ": 32.0,
+            "minX": -32.0,
+            "minY": 32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 571,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 64.0,
+            "maxZ": 32.0,
+            "minX": 32.0,
+            "minY": 32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 572,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 32.0,
+            "maxZ": 32.0,
+            "minX": 32.0,
+            "minY": 0.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 573,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 32.0,
+            "maxZ": 64.0,
+            "minX": 0.0,
+            "minY": 0.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 574,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 96.0,
+            "maxZ": 32.0,
+            "minX": 32.0,
+            "minY": 64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 575,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 96.0,
+            "maxZ": 64.0,
+            "minX": 0.0,
+            "minY": 64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 576,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 64.0,
+            "maxZ": 0.0,
+            "minX": 32.0,
+            "minY": 32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 577,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 64.0,
+            "maxZ": 64.0,
+            "minX": -32.0,
+            "minY": 32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 578,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 32.0,
+            "maxZ": 0.0,
+            "minX": 0.0,
+            "minY": 0.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 579,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 64.0,
+            "maxZ": 0.0,
+            "minX": -32.0,
+            "minY": 32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 580,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 96.0,
+            "maxZ": 32.0,
+            "minX": -32.0,
+            "minY": 64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 581,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 64.0,
+            "maxZ": 64.0,
+            "minX": 32.0,
+            "minY": 32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 582,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 32.0,
+            "maxZ": 32.0,
+            "minX": -32.0,
+            "minY": 0.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 583,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 96.0,
+            "maxZ": 0.0,
+            "minX": 0.0,
+            "minY": 64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 584,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 32.0,
+            "maxZ": 64.0,
+            "minX": 32.0,
+            "minY": 0.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 585,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 96.0,
+            "maxZ": 64.0,
+            "minX": 32.0,
+            "minY": 64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 586,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 32.0,
+            "maxZ": 0.0,
+            "minX": -32.0,
+            "minY": 0.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 587,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 96.0,
+            "maxZ": 0.0,
+            "minX": -32.0,
+            "minY": 64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 588,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 96.0,
+            "maxZ": 64.0,
+            "minX": -32.0,
+            "minY": 64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 589,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 32.0,
+            "maxZ": 0.0,
+            "minX": 32.0,
+            "minY": 0.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 590,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 96.0,
+            "maxZ": 0.0,
+            "minX": 32.0,
+            "minY": 64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 591,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 32.0,
+            "maxZ": 64.0,
+            "minX": -32.0,
+            "minY": 0.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 592,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 0.0,
+            "maxZ": 32.0,
+            "minX": 0.0,
+            "minY": -32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 593,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 64.0,
+            "maxZ": -32.0,
+            "minX": 0.0,
+            "minY": 32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 594,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 128.0,
+            "maxZ": 32.0,
+            "minX": 0.0,
+            "minY": 96.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 595,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 64.0,
+            "maxZ": 32.0,
+            "minX": -64.0,
+            "minY": 32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 596,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 64.0,
+            "maxZ": 32.0,
+            "minX": 64.0,
+            "minY": 32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 597,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 64.0,
+            "maxZ": 96.0,
+            "minX": 0.0,
+            "minY": 32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 598,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 128.0,
+            "maxZ": 0.0,
+            "minX": 0.0,
+            "minY": 96.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 599,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 64.0,
+            "maxZ": -32.0,
+            "minX": -32.0,
+            "minY": 32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 600,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 96.0,
+            "maxZ": 96.0,
+            "minX": 0.0,
+            "minY": 64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 601,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 32.0,
+            "maxZ": -32.0,
+            "minX": 0.0,
+            "minY": 0.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 602,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 128.0,
+            "maxZ": 64.0,
+            "minX": 0.0,
+            "minY": 96.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 603,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 128.0,
+            "maxZ": 32.0,
+            "minX": -32.0,
+            "minY": 96.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 604,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 64.0,
+            "maxZ": -32.0,
+            "minX": 32.0,
+            "minY": 32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 605,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 96.0,
+            "maxZ": -32.0,
+            "minX": 0.0,
+            "minY": 64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 606,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 128.0,
+            "maxZ": 32.0,
+            "minX": 32.0,
+            "minY": 96.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 607,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 32.0,
+            "maxZ": 32.0,
+            "minX": -64.0,
+            "minY": 0.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 608,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 64.0,
+            "maxZ": 0.0,
+            "minX": 64.0,
+            "minY": 32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 609,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 0.0,
+            "maxZ": 0.0,
+            "minX": 0.0,
+            "minY": -32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 610,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 64.0,
+            "maxZ": 96.0,
+            "minX": -32.0,
+            "minY": 32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 611,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 96.0,
+            "maxZ": 32.0,
+            "minX": 64.0,
+            "minY": 64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 612,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 0.0,
+            "maxZ": 32.0,
+            "minX": 32.0,
+            "minY": -32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 613,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 0.0,
+            "maxZ": 64.0,
+            "minX": 0.0,
+            "minY": -32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 614,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 64.0,
+            "maxZ": 96.0,
+            "minX": 32.0,
+            "minY": 32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 615,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 32.0,
+            "maxZ": 96.0,
+            "minX": 0.0,
+            "minY": 0.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 616,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 32.0,
+            "maxZ": 32.0,
+            "minX": 64.0,
+            "minY": 0.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 617,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 64.0,
+            "maxZ": 64.0,
+            "minX": -64.0,
+            "minY": 32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 618,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 96.0,
+            "maxZ": 32.0,
+            "minX": -64.0,
+            "minY": 64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 619,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 0.0,
+            "maxZ": 32.0,
+            "minX": -32.0,
+            "minY": -32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 620,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 64.0,
+            "maxZ": 0.0,
+            "minX": -64.0,
+            "minY": 32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 621,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 64.0,
+            "maxZ": 64.0,
+            "minX": 64.0,
+            "minY": 32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 622,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 128.0,
+            "maxZ": 64.0,
+            "minX": -32.0,
+            "minY": 96.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 623,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 96.0,
+            "maxZ": 96.0,
+            "minX": 32.0,
+            "minY": 64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 624,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 96.0,
+            "maxZ": 0.0,
+            "minX": 64.0,
+            "minY": 64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 625,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 96.0,
+            "maxZ": -32.0,
+            "minX": -32.0,
+            "minY": 64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 626,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 32.0,
+            "maxZ": 64.0,
+            "minX": 64.0,
+            "minY": 0.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 627,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 32.0,
+            "maxZ": -32.0,
+            "minX": 32.0,
+            "minY": 0.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 628,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 96.0,
+            "maxZ": 64.0,
+            "minX": -64.0,
+            "minY": 64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 629,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 32.0,
+            "maxZ": -32.0,
+            "minX": -32.0,
+            "minY": 0.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 630,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 32.0,
+            "maxZ": 0.0,
+            "minX": 64.0,
+            "minY": 0.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 631,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 32.0,
+            "maxZ": 64.0,
+            "minX": -64.0,
+            "minY": 0.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 632,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 128.0,
+            "maxZ": 64.0,
+            "minX": 32.0,
+            "minY": 96.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 633,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 32.0,
+            "maxZ": 0.0,
+            "minX": -64.0,
+            "minY": 0.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 634,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 0.0,
+            "maxZ": 0.0,
+            "minX": -32.0,
+            "minY": -32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 635,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 0.0,
+            "maxZ": 64.0,
+            "minX": -32.0,
+            "minY": -32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 636,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 32.0,
+            "maxZ": 96.0,
+            "minX": -32.0,
+            "minY": 0.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 637,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 0.0,
+            "maxZ": 0.0,
+            "minX": 32.0,
+            "minY": -32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 638,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 96.0,
+            "maxZ": 96.0,
+            "minX": -32.0,
+            "minY": 64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 639,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 96.0,
+            "maxZ": 0.0,
+            "minX": -64.0,
+            "minY": 64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 640,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 32.0,
+            "maxZ": 96.0,
+            "minX": 32.0,
+            "minY": 0.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 641,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 0.0,
+            "maxZ": 64.0,
+            "minX": 32.0,
+            "minY": -32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 642,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 96.0,
+            "maxZ": -32.0,
+            "minX": 32.0,
+            "minY": 64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 643,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 128.0,
+            "maxZ": 0.0,
+            "minX": 32.0,
+            "minY": 96.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 644,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 96.0,
+            "maxZ": 64.0,
+            "minX": 64.0,
+            "minY": 64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 645,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 128.0,
+            "maxZ": 0.0,
+            "minX": -32.0,
+            "minY": 96.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 646,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 0.0,
+            "maxZ": -32.0,
+            "minX": 0.0,
+            "minY": -32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 647,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 64.0,
+            "maxZ": 96.0,
+            "minX": 64.0,
+            "minY": 32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 648,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 128.0,
+            "maxZ": 32.0,
+            "minX": -64.0,
+            "minY": 96.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 649,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 64.0,
+            "maxZ": -32.0,
+            "minX": -64.0,
+            "minY": 32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 650,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 0.0,
+            "maxZ": 32.0,
+            "minX": -64.0,
+            "minY": -32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 651,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 128.0,
+            "maxZ": -32.0,
+            "minX": 0.0,
+            "minY": 96.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 652,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 64.0,
+            "maxZ": -32.0,
+            "minX": 64.0,
+            "minY": 32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 653,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 128.0,
+            "maxZ": 32.0,
+            "minX": 64.0,
+            "minY": 96.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 654,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 128.0,
+            "maxZ": 96.0,
+            "minX": 0.0,
+            "minY": 96.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 655,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 64.0,
+            "maxZ": 96.0,
+            "minX": -64.0,
+            "minY": 32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 656,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 0.0,
+            "maxZ": 32.0,
+            "minX": 64.0,
+            "minY": -32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 657,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 0.0,
+            "maxZ": 96.0,
+            "minX": 0.0,
+            "minY": -32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 658,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 64.0,
+            "maxZ": -64.0,
+            "minX": 0.0,
+            "minY": 32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 659,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 0.0,
+            "maxZ": 64.0,
+            "minX": 64.0,
+            "minY": -32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 660,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 96.0,
+            "maxZ": 96.0,
+            "minX": 64.0,
+            "minY": 64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 661,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 128.0,
+            "maxZ": -32.0,
+            "minX": 32.0,
+            "minY": 96.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 662,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 32.0,
+            "maxZ": -32.0,
+            "minX": 64.0,
+            "minY": 0.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 663,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 128.0,
+            "maxZ": -32.0,
+            "minX": -32.0,
+            "minY": 96.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 664,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 128.0,
+            "maxZ": 64.0,
+            "minX": -64.0,
+            "minY": 96.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 665,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 96.0,
+            "maxZ": -32.0,
+            "minX": -64.0,
+            "minY": 64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 666,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 0.0,
+            "maxZ": -32.0,
+            "minX": -32.0,
+            "minY": -32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 667,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 32.0,
+            "maxZ": 96.0,
+            "minX": -64.0,
+            "minY": 0.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 668,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 128.0,
+            "maxZ": 0.0,
+            "minX": 64.0,
+            "minY": 96.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 669,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": -32.0,
+            "maxZ": 32.0,
+            "minX": 64.0,
+            "minY": -64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294967991,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 96.0,
+            "maxZ": -32.0,
+            "minX": 64.0,
+            "minY": 64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 671,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 128.0,
+            "maxZ": 96.0,
+            "minX": 32.0,
+            "minY": 96.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 672,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 128.0,
+            "maxZ": 0.0,
+            "minX": -64.0,
+            "minY": 96.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 673,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 0.0,
+            "maxZ": 0.0,
+            "minX": -64.0,
+            "minY": -32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 674,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 0.0,
+            "maxZ": 96.0,
+            "minX": -32.0,
+            "minY": -32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 675,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 0.0,
+            "maxZ": -32.0,
+            "minX": 32.0,
+            "minY": -32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 676,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 32.0,
+            "maxZ": -32.0,
+            "minX": -64.0,
+            "minY": 0.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 677,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 0.0,
+            "maxZ": 0.0,
+            "minX": 64.0,
+            "minY": -32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 678,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 32.0,
+            "maxZ": 96.0,
+            "minX": 64.0,
+            "minY": 0.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 679,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 0.0,
+            "maxZ": 96.0,
+            "minX": 32.0,
+            "minY": -32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 680,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 96.0,
+            "maxZ": 96.0,
+            "minX": -64.0,
+            "minY": 64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 681,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 128.0,
+            "maxZ": 64.0,
+            "minX": 64.0,
+            "minY": 96.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 682,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 64.0,
+            "maxZ": 32.0,
+            "minX": 96.0,
+            "minY": 32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 683,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 0.0,
+            "maxZ": 64.0,
+            "minX": -64.0,
+            "minY": -32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 684,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 64.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": 32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 685,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 128.0,
+            "maxZ": 96.0,
+            "minX": -32.0,
+            "minY": 96.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 686,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": -32.0,
+            "maxZ": 32.0,
+            "minX": 0.0,
+            "minY": -64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 687,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 64.0,
+            "maxZ": 128.0,
+            "minX": 0.0,
+            "minY": 32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 688,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 96.0,
+            "maxZ": 128.0,
+            "minX": 0.0,
+            "minY": 64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 689,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 96.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": 64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 690,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": -32.0,
+            "maxZ": 64.0,
+            "minX": 0.0,
+            "minY": -64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 691,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 32.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": 0.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 692,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": -32.0,
+            "maxZ": 32.0,
+            "minX": 32.0,
+            "minY": -64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 693,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 64.0,
+            "maxZ": 64.0,
+            "minX": -96.0,
+            "minY": 32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 694,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 128.0,
+            "maxZ": 32.0,
+            "minX": 96.0,
+            "minY": 96.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 774,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 64.0,
+            "maxZ": 128.0,
+            "minX": 32.0,
+            "minY": 32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 696,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 64.0,
+            "maxZ": 128.0,
+            "minX": -32.0,
+            "minY": 32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 697,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": -32.0,
+            "maxZ": 32.0,
+            "minX": -32.0,
+            "minY": -64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 698,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 64.0,
+            "maxZ": 64.0,
+            "minX": 96.0,
+            "minY": 32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 699,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": -32.0,
+            "maxZ": 0.0,
+            "minX": 0.0,
+            "minY": -64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 700,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 32.0,
+            "maxZ": 128.0,
+            "minX": 0.0,
+            "minY": 0.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 701,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 32.0,
+            "maxZ": 32.0,
+            "minX": 96.0,
+            "minY": 0.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 702,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": -32.0,
+            "maxZ": 32.0,
+            "minX": -64.0,
+            "minY": -64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968002,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 64.0,
+            "maxZ": 0.0,
+            "minX": 96.0,
+            "minY": 32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 704,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 96.0,
+            "maxZ": 32.0,
+            "minX": 96.0,
+            "minY": 64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 705,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968100,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 64.0,
+            "maxZ": 0.0,
+            "minX": -96.0,
+            "minY": 32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 707,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 96.0,
+            "maxZ": -64.0,
+            "minX": 0.0,
+            "minY": 64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 708,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 64.0,
+            "maxZ": -64.0,
+            "minX": -32.0,
+            "minY": 32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 709,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 32.0,
+            "maxZ": -64.0,
+            "minX": 0.0,
+            "minY": 0.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 710,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 64.0,
+            "maxZ": -64.0,
+            "minX": 32.0,
+            "minY": 32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 711,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968198,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 96.0,
+            "maxZ": 128.0,
+            "minX": -32.0,
+            "minY": 64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 713,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 32.0,
+            "maxZ": 0.0,
+            "minX": 96.0,
+            "minY": 0.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 714,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 96.0,
+            "maxZ": 128.0,
+            "minX": 64.0,
+            "minY": 64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 777,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 32.0,
+            "maxZ": 64.0,
+            "minX": -96.0,
+            "minY": 0.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 716,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 32.0,
+            "maxZ": 128.0,
+            "minX": 32.0,
+            "minY": 0.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 717,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": -32.0,
+            "maxZ": 64.0,
+            "minX": 32.0,
+            "minY": -64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 718,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": -32.0,
+            "maxZ": 0.0,
+            "minX": -32.0,
+            "minY": -64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 719,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": -32.0,
+            "maxZ": 64.0,
+            "minX": -32.0,
+            "minY": -64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 720,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": -32.0,
+            "maxZ": 0.0,
+            "minX": 32.0,
+            "minY": -64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 721,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": -32.0,
+            "maxZ": -32.0,
+            "minX": 0.0,
+            "minY": -64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 722,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": -32.0,
+            "maxZ": 96.0,
+            "minX": 0.0,
+            "minY": -64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 723,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": -32.0,
+            "maxZ": 64.0,
+            "minX": 64.0,
+            "minY": -64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 724,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 0.0,
+            "maxZ": 96.0,
+            "minX": -64.0,
+            "minY": -32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 725,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": -32.0,
+            "maxZ": 0.0,
+            "minX": -64.0,
+            "minY": -64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 726,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": -32.0,
+            "maxZ": -32.0,
+            "minX": -32.0,
+            "minY": -64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 727,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": -32.0,
+            "maxZ": 96.0,
+            "minX": 32.0,
+            "minY": -64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 728,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968047,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": -32.0,
+            "maxZ": 0.0,
+            "minX": 64.0,
+            "minY": -64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 730,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 0.0,
+            "maxZ": 96.0,
+            "minX": 64.0,
+            "minY": -32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 731,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 0.0,
+            "maxZ": -32.0,
+            "minX": -64.0,
+            "minY": -32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 732,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": -32.0,
+            "maxZ": 96.0,
+            "minX": 32.0,
+            "minY": -64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 733,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": -32.0,
+            "maxZ": -32.0,
+            "minX": -32.0,
+            "minY": -64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 734,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 0.0,
+            "maxZ": 128.0,
+            "minX": 0.0,
+            "minY": -32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 735,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 0.0,
+            "maxZ": 32.0,
+            "minX": 96.0,
+            "minY": -32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 736,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": -32.0,
+            "maxZ": 64.0,
+            "minX": 64.0,
+            "minY": -64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 737,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 32.0,
+            "maxZ": -64.0,
+            "minX": -32.0,
+            "minY": 0.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 738,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 0.0,
+            "maxZ": 128.0,
+            "minX": 0.0,
+            "minY": -32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 739,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 32.0,
+            "maxZ": -64.0,
+            "minX": 32.0,
+            "minY": 0.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 740,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 885,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 32.0,
+            "maxZ": -64.0,
+            "minX": 32.0,
+            "minY": 0.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 742,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968051,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 744,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 745,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 96.0,
+            "maxZ": -64.0,
+            "minX": 32.0,
+            "minY": 64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 746,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 747,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 32.0,
+            "maxZ": 64.0,
+            "minX": 96.0,
+            "minY": 0.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 748,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 0.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": -32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 749,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968049,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 128.0,
+            "maxZ": 128.0,
+            "minX": -64.0,
+            "minY": 96.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 886,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 96.0,
+            "maxZ": 64.0,
+            "minX": 96.0,
+            "minY": 64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 752,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 909,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 754,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 888,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968072,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 128.0,
+            "maxZ": 96.0,
+            "minX": 64.0,
+            "minY": 96.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 757,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968064,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 128.0,
+            "maxZ": -32.0,
+            "minX": 64.0,
+            "minY": 96.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 759,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 64.0,
+            "maxZ": -64.0,
+            "minX": -64.0,
+            "minY": 32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 760,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 0.0,
+            "maxZ": -64.0,
+            "minX": 0.0,
+            "minY": -32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 761,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 64.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": 32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 762,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 64.0,
+            "maxZ": 128.0,
+            "minX": -64.0,
+            "minY": 32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 763,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 764,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 765,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 64.0,
+            "maxZ": 128.0,
+            "minX": 64.0,
+            "minY": 32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 766,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 128.0,
+            "maxZ": 128.0,
+            "minX": 0.0,
+            "minY": 96.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 767,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 890,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 64.0,
+            "maxZ": -64.0,
+            "minX": 64.0,
+            "minY": 32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 769,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 32.0,
+            "maxZ": 128.0,
+            "minX": -64.0,
+            "minY": 0.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 770,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 32.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": 0.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 771,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 128.0,
+            "maxZ": -64.0,
+            "minX": 0.0,
+            "minY": 96.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 772,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968102,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": -32.0,
+            "maxZ": 32.0,
+            "minX": 96.0,
+            "minY": -64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294967966,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": -32.0,
+            "maxZ": 96.0,
+            "minX": -32.0,
+            "minY": -64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294967999,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": -32.0,
+            "maxZ": 64.0,
+            "minX": -64.0,
+            "minY": -64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968008,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 0.0,
+            "maxZ": -32.0,
+            "minX": 64.0,
+            "minY": -32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968011,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 64.0,
+            "maxZ": -64.0,
+            "minX": -64.0,
+            "minY": 32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 778,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 96.0,
+            "maxZ": 128.0,
+            "minX": -64.0,
+            "minY": 64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 779,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 780,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 32.0,
+            "maxZ": -64.0,
+            "minX": 64.0,
+            "minY": 0.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 781,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 782,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968135,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968106,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": -32.0,
+            "maxZ": -64.0,
+            "minX": -32.0,
+            "minY": -64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 785,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968094,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 32.0,
+            "maxZ": 128.0,
+            "minX": -64.0,
+            "minY": 0.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 787,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 32.0,
+            "maxZ": 128.0,
+            "minX": 64.0,
+            "minY": 0.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 788,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 64.0,
+            "maxZ": -64.0,
+            "minX": 64.0,
+            "minY": 32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 789,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 32.0,
+            "maxZ": -32.0,
+            "minX": 96.0,
+            "minY": 0.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 790,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 128.0,
+            "maxZ": -64.0,
+            "minX": -32.0,
+            "minY": 96.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 791,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 792,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 96.0,
+            "maxZ": -32.0,
+            "minX": 96.0,
+            "minY": 64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 793,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 794,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 96.0,
+            "maxZ": 0.0,
+            "minX": -96.0,
+            "minY": 64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 795,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 96.0,
+            "maxZ": -64.0,
+            "minX": 64.0,
+            "minY": 64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 796,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 0.0,
+            "maxZ": 128.0,
+            "minX": -32.0,
+            "minY": -32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 797,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": 96.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 894,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 0.0,
+            "maxZ": -64.0,
+            "minX": 64.0,
+            "minY": -32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 799,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 800,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 0.0,
+            "maxZ": -64.0,
+            "minX": 32.0,
+            "minY": -32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 801,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 0.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": -32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 802,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": -32.0,
+            "maxZ": -64.0,
+            "minX": 32.0,
+            "minY": -64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 803,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": -32.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 892,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 128.0,
+            "maxZ": 0.0,
+            "minX": 96.0,
+            "minY": 96.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 805,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968199,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 96.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": 64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 807,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968128,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 128.0,
+            "maxZ": 64.0,
+            "minX": 96.0,
+            "minY": 96.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 809,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": 128.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 905,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 128.0,
+            "maxZ": 128.0,
+            "minX": 32.0,
+            "minY": 96.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 811,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 32.0,
+            "maxZ": -64.0,
+            "minX": -64.0,
+            "minY": 0.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 812,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 128.0,
+            "maxZ": 128.0,
+            "minX": -32.0,
+            "minY": 96.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 813,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 814,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 815,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 128.0,
+            "maxZ": -64.0,
+            "minX": 32.0,
+            "minY": 96.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 816,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 96.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": 64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 817,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 128.0,
+            "maxZ": 128.0,
+            "minX": 64.0,
+            "minY": 96.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 818,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 819,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 0.0,
+            "maxZ": 128.0,
+            "minX": -64.0,
+            "minY": -32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 820,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": -32.0,
+            "maxZ": 96.0,
+            "minX": -96.0,
+            "minY": -64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 821,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 0.0,
+            "maxZ": 128.0,
+            "minX": 64.0,
+            "minY": -32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 822,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 823,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 0.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": -32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 824,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": -32.0,
+            "maxZ": 96.0,
+            "minX": 64.0,
+            "minY": -64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 825,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 826,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 128.0,
+            "maxZ": 128.0,
+            "minX": -64.0,
+            "minY": 96.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 827,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": -32.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": -64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 828,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": -32.0,
+            "maxZ": -32.0,
+            "minX": -64.0,
+            "minY": -64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 829,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 830,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 128.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": 96.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 831,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": -64.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 904,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": -32.0,
+            "maxZ": -32.0,
+            "minX": 64.0,
+            "minY": -64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 833,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968144,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 0.0,
+            "maxZ": -64.0,
+            "minX": 64.0,
+            "minY": -32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 835,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": -32.0,
+            "maxZ": 128.0,
+            "minX": -64.0,
+            "minY": -64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 836,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 128.0,
+            "maxZ": -64.0,
+            "minX": -64.0,
+            "minY": 96.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 837,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968148,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 0.0,
+            "maxZ": 128.0,
+            "minX": 96.0,
+            "minY": -32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 896,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": -32.0,
+            "maxZ": 96.0,
+            "minX": -64.0,
+            "minY": -64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 840,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 32.0,
+            "maxZ": -64.0,
+            "minX": 96.0,
+            "minY": 0.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 841,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 842,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 64.0,
+            "maxZ": -64.0,
+            "minX": 96.0,
+            "minY": 32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 843,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968166,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 64.0,
+            "maxZ": 128.0,
+            "minX": 96.0,
+            "minY": 32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 845,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": -32.0,
+            "maxZ": 128.0,
+            "minX": 0.0,
+            "minY": -64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 846,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 847,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 898,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": -32.0,
+            "maxZ": 32.0,
+            "minX": 96.0,
+            "minY": -64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 849,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 850,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968164,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968175,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 853,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 128.0,
+            "maxZ": 128.0,
+            "minX": 96.0,
+            "minY": 96.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 901,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 0.0,
+            "maxZ": -64.0,
+            "minX": -96.0,
+            "minY": -32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 855,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968183,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 96.0,
+            "maxZ": 128.0,
+            "minX": 96.0,
+            "minY": 64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 857,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968191,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 32.0,
+            "maxZ": -64.0,
+            "minX": 96.0,
+            "minY": 0.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 859,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 860,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 64.0,
+            "maxZ": 128.0,
+            "minX": -96.0,
+            "minY": 32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 861,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968150,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 0.0,
+            "maxZ": -64.0,
+            "minX": 96.0,
+            "minY": -32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 863,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968167,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 64.0,
+            "maxZ": -64.0,
+            "minX": -96.0,
+            "minY": 32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 865,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": -32.0,
+            "maxZ": 128.0,
+            "minX": 32.0,
+            "minY": -64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 866,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 867,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": -32.0,
+            "maxZ": -64.0,
+            "minX": -64.0,
+            "minY": -64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 900,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 64.0,
+            "maxZ": 128.0,
+            "minX": 96.0,
+            "minY": 32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 869,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": -32.0,
+            "maxZ": -64.0,
+            "minX": 64.0,
+            "minY": -64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 899,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": -32.0,
+            "maxZ": 128.0,
+            "minX": 96.0,
+            "minY": -64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 907,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 128.0,
+            "maxZ": 128.0,
+            "minX": -32.0,
+            "minY": 96.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 872,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": -32.0,
+            "maxZ": 0.0,
+            "minX": 96.0,
+            "minY": -64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 873,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": -32.0,
+            "maxZ": 128.0,
+            "minX": -32.0,
+            "minY": -64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 874,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 32.0,
+            "maxZ": 128.0,
+            "minX": 96.0,
+            "minY": 0.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 875,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": -32.0,
+            "maxZ": 64.0,
+            "minX": 96.0,
+            "minY": -64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 876,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 877,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 128.0,
+            "maxZ": 128.0,
+            "minX": 96.0,
+            "minY": 96.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 878,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 910,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": -32.0,
+            "maxZ": -32.0,
+            "minX": 96.0,
+            "minY": -64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 880,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 128.0,
+            "maxZ": -64.0,
+            "minX": -64.0,
+            "minY": 96.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 881,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": -32.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": -64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 882,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968189,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": -32.0,
+            "maxZ": 128.0,
+            "minX": -64.0,
+            "minY": -64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 884,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968037,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968025,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968046,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968039,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968052,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968054,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968069,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968071,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968080,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968082,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968104,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968079,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968134,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968130,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968140,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968147,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968158,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968160,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968152,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968154,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968179,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968193,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968185,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968187,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 64.0,
+            "maxZ": 64.0,
+            "minX": -96.0,
+            "minY": 32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968204,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": -32.0,
+            "maxZ": -64.0,
+            "minX": 96.0,
+            "minY": -64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 4294968202,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 0.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": -32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 911,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 96.0,
+            "maxZ": 96.0,
+            "minX": -96.0,
+            "minY": 64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 912,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 913,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": -32.0,
+            "maxZ": -32.0,
+            "minX": 32.0,
+            "minY": -64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 914,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 32.0,
+            "maxZ": 128.0,
+            "minX": -32.0,
+            "minY": 0.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 915,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 32.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": 0.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 916,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 917,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 918,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": 0.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 919,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 96.0,
+            "maxZ": 0.0,
+            "minX": 96.0,
+            "minY": 64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 920,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": 64.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 921,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 922,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 96.0,
+            "maxZ": 128.0,
+            "minX": 32.0,
+            "minY": 64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 923,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 96.0,
+            "maxZ": -64.0,
+            "minX": -32.0,
+            "minY": 64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 924,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 925,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 128.0,
+            "maxZ": -32.0,
+            "minX": -64.0,
+            "minY": 96.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 926,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 128.0,
+            "maxZ": 96.0,
+            "minX": -64.0,
+            "minY": 96.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 927,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 64.0,
+            "maxZ": -32.0,
+            "minX": 96.0,
+            "minY": 32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 928,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 32.0,
+            "maxZ": 96.0,
+            "minX": -96.0,
+            "minY": 0.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 929,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": -64.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 930,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": 64.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 931,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 32.0,
+            "maxZ": -32.0,
+            "minX": -96.0,
+            "minY": 0.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 932,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 933,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 0.0,
+            "maxZ": 64.0,
+            "minX": 96.0,
+            "minY": -32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 934,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 32.0,
+            "maxZ": 96.0,
+            "minX": 96.0,
+            "minY": 0.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 935,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 128.0,
+            "maxZ": -64.0,
+            "minX": 96.0,
+            "minY": 96.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 936,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 96.0,
+            "maxZ": 0.0,
+            "minX": -96.0,
+            "minY": 64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 937,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 0.0,
+            "maxZ": -32.0,
+            "minX": -96.0,
+            "minY": -32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 938,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 32.0,
+            "maxZ": 64.0,
+            "minX": -96.0,
+            "minY": 0.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 939,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 940,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 32.0,
+            "maxZ": 0.0,
+            "minX": -96.0,
+            "minY": 0.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 941,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 96.0,
+            "maxZ": 64.0,
+            "minX": -96.0,
+            "minY": 64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 942,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": -32.0,
+            "maxZ": 128.0,
+            "minX": 64.0,
+            "minY": -64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 943,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 0.0,
+            "maxZ": 0.0,
+            "minX": 96.0,
+            "minY": -32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 944,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 96.0,
+            "maxZ": -64.0,
+            "minX": -64.0,
+            "minY": 64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 945,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 0.0,
+            "maxZ": -64.0,
+            "minX": -32.0,
+            "minY": -32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 946,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 0.0,
+            "maxZ": 128.0,
+            "minX": 32.0,
+            "minY": -32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 947,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 0.0,
+            "maxZ": 64.0,
+            "minX": -96.0,
+            "minY": -32.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 948,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 0.0,
+            "maxZ": -64.0,
+            "minX": 96.0,
+            "minY": -32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 949,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": 0.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 950,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 128.0,
+            "maxZ": -32.0,
+            "minX": 96.0,
+            "minY": 96.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 951,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 0.0,
+            "maxZ": -32.0,
+            "minX": 96.0,
+            "minY": -32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 952,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -32.0,
+            "maxY": 0.0,
+            "maxZ": -64.0,
+            "minX": -64.0,
+            "minY": -32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 953,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 96.0,
+            "maxY": 128.0,
+            "maxZ": -64.0,
+            "minX": 64.0,
+            "minY": 96.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 954,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 64.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": 32.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 955,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 956,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 0.0,
+            "maxZ": 0.0,
+            "minX": -96.0,
+            "minY": -32.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 957,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 32.0,
+            "maxY": -32.0,
+            "maxZ": -64.0,
+            "minX": 0.0,
+            "minY": -64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 958,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": -32.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 959,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 960,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 961,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": 32.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 962,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 64.0,
+            "maxZ": -32.0,
+            "minX": -96.0,
+            "minY": 32.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 963,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 0.0,
+            "maxY": -32.0,
+            "maxZ": -64.0,
+            "minX": -32.0,
+            "minY": -64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 964,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 96.0,
+            "maxZ": -64.0,
+            "minX": 96.0,
+            "minY": 64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 965,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 96.0,
+            "maxZ": -32.0,
+            "minX": -96.0,
+            "minY": 64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 966,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": 96.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 967,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 64.0,
+            "maxY": -32.0,
+            "maxZ": -64.0,
+            "minX": 32.0,
+            "minY": -64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 968,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 96.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": 64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 969,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": 128.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": 96.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 970,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 64.0,
+            "maxZ": 96.0,
+            "minX": -96.0,
+            "minY": 32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 971,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": -32.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 972,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 0.0,
+            "maxZ": 96.0,
+            "minX": -96.0,
+            "minY": -32.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 973,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": -32.0,
+            "maxZ": 32.0,
+            "minX": -96.0,
+            "minY": -64.0,
+            "minZ": 0.0
+          },
+          "SceneEntity": true
+        },
+        "id": 974,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 64.0,
+            "maxZ": -64.0,
+            "minX": -96.0,
+            "minY": 32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 975,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 64.0,
+            "maxZ": 128.0,
+            "minX": -96.0,
+            "minY": 32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 976,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": -32.0,
+            "maxZ": 64.0,
+            "minX": -96.0,
+            "minY": -64.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 977,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": 64.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": 32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 978,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 32.0,
+            "maxZ": -64.0,
+            "minX": -96.0,
+            "minY": 0.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 979,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": -32.0,
+            "maxZ": 0.0,
+            "minX": -96.0,
+            "minY": -64.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 980,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 32.0,
+            "maxZ": 128.0,
+            "minX": -96.0,
+            "minY": 0.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 981,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": 0.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": -32.0
+          },
+          "SceneEntity": true
+        },
+        "id": 982,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 96.0,
+            "maxZ": -64.0,
+            "minX": -96.0,
+            "minY": 64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 983,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 96.0,
+            "maxZ": 128.0,
+            "minX": -96.0,
+            "minY": 64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 984,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": -64.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 985,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": -32.0,
+            "maxZ": -32.0,
+            "minX": -96.0,
+            "minY": -64.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 986,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": -32.0,
+            "maxZ": 96.0,
+            "minX": -96.0,
+            "minY": -64.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 987,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": -32.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": -64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 988,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": 96.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": 64.0
+          },
+          "SceneEntity": true
+        },
+        "id": 989,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 128.0,
+            "maxZ": 128.0,
+            "minX": -96.0,
+            "minY": 96.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 990,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 0.0,
+            "maxZ": 128.0,
+            "minX": -96.0,
+            "minY": -32.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 991,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 0.0,
+            "maxZ": -64.0,
+            "minX": -96.0,
+            "minY": -32.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 992,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": 128.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 993,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": 160.0,
+            "maxZ": -64.0,
+            "minX": -96.0,
+            "minY": 128.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 994,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": -32.0,
+            "maxZ": 128.0,
+            "minX": -96.0,
+            "minY": -64.0,
+            "minZ": 96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 995,
+        "name": ""
+      },
+      {
+        "components": {
+          "BoundingBox": {
+            "maxX": -64.0,
+            "maxY": -32.0,
+            "maxZ": -64.0,
+            "minX": -96.0,
+            "minY": -64.0,
+            "minZ": -96.0
+          },
+          "SceneEntity": true
+        },
+        "id": 996,
+        "name": ""
+      }
+    ],
+    "player": {
+      "position": {
+        "x": 16.405963897705078,
+        "y": 38.25060272216797,
+        "z": 0.27208197116851807
+      },
+      "velocity": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    },
+    "timeline": {
+      "currentTime": 6.766666666666648,
+      "globalTimeScale": 1.0,
+      "history": [],
+      "isPaused": true
+    },
+    "version": "1.0"
+  },
+  "slot": "quicksave",
+  "timestamp": "2026-03-04T22:51:22Z"
+}

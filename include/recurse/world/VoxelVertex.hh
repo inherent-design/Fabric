@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bgfx/bgfx.h>
 #include <cstdint>
 
 namespace recurse {
@@ -10,6 +11,20 @@ namespace recurse {
 struct VoxelVertex {
     uint32_t posNormalAO;
     uint32_t material;
+
+    /// Get the bgfx vertex layout descriptor.
+    static const bgfx::VertexLayout& getVertexLayout() {
+        static bgfx::VertexLayout s_layout;
+        static bool s_initialized = false;
+        if (!s_initialized) {
+            s_layout.begin()
+                .add(bgfx::Attrib::TexCoord0, 4, bgfx::AttribType::Uint8, true) // posNormalAO
+                .add(bgfx::Attrib::TexCoord1, 4, bgfx::AttribType::Uint8, true) // material
+                .end();
+            s_initialized = true;
+        }
+        return s_layout;
+    }
 
     static VoxelVertex pack(uint8_t px, uint8_t py, uint8_t pz, uint8_t normalIdx, uint8_t ao, uint16_t paletteIdx) {
         VoxelVertex v;

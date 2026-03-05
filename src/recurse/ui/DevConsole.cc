@@ -54,10 +54,15 @@ bool DevConsole::isValid() const {
 }
 
 void DevConsole::toggle() {
-    if (visible_) {
-        hide();
-    } else {
-        show();
+    visible_ = !visible_;
+    if (!initialized_)
+        return;
+    if (document_) {
+        if (visible_) {
+            document_->Show();
+        } else {
+            document_->Hide();
+        }
     }
 }
 

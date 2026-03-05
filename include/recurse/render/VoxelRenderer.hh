@@ -1,9 +1,12 @@
 #pragma once
 
 #include "fabric/core/Spatial.hh"
-#include "recurse/world/VoxelMesher.hh"
+#include "recurse/world/ChunkedGrid.hh"
+#include "recurse/world/SmoothVoxelVertex.hh"
+#include <array>
 #include <bgfx/bgfx.h>
 #include <cstdint>
+#include <vector>
 
 namespace recurse {
 
@@ -11,12 +14,22 @@ namespace recurse {
 namespace Space = fabric::Space;
 using fabric::Vector3;
 
+/// GPU-side chunk mesh (vertex/index buffer handles + palette).
+/// Formerly defined in VoxelMesher.hh; kept here for VoxelRenderer API.
+struct ChunkMesh {
+    bgfx::VertexBufferHandle vbh = BGFX_INVALID_HANDLE;
+    bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
+    uint32_t indexCount = 0;
+    std::vector<std::array<float, 4>> palette;
+    bool valid = false;
+};
+
 // Per-chunk info for batch rendering.
 struct ChunkRenderInfo {
     const ChunkMesh* mesh;
-    int chunkX;
-    int chunkY;
-    int chunkZ;
+    float offsetX;
+    float offsetY;
+    float offsetZ;
 };
 
 // Renders voxel chunks using the voxel shader program.
@@ -37,9 +50,8 @@ class VoxelRenderer {
     VoxelRenderer(const VoxelRenderer&) = delete;
     VoxelRenderer& operator=(const VoxelRenderer&) = delete;
 
-    // Render a single chunk mesh at the given chunk coordinates.
-    // The chunk position is converted to world-space transform internally.
-    void render(bgfx::ViewId view, const ChunkMesh& mesh, int chunkX, int chunkY, int chunkZ);
+    // Render a single chunk mesh at the given camera-relative offset.
+    void render(bgfx::ViewId view, const ChunkMesh& mesh, float offsetX, float offsetY, float offsetZ);
 
     // Batch-render multiple chunks. Groups by palette when MDI is supported
     // to reduce uniform uploads. Falls back to per-chunk render() otherwise.
@@ -47,6 +59,9 @@ class VoxelRenderer {
 
     // Set the directional light direction (normalized, pointing toward light).
     void setLightDirection(const Vector3<float, Space::World>& dir);
+
+    // Set the camera world position used by smooth shading view-dependent terms.
+    void setViewPosition(double x, double y, double z);
 
     // Check if the shader program handle is valid
     bool isValid() const;
@@ -61,10 +76,20 @@ class VoxelRenderer {
     bgfx::ProgramHandle program_;
     bgfx::UniformHandle uniformPalette_;
     bgfx::UniformHandle uniformLightDir_;
+    bgfx::UniformHandle uniformViewPos_;
+    bgfx::UniformHandle uniformLitColor_;
+    bgfx::UniformHandle uniformShadowColor_;
+    bgfx::UniformHandle uniformRimParams_;
+    bgfx::UniformHandle uniformOceanParams_;
     bgfx::IndirectBufferHandle indirectBuffer_;
     bool initialized_ = false;
     bool mdiSupported_ = false;
     float lightDir_[4] = {0.0f, -1.0f, 0.0f, 0.0f};
+    float viewPos_[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float litColor_[4] = {0.95f, 0.85f, 0.55f, 1.0f};
+    float shadowColor_[4] = {0.45f, 0.35f, 0.55f, 1.0f};
+    float rimParams_[4] = {3.0f, 0.6f, 0.0f, 0.0f};
+    float oceanParams_[4] = {16.0f, 0.8f, 0.0f, 0.0f};
 
     static constexpr uint32_t kMaxIndirectDraws = 1024;
 };

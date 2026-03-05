@@ -116,11 +116,16 @@ TEST_F(CameraTest, ViewMatrixFromTranslatedTransform) {
     camera.updateView(t);
     const float* v = camera.viewMatrix();
 
-    // The view matrix should encode the inverse of the camera position.
-    // For a camera at (5,3,0) looking along +Z, the translation component
-    // of the view matrix should negate the eye position (dot products with axes).
-    // At minimum, the matrix should differ from identity.
-    EXPECT_NE(v[12], 0.0f);
+    // Camera-relative rendering keeps view translation at origin while
+    // preserving authoritative world position separately.
+    EXPECT_NEAR(v[12], 0.0f, 1e-5f);
+    EXPECT_NEAR(v[13], 0.0f, 1e-5f);
+    EXPECT_NEAR(v[14], 0.0f, 1e-5f);
+
+    auto worldPos = camera.worldPositionD();
+    EXPECT_DOUBLE_EQ(worldPos.x, 5.0);
+    EXPECT_DOUBLE_EQ(worldPos.y, 3.0);
+    EXPECT_DOUBLE_EQ(worldPos.z, 0.0);
 }
 
 // VP multiplication

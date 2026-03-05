@@ -138,7 +138,7 @@ void AudioSystem::shutdown() {
     engine_ = nullptr;
     initialized_ = false;
     commandBufferEnabled_ = false;
-    handleCounter_ = 0;
+    handleCounter_.store(0, std::memory_order_relaxed);
     soundPositions_.clear();
     baseVolumes_.clear();
     soundCategories_.clear();
@@ -468,11 +468,11 @@ uint32_t AudioSystem::activeSoundCount() const {
 // --- Private ---
 
 SoundHandle AudioSystem::nextHandle() {
-    ++handleCounter_;
-    if (handleCounter_ == InvalidSoundHandle) {
-        ++handleCounter_;
+    SoundHandle handle = handleCounter_.fetch_add(1, std::memory_order_relaxed) + 1;
+    if (handle == InvalidSoundHandle) {
+        handle = handleCounter_.fetch_add(1, std::memory_order_relaxed) + 1;
     }
-    return handleCounter_;
+    return handle;
 }
 
 void AudioSystem::cleanupFinishedSounds() {

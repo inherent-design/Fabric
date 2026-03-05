@@ -4,6 +4,12 @@
 #include <fstream>
 #include <string>
 
+#if defined(__APPLE__)
+#include <dlfcn.h>
+#elif defined(_WIN32)
+#include <windows.h>
+#endif
+
 #include "fabric/core/DefaultConfig.hh"
 #include "fabric/core/Log.hh"
 
@@ -117,10 +123,18 @@ void ConfigManager::applyCLIOverrides(int argc, char* argv[]) {
         auto key = arg.substr(0, eq);
         std::string val(arg.substr(eq + 1));
 
+        // Special handling: --feature.xxx=value -> features.xxx
+        std::string resolvedKey;
+        if (key.starts_with("feature.")) {
+            resolvedKey = "features." + std::string(key.substr(8)); // feature.audio -> features.audio
+        } else {
+            resolvedKey = std::string(key);
+        }
+
         if (val == "true") {
-            insertValueAtPath(cliLayer_, key, true);
+            insertValueAtPath(cliLayer_, resolvedKey, true);
         } else if (val == "false") {
-            insertValueAtPath(cliLayer_, key, false);
+            insertValueAtPath(cliLayer_, resolvedKey, false);
         } else {
             // Try integer (no decimal point)
             if (val.find('.') == std::string::npos) {
@@ -128,7 +142,7 @@ void ConfigManager::applyCLIOverrides(int argc, char* argv[]) {
                     size_t pos = 0;
                     int64_t intVal = std::stoll(val, &pos);
                     if (pos == val.size()) {
-                        insertValueAtPath(cliLayer_, key, intVal);
+                        insertValueAtPath(cliLayer_, resolvedKey, intVal);
                         continue;
                     }
                 } catch (...) {
@@ -140,14 +154,14 @@ void ConfigManager::applyCLIOverrides(int argc, char* argv[]) {
                 size_t pos = 0;
                 double floatVal = std::stod(val, &pos);
                 if (pos == val.size()) {
-                    insertValueAtPath(cliLayer_, key, floatVal);
+                    insertValueAtPath(cliLayer_, resolvedKey, floatVal);
                     continue;
                 }
             } catch (...) {
                 // Fall through to string
             }
             // String fallback
-            insertValueAtPath(cliLayer_, key, val);
+            insertValueAtPath(cliLayer_, resolvedKey, val);
         }
     }
     rebuildMerged();
@@ -233,6 +247,59 @@ std::filesystem::path ConfigManager::userConfigDir() {
 
 std::filesystem::path ConfigManager::defaultUserConfigPath() {
     return userConfigDir() / "user.toml";
+}
+
+std::filesystem::path ConfigManager::findConfig(const std::filesystem::path& filename) {
+    // 1. Current working directory
+    if (std::filesystem::exists(filename)) {
+        return filename;
+    }
+
+    // 2. Executable directory
+#if defined(__APPLE__)
+    // macOS: use dladdr to find executable path
+    Dl_info info;
+    if (dladdr(reinterpret_cast<void*>(&ConfigManager::findConfig), &info) && info.dli_fname) {
+        std::filesystem::path exePath(info.dli_fname);
+        auto exeDir = exePath.parent_path();
+        auto candidate = exeDir / filename;
+        if (std::filesystem::exists(candidate)) {
+            return candidate;
+        }
+    }
+#elif defined(__linux__)
+    // Linux: read /proc/self/exe
+    std::error_code ec;
+    auto exePath = std::filesystem::read_symlink("/proc/self/exe", ec);
+    if (!ec && !exePath.empty()) {
+        auto exeDir = exePath.parent_path();
+        auto candidate = exeDir / filename;
+        if (std::filesystem::exists(candidate)) {
+            return candidate;
+        }
+    }
+#elif defined(_WIN32)
+    // Windows: use GetModuleFileName
+    char buffer[MAX_PATH];
+    DWORD len = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
+    if (len > 0 && len < MAX_PATH) {
+        std::filesystem::path exePath(buffer);
+        auto exeDir = exePath.parent_path();
+        auto candidate = exeDir / filename;
+        if (std::filesystem::exists(candidate)) {
+            return candidate;
+        }
+    }
+#endif
+
+    // 3. Source config directory (config/ relative to CWD)
+    auto sourceConfig = std::filesystem::current_path() / "config" / filename;
+    if (std::filesystem::exists(sourceConfig)) {
+        return sourceConfig;
+    }
+
+    // Fall back to original filename (will fail with clear error in load* methods)
+    return filename;
 }
 
 // -- Internal --

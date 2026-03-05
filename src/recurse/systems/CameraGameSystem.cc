@@ -35,8 +35,8 @@ void CameraGameSystem::update(fabric::AppContext& ctx, float dt) {
     cameraCtrl_->processMouseInput(ctx.inputManager->mouseDeltaX(), ctx.inputManager->mouseDeltaY());
 
     // Track player position with spring arm collision for third-person mode
-    auto playerPos = charMovement_->playerPosition();
-    cameraCtrl_->update(playerPos, dt, &terrain_->densityGrid());
+    auto playerPosD = charMovement_->playerWorldPositionD();
+    cameraCtrl_->update(playerPosD, dt, &terrain_->densityGrid());
 }
 
 void CameraGameSystem::shutdown() {

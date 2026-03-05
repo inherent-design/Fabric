@@ -158,6 +158,8 @@ void BTDebugPanel::update(BehaviorAI& ai, flecs::entity selectedNpc) {
 
 void BTDebugPanel::toggle() {
     visible_ = !visible_;
+    if (!initialized_)
+        return;
     if (document_) {
         if (visible_) {
             document_->Show();
@@ -168,6 +170,7 @@ void BTDebugPanel::toggle() {
 }
 
 void BTDebugPanel::shutdown() {
+    initialized_ = false;
     if (document_) {
         document_->Close();
         document_ = nullptr;
@@ -176,7 +179,6 @@ void BTDebugPanel::shutdown() {
         context_->RemoveDataModel("bt_debug");
     }
     modelHandle_ = {};
-    initialized_ = false;
     visible_ = false;
     context_ = nullptr;
 }

@@ -1,5 +1,4 @@
 #include "recurse/gameplay/VoxelInteraction.hh"
-#include "recurse/world/ChunkMeshManager.hh"
 
 using namespace fabric;
 
@@ -22,7 +21,7 @@ InteractionResult VoxelInteraction::createMatter(const VoxelHit& hit, float dens
     int cx = x >> kChunkShift;
     int cy = y >> kChunkShift;
     int cz = z >> kChunkShift;
-    ChunkMeshManager::emitVoxelChanged(dispatcher_, cx, cy, cz);
+    emitVoxelChanged(dispatcher_, cx, cy, cz);
 
     return {true, x, y, z, cx, cy, cz};
 }
@@ -37,7 +36,7 @@ InteractionResult VoxelInteraction::destroyMatter(const VoxelHit& hit) {
     int cx = x >> kChunkShift;
     int cy = y >> kChunkShift;
     int cz = z >> kChunkShift;
-    ChunkMeshManager::emitVoxelChanged(dispatcher_, cx, cy, cz);
+    emitVoxelChanged(dispatcher_, cx, cy, cz);
 
     return {true, x, y, z, cx, cy, cz};
 }

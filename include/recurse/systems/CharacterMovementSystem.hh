@@ -32,6 +32,9 @@ class CharacterMovementSystem : public fabric::System<CharacterMovementSystem> {
 
     const fabric::Vec3f& playerPosition() const { return playerPos_; }
     fabric::Vec3f& playerPosition() { return playerPos_; }
+    fabric::Vector3<double, fabric::Space::World> playerWorldPositionD() const { return playerPosD_; }
+
+    void setPlayerWorldOffset(double x, double y, double z);
     const Velocity& playerVelocity() const { return playerVel_; }
     Velocity& playerVelocity() { return playerVel_; }
     const MovementFSM& movementFSM() const { return movementFSM_; }
@@ -52,6 +55,8 @@ class CharacterMovementSystem : public fabric::System<CharacterMovementSystem> {
     MovementFSM movementFSM_;
     CharacterConfig charConfig_;
     fabric::Vec3f playerPos_{kSpawnX, kSpawnY, kSpawnZ};
+    fabric::Vector3<double, fabric::Space::World> playerPosD_{
+        static_cast<double>(kSpawnX), static_cast<double>(kSpawnY), static_cast<double>(kSpawnZ)};
     Velocity playerVel_{};
 };
 

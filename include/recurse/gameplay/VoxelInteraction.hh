@@ -7,6 +7,18 @@
 
 namespace recurse {
 
+// Event name for voxel data changes (formerly in ChunkMeshManager.hh)
+inline constexpr const char* kVoxelChangedEvent = "voxel_changed";
+
+// Emit a voxel-changed event for the given chunk coordinates.
+inline void emitVoxelChanged(fabric::EventDispatcher& dispatcher, int cx, int cy, int cz) {
+    fabric::Event e(kVoxelChangedEvent, "VoxelInteraction");
+    e.setData("cx", cx);
+    e.setData("cy", cy);
+    e.setData("cz", cz);
+    dispatcher.dispatchEvent(e);
+}
+
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
 using fabric::DensityField;

@@ -9,6 +9,7 @@
 #include "fabric/core/Event.hh"
 #include "fabric/core/FabricApp.hh"
 #include "fabric/core/FabricAppDesc.hh"
+#include "fabric/core/FeatureFlags.hh"
 #include "fabric/core/InputManager.hh"
 #include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
@@ -24,12 +25,7 @@
 #include "recurse/gameplay/FlightController.hh"
 #include "recurse/gameplay/VoxelInteraction.hh"
 #include "recurse/persistence/SaveManager.hh"
-#include "recurse/render/WaterSimulation.hh"
-#include "recurse/world/CaveCarver.hh"
-#include "recurse/world/ChunkMeshManager.hh"
-#include "recurse/world/TerrainGenerator.hh"
-
-// System includes (all 15)
+// System includes
 #include "recurse/systems/AIGameSystem.hh"
 #include "recurse/systems/AudioGameSystem.hh"
 #include "recurse/systems/CameraGameSystem.hh"
@@ -43,8 +39,9 @@
 #include "recurse/systems/ShadowRenderSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelInteractionSystem.hh"
+#include "recurse/systems/VoxelMeshingSystem.hh"
 #include "recurse/systems/VoxelRenderSystem.hh"
-#include "recurse/systems/WaterRenderSystem.hh"
+#include "recurse/systems/VoxelSimulationSystem.hh"
 
 #include <SDL3/SDL.h>
 
@@ -56,23 +53,49 @@ fabric::FabricAppDesc buildRecurseDesc() {
     desc.configPath = "recurse.toml";
     desc.headless = false;
 
-    // Register 15 application systems with phase assignments.
+    // Register application systems with phase assignments.
     // Dependencies declared in each system's configureDependencies().
+    // Core systems (always registered):
     desc.registerSystem<recurse::systems::TerrainSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::ChunkPipelineSystem>(SystemPhase::FixedUpdate);
-    desc.registerSystem<recurse::systems::PhysicsGameSystem>(SystemPhase::FixedUpdate);
-    desc.registerSystem<recurse::systems::CharacterMovementSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::VoxelInteractionSystem>(SystemPhase::FixedUpdate);
-    desc.registerSystem<recurse::systems::AIGameSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::SaveGameSystem>(SystemPhase::FixedUpdate);
-    desc.registerSystem<recurse::systems::ParticleGameSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::CameraGameSystem>(SystemPhase::Update);
-    desc.registerSystem<recurse::systems::AudioGameSystem>(SystemPhase::Update);
-    desc.registerSystem<recurse::systems::ShadowRenderSystem>(SystemPhase::PreRender);
-    desc.registerSystem<recurse::systems::VoxelRenderSystem>(SystemPhase::Render);
-    desc.registerSystem<recurse::systems::WaterRenderSystem>(SystemPhase::Render);
-    desc.registerSystem<recurse::systems::OITRenderSystem>(SystemPhase::Render);
-    desc.registerSystem<recurse::systems::DebugOverlaySystem>(SystemPhase::Render);
+
+    // Conditional systems (feature-flagged):
+    if (fabric::FeatureFlags::voxelSimulation()) {
+        desc.registerSystem<recurse::systems::VoxelSimulationSystem>(SystemPhase::FixedUpdate);
+    }
+    if (fabric::FeatureFlags::physics()) {
+        desc.registerSystem<recurse::systems::PhysicsGameSystem>(SystemPhase::FixedUpdate);
+    }
+    if (fabric::FeatureFlags::characterMovement()) {
+        desc.registerSystem<recurse::systems::CharacterMovementSystem>(SystemPhase::FixedUpdate);
+    }
+    if (fabric::FeatureFlags::behaviorAI()) {
+        desc.registerSystem<recurse::systems::AIGameSystem>(SystemPhase::FixedUpdate);
+    }
+    if (fabric::FeatureFlags::particles()) {
+        desc.registerSystem<recurse::systems::ParticleGameSystem>(SystemPhase::FixedUpdate);
+    }
+    if (fabric::FeatureFlags::audio()) {
+        desc.registerSystem<recurse::systems::AudioGameSystem>(SystemPhase::Update);
+    }
+    if (fabric::FeatureFlags::voxelMeshing()) {
+        desc.registerSystem<recurse::systems::VoxelMeshingSystem>(SystemPhase::PreRender);
+    }
+    if (fabric::FeatureFlags::shadows()) {
+        desc.registerSystem<recurse::systems::ShadowRenderSystem>(SystemPhase::PreRender);
+    }
+    if (fabric::FeatureFlags::voxelRendering()) {
+        desc.registerSystem<recurse::systems::VoxelRenderSystem>(SystemPhase::Render);
+    }
+    if (fabric::FeatureFlags::oit()) {
+        desc.registerSystem<recurse::systems::OITRenderSystem>(SystemPhase::Render);
+    }
+    if (fabric::FeatureFlags::debugHUD()) {
+        desc.registerSystem<recurse::systems::DebugOverlaySystem>(SystemPhase::Render);
+    }
 
     // onInit: cross-cutting setup that spans multiple systems.
     // Key bindings, ECS core components, AppMode observer.
@@ -105,6 +128,7 @@ fabric::FabricAppDesc buildRecurseDesc() {
         ctx.inputManager->bindKey("toggle_fly", SDLK_F);
         ctx.inputManager->bindKey("toggle_debug", SDLK_F3);
         ctx.inputManager->bindKey("toggle_wireframe", SDLK_F4);
+        ctx.inputManager->bindKey("toggle_chunk_debug", SDLK_F12);
         ctx.inputManager->bindKey("toggle_camera", SDLK_V);
         ctx.inputManager->bindKey("toggle_collision_debug", SDLK_F10);
         ctx.inputManager->bindKey("toggle_bvh_debug", SDLK_F6);
@@ -178,11 +202,14 @@ fabric::FabricAppDesc buildRecurseDesc() {
         FABRIC_LOG_INFO("Recurse onInit complete");
     };
 
-    // onResize: delegate to OIT compositor (resolution-dependent GPU resources)
+    // onResize: delegate to OIT compositor and PostProcess (resolution-dependent GPU resources)
     desc.onResize = [](fabric::AppContext& ctx, uint32_t width, uint32_t height) {
         auto* oit = ctx.systemRegistry.get<recurse::systems::OITRenderSystem>();
         if (oit)
             oit->resize(static_cast<uint16_t>(width), static_cast<uint16_t>(height));
+
+        if (ctx.sceneView)
+            ctx.sceneView->postProcess().resize(static_cast<uint16_t>(width), static_cast<uint16_t>(height));
     };
 
     // onShutdown: handle resources that need AppContext access beyond system shutdown.

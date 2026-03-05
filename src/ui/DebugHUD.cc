@@ -94,6 +94,8 @@ void DebugHUD::update(const DebugData& data) {
 
 void DebugHUD::toggle() {
     visible_ = !visible_;
+    if (!initialized_)
+        return;
     if (document_) {
         if (visible_) {
             document_->Show();
@@ -104,6 +106,7 @@ void DebugHUD::toggle() {
 }
 
 void DebugHUD::shutdown() {
+    initialized_ = false;
     if (document_) {
         document_->Close();
         document_ = nullptr;
@@ -112,7 +115,6 @@ void DebugHUD::shutdown() {
         context_->RemoveDataModel("debug_hud");
     }
     modelHandle_ = {};
-    initialized_ = false;
     visible_ = false;
     context_ = nullptr;
 }
