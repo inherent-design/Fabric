@@ -134,6 +134,10 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
         wailaPanel_.setMode(to);
     });
 
+    // Initialize panels with current mode (observer only fires on transitions)
+    hotkeyPanel_.setMode(appMode->current());
+    wailaPanel_.setMode(appMode->current());
+
     FABRIC_LOG_INFO("DebugOverlaySystem initialized");
 }
 

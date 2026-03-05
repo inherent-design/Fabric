@@ -25,6 +25,7 @@ body {
 }
 
 .row {
+    display: block;
     margin-bottom: 3dp;
 }
 

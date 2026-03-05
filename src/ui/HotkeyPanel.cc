@@ -36,9 +36,10 @@ void HotkeyPanel::init(Rml::Context* context) {
 }
 
 void HotkeyPanel::setMode(AppMode mode) {
-    if (!initialized_ || mode == currentMode_)
+    if (!initialized_)
         return;
 
+    bool modeChanged = (mode != currentMode_);
     currentMode_ = mode;
 
     // Show hotkey panel during gameplay modes, hide in Menu
@@ -53,7 +54,10 @@ void HotkeyPanel::setMode(AppMode mode) {
         }
     }
 
-    rebuildHotkeys();
+    // Only rebuild hotkeys if mode actually changed
+    if (modeChanged) {
+        rebuildHotkeys();
+    }
 }
 
 void HotkeyPanel::rebuildHotkeys() {

@@ -20,10 +20,10 @@ body {
 }
 
 .pause_content {
-    width: 320px;
-    padding: 32px;
+    width: 320dp;
+    padding: 32dp;
     background-color: #1a1a2e;
-    border-width: 2px;
+    border-width: 2dp;
     border-color: #3a3a5e;
     display: flex;
     flex-direction: column;
@@ -31,9 +31,9 @@ body {
 }
 
 .title {
-    font-size: 36px;
+    font-size: 36dp;
     color: #ffffff;
-    margin-bottom: 32px;
+    margin-bottom: 32dp;
 }
 
 .button_group {
@@ -48,19 +48,19 @@ body {
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    width: 220px;
-    height: 44px;
-    margin-bottom: 12px;
+    width: 220dp;
+    height: 44dp;
+    margin-bottom: 12dp;
     background-color: #333344;
     color: #ffffff;
-    border-width: 1px;
+    border-width: 1dp;
     border-color: #555566;
-    font-size: 16px;
+    font-size: 16dp;
 }
 
 .menu_button span {
     color: #ffffff;
-    font-size: 16px;
+    font-size: 16dp;
 }
 
 .menu_button:hover {
@@ -73,7 +73,7 @@ body {
 }
 
 .menu_button.danger {
-    margin-top: 8px;
+    margin-top: 8dp;
     background-color: transparent;
     border-color: #664444;
     color: #aa6666;
