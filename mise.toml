@@ -42,11 +42,37 @@ description = "Configure and build (Debug)"
 run = "sh tasks/build.sh"
 run_windows = "& .\\tasks\\build.ps1"
 
+[tasks."build:debug"]
+alias = "bd"
+description = "Configure and build (Debug)"
+run = "sh tasks/build.sh"
+run_windows = "& .\\tasks\\build.ps1"
+
 [tasks."build:release"]
 alias = "br"
 description = "Configure and build (Release)"
 run = "BUILD_PRESET=dev-release sh tasks/build.sh"
 run_windows = "$env:BUILD_PRESET='dev-release'; & .\\tasks\\build.ps1"
+
+# Run
+
+[tasks.run]
+alias = "r"
+description = "Run Recurse (Release)"
+depends = ["build:release"]
+run = "./build/dev-release/bin/Recurse"
+
+[tasks."run:debug"]
+alias = "rd"
+description = "Run Recurse (Debug)"
+depends = ["build"]
+run = "./build/dev-debug/bin/Recurse"
+
+[tasks."run:release"]
+alias = "rr"
+description = "Run Recurse (Release)"
+depends = ["build:release"]
+run = "./build/dev-release/bin/Recurse"
 
 # Lint & Format
 
@@ -119,6 +145,11 @@ description = "Build with Tracy profiler (Debug)"
 run = "sh tasks/profile.sh"
 run_windows = "& .\\tasks\\profile.ps1"
 
+[tasks."profile:debug"]
+description = "Build with Tracy profiler (Debug)"
+run = "sh tasks/profile.sh"
+run_windows = "& .\\tasks\\profile.ps1"
+
 [tasks."profile:release"]
 alias = "profr"
 description = "Build with Tracy profiler (RelWithDebInfo)"
@@ -127,11 +158,16 @@ run_windows = "$env:PROFILE_MODE='release'; & .\\tasks\\profile.ps1"
 
 [tasks."profile:capture"]
 alias = "cap"
-description = "Launch Recurse and capture a Tracy trace (30s)"
+description = "Launch Recurse and capture a Tracy trace (30s, Debug)"
 run = "sh tasks/profile-capture.sh"
 run_windows = "& .\\tasks\\profile-capture.ps1"
 
-[tasks."profile:capture-release"]
+[tasks."profile:capture:debug"]
+description = "Launch Debug build and capture a Tracy trace (30s)"
+run = "sh tasks/profile-capture.sh"
+run_windows = "& .\\tasks\\profile-capture.ps1"
+
+[tasks."profile:capture:release"]
 alias = "capr"
 description = "Launch Release build and capture a Tracy trace (30s)"
 run = "PROFILE_MODE=release sh tasks/profile-capture.sh"
