@@ -128,8 +128,11 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
         btDebugSelectedNpc_ = btDebugPanel_.selectedNpc();
     });
 
-    // AppMode observer: update hotkey panel context
-    appMode->addObserver([this](fabric::AppMode /*from*/, fabric::AppMode to) { hotkeyPanel_.setMode(to); });
+    // AppMode observer: update hotkey panel and WAILA visibility
+    appMode->addObserver([this](fabric::AppMode /*from*/, fabric::AppMode to) {
+        hotkeyPanel_.setMode(to);
+        wailaPanel_.setMode(to);
+    });
 
     FABRIC_LOG_INFO("DebugOverlaySystem initialized");
 }

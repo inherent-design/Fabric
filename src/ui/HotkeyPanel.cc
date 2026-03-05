@@ -25,10 +25,9 @@ void HotkeyPanel::init(Rml::Context* context) {
 
     document_ = context_->LoadDocument("assets/ui/hotkey_ref.rml");
     if (document_) {
-        // Initialize with Game mode hotkeys and show immediately
-        setMode(AppMode::Game);
-        document_->Show();
-        FABRIC_LOG_INFO("HotkeyPanel document loaded (always visible)");
+        // Initialize hidden, will be shown via setMode()
+        document_->Hide();
+        FABRIC_LOG_INFO("HotkeyPanel document loaded");
     } else {
         FABRIC_LOG_WARN("HotkeyPanel: failed to load hotkey_ref.rml");
     }
@@ -41,6 +40,19 @@ void HotkeyPanel::setMode(AppMode mode) {
         return;
 
     currentMode_ = mode;
+
+    // Show hotkey panel during gameplay modes, hide in Menu
+    bool shouldShow = (mode != AppMode::Menu);
+    if (document_) {
+        if (shouldShow && !visible_) {
+            document_->Show();
+            visible_ = true;
+        } else if (!shouldShow && visible_) {
+            document_->Hide();
+            visible_ = false;
+        }
+    }
+
     rebuildHotkeys();
 }
 

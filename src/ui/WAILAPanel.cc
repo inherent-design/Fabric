@@ -1,5 +1,6 @@
 #include "fabric/ui/WAILAPanel.hh"
 
+#include "fabric/core/AppModeManager.hh"
 #include "fabric/core/Log.hh"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
@@ -40,9 +41,8 @@ void WAILAPanel::init(Rml::Context* context) {
 
     document_ = context_->LoadDocument("assets/ui/waila.rml");
     if (document_) {
-        document_->Show(); // Always visible
-        visible_ = true;   // Track state as visible
-        FABRIC_LOG_INFO("WAILAPanel document loaded (always visible)");
+        document_->Hide(); // Start hidden, will be shown via setMode()
+        FABRIC_LOG_INFO("WAILAPanel document loaded");
     } else {
         FABRIC_LOG_WARN("WAILAPanel: failed to load waila.rml");
     }
@@ -99,6 +99,27 @@ void WAILAPanel::toggle() {
             document_->Show();
         } else {
             document_->Hide();
+        }
+    }
+}
+
+void WAILAPanel::setMode(AppMode mode) {
+    if (!initialized_)
+        return;
+
+    currentMode_ = mode;
+
+    // Only show WAILA during gameplay modes (Game, Paused)
+    // Hide in Menu, Console, Editor modes
+    bool shouldShow = (mode == AppMode::Game || mode == AppMode::Paused);
+
+    if (document_) {
+        if (shouldShow && !visible_) {
+            document_->Show();
+            visible_ = true;
+        } else if (!shouldShow && visible_) {
+            document_->Hide();
+            visible_ = false;
         }
     }
 }

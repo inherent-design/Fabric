@@ -38,6 +38,7 @@ class HotkeyPanel {
     Rml::Context* context_ = nullptr;
     Rml::ElementDocument* document_ = nullptr;
     bool initialized_ = false;
+    bool visible_ = false;
     AppMode currentMode_ = AppMode::Game;
 
     // Data model bindings

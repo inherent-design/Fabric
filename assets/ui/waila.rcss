@@ -33,6 +33,13 @@ body {
     pointer-events: none;
 }
 
+body {
+    font-family: 'Roboto Mono';
+    font-size: 13dp;
+    color: #e0e0e0;
+    pointer-events: none;
+}
+
 #waila-panel {
     padding: 6dp 10dp;
     background-color: #00000088;

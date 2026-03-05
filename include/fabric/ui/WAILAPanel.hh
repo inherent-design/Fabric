@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/core/AppModeManager.hh"
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/Types.h>
 
@@ -23,7 +24,7 @@ struct WAILAData {
 
 /// "What Am I Looking At" info panel. Displays crosshair target data
 /// (position, density, essence color) from a per-frame voxel raycast.
-/// Toggle visibility alongside the debug HUD (F3).
+/// Always visible during gameplay (Game/Paused modes), hidden in Menu.
 class WAILAPanel {
   public:
     WAILAPanel() = default;
@@ -31,6 +32,7 @@ class WAILAPanel {
 
     void init(Rml::Context* context);
     void update(const WAILAData& data);
+    void setMode(AppMode mode);
     void toggle();
     void shutdown();
     bool isVisible() const;
@@ -40,6 +42,7 @@ class WAILAPanel {
     Rml::ElementDocument* document_ = nullptr;
     bool visible_ = false;
     bool initialized_ = false;
+    AppMode currentMode_ = AppMode::Game;
 
     // Bound variables for the "waila" data model
     bool hasHit_ = false;
