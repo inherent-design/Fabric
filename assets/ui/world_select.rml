@@ -1,0 +1,26 @@
+<rml>
+<head>
+    <link type="text/rcss" href="main_menu.rcss" />
+</head>
+<body>
+    <div id="world_select">
+        <div class="menu_container">
+            <div class="menu_content">
+                <h1 class="title_small">Select World Type</h1>
+
+                <div class="button_group">
+                    <button id="btn_flat" class="menu_button wide">
+                        <span class="btn_title">Flat</span>
+                        <span class="btn_desc">A simple flat world for testing</span>
+                    </button>
+                    <button id="btn_minecraft" class="menu_button wide">
+                        <span class="btn_title">Minecraft</span>
+                        <span class="btn_desc">Procedural terrain with noise generation</span>
+                    </button>
+                    <button id="btn_back" class="menu_button secondary"><span>Back</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>

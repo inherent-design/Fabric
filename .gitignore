@@ -49,3 +49,6 @@ cmake_test_discovery_*.json
 
 # Tracy profiler captures
 tracy/
+
+# Recurse save files
+saves/

@@ -162,10 +162,8 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
     }
 
     // Build density + material grids from SimulationGrid.
-    // Sample ±3 voxels around chunk to cover:
-    // - 1 voxel for ChunkDensityCache boundary
-    // - 2 voxels for 5x5x5 blur kernel
-    // Total: 32 + 6 = 38^3 region
+    // Sample ±1 voxel around chunk for ChunkDensityCache boundary.
+    // Total: 32 + 2 = 34^3 region
     ChunkedGrid<float> densityGrid;
     ChunkedGrid<uint16_t> materialGrid;
 
@@ -173,7 +171,7 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
     const int baseY = coord.y * kChunkSize;
     const int baseZ = coord.z * kChunkSize;
 
-    constexpr int kSampleMargin = 3; // 1 for cache + 2 for blur
+    constexpr int kSampleMargin = 1; // 1 for cache boundary
     for (int lz = -kSampleMargin; lz <= kChunkSize + kSampleMargin; ++lz) {
         for (int ly = -kSampleMargin; ly <= kChunkSize + kSampleMargin; ++ly) {
             for (int lx = -kSampleMargin; lx <= kChunkSize + kSampleMargin; ++lx) {
@@ -189,40 +187,12 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
         }
     }
 
-    // Apply 3x3x3 box blur to density field for smoother transitions while
-    // preserving sharper corners than the previous 5x5x5 blur.
-    // This prevents SnapMC from snapping all vertices to corners when density is binary 0/1.
-    // NOTE: Only blur within the sampled region - don't include 0.0f from unset positions.
-    ChunkedGrid<float> blurredGrid;
-    for (int lz = -1; lz <= kChunkSize; ++lz) {
-        for (int ly = -1; ly <= kChunkSize; ++ly) {
-            for (int lx = -1; lx <= kChunkSize; ++lx) {
-                const int wx = baseX + lx;
-                const int wy = baseY + ly;
-                const int wz = baseZ + lz;
-                float sum = 0.0f;
-                int count = 0;
-                // Reduced from 5x5x5 to 3x3x3 for sharper corners
-                for (int nz = -1; nz <= 1; ++nz) {
-                    for (int ny = -1; ny <= 1; ++ny) {
-                        for (int nx = -1; nx <= 1; ++nx) {
-                            // Clamp sample coordinates to the valid sample range
-                            int sx = std::clamp(wx + nx, baseX - kSampleMargin, baseX + kChunkSize + kSampleMargin);
-                            int sy = std::clamp(wy + ny, baseY - kSampleMargin, baseY + kChunkSize + kSampleMargin);
-                            int sz = std::clamp(wz + nz, baseZ - kSampleMargin, baseZ + kChunkSize + kSampleMargin);
-                            sum += densityGrid.get(sx, sy, sz);
-                            ++count;
-                        }
-                    }
-                }
-                blurredGrid.set(wx, wy, wz, sum / static_cast<float>(count));
-            }
-        }
-    }
-
+    // No blur - use binary density directly for sharp corners.
+    // The blur was causing chamfered edges by creating intermediate values (0.33, 0.66)
+    // at solid-air boundaries.
     ChunkDensityCache densityCache;
     ChunkMaterialCache materialCache;
-    densityCache.build(coord.x, coord.y, coord.z, blurredGrid);
+    densityCache.build(coord.x, coord.y, coord.z, densityGrid);
     materialCache.build(coord.x, coord.y, coord.z, materialGrid);
 
     auto meshData = mesher_->meshChunk(densityCache, materialCache, 0.5f, 0);

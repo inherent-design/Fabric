@@ -33,6 +33,14 @@ class TerrainSystem : public fabric::System<TerrainSystem> {
     /// Generate terrain for a single chunk (called by ChunkPipelineSystem on load)
     void generateChunk(int cx, int cy, int cz);
 
+    /// Generate initial world region (5x3x5 chunks around origin)
+    /// Called by MainMenuSystem when world type is selected.
+    /// If worldGen_ is null, uses FlatWorldGenerator as default.
+    void generateInitialWorld();
+
+    /// Check if initial world has been generated
+    bool isWorldGenerated() const { return worldGenerated_; }
+
     // VP0+ accessors
     fabric::simulation::SimulationGrid& simulationGrid();
     const fabric::simulation::SimulationGrid& simulationGrid() const;
@@ -63,6 +71,8 @@ class TerrainSystem : public fabric::System<TerrainSystem> {
 
     // Sync density field from simulation grid for collision detection
     void syncDensityFromSimulation();
+
+    bool worldGenerated_ = false;
 };
 
 } // namespace recurse::systems

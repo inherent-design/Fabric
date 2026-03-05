@@ -31,6 +31,7 @@
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/ChunkPipelineSystem.hh"
 #include "recurse/systems/DebugOverlaySystem.hh"
+#include "recurse/systems/MainMenuSystem.hh"
 #include "recurse/systems/OITRenderSystem.hh"
 #include "recurse/systems/ParticleGameSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
@@ -68,6 +69,7 @@ fabric::FabricAppDesc buildRecurseDesc() {
     desc.registerSystem<recurse::systems::SaveGameSystem>(SystemPhase::FixedUpdate);
 
     // Update: per-frame logic
+    desc.registerSystem<recurse::systems::MainMenuSystem>(SystemPhase::Update);
     desc.registerSystem<recurse::systems::AudioGameSystem>(SystemPhase::Update);
     desc.registerSystem<recurse::systems::CameraGameSystem>(SystemPhase::Update);
 
@@ -150,7 +152,9 @@ fabric::FabricAppDesc buildRecurseDesc() {
         // AppMode observer: mouse capture, simulation pause, and InputRouter sync
         auto* window = ctx.window;
         auto* inputRouter = ctx.inputRouter;
-        ctx.appModeManager->addObserver([&timeline, window, inputRouter](fabric::AppMode, fabric::AppMode to) {
+        ctx.appModeManager->addObserver([&timeline, window, inputRouter](fabric::AppMode from, fabric::AppMode to) {
+            FABRIC_LOG_INFO("AppMode observer: {} -> {}, setting InputRouter", fabric::appModeToString(from),
+                            fabric::appModeToString(to));
             const auto& modeFlags = fabric::AppModeManager::flags(to);
             SDL_SetWindowRelativeMouseMode(window, modeFlags.captureMouse);
             if (modeFlags.pauseSimulation) {
@@ -161,10 +165,13 @@ fabric::FabricAppDesc buildRecurseDesc() {
             // Sync InputRouter mode with AppMode routing flags
             if (modeFlags.routeToGame && !modeFlags.routeToUI) {
                 inputRouter->setMode(fabric::InputMode::GameOnly);
+                FABRIC_LOG_INFO("InputRouter set to GameOnly");
             } else if (!modeFlags.routeToGame && modeFlags.routeToUI) {
                 inputRouter->setMode(fabric::InputMode::UIOnly);
+                FABRIC_LOG_INFO("InputRouter set to UIOnly");
             } else {
                 inputRouter->setMode(fabric::InputMode::GameAndUI);
+                FABRIC_LOG_INFO("InputRouter set to GameAndUI");
             }
         });
 
@@ -180,6 +187,8 @@ fabric::FabricAppDesc buildRecurseDesc() {
         });
 
         // Apply initial mode flags (no transition fires for the startup state)
+        // Start in Menu mode for main menu display
+        ctx.appModeManager->transition(fabric::AppMode::Menu);
         SDL_SetWindowRelativeMouseMode(ctx.window,
                                        fabric::AppModeManager::flags(ctx.appModeManager->current()).captureMouse);
 

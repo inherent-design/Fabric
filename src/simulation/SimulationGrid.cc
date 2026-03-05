@@ -144,6 +144,13 @@ bool SimulationGrid::hasChunk(int cx, int cy, int cz) const {
     return chunks_.find(packKey(cx, cy, cz)) != chunks_.end();
 }
 
+VoxelCell SimulationGrid::getChunkFillValue(int cx, int cy, int cz) const {
+    auto it = chunks_.find(packKey(cx, cy, cz));
+    if (it == chunks_.end())
+        return VoxelCell{}; // Return default (Air)
+    return it->second.fillValue;
+}
+
 void SimulationGrid::removeChunk(int cx, int cy, int cz) {
     chunks_.erase(packKey(cx, cy, cz));
 }

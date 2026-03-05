@@ -5,6 +5,7 @@
 #include <RmlUi/Core/Input.h>
 #include <SDL3/SDL.h>
 #include <unordered_map>
+#include <utility>
 
 namespace Rml {
 class Context;
@@ -25,6 +26,9 @@ class InputRouter {
 
     void setMode(InputMode mode);
     InputMode mode() const;
+
+    // Set window for HiDPI coordinate conversion
+    void setWindow(SDL_Window* window) { window_ = window; }
 
     // Route an SDL event. Returns true if consumed.
     // When Rml::Context is null, UI forwarding is skipped.
@@ -67,6 +71,7 @@ class InputRouter {
   private:
     InputManager& inputMgr_;
     InputMode mode_ = InputMode::GameOnly;
+    SDL_Window* window_ = nullptr;
     std::function<void(const SDL_Event&)> eventCaptureHook_;
     std::function<void()> frameHook_;
     std::function<void()> consoleToggleCallback_;
@@ -75,6 +80,9 @@ class InputRouter {
 
     bool forwardToRmlUI(const SDL_Event& event, Rml::Context* ctx);
     bool forwardToGame(const SDL_Event& event);
+
+    // Convert window coordinates to pixel coordinates for HiDPI
+    std::pair<int, int> windowToPixelCoords(float winX, float winY) const;
 
     static int sdlMouseButtonToRml(Uint8 button);
     static bool isBodyElement(Rml::Element* element);

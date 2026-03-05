@@ -14,9 +14,24 @@ TerrainSystem::~TerrainSystem() = default;
 
 void TerrainSystem::init(fabric::AppContext& /*ctx*/) {
     simGrid_ = std::make_unique<fabric::simulation::SimulationGrid>();
+    // Create default generator but don't generate terrain yet
+    // This allows MainMenuSystem to swap the generator before world generation
     worldGen_ = std::make_unique<FlatWorldGenerator>();
+    FABRIC_LOG_INFO("TerrainSystem initialized (awaiting generateInitialWorld call)");
+}
 
-    // Generate initial 5x3x5 chunk region around origin (matches VoxelSimulationSystem)
+void TerrainSystem::generateInitialWorld() {
+    if (worldGenerated_) {
+        FABRIC_LOG_WARN("TerrainSystem: World already generated, skipping");
+        return;
+    }
+
+    if (!worldGen_) {
+        worldGen_ = std::make_unique<FlatWorldGenerator>();
+        FABRIC_LOG_INFO("TerrainSystem: Using default FlatWorldGenerator");
+    }
+
+    // Generate initial 5x3x5 chunk region around origin
     for (int cz = -2; cz <= 2; ++cz) {
         for (int cy = -1; cy <= 1; ++cy) {
             for (int cx = -2; cx <= 2; ++cx) {
@@ -29,7 +44,9 @@ void TerrainSystem::init(fabric::AppContext& /*ctx*/) {
     // Sync density field from simulation grid for collision detection
     syncDensityFromSimulation();
 
-    FABRIC_LOG_INFO("TerrainSystem initialized with {} ({} chunks)", worldGen_->name(), simGrid_->allChunks().size());
+    worldGenerated_ = true;
+    FABRIC_LOG_INFO("TerrainSystem: World generated with {} ({} chunks)", worldGen_->name(),
+                    simGrid_->allChunks().size());
 }
 
 void TerrainSystem::shutdown() {
@@ -72,16 +89,30 @@ void TerrainSystem::syncDensityFromGrid(const fabric::simulation::SimulationGrid
         int baseZ = cz * kChunkSize;
 
         const auto* readBuf = grid.readBuffer(cx, cy, cz);
-        if (!readBuf)
-            continue;
 
-        for (int lz = 0; lz < kChunkSize; ++lz) {
-            for (int ly = 0; ly < kChunkSize; ++ly) {
-                for (int lx = 0; lx < kChunkSize; ++lx) {
-                    size_t idx = static_cast<size_t>(lx + ly * kChunkSize + lz * kChunkSize * kChunkSize);
-                    const VoxelCell& cell = (*readBuf)[idx];
-                    float density = (cell.materialId == MaterialIds::Air) ? 0.0f : 1.0f;
-                    density_.write(baseX + lx, baseY + ly, baseZ + lz, density);
+        if (readBuf) {
+            // Chunk is materialized, use buffer data
+            for (int lz = 0; lz < kChunkSize; ++lz) {
+                for (int ly = 0; ly < kChunkSize; ++ly) {
+                    for (int lx = 0; lx < kChunkSize; ++lx) {
+                        size_t idx = static_cast<size_t>(lx + ly * kChunkSize + lz * kChunkSize * kChunkSize);
+                        const VoxelCell& cell = (*readBuf)[idx];
+                        float density = (cell.materialId == MaterialIds::Air) ? 0.0f : 1.0f;
+                        density_.write(baseX + lx, baseY + ly, baseZ + lz, density);
+                    }
+                }
+            }
+        } else if (grid.hasChunk(cx, cy, cz)) {
+            // Chunk exists as sentinel (fillChunk was called but not materialized)
+            // Use the fill value directly
+            VoxelCell fillValue = grid.getChunkFillValue(cx, cy, cz);
+            float density = (fillValue.materialId == MaterialIds::Air) ? 0.0f : 1.0f;
+
+            for (int lz = 0; lz < kChunkSize; ++lz) {
+                for (int ly = 0; ly < kChunkSize; ++ly) {
+                    for (int lx = 0; lx < kChunkSize; ++lx) {
+                        density_.write(baseX + lx, baseY + ly, baseZ + lz, density);
+                    }
                 }
             }
         }

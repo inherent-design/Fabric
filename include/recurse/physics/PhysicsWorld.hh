@@ -24,6 +24,11 @@
 #include <vector>
 
 namespace recurse {
+class JoltCharacterController;
+struct JoltCharacterConfig;
+} // namespace recurse
+
+namespace recurse {
 
 namespace physics {
 
@@ -167,6 +172,13 @@ class PhysicsWorld {
     JPH::PhysicsSystem* joltSystem();
     bool initialized() const;
 
+    // Temp allocator access (required for CharacterVirtual updates)
+    JPH::TempAllocator* tempAllocator();
+
+    // CharacterVirtual management
+    JoltCharacterController* createCharacter(const JoltCharacterConfig& config);
+    void destroyCharacter(JoltCharacterController* character);
+
     // CCD: grid-based raycast for fast projectiles (DDA)
     std::optional<VoxelHit> castProjectileRay(const ChunkedGrid<float>& grid, float ox, float oy, float oz, float dx,
                                               float dy, float dz, float maxDistance, float densityThreshold = 0.5f);
@@ -204,6 +216,9 @@ class PhysicsWorld {
 
     uint32_t nextConstraintId_ = 1;
     std::unordered_map<uint32_t, JPH::Constraint*> constraints_;
+
+    // CharacterVirtual controllers
+    std::vector<std::unique_ptr<JoltCharacterController>> characters_;
 };
 
 } // namespace recurse

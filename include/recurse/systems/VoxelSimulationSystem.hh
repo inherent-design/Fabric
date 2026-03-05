@@ -40,6 +40,10 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     /// Called by ChunkPipelineSystem during streaming load.
     void generateChunk(int cx, int cy, int cz);
 
+    /// Generate initial world region (5x3x5 chunks).
+    /// Called by MainMenuSystem when world type is selected.
+    void generateInitialWorld();
+
     /// Remove a chunk from the simulation grid.
     /// Called by ChunkPipelineSystem during streaming unload.
     void removeChunk(int cx, int cy, int cz);

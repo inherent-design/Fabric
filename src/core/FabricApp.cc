@@ -139,6 +139,15 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         rmlContext = Rml::CreateContext("main", Rml::Vector2i(pw, ph));
         FABRIC_LOG_INFO("RmlUi context created ({}x{})", pw, ph);
 
+        // Set DPI scale ratio for HiDPI displays
+        int winW, winH;
+        SDL_GetWindowSize(window, &winW, &winH);
+        if (winW > 0 && winH > 0) {
+            float dpiScale = static_cast<float>(pw) / static_cast<float>(winW);
+            rmlContext->SetDensityIndependentPixelRatio(dpiScale);
+            FABRIC_LOG_INFO("RmlUi DPI scale: {:.2f} (window {}x{}, pixels {}x{})", dpiScale, winW, winH, pw, ph);
+        }
+
         if (!Rml::LoadFontFace("assets/fonts/robotomono-regular.ttf", true)) {
             FABRIC_LOG_WARN("Failed to load RmlUi font: assets/fonts/robotomono-regular.ttf");
         }
@@ -176,6 +185,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         inputManagerPtr = std::make_unique<InputManager>(dispatcher);
         inputRouterPtr = std::make_unique<InputRouter>(*inputManagerPtr);
         inputRouterPtr->setMode(InputMode::GameOnly);
+        inputRouterPtr->setWindow(window);
         inputSystemPtr = std::make_unique<InputSystem>(dispatcher);
 
         int pw, ph;
@@ -317,6 +327,14 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
                         bool homogNdc = bgfx::getCaps()->homogeneousDepth;
                         camera->setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogNdc);
                         rmlContext->SetDimensions(Rml::Vector2i(static_cast<int>(w), static_cast<int>(h)));
+
+                        // Update DPI scale ratio on resize
+                        int winW, winH;
+                        SDL_GetWindowSize(window, &winW, &winH);
+                        if (winW > 0 && winH > 0) {
+                            float dpiScale = static_cast<float>(w) / static_cast<float>(winW);
+                            rmlContext->SetDensityIndependentPixelRatio(dpiScale);
+                        }
 
                         if (desc.onResize)
                             desc.onResize(ctx, w, h);

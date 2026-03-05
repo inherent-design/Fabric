@@ -1,0 +1,20 @@
+<rml>
+<head>
+    <link type="text/rcss" href="pause_menu.rcss" />
+</head>
+<body>
+    <div id="pause_menu">
+        <div class="pause_container">
+            <div class="pause_content">
+                <h1 class="title">PAUSED</h1>
+
+                <div class="button_group">
+                    <button id="btn_resume" class="menu_button"><span>Resume</span></button>
+                    <button id="btn_quit_to_title" class="menu_button"><span>Quit to Title</span></button>
+                    <button id="btn_exit_to_desktop" class="menu_button danger"><span>Exit to Desktop</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>

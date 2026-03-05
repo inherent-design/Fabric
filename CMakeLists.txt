@@ -218,6 +218,7 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/gameplay/MeleeSystem.cc
     # physics/
     src/recurse/physics/PhysicsWorld.cc
+    src/recurse/physics/JoltCharacterController.cc
     src/recurse/physics/Ragdoll.cc
     # ai/
     src/recurse/ai/BehaviorAI.cc
@@ -278,6 +279,7 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/systems/VoxelRenderSystem.cc
     src/recurse/systems/OITRenderSystem.cc
     src/recurse/systems/DebugOverlaySystem.cc
+    src/recurse/systems/MainMenuSystem.cc
 )
 
 # Simulation library components (fabric::simulation namespace)

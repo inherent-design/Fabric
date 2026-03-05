@@ -20,6 +20,37 @@ void VoxelSimulationSystem::init(fabric::AppContext& ctx) {
     dispatcher_ = &ctx.dispatcher;
     fabSim_ = std::make_unique<fabric::simulation::VoxelSimulationSystem>();
 
+    // Defer terrain generation until TerrainSystem has generated the world
+    // This allows MainMenuSystem to select world type first
+    FABRIC_LOG_INFO("VoxelSimulationSystem initialized (awaiting world generation)");
+}
+
+void VoxelSimulationSystem::shutdown() {
+    fabSim_.reset();
+    terrain_ = nullptr;
+    dispatcher_ = nullptr;
+}
+
+void VoxelSimulationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fixedDt*/) {
+    FABRIC_ZONE_SCOPED_N("recurse_voxel_sim");
+    if (!fabSim_)
+        return;
+
+    lastActiveCount_ = fabSim_->activityTracker().collectActiveChunks().size();
+    FABRIC_ZONE_VALUE(static_cast<int64_t>(lastActiveCount_));
+    fabSim_->tick();
+}
+
+void VoxelSimulationSystem::configureDependencies() {
+    after<TerrainSystem>();
+}
+
+void VoxelSimulationSystem::generateInitialWorld() {
+    if (!terrain_ || !fabSim_ || !dispatcher_) {
+        FABRIC_LOG_ERROR("VoxelSimulationSystem: Cannot generate world - not initialized");
+        return;
+    }
+
     // Generate initial terrain into the simulation grid.
     // Use 5x3x5 region so inner 3x3x1 chunks at y=0 have all 6 neighbors for meshing.
     auto& gen = terrain_->worldGenerator();
@@ -53,27 +84,8 @@ void VoxelSimulationSystem::init(fabric::AppContext& ctx) {
         dispatcher_->dispatchEvent(e);
     }
 
-    FABRIC_LOG_INFO("VoxelSimulationSystem initialized ({} chunks in grid, collision synced)", grid.allChunks().size());
-}
-
-void VoxelSimulationSystem::shutdown() {
-    fabSim_.reset();
-    terrain_ = nullptr;
-    dispatcher_ = nullptr;
-}
-
-void VoxelSimulationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fixedDt*/) {
-    FABRIC_ZONE_SCOPED_N("recurse_voxel_sim");
-    if (!fabSim_)
-        return;
-
-    lastActiveCount_ = fabSim_->activityTracker().collectActiveChunks().size();
-    FABRIC_ZONE_VALUE(static_cast<int64_t>(lastActiveCount_));
-    fabSim_->tick();
-}
-
-void VoxelSimulationSystem::configureDependencies() {
-    after<TerrainSystem>();
+    FABRIC_LOG_INFO("VoxelSimulationSystem: World generated ({} chunks in grid, collision synced)",
+                    grid.allChunks().size());
 }
 
 fabric::simulation::SimulationGrid& VoxelSimulationSystem::simulationGrid() {

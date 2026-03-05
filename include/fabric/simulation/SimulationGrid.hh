@@ -35,6 +35,7 @@ class SimulationGrid {
     const std::array<VoxelCell, kChunkVolume>* readBuffer(int cx, int cy, int cz) const;
     std::array<VoxelCell, kChunkVolume>* writeBuffer(int cx, int cy, int cz);
     bool hasChunk(int cx, int cy, int cz) const;
+    VoxelCell getChunkFillValue(int cx, int cy, int cz) const;
     void removeChunk(int cx, int cy, int cz);
     std::vector<std::tuple<int, int, int>> allChunks() const;
 

@@ -1,6 +1,7 @@
 #include "recurse/physics/PhysicsWorld.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/utils/Profiler.hh"
+#include "recurse/physics/JoltCharacterController.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 #include <Jolt/Core/Factory.h>
@@ -137,6 +138,9 @@ void PhysicsWorld::shutdown() {
     }
     userBodies_.clear();
 
+    // Remove character controllers
+    characters_.clear();
+
     physicsSystem_.reset();
     contactListener_.reset();
     jobSystem_.reset();
@@ -219,8 +223,12 @@ void PhysicsWorld::removeBody(BodyHandle handle) {
 
 void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx, int cy, int cz,
                                          float densityThreshold) {
-    if (!initialized_)
+    if (!initialized_) {
+        FABRIC_LOG_WARN("rebuildChunkCollision: PhysicsWorld not initialized");
         return;
+    }
+
+    FABRIC_LOG_DEBUG("rebuildChunkCollision: Building collision for chunk ({},{},{})", cx, cy, cz);
 
     // Remove existing collision for this chunk
     removeChunkCollision(cx, cy, cz);
@@ -324,6 +332,9 @@ void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx,
     // Clean up empty entry
     if (bodies.empty())
         chunkBodies_.erase(key);
+    else
+        FABRIC_LOG_DEBUG("rebuildChunkCollision: Created {} collision bodies for chunk ({},{},{})", bodies.size(), cx,
+                         cy, cz);
 }
 
 void PhysicsWorld::removeChunkCollision(int cx, int cy, int cz) {
@@ -603,6 +614,36 @@ bool PhysicsWorld::sweptAABBIntersect(float ax1, float ay1, float az1, float ax2
         *outT = tFirst;
 
     return tFirst <= dt;
+}
+
+JPH::TempAllocator* PhysicsWorld::tempAllocator() {
+    return tempAllocator_.get();
+}
+
+JoltCharacterController* PhysicsWorld::createCharacter(const JoltCharacterConfig& config) {
+    if (!initialized_)
+        return nullptr;
+
+    auto ctrl = std::make_unique<JoltCharacterController>(physicsSystem_.get(), config);
+    auto* ptr = ctrl.get();
+    characters_.push_back(std::move(ctrl));
+
+    FABRIC_LOG_DEBUG("PhysicsWorld: created JoltCharacterController (total={})", characters_.size());
+    return ptr;
+}
+
+void PhysicsWorld::destroyCharacter(JoltCharacterController* character) {
+    if (!character)
+        return;
+
+    auto it =
+        std::find_if(characters_.begin(), characters_.end(),
+                     [character](const std::unique_ptr<JoltCharacterController>& p) { return p.get() == character; });
+
+    if (it != characters_.end()) {
+        characters_.erase(it);
+        FABRIC_LOG_DEBUG("PhysicsWorld: destroyed JoltCharacterController (remaining={})", characters_.size());
+    }
 }
 
 } // namespace recurse

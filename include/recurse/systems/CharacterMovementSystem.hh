@@ -10,12 +10,14 @@ namespace recurse {
 class CharacterController;
 class FlightController;
 class CameraController;
+class JoltCharacterController;
 } // namespace recurse
 
 namespace recurse::systems {
 
 class TerrainSystem;
 class CameraGameSystem;
+class PhysicsGameSystem;
 
 /// Owns player movement state: controllers, FSM, position, velocity.
 /// Reads camera direction for movement input and resolves character
@@ -32,6 +34,7 @@ class CharacterMovementSystem : public fabric::System<CharacterMovementSystem> {
 
     const fabric::Vec3f& playerPosition() const { return playerPos_; }
     fabric::Vec3f& playerPosition() { return playerPos_; }
+    void setPlayerPosition(const fabric::Vec3f& pos);
     fabric::Vector3<double, fabric::Space::World> playerWorldPositionD() const { return playerPosD_; }
 
     void setPlayerWorldOffset(double x, double y, double z);
@@ -49,9 +52,10 @@ class CharacterMovementSystem : public fabric::System<CharacterMovementSystem> {
 
     TerrainSystem* terrain_ = nullptr;
     CameraGameSystem* camera_ = nullptr;
+    PhysicsGameSystem* physics_ = nullptr;
 
-    std::unique_ptr<CharacterController> charCtrl_;
     std::unique_ptr<FlightController> flightCtrl_;
+    JoltCharacterController* joltCharCtrl_ = nullptr; // Owned by PhysicsWorld, required
     MovementFSM movementFSM_;
     CharacterConfig charConfig_;
     fabric::Vec3f playerPos_{kSpawnX, kSpawnY, kSpawnZ};

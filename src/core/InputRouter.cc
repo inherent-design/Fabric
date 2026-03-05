@@ -140,6 +140,26 @@ void InputRouter::toggleUIMode() {
     // GameAndUI stays as-is on toggle
 }
 
+// Convert window coordinates to pixel coordinates for HiDPI support
+std::pair<int, int> InputRouter::windowToPixelCoords(float winX, float winY) const {
+    if (!window_) {
+        return {static_cast<int>(winX), static_cast<int>(winY)};
+    }
+
+    int winW, winH, pixelW, pixelH;
+    SDL_GetWindowSize(window_, &winW, &winH);
+    SDL_GetWindowSizeInPixels(window_, &pixelW, &pixelH);
+
+    if (winW == 0 || winH == 0) {
+        return {static_cast<int>(winX), static_cast<int>(winY)};
+    }
+
+    float scaleX = static_cast<float>(pixelW) / static_cast<float>(winW);
+    float scaleY = static_cast<float>(pixelH) / static_cast<float>(winH);
+
+    return {static_cast<int>(winX * scaleX), static_cast<int>(winY * scaleY)};
+}
+
 bool InputRouter::forwardToRmlUI(const SDL_Event& event, Rml::Context* ctx) {
     switch (event.type) {
         case SDL_EVENT_KEY_DOWN: {
@@ -156,18 +176,28 @@ bool InputRouter::forwardToRmlUI(const SDL_Event& event, Rml::Context* ctx) {
 
         case SDL_EVENT_MOUSE_MOTION: {
             int rmlMod = sdlModToRmlMod(SDL_GetModState());
-            return ctx->ProcessMouseMove(static_cast<int>(event.motion.x), static_cast<int>(event.motion.y), rmlMod);
+            auto [px, py] = windowToPixelCoords(event.motion.x, event.motion.y);
+            return ctx->ProcessMouseMove(px, py, rmlMod);
         }
 
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {
             int rmlMod = sdlModToRmlMod(SDL_GetModState());
             int rmlButton = sdlMouseButtonToRml(event.button.button);
-            return ctx->ProcessMouseButtonDown(rmlButton, rmlMod);
+            // Update mouse position on click for accurate hit testing
+            auto [px, py] = windowToPixelCoords(event.button.x, event.button.y);
+            FABRIC_LOG_INFO("InputRouter: Mouse button {} down at window({}, {}) -> pixel({}, {})", rmlButton,
+                            event.button.x, event.button.y, px, py);
+            ctx->ProcessMouseMove(px, py, rmlMod);
+            bool result = ctx->ProcessMouseButtonDown(rmlButton, rmlMod);
+            FABRIC_LOG_INFO("InputRouter: ProcessMouseButtonDown returned {}", result);
+            return result;
         }
 
         case SDL_EVENT_MOUSE_BUTTON_UP: {
             int rmlMod = sdlModToRmlMod(SDL_GetModState());
             int rmlButton = sdlMouseButtonToRml(event.button.button);
+            auto [px, py] = windowToPixelCoords(event.button.x, event.button.y);
+            ctx->ProcessMouseMove(px, py, rmlMod);
             return ctx->ProcessMouseButtonUp(rmlButton, rmlMod);
         }
 

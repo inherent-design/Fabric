@@ -1,0 +1,86 @@
+body {
+    width: 100%;
+    height: 100%;
+    background-color: #1a1a2e;
+    font-family: "Roboto Mono";
+}
+
+#pause_menu {
+    width: 100%;
+    height: 100%;
+}
+
+.pause_container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.pause_content {
+    width: 320px;
+    padding: 32px;
+    background-color: #1a1a2e;
+    border-width: 2px;
+    border-color: #3a3a5e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.title {
+    font-size: 36px;
+    color: #ffffff;
+    margin-bottom: 32px;
+}
+
+.button_group {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.menu_button {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: 220px;
+    height: 44px;
+    margin-bottom: 12px;
+    background-color: #333344;
+    color: #ffffff;
+    border-width: 1px;
+    border-color: #555566;
+    font-size: 16px;
+}
+
+.menu_button span {
+    color: #ffffff;
+    font-size: 16px;
+}
+
+.menu_button:hover {
+    background-color: #444455;
+    border-color: #666677;
+}
+
+.menu_button:hover span {
+    color: #ffffff;
+}
+
+.menu_button.danger {
+    margin-top: 8px;
+    background-color: transparent;
+    border-color: #664444;
+    color: #aa6666;
+}
+
+.menu_button.danger:hover {
+    background-color: #442222;
+    border-color: #885555;
+    color: #cc8888;
+}

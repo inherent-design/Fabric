@@ -1,0 +1,21 @@
+<rml>
+<head>
+    <link type="text/rcss" href="main_menu.rcss" />
+</head>
+<body>
+    <div id="main_menu">
+        <div class="menu_container">
+            <div class="menu_content">
+                <h1 class="title">RECURSE</h1>
+                <p class="subtitle">A Voxel Engine</p>
+
+                <div class="button_group">
+                    <button id="btn_start" class="menu_button"><span>Start</span></button>
+                    <button id="btn_settings" class="menu_button"><span>Settings</span></button>
+                    <button id="btn_quit" class="menu_button"><span>Quit</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>

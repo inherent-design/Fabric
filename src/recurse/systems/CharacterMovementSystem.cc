@@ -10,8 +10,8 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/gameplay/CameraController.hh"
-#include "recurse/gameplay/CharacterController.hh"
 #include "recurse/gameplay/FlightController.hh"
+#include "recurse/physics/JoltCharacterController.hh"
 
 #include <cmath>
 
@@ -22,6 +22,16 @@ CharacterMovementSystem::~CharacterMovementSystem() = default;
 void CharacterMovementSystem::setPlayerWorldOffset(double x, double y, double z) {
     playerPosD_ = fabric::Vector3<double, fabric::Space::World>(x, y, z);
     playerPos_ = fabric::Vec3f(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
+}
+
+void CharacterMovementSystem::setPlayerPosition(const fabric::Vec3f& pos) {
+    playerPos_ = pos;
+    playerPosD_ = fabric::Vector3<double, fabric::Space::World>(static_cast<double>(pos.x), static_cast<double>(pos.y),
+                                                                static_cast<double>(pos.z));
+    if (joltCharCtrl_) {
+        joltCharCtrl_->setPosition(pos);
+    }
+    playerVel_ = {}; // Reset velocity
 }
 
 namespace {
@@ -41,13 +51,35 @@ void CharacterMovementSystem::init(fabric::AppContext& ctx) {
 
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
+    physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
 
     constexpr float kCharWidth = 0.6f;
     constexpr float kCharHeight = 1.8f;
     constexpr float kCharDepth = 0.6f;
 
-    charCtrl_ = std::make_unique<CharacterController>(kCharWidth, kCharHeight, kCharDepth);
+    // Flight controller for Flying/NOCLIP modes
     flightCtrl_ = std::make_unique<FlightController>(kCharWidth, kCharHeight, kCharDepth);
+
+    // Jolt-based controller required for ground movement
+    if (!physics_ || !physics_->physicsWorld().initialized()) {
+        FABRIC_LOG_ERROR("CharacterMovementSystem: PhysicsWorld not initialized - character collision disabled");
+        return;
+    }
+
+    JoltCharacterConfig config;
+    config.width = kCharWidth;
+    config.height = kCharHeight;
+    config.mass = 70.0f;
+    config.maxSlopeAngle = charConfig_.slopeLimit;
+
+    joltCharCtrl_ = physics_->physicsWorld().createCharacter(config);
+    if (!joltCharCtrl_) {
+        FABRIC_LOG_ERROR("CharacterMovementSystem: Failed to create JoltCharacterController");
+        return;
+    }
+
+    joltCharCtrl_->setPosition(playerPos_);
+    FABRIC_LOG_INFO("JoltCharacterController enabled for player movement");
 
     // Toggle fly/noclip mode: Grounded -> Flying -> NOCLIP -> Grounded
     ctx.dispatcher.addEventListener("toggle_fly", [this](fabric::Event&) {
@@ -166,11 +198,17 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
         // Gravity
         playerVel_.y -= charConfig_.gravity * fixedDt;
 
-        fabric::Vec3f displacement(horizMove.x * charConfig_.walkSpeed * fixedDt, playerVel_.y * fixedDt,
-                                   horizMove.z * charConfig_.walkSpeed * fixedDt);
+        fabric::Vec3f velocity(horizMove.x * charConfig_.walkSpeed, playerVel_.y, horizMove.z * charConfig_.walkSpeed);
 
-        auto result = charCtrl_->move(playerPos_, displacement, terrain_->densityGrid());
+        // Jolt controller required for ground movement
+        if (!joltCharCtrl_ || !physics_ || !physics_->physicsWorld().tempAllocator())
+            return;
+
+        auto result = joltCharCtrl_->move(playerPos_, velocity, fixedDt, *physics_->physicsWorld().tempAllocator());
         syncPlayerPositionViews(playerPosD_, playerPos_, result.resolvedPosition);
+
+        // Update velocity from collision response
+        playerVel_.y = result.velocity.y;
 
         if (result.onGround) {
             playerVel_.y = 0.0f;
