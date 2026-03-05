@@ -40,8 +40,9 @@ void WAILAPanel::init(Rml::Context* context) {
 
     document_ = context_->LoadDocument("assets/ui/waila.rml");
     if (document_) {
-        document_->Hide();
-        FABRIC_LOG_INFO("WAILAPanel document loaded");
+        document_->Show(); // Always visible
+        visible_ = true;   // Track state as visible
+        FABRIC_LOG_INFO("WAILAPanel document loaded (always visible)");
     } else {
         FABRIC_LOG_WARN("WAILAPanel: failed to load waila.rml");
     }

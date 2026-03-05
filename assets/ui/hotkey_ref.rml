@@ -2,37 +2,10 @@
 <head>
     <link type="text/rcss" href="hotkey_ref.rcss" />
 </head>
-<body>
+<body data-model="hotkeys">
 <div id="hotkey-panel">
-    <div class="hk-title">Controls</div>
-
-    <div class="hk-section">Movement</div>
-    <div class="hk-row"><span class="hk-key">W A S D</span><span class="hk-action">Move</span></div>
-    <div class="hk-row"><span class="hk-key">Space</span><span class="hk-action">Up / Jump</span></div>
-    <div class="hk-row"><span class="hk-key">LShift</span><span class="hk-action">Down / Crouch</span></div>
-    <div class="hk-row"><span class="hk-key">F</span><span class="hk-action">Toggle Fly</span></div>
-    <div class="hk-row"><span class="hk-key">V</span><span class="hk-action">Toggle Camera</span></div>
-
-    <div class="hk-section">Interaction</div>
-    <div class="hk-row"><span class="hk-key">LMB</span><span class="hk-action">Destroy Voxel</span></div>
-    <div class="hk-row"><span class="hk-key">RMB</span><span class="hk-action">Place Voxel</span></div>
-
-    <div class="hk-section">Time</div>
-    <div class="hk-row"><span class="hk-key">P</span><span class="hk-action">Pause Time</span></div>
-    <div class="hk-row"><span class="hk-key">+ / -</span><span class="hk-action">Time Scale</span></div>
-
-    <div class="hk-section">Debug</div>
-    <div class="hk-row"><span class="hk-key">F3</span><span class="hk-action">Debug HUD</span></div>
-    <div class="hk-row"><span class="hk-key">F4</span><span class="hk-action">Wireframe</span></div>
-    <div class="hk-row"><span class="hk-key">F6</span><span class="hk-action">BVH Overlay</span></div>
-    <div class="hk-row"><span class="hk-key">F10</span><span class="hk-action">Collision Debug</span></div>
-
-    <div class="hk-section">Panels</div>
-    <div class="hk-row"><span class="hk-key">`</span><span class="hk-action">Console</span></div>
-    <div class="hk-row"><span class="hk-key">Esc</span><span class="hk-action">Pause Menu</span></div>
-    <div class="hk-row"><span class="hk-key">F7</span><span class="hk-action">Content Browser</span></div>
-    <div class="hk-row"><span class="hk-key">F8</span><span class="hk-action">Cycle BT NPC</span></div>
-    <div class="hk-row"><span class="hk-key">F11</span><span class="hk-action">BT Debug</span></div>
+    <div class="hk-title">Controls <span class="hk-mode">[{{ mode_name }}]</span></div>
+    <!-- Hotkey entries are dynamically added by HotkeyPanel::rebuildHotkeys() -->
 </div>
 </body>
 </rml>

@@ -21,6 +21,18 @@ body {
     pointer-events: none;  /* Let clicks pass through to game */
 }
 
+/* Top-center container for WAILA */
+#ui-top-center {
+    position: fixed;
+    top: 8dp;
+    left: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+}
+
 #waila-panel {
     padding: 6dp 10dp;
     background-color: #00000088;

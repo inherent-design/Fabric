@@ -80,8 +80,7 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
 
     dispatcher.addEventListener("toggle_debug", [this](fabric::Event&) {
         debugHUD_.toggle();
-        wailaPanel_.toggle();
-        hotkeyPanel_.toggle();
+        // WAILA and HotkeyPanel are always visible now
     });
 
     dispatcher.addEventListener("toggle_chunk_debug", [this](fabric::Event&) { chunkDebugPanel_.toggle(); });
@@ -128,6 +127,9 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
         btDebugPanel_.selectNextNPC(ai_->behaviorAI(), ctx.world.get());
         btDebugSelectedNpc_ = btDebugPanel_.selectedNpc();
     });
+
+    // AppMode observer: update hotkey panel context
+    appMode->addObserver([this](fabric::AppMode /*from*/, fabric::AppMode to) { hotkeyPanel_.setMode(to); });
 
     FABRIC_LOG_INFO("DebugOverlaySystem initialized");
 }
@@ -252,8 +254,8 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         }
     }
 
-    // WAILA crosshair raycast (every frame when visible)
-    if (wailaPanel_.isVisible()) {
+    // WAILA crosshair raycast (every frame - always visible)
+    {
         fabric::WAILAData waila;
         auto camPos = camera_->position();
         auto camFwd = camera_->forward();

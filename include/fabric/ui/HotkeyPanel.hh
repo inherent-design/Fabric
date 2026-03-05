@@ -1,5 +1,10 @@
 #pragma once
 
+#include "fabric/core/AppModeManager.hh"
+#include <RmlUi/Core/DataModelHandle.h>
+#include <RmlUi/Core/Types.h>
+#include <vector>
+
 namespace Rml {
 class Context;
 class ElementDocument;
@@ -7,26 +12,38 @@ class ElementDocument;
 
 namespace fabric {
 
-/// Static hotkey reference panel displayed in the bottom-right corner.
-/// Contains a hardcoded list of keybinds. No data model needed since
-/// the content is static HTML. Toggles alongside the debug HUD (F3).
-// TODO: Replace hardcoded list with runtime enumeration from InputManager
-// once a public bindings accessor is added.
+struct HotkeyEntry {
+    Rml::String category;
+    Rml::String key;
+    Rml::String action;
+};
+
+/// Context-aware hotkey reference panel displayed in the bottom-right corner.
+/// Updates displayed hotkeys based on current AppMode (Game, Paused, Console, etc.).
+/// Always visible during gameplay.
 class HotkeyPanel {
   public:
     HotkeyPanel() = default;
     ~HotkeyPanel() = default;
 
     void init(Rml::Context* context);
-    void toggle();
+    void setMode(AppMode mode);
     void shutdown();
     bool isVisible() const;
 
   private:
+    void rebuildHotkeys();
+    void addHotkey(const char* category, const char* key, const char* action);
+
     Rml::Context* context_ = nullptr;
     Rml::ElementDocument* document_ = nullptr;
-    bool visible_ = false;
     bool initialized_ = false;
+    AppMode currentMode_ = AppMode::Game;
+
+    // Data model bindings
+    Rml::String modeName_;
+    std::vector<HotkeyEntry> hotkeys_;
+    Rml::DataModelHandle modelHandle_;
 };
 
 } // namespace fabric
