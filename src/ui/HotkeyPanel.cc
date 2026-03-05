@@ -27,31 +27,42 @@ void HotkeyPanel::init(Rml::Context* context) {
     if (document_) {
         // Initialize hidden, will be shown via setMode()
         document_->Hide();
-        FABRIC_LOG_INFO("HotkeyPanel document loaded");
+        visible_ = false; // Explicitly track hidden state
+        FABRIC_LOG_INFO("HotkeyPanel document loaded (id={})", document_->GetId().c_str());
     } else {
-        FABRIC_LOG_WARN("HotkeyPanel: failed to load hotkey_ref.rml");
+        FABRIC_LOG_ERROR("HotkeyPanel: failed to load hotkey_ref.rml");
     }
 
     initialized_ = true;
+    FABRIC_LOG_INFO("HotkeyPanel::init complete, initialized_={}, visible_={}", initialized_, visible_);
 }
 
 void HotkeyPanel::setMode(AppMode mode) {
-    if (!initialized_)
+    if (!initialized_) {
+        FABRIC_LOG_WARN("HotkeyPanel::setMode called before init");
         return;
+    }
 
     bool modeChanged = (mode != currentMode_);
     currentMode_ = mode;
 
     // Show hotkey panel during gameplay modes, hide in Menu
     bool shouldShow = (mode != AppMode::Menu);
+    FABRIC_LOG_INFO("HotkeyPanel::setMode({}) - shouldShow={}, visible_={}, modeChanged={}", static_cast<int>(mode),
+                    shouldShow, visible_, modeChanged);
+
     if (document_) {
         if (shouldShow && !visible_) {
             document_->Show();
             visible_ = true;
+            FABRIC_LOG_INFO("HotkeyPanel: Show() called");
         } else if (!shouldShow && visible_) {
             document_->Hide();
             visible_ = false;
+            FABRIC_LOG_INFO("HotkeyPanel: Hide() called");
         }
+    } else {
+        FABRIC_LOG_WARN("HotkeyPanel::setMode - no document");
     }
 
     // Only rebuild hotkeys if mode actually changed
