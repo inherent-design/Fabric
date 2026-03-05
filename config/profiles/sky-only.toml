@@ -38,11 +38,7 @@ verbose_logging = true
 
 [logging]
 # Console: Fabric logs only, no bgfx/Vulkan noise
-console_sink = true
-console_filter = "fabric.*"  # Pattern: only fabric-prefixed logs
 console_level = "debug"
-
-# File: Everything including dependencies
-file_sink = true
+console_include = ["fabric.*"]
 file_level = "trace"
-file_include_patterns = ["*"]  # All sources
+per_run_folders = true

@@ -38,3 +38,10 @@ dev_console = false
 # === Debug ===
 tracy_profiling = true
 verbose_logging = false
+
+[logging]
+# Minimal logging noise for visual debug
+console_level = "info"
+console_exclude = ["bgfx.*", "vulkan.*"]
+file_level = "debug"
+per_run_folders = true
