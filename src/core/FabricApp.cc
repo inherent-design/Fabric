@@ -3,6 +3,7 @@
 #include "fabric/core/AppModeManager.hh"
 #include "fabric/core/AssetRegistry.hh"
 #include "fabric/core/Async.hh"
+#include "fabric/core/BgfxCallback.hh"
 #include "fabric/core/Camera.hh"
 #include "fabric/core/ConfigManager.hh"
 #include "fabric/core/InputManager.hh"
@@ -111,6 +112,10 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         bgfxInit.resolution.width = static_cast<uint32_t>(pw);
         bgfxInit.resolution.height = static_cast<uint32_t>(ph);
         bgfxInit.resolution.reset = BGFX_RESET_VSYNC | BGFX_RESET_HIDPI;
+
+        // Route bgfx internal diagnostics through Quill (respects console_exclude patterns)
+        static BgfxCallback bgfxCallback;
+        bgfxInit.callback = &bgfxCallback;
 
         if (!bgfx::init(bgfxInit)) {
             FABRIC_LOG_CRITICAL("bgfx init failed");
