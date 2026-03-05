@@ -16,7 +16,8 @@ enum class CharacterState : uint8_t {
     Sliding,
     Ragdoll,
     Dashing,
-    Boosting
+    Boosting,
+    NOCLIP // Debug mode: fly + no collision
 };
 
 // ECS components (POD structs for Flecs)
@@ -39,6 +40,8 @@ struct CharacterConfig {
     float stepHeight = 1.0f;
     float slopeLimit = 0.707f; // cos(45 degrees)
     float flightSpeed = 15.0f;
+    float noclipSpeed = 50.0f;     // Debug noclip speed (10x faster than flight)
+    float speedMultiplier = 10.0f; // LCTRL speed boost multiplier
     float dashSpeed = 25.0f;
     float dashDuration = 0.25f;
     float dashCooldown = 1.5f;

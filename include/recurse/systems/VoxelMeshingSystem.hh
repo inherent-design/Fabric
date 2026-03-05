@@ -77,9 +77,9 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     std::unique_ptr<recurse::SmoothVertexPool> vertexPool_;
 
     std::unordered_map<fabric::ChunkCoord, ChunkGPUMesh, fabric::ChunkCoordHash> gpuMeshes_;
-    int meshBudget_ = 3;
+    int meshBudget_ = 50; // Increased from 3 to handle initial load in one frame
     bool gpuUploadEnabled_ = false;
-    bool requireNeighborsForMeshing_ = false;
+    bool requireNeighborsForMeshing_ = true;
 };
 
 } // namespace recurse::systems

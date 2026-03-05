@@ -114,31 +114,48 @@ void VoxelMeshingSystem::processFrame() {
         activeChunks = activityTracker_->collectActiveChunks(meshBudget_);
     }
 
+    // Log chunk activity for this frame
+    FABRIC_LOG_DEBUG("VoxelMeshingSystem: {} active chunks to mesh (budget={})", activeChunks.size(), meshBudget_);
+
     for (const auto& entry : activeChunks) {
         const auto coord = toChunkCoord(entry.pos);
+        bool wasAlreadyMeshed = gpuMeshes_.find(coord) != gpuMeshes_.end();
         {
             FABRIC_ZONE_SCOPED_N("chunk_remesh");
             meshChunk(coord);
         }
+        // Log if this was a remesh (neighbor notification triggered)
+        if (wasAlreadyMeshed) {
+            FABRIC_LOG_DEBUG("Remeshed chunk ({},{},{}) - likely neighbor notification", coord.x, coord.y, coord.z);
+        }
         activityTracker_->putToSleep(entry.pos);
     }
+
+    // Log GPU mesh statistics
+    FABRIC_LOG_DEBUG("VoxelMeshingSystem: {} GPU meshes active, {} vertices, {} indices", gpuMeshes_.size(),
+                     vertexBufferSize(), indexBufferSize());
 }
 
 void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
     // Verify the chunk exists in the simulation grid before meshing.
     if (!simGrid_->hasChunk(coord.x, coord.y, coord.z)) {
+        FABRIC_LOG_DEBUG("Meshing skipped ({},{},{}): chunk not in grid", coord.x, coord.y, coord.z);
         return;
     }
 
-    // Check all 6 neighbors exist before meshing to avoid boundary gaps.
+    // Check horizontal (X/Z) neighbors exist before meshing to avoid boundary gaps.
     // Missing neighbor chunks will return air (0) from readCell, and the
     // density blur smooths solid toward air, creating holes at boundaries.
+    // Vertical neighbors (Y) are not required - air above terrain is expected.
     // When neighbors load later, notifyBoundaryChange() will re-trigger meshing.
     if (requireNeighborsForMeshing_) {
-        constexpr int kFaceOffsets[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
-        for (int d = 0; d < 6; ++d) {
-            if (!simGrid_->hasChunk(coord.x + kFaceOffsets[d][0], coord.y + kFaceOffsets[d][1],
-                                    coord.z + kFaceOffsets[d][2])) {
+        // Only check 4 horizontal face-adjacent neighbors (X/Z plane)
+        constexpr int kHorizontalOffsets[4][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}};
+        for (int d = 0; d < 4; ++d) {
+            if (!simGrid_->hasChunk(coord.x + kHorizontalOffsets[d][0], coord.y, coord.z + kHorizontalOffsets[d][2])) {
+                FABRIC_LOG_DEBUG("Meshing deferred ({},{},{}): horizontal neighbor ({},{},{}) missing", coord.x,
+                                 coord.y, coord.z, coord.x + kHorizontalOffsets[d][0], coord.y,
+                                 coord.z + kHorizontalOffsets[d][2]);
                 return; // Neighbor missing - defer meshing
             }
         }
@@ -172,9 +189,9 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
         }
     }
 
-    // Apply 5x5x5 box blur to density field to create smooth transitions at boundaries.
+    // Apply 3x3x3 box blur to density field for smoother transitions while
+    // preserving sharper corners than the previous 5x5x5 blur.
     // This prevents SnapMC from snapping all vertices to corners when density is binary 0/1.
-    // 5x5x5 = 125 samples gives steps of 1/125 ≈ 0.008, allowing 6+ steps within snapEpsilon=0.05.
     // NOTE: Only blur within the sampled region - don't include 0.0f from unset positions.
     ChunkedGrid<float> blurredGrid;
     for (int lz = -1; lz <= kChunkSize; ++lz) {
@@ -185,9 +202,10 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
                 const int wz = baseZ + lz;
                 float sum = 0.0f;
                 int count = 0;
-                for (int nz = -2; nz <= 2; ++nz) {
-                    for (int ny = -2; ny <= 2; ++ny) {
-                        for (int nx = -2; nx <= 2; ++nx) {
+                // Reduced from 5x5x5 to 3x3x3 for sharper corners
+                for (int nz = -1; nz <= 1; ++nz) {
+                    for (int ny = -1; ny <= 1; ++ny) {
+                        for (int nx = -1; nx <= 1; ++nx) {
                             // Clamp sample coordinates to the valid sample range
                             int sx = std::clamp(wx + nx, baseX - kSampleMargin, baseX + kChunkSize + kSampleMargin);
                             int sy = std::clamp(wy + ny, baseY - kSampleMargin, baseY + kChunkSize + kSampleMargin);
@@ -283,6 +301,7 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
             destroyChunkMesh(existing->second);
             gpuMeshes_.erase(existing);
         }
+        FABRIC_LOG_DEBUG("Meshing failed ({},{},{}): invalid GPU mesh", coord.x, coord.y, coord.z);
         return;
     }
 
@@ -291,6 +310,17 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
         existing->second = std::move(gpuMesh);
     } else {
         gpuMeshes_.emplace(coord, std::move(gpuMesh));
+    }
+
+    // Log successful meshing with statistics
+    const auto& mesh = gpuMeshes_.at(coord);
+    FABRIC_LOG_DEBUG("Meshing complete ({},{},{}): vertices={} indices={} materials={}", coord.x, coord.y, coord.z,
+                     mesh.vertexCount, mesh.indexCount, mesh.mesh.palette.size());
+
+    // Log palette entries at TRACE level for detailed debugging
+    for (size_t i = 0; i < mesh.mesh.palette.size(); ++i) {
+        const auto& c = mesh.mesh.palette[i];
+        FABRIC_LOG_TRACE("  palette[{}]: rgba=({:.2f},{:.2f},{:.2f},{:.2f})", i, c[0], c[1], c[2], c[3]);
     }
 }
 

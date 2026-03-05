@@ -103,6 +103,7 @@ fabric::FabricAppDesc buildRecurseDesc() {
         ctx.inputManager->bindKey("move_right", SDLK_D);
         ctx.inputManager->bindKey("move_up", SDLK_SPACE);
         ctx.inputManager->bindKey("move_down", SDLK_LSHIFT);
+        ctx.inputManager->bindKey("speed_boost", SDLK_LCTRL);
 
         ctx.inputManager->bindKey("time_pause", SDLK_P);
         ctx.inputManager->bindKey("time_faster", SDLK_EQUALS);

@@ -31,6 +31,8 @@ std::string MovementFSM::stateToString(CharacterState state) {
             return "Dashing";
         case CharacterState::Boosting:
             return "Boosting";
+        case CharacterState::NOCLIP:
+            return "NOCLIP";
         default:
             return "Unknown";
     }
@@ -39,28 +41,37 @@ std::string MovementFSM::stateToString(CharacterState state) {
 MovementFSM::MovementFSM()
     : sm_(std::make_unique<StateMachine<CharacterState>>(CharacterState::Grounded, stateToString)) {
 
-    // Sprint 5b active transitions: Grounded, Falling, Jumping, Flying, Dashing, Boosting
+    // Sprint 5b active transitions: Grounded, Falling, Jumping, Flying, Dashing, Boosting, NOCLIP
     sm_->addTransition(CharacterState::Grounded, CharacterState::Jumping);
     sm_->addTransition(CharacterState::Grounded, CharacterState::Falling);
     sm_->addTransition(CharacterState::Grounded, CharacterState::Flying);
     sm_->addTransition(CharacterState::Grounded, CharacterState::Dashing);
+    sm_->addTransition(CharacterState::Grounded, CharacterState::NOCLIP);
 
     sm_->addTransition(CharacterState::Jumping, CharacterState::Falling);
     sm_->addTransition(CharacterState::Jumping, CharacterState::Grounded);
     sm_->addTransition(CharacterState::Jumping, CharacterState::Flying);
+    sm_->addTransition(CharacterState::Jumping, CharacterState::NOCLIP);
 
     sm_->addTransition(CharacterState::Falling, CharacterState::Grounded);
     sm_->addTransition(CharacterState::Falling, CharacterState::Flying);
+    sm_->addTransition(CharacterState::Falling, CharacterState::NOCLIP);
 
     sm_->addTransition(CharacterState::Flying, CharacterState::Falling);
     sm_->addTransition(CharacterState::Flying, CharacterState::Grounded);
     sm_->addTransition(CharacterState::Flying, CharacterState::Boosting);
+    sm_->addTransition(CharacterState::Flying, CharacterState::NOCLIP);
 
     sm_->addTransition(CharacterState::Dashing, CharacterState::Grounded);
     sm_->addTransition(CharacterState::Dashing, CharacterState::Falling);
 
     sm_->addTransition(CharacterState::Boosting, CharacterState::Flying);
     sm_->addTransition(CharacterState::Boosting, CharacterState::Falling);
+    sm_->addTransition(CharacterState::Boosting, CharacterState::NOCLIP);
+
+    sm_->addTransition(CharacterState::NOCLIP, CharacterState::Flying);
+    sm_->addTransition(CharacterState::NOCLIP, CharacterState::Falling);
+    sm_->addTransition(CharacterState::NOCLIP, CharacterState::Grounded);
 }
 
 bool MovementFSM::tryTransition(CharacterState target) {
@@ -88,7 +99,11 @@ bool MovementFSM::isAirborne() const {
 
 bool MovementFSM::isFlying() const {
     CharacterState s = sm_->getState();
-    return s == CharacterState::Flying || s == CharacterState::Boosting;
+    return s == CharacterState::Flying || s == CharacterState::Boosting || s == CharacterState::NOCLIP;
+}
+
+bool MovementFSM::isNOCLIP() const {
+    return sm_->getState() == CharacterState::NOCLIP;
 }
 
 bool MovementFSM::canDash() const {

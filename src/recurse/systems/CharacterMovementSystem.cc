@@ -49,12 +49,18 @@ void CharacterMovementSystem::init(fabric::AppContext& ctx) {
     charCtrl_ = std::make_unique<CharacterController>(kCharWidth, kCharHeight, kCharDepth);
     flightCtrl_ = std::make_unique<FlightController>(kCharWidth, kCharHeight, kCharDepth);
 
-    // Toggle fly mode
+    // Toggle fly/noclip mode: Grounded -> Flying -> NOCLIP -> Grounded
     ctx.dispatcher.addEventListener("toggle_fly", [this](fabric::Event&) {
-        if (movementFSM_.isFlying()) {
+        if (movementFSM_.isNOCLIP()) {
+            // NOCLIP -> Falling (exit to normal mode)
             movementFSM_.tryTransition(CharacterState::Falling);
-            FABRIC_LOG_INFO("Flight mode: off");
+            FABRIC_LOG_INFO("NOCLIP mode: off (falling)");
+        } else if (movementFSM_.isFlying()) {
+            // Flying -> NOCLIP
+            movementFSM_.tryTransition(CharacterState::NOCLIP);
+            FABRIC_LOG_INFO("NOCLIP mode: on (fly + no collision)");
         } else {
+            // Grounded/Falling/Jumping -> Flying
             movementFSM_.tryTransition(CharacterState::Flying);
             playerVel_ = {};
             FABRIC_LOG_INFO("Flight mode: on");
@@ -109,12 +115,24 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
         if (len > 0.001f)
             moveDir = fabric::Vec3f(moveDir.x / len, moveDir.y / len, moveDir.z / len);
 
-        fabric::Vec3f displacement(moveDir.x * charConfig_.flightSpeed * fixedDt,
-                                   moveDir.y * charConfig_.flightSpeed * fixedDt,
-                                   moveDir.z * charConfig_.flightSpeed * fixedDt);
+        // Determine speed: base flight/noclip speed, with LCTRL multiplier
+        float baseSpeed = movementFSM_.isNOCLIP() ? charConfig_.noclipSpeed : charConfig_.flightSpeed;
+        if (inputManager->isActionActive("speed_boost"))
+            baseSpeed *= charConfig_.speedMultiplier;
 
-        auto result = flightCtrl_->move(playerPos_, displacement, terrain_->densityGrid());
-        syncPlayerPositionViews(playerPosD_, playerPos_, result.resolvedPosition);
+        fabric::Vec3f displacement(moveDir.x * baseSpeed * fixedDt, moveDir.y * baseSpeed * fixedDt,
+                                   moveDir.z * baseSpeed * fixedDt);
+
+        if (movementFSM_.isNOCLIP()) {
+            // NOCLIP: no collision, direct position update
+            playerPos_ = fabric::Vec3f(playerPos_.x + displacement.x, playerPos_.y + displacement.y,
+                                       playerPos_.z + displacement.z);
+            syncPlayerPositionViews(playerPosD_, playerPos_, playerPos_);
+        } else {
+            // Flying: with collision
+            auto result = flightCtrl_->move(playerPos_, displacement, terrain_->densityGrid());
+            syncPlayerPositionViews(playerPosD_, playerPos_, result.resolvedPosition);
+        }
 
     } else {
         // Ground mode: flatten forward/right to XZ plane

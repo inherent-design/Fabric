@@ -110,10 +110,10 @@ void VoxelRenderer::initProgram() {
         return;
     }
 
-    constexpr float kLitColor[4] = {0.95f, 0.85f, 0.55f, 1.0f};
-    constexpr float kShadowColor[4] = {0.45f, 0.35f, 0.55f, 1.0f};
-    constexpr float kRimParams[4] = {3.0f, 0.15f, 0.0f, 0.0f};   // Reduced rim strength: 0.6 -> 0.3 -> 0.15
-    constexpr float kOceanParams[4] = {16.0f, 0.2f, 0.0f, 0.0f}; // Reduced ocean specular: 0.8 -> 0.4 -> 0.2
+    constexpr float kLitColor[4] = {0.85f, 0.85f, 0.85f, 1.0f};    // Neutral white-gray (was warm gold)
+    constexpr float kShadowColor[4] = {0.35f, 0.35f, 0.40f, 1.0f}; // Neutral cool-gray (was purple-gray)
+    constexpr float kRimParams[4] = {3.0f, 0.15f, 0.0f, 0.0f};     // Reduced rim strength: 0.6 -> 0.3 -> 0.15
+    constexpr float kOceanParams[4] = {16.0f, 0.2f, 0.0f, 0.0f};   // Reduced ocean specular: 0.8 -> 0.4 -> 0.2
 
     std::copy(std::begin(kLitColor), std::end(kLitColor), litColor_);
     std::copy(std::begin(kShadowColor), std::end(kShadowColor), shadowColor_);

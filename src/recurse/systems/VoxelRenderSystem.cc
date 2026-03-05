@@ -3,6 +3,7 @@
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Camera.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/core/Rendering.hh"
 #include "fabric/core/SceneView.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/SystemRegistry.hh"
@@ -14,6 +15,8 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
+#include <array>
 #include <vector>
 
 namespace recurse::systems {
@@ -48,12 +51,36 @@ void VoxelRenderSystem::render(fabric::AppContext& ctx) {
         std::vector<recurse::ChunkRenderInfo> renderBatch;
         renderBatch.reserve(meshSystem_->gpuMeshes().size());
 
-        // Camera-relative render path: chunk transforms are submitted relative
-        // to camera, so shader-space camera position is origin.
+        // Set actual camera world position for view-dependent lighting effects
+        // (rim, specular). Chunks are transformed camera-relative, but shader
+        // world positions are also camera-relative, so we need (0,0,0) here.
+        // However, the shader needs to compute view direction correctly.
+        // Since v_worldPos is camera-relative, viewPos should be (0,0,0).
+        // The lighting direction is still in world space and correct.
         voxelRenderer_.setViewPosition(0.0, 0.0, 0.0);
+
+        // Extract frustum for chunk-level culling
+        std::array<float, 16> vpMatrix;
+        camera->getViewProjection(vpMatrix.data());
+        fabric::Frustum frustum;
+        frustum.extractFromVP(vpMatrix.data());
+
+        // Pre-compute chunk AABB size
+        constexpr float chunkSize = static_cast<float>(recurse::kChunkSize);
 
         for (const auto& [coord, gpuMesh] : meshSystem_->gpuMeshes()) {
             if (!gpuMesh.valid || gpuMesh.vertexCount == 0 || gpuMesh.indexCount == 0)
+                continue;
+
+            // Build chunk AABB for frustum test
+            fabric::Vec3f chunkMin(static_cast<float>(coord.x * recurse::kChunkSize),
+                                   static_cast<float>(coord.y * recurse::kChunkSize),
+                                   static_cast<float>(coord.z * recurse::kChunkSize));
+            fabric::Vec3f chunkMax(chunkMin.x + chunkSize, chunkMin.y + chunkSize, chunkMin.z + chunkSize);
+            fabric::AABB chunkAABB(chunkMin, chunkMax);
+
+            // Skip chunks outside the view frustum
+            if (frustum.testAABB(chunkAABB) == fabric::CullResult::Outside)
                 continue;
 
             const auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
@@ -66,8 +93,17 @@ void VoxelRenderSystem::render(fabric::AppContext& ctx) {
                 .offsetX = relOrigin.x,
                 .offsetY = relOrigin.y,
                 .offsetZ = relOrigin.z,
+                .sortKey = static_cast<uint64_t>(static_cast<uint16_t>(coord.x + 32768)) << 32 |
+                           static_cast<uint64_t>(static_cast<uint16_t>(coord.y + 32768)) << 16 |
+                           static_cast<uint64_t>(static_cast<uint16_t>(coord.z + 32768)),
             });
         }
+
+        // Sort render batch by chunk coordinate for deterministic palette grouping.
+        // This prevents color flickering caused by non-deterministic unordered_map iteration.
+        std::sort(
+            renderBatch.begin(), renderBatch.end(),
+            [](const recurse::ChunkRenderInfo& a, const recurse::ChunkRenderInfo& b) { return a.sortKey < b.sortKey; });
 
         if (!renderBatch.empty()) {
             voxelRenderer_.renderBatch(sceneView->geometryViewId(), renderBatch.data(),

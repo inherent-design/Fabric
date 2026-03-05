@@ -4,6 +4,10 @@
 #include <cstddef>
 #include <memory>
 
+namespace fabric {
+class EventDispatcher;
+}
+
 namespace fabric::simulation {
 class ChunkActivityTracker;
 class SimulationGrid;
@@ -45,6 +49,7 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
 
   private:
     TerrainSystem* terrain_ = nullptr;
+    fabric::EventDispatcher* dispatcher_ = nullptr;
     std::unique_ptr<fabric::simulation::VoxelSimulationSystem> fabSim_;
     size_t lastActiveCount_ = 0;
 };

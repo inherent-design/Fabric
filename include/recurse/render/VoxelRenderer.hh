@@ -30,6 +30,7 @@ struct ChunkRenderInfo {
     float offsetX;
     float offsetY;
     float offsetZ;
+    uint64_t sortKey = 0; // For deterministic ordering (packed chunk coords)
 };
 
 // Renders voxel chunks using the voxel shader program.

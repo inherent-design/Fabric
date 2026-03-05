@@ -39,6 +39,9 @@ class TerrainSystem : public fabric::System<TerrainSystem> {
     WorldGenerator& worldGenerator() { return *worldGen_; }
     void setWorldGenerator(std::unique_ptr<WorldGenerator> gen);
 
+    /// Sync density field from an external SimulationGrid (e.g., VoxelSimulationSystem's grid)
+    void syncDensityFromGrid(const fabric::simulation::SimulationGrid& grid);
+
     // Deprecated: old field accessors kept for compile compat with legacy systems.
     // These return empty default-constructed fields -- callers are dead code paths.
     fabric::DensityField& density() { return density_; }
@@ -57,6 +60,9 @@ class TerrainSystem : public fabric::System<TerrainSystem> {
     // Deprecated stubs
     fabric::DensityField density_;
     fabric::EssenceField essence_;
+
+    // Sync density field from simulation grid for collision detection
+    void syncDensityFromSimulation();
 };
 
 } // namespace recurse::systems
