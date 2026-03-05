@@ -37,7 +37,7 @@ run = "sh tasks/clean.sh"
 run_windows = "& .\\tasks\\clean.ps1"
 
 [tasks.build]
-alias = "b"
+alias = ["b", "bd", "build:debug"]
 description = "Configure and build (Debug)"
 run = "sh tasks/build.sh"
 run_windows = "& .\\tasks\\build.ps1"
@@ -51,7 +51,7 @@ run_windows = "$env:BUILD_PRESET='dev-release'; & .\\tasks\\build.ps1"
 # Run
 
 [tasks.run]
-alias = "r"
+alias = ["r", "rd", "run:debug"]
 description = "Run Recurse (Debug)"
 depends = ["build"]
 run = "./build/dev-debug/bin/Recurse"
@@ -128,7 +128,7 @@ run_windows = "$env:TEST_FILTER='{{arg(name=''filter'')}}'; & .\\tasks\\test.ps1
 # Profiling
 
 [tasks.profile]
-alias = "pd"
+alias = ["pd", "p", "profile:debug"]
 description = "Build with Tracy profiler (Debug)"
 run = "sh tasks/profile.sh"
 run_windows = "& .\\tasks\\profile.ps1"
@@ -140,7 +140,7 @@ run = "PROFILE_MODE=release sh tasks/profile.sh"
 run_windows = "$env:PROFILE_MODE='release'; & .\\tasks\\profile.ps1"
 
 [tasks."profile:capture"]
-alias = "cap"
+alias = ["cap", "profile:capture:debug"]
 description = "Launch Debug build and capture a Tracy trace (30s)"
 run = "sh tasks/profile-capture.sh"
 run_windows = "& .\\tasks\\profile-capture.ps1"
