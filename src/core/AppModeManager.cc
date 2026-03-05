@@ -47,6 +47,8 @@ const auto& appModeTransitions() {
         {AppMode::Console, AppMode::Paused},
         {AppMode::Editor, AppMode::Paused},
         {AppMode::Menu, AppMode::Paused},
+        // Quit to title from pause menu
+        {AppMode::Paused, AppMode::Menu},
     };
     return t;
 }
