@@ -9,7 +9,6 @@
 #include "fabric/core/Event.hh"
 #include "fabric/core/FabricApp.hh"
 #include "fabric/core/FabricAppDesc.hh"
-#include "fabric/core/FeatureFlags.hh"
 #include "fabric/core/InputManager.hh"
 #include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
@@ -53,49 +52,33 @@ fabric::FabricAppDesc buildRecurseDesc() {
     desc.configPath = "recurse.toml";
     desc.headless = false;
 
-    // Register application systems with phase assignments.
+    // Register all systems unconditionally.
     // Dependencies declared in each system's configureDependencies().
-    // Core systems (always registered):
+    // Logging filters control verbosity at runtime.
+
+    // FixedUpdate: simulation, physics, AI
     desc.registerSystem<recurse::systems::TerrainSystem>(SystemPhase::FixedUpdate);
+    desc.registerSystem<recurse::systems::VoxelSimulationSystem>(SystemPhase::FixedUpdate);
+    desc.registerSystem<recurse::systems::PhysicsGameSystem>(SystemPhase::FixedUpdate);
+    desc.registerSystem<recurse::systems::CharacterMovementSystem>(SystemPhase::FixedUpdate);
+    desc.registerSystem<recurse::systems::AIGameSystem>(SystemPhase::FixedUpdate);
+    desc.registerSystem<recurse::systems::ParticleGameSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::ChunkPipelineSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::VoxelInteractionSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::SaveGameSystem>(SystemPhase::FixedUpdate);
+
+    // Update: per-frame logic
+    desc.registerSystem<recurse::systems::AudioGameSystem>(SystemPhase::Update);
     desc.registerSystem<recurse::systems::CameraGameSystem>(SystemPhase::Update);
 
-    // Conditional systems (feature-flagged):
-    if (fabric::FeatureFlags::voxelSimulation()) {
-        desc.registerSystem<recurse::systems::VoxelSimulationSystem>(SystemPhase::FixedUpdate);
-    }
-    if (fabric::FeatureFlags::physics()) {
-        desc.registerSystem<recurse::systems::PhysicsGameSystem>(SystemPhase::FixedUpdate);
-    }
-    if (fabric::FeatureFlags::characterMovement()) {
-        desc.registerSystem<recurse::systems::CharacterMovementSystem>(SystemPhase::FixedUpdate);
-    }
-    if (fabric::FeatureFlags::behaviorAI()) {
-        desc.registerSystem<recurse::systems::AIGameSystem>(SystemPhase::FixedUpdate);
-    }
-    if (fabric::FeatureFlags::particles()) {
-        desc.registerSystem<recurse::systems::ParticleGameSystem>(SystemPhase::FixedUpdate);
-    }
-    if (fabric::FeatureFlags::audio()) {
-        desc.registerSystem<recurse::systems::AudioGameSystem>(SystemPhase::Update);
-    }
-    if (fabric::FeatureFlags::voxelMeshing()) {
-        desc.registerSystem<recurse::systems::VoxelMeshingSystem>(SystemPhase::PreRender);
-    }
-    if (fabric::FeatureFlags::shadows()) {
-        desc.registerSystem<recurse::systems::ShadowRenderSystem>(SystemPhase::PreRender);
-    }
-    if (fabric::FeatureFlags::voxelRendering()) {
-        desc.registerSystem<recurse::systems::VoxelRenderSystem>(SystemPhase::Render);
-    }
-    if (fabric::FeatureFlags::oit()) {
-        desc.registerSystem<recurse::systems::OITRenderSystem>(SystemPhase::Render);
-    }
-    if (fabric::FeatureFlags::debugHUD()) {
-        desc.registerSystem<recurse::systems::DebugOverlaySystem>(SystemPhase::Render);
-    }
+    // PreRender: meshing, shadows
+    desc.registerSystem<recurse::systems::VoxelMeshingSystem>(SystemPhase::PreRender);
+    desc.registerSystem<recurse::systems::ShadowRenderSystem>(SystemPhase::PreRender);
+
+    // Render: submission
+    desc.registerSystem<recurse::systems::VoxelRenderSystem>(SystemPhase::Render);
+    desc.registerSystem<recurse::systems::OITRenderSystem>(SystemPhase::Render);
+    desc.registerSystem<recurse::systems::DebugOverlaySystem>(SystemPhase::Render);
 
     // onInit: cross-cutting setup that spans multiple systems.
     // Key bindings, ECS core components, AppMode observer.
