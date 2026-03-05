@@ -99,7 +99,6 @@ target_sources(UnitTests
   VoxelSimulationSystemTest.cc
   VoxelMeshingSystemTest.cc
   CrossChunkBoundaryTest.cc
-  FeatureFlagsTest.cc
   EssenceTypesTest.cc
 )
 

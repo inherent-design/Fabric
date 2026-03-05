@@ -189,7 +189,6 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/InputSystem.cc
     src/core/AssetRegistry.cc
     src/core/FabricApp.cc
-    src/core/FeatureFlags.cc
     src/core/FileWatcher.cc
     src/core/FilteredConsoleSink.cc
     src/core/PostProcess.cc
