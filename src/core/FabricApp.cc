@@ -298,7 +298,13 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
 
                     if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT) {
                         if (appModeManager->current() == AppMode::Paused) {
-                            appModeManager->transition(AppMode::Game);
+                            // Only auto-resume if click didn't hit a UI element
+                            // (i.e., hover element is body or null)
+                            Rml::Element* hover = rmlContext->GetHoverElement();
+                            bool isBody = !hover || hover->GetTagName() == "body";
+                            if (isBody) {
+                                appModeManager->transition(AppMode::Game);
+                            }
                         }
                     }
 
