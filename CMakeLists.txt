@@ -256,6 +256,9 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/ui/DevConsole.cc
     src/recurse/ui/DebrisPool.cc
 
+    # components/
+    src/recurse/components/EssenceTypes.cc
+
     # world/ (VP0+ generators)
     src/recurse/world/TestWorldGenerator.cc
 

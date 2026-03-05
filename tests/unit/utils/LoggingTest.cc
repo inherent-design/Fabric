@@ -7,36 +7,41 @@ namespace Tests {
 class LoggingTest : public ::testing::Test {};
 
 TEST_F(LoggingTest, LogInfoDoesNotCrash) {
+    // Verify logger is accessible before logging
+    EXPECT_NE(fabric::log::logger(), nullptr);
+    // Log macro executes without throwing (logging is designed to be noexcept)
     FABRIC_LOG_INFO("Info message");
-    EXPECT_TRUE(true);
 }
 
 TEST_F(LoggingTest, LogWarningDoesNotCrash) {
+    EXPECT_NE(fabric::log::logger(), nullptr);
     FABRIC_LOG_WARN("Warning message");
-    EXPECT_TRUE(true);
 }
 
 TEST_F(LoggingTest, LogErrorDoesNotCrash) {
+    EXPECT_NE(fabric::log::logger(), nullptr);
     FABRIC_LOG_ERROR("Error message");
-    EXPECT_TRUE(true);
 }
 
 TEST_F(LoggingTest, LogDebugDoesNotCrash) {
+    EXPECT_NE(fabric::log::logger(), nullptr);
     FABRIC_LOG_DEBUG("Debug message");
-    EXPECT_TRUE(true);
 }
 
 TEST_F(LoggingTest, LogWithFormatArgs) {
+    EXPECT_NE(fabric::log::logger(), nullptr);
+    // Verify formatted logging with various arg types
     FABRIC_LOG_INFO("Value: {}, Name: {}", 42, "test");
-    EXPECT_TRUE(true);
 }
 
 TEST_F(LoggingTest, SetLogLevel) {
+    // Verify level changes are accepted without throwing
     fabric::log::setLevel(quill::LogLevel::Warning);
-    FABRIC_LOG_WARN("This should appear");
-    // Reset to default
     fabric::log::setLevel(quill::LogLevel::Debug);
-    EXPECT_TRUE(true);
+
+    // Verify subsystem loggers are accessible
+    EXPECT_NE(fabric::log::renderLogger(), nullptr);
+    EXPECT_NE(fabric::log::bgfxLogger(), nullptr);
 }
 
 TEST_F(LoggingTest, LoggerReturnsNonNull) {
@@ -52,6 +57,7 @@ TEST_F(LoggingTest, SubsystemLoggersReturnNonNull) {
 }
 
 TEST_F(LoggingTest, SetSubsystemLevelsDoNotCrash) {
+    // Verify all subsystem level setters work
     fabric::log::setRenderLevel(quill::LogLevel::Error);
     fabric::log::setPhysicsLevel(quill::LogLevel::Warning);
     fabric::log::setAudioLevel(quill::LogLevel::Info);
@@ -68,13 +74,12 @@ TEST_F(LoggingTest, SetSubsystemLevelsDoNotCrash) {
     fabric::log::setPhysicsLevel(quill::LogLevel::Debug);
     fabric::log::setAudioLevel(quill::LogLevel::Debug);
     fabric::log::setBgfxLevel(quill::LogLevel::Debug);
-
-    EXPECT_TRUE(true);
 }
 
 TEST_F(LoggingTest, LogMultipleFormatTypes) {
+    EXPECT_NE(fabric::log::logger(), nullptr);
+    // Verify logging with multiple format types
     FABRIC_LOG_INFO("int={} float={:.2f} string={} bool={}", 42, 3.14, "hello", true);
-    EXPECT_TRUE(true);
 }
 
 } // namespace Tests

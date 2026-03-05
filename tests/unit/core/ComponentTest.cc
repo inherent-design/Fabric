@@ -93,11 +93,10 @@ TEST_F(ComponentTest, PropertyGetThrowsOnMissingProperty) {
     EXPECT_THROW(rootComponent->getProperty<int>("nonexistent"), FabricException);
 }
 
-// Skip this test for now, as the template implementation makes it hard to test
-// TODO: Fix this test once the component property system is refactored
-TEST_F(ComponentTest, DISABLED_PropertyGetThrowsOnWrongType) {
+TEST_F(ComponentTest, PropertyGetThrowsOnWrongType) {
     rootComponent->setProperty<int>("intProp", 42);
 
-    // Currently not working: std::shared_ptr<void> cannot be dynamic_cast
+    // std::get<T> throws std::bad_variant_access when T doesn't match the stored type
+    // The implementation catches this and throws FabricException
     EXPECT_THROW(rootComponent->getProperty<std::string>("intProp"), FabricException);
 }

@@ -43,7 +43,6 @@ target_sources(UnitTests
   AnimationSamplerTest.cc
   SkinnedRendererTest.cc
   IKSolverTest.cc
-  Sprint7StubTest.cc
   PhysicsWorldTest.cc
   CCDTest.cc
   RagdollTest.cc
@@ -101,6 +100,7 @@ target_sources(UnitTests
   VoxelMeshingSystemTest.cc
   CrossChunkBoundaryTest.cc
   FeatureFlagsTest.cc
+  EssenceTypesTest.cc
 )
 
 set_source_files_properties(
