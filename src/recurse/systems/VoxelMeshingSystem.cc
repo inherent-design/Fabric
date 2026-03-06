@@ -143,27 +143,32 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
         return;
     }
 
-    // Check all 6 face-adjacent neighbors exist before meshing to avoid boundary gaps.
-    // Missing neighbor chunks will return air (0) from readCell, and the
-    // density cache will sample air at boundaries, creating chamfered corners.
-    // Both horizontal (X/Z) and vertical (Y) neighbors are required
-    // because terrain can have overhangs, caves, and underground features.
-    // When neighbors load later, notifyBoundaryChange() will re-trigger meshing.
+    // Check horizontal face-adjacent neighbors (±X, ±Z) before meshing.
+    // Missing neighbors return air from readCell, creating boundary artifacts.
+    // Y neighbors (±Y) are checked but don't block meshing - flat terrain at Y=0
+    // legitimately has no Y neighbors, and sampling air above/below is correct.
+    // When horizontal neighbors load later, notifyBoundaryChange() re-triggers meshing.
     if (requireNeighborsForMeshing_) {
-        // Check all 6 face-adjacent neighbors (±X, ±Y, ±Z)
-        constexpr int kFaceNeighborOffsets[6][3] = {
-            {1, 0, 0}, {-1, 0, 0}, // ±X
-            {0, 1, 0}, {0, -1, 0}, // ±Y
-            {0, 0, 1}, {0, 0, -1}  // ±Z
+        // Horizontal neighbors (±X, ±Z) - MUST exist to avoid X/Z boundary gaps
+        constexpr int kHorizontalNeighborOffsets[4][3] = {
+            {1, 0, 0},
+            {-1, 0, 0}, // ±X
+            {0, 0, 1},
+            {0, 0, -1} // ±Z
         };
-        for (int d = 0; d < 6; ++d) {
-            if (!simGrid_->hasChunk(coord.x + kFaceNeighborOffsets[d][0], coord.y + kFaceNeighborOffsets[d][1],
-                                    coord.z + kFaceNeighborOffsets[d][2])) {
-                FABRIC_LOG_DEBUG("Meshing deferred ({},{},{}): face neighbor ({},{},{}) missing", coord.x, coord.y,
-                                 coord.z, coord.x + kFaceNeighborOffsets[d][0], coord.y + kFaceNeighborOffsets[d][1],
-                                 coord.z + kFaceNeighborOffsets[d][2]);
-                return; // Neighbor missing - defer meshing
+        for (int d = 0; d < 4; ++d) {
+            if (!simGrid_->hasChunk(coord.x + kHorizontalNeighborOffsets[d][0], coord.y,
+                                    coord.z + kHorizontalNeighborOffsets[d][2])) {
+                FABRIC_LOG_DEBUG("Meshing deferred ({},{},{}): horizontal neighbor ({},{},{}) missing", coord.x,
+                                 coord.y, coord.z, coord.x + kHorizontalNeighborOffsets[d][0], coord.y,
+                                 coord.z + kHorizontalNeighborOffsets[d][2]);
+                return; // Horizontal neighbor missing - defer meshing
             }
+        }
+        // Y neighbors (±Y) - log if missing but don't block (air above/below is valid for flat terrain)
+        if (!simGrid_->hasChunk(coord.x, coord.y - 1, coord.z) || !simGrid_->hasChunk(coord.x, coord.y + 1, coord.z)) {
+            FABRIC_LOG_DEBUG("Meshing ({},{},{}): Y neighbor missing, sampling air at Y boundary", coord.x, coord.y,
+                             coord.z);
         }
     }
 
