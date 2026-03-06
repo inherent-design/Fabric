@@ -168,9 +168,16 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         debugDraw_.setColor(0xff00ff00); // green (ABGR)
         for (const auto& [coord, ent] : chunks_->chunkEntities()) {
             if (physics_->physicsWorld().chunkCollisionShapeCount(coord.cx, coord.cy, coord.cz) > 0) {
-                float x0 = static_cast<float>(coord.cx * recurse::kChunkSize);
-                float y0 = static_cast<float>(coord.cy * recurse::kChunkSize);
-                float z0 = static_cast<float>(coord.cz * recurse::kChunkSize);
+                // Convert to camera-relative coordinates
+                auto worldOrigin =
+                    fabric::Vector3<double, fabric::Space::World>(static_cast<double>(coord.cx * recurse::kChunkSize),
+                                                                  static_cast<double>(coord.cy * recurse::kChunkSize),
+                                                                  static_cast<double>(coord.cz * recurse::kChunkSize));
+                auto relOrigin = ctx.camera->cameraRelative(worldOrigin);
+
+                float x0 = relOrigin.x;
+                float y0 = relOrigin.y;
+                float z0 = relOrigin.z;
                 float x1 = x0 + static_cast<float>(recurse::kChunkSize);
                 float y1 = y0 + static_cast<float>(recurse::kChunkSize);
                 float z1 = z0 + static_cast<float>(recurse::kChunkSize);
@@ -184,6 +191,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         fabric::BVH<int> chunkBVH;
         int idx = 0;
         for (const auto& [coord, ent] : chunks_->chunkEntities()) {
+            // Use world coordinates for BVH construction
             float x0 = static_cast<float>(coord.cx * recurse::kChunkSize);
             float y0 = static_cast<float>(coord.cy * recurse::kChunkSize);
             float z0 = static_cast<float>(coord.cz * recurse::kChunkSize);
@@ -193,6 +201,9 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             chunkBVH.insert(fabric::AABB(fabric::Vec3f(x0, y0, z0), fabric::Vec3f(x1, y1, z1)), idx++);
         }
         chunkBVH.build();
+
+        // Get camera world position for coordinate conversion
+        auto camWorldPos = ctx.camera->worldPositionD();
 
         constexpr float kMaxVisDepth = 8.0f;
         chunkBVH.visitNodes([&](const fabric::AABB& bounds, int depth, bool isLeaf) {
@@ -205,8 +216,15 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
                 auto b = static_cast<uint8_t>(t * 255);
                 color = 0xff000000u | (static_cast<uint32_t>(b) << 16) | static_cast<uint32_t>(r);
             }
+            // Convert to camera-relative coordinates for rendering
+            float relMinX = static_cast<float>(bounds.min.x - camWorldPos.x);
+            float relMinY = static_cast<float>(bounds.min.y - camWorldPos.y);
+            float relMinZ = static_cast<float>(bounds.min.z - camWorldPos.z);
+            float relMaxX = static_cast<float>(bounds.max.x - camWorldPos.x);
+            float relMaxY = static_cast<float>(bounds.max.y - camWorldPos.y);
+            float relMaxZ = static_cast<float>(bounds.max.z - camWorldPos.z);
             debugDraw_.setColor(color);
-            debugDraw_.drawWireBox(bounds.min.x, bounds.min.y, bounds.min.z, bounds.max.x, bounds.max.y, bounds.max.z);
+            debugDraw_.drawWireBox(relMinX, relMinY, relMinZ, relMaxX, relMaxY, relMaxZ);
         });
     }
 
@@ -236,9 +254,15 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
                     break;
             }
 
-            float x0 = static_cast<float>(cx * recurse::kChunkSize);
-            float y0 = static_cast<float>(cy * recurse::kChunkSize);
-            float z0 = static_cast<float>(cz * recurse::kChunkSize);
+            // Convert world coordinates to camera-relative (same as VoxelRenderSystem)
+            auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
+                static_cast<double>(cx * recurse::kChunkSize), static_cast<double>(cy * recurse::kChunkSize),
+                static_cast<double>(cz * recurse::kChunkSize));
+            auto relOrigin = ctx.camera->cameraRelative(worldOrigin);
+
+            float x0 = relOrigin.x;
+            float y0 = relOrigin.y;
+            float z0 = relOrigin.z;
             float x1 = x0 + static_cast<float>(recurse::kChunkSize);
             float y1 = y0 + static_cast<float>(recurse::kChunkSize);
             float z1 = z0 + static_cast<float>(recurse::kChunkSize);
