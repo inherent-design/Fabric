@@ -210,7 +210,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         });
     }
 
-    // Chunk state visualization (F12)
+    // Chunk state visualization (F1)
     if (debugDraw_.hasFlag(recurse::DebugDrawFlags::ChunkStates) && voxelSim_) {
         auto& tracker = voxelSim_->activityTracker();
         auto& grid = voxelSim_->simulationGrid();

@@ -130,6 +130,7 @@ void HotkeyPanel::rebuildHotkeys() {
             addHotkey("Interaction", "RMB", "Place Voxel");
             addHotkey("Time", "P", "Pause Time");
             addHotkey("Time", "+ / -", "Time Scale");
+            addHotkey("Debug", "F1", "Chunk States");
             addHotkey("Debug", "F3", "Debug HUD");
             addHotkey("Debug", "F4", "Wireframe");
             addHotkey("Debug", "F6", "BVH Overlay");
