@@ -143,19 +143,25 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
         return;
     }
 
-    // Check horizontal (X/Z) neighbors exist before meshing to avoid boundary gaps.
+    // Check all 6 face-adjacent neighbors exist before meshing to avoid boundary gaps.
     // Missing neighbor chunks will return air (0) from readCell, and the
-    // density blur smooths solid toward air, creating holes at boundaries.
-    // Vertical neighbors (Y) are not required - air above terrain is expected.
+    // density cache will sample air at boundaries, creating chamfered corners.
+    // Both horizontal (X/Z) and vertical (Y) neighbors are required
+    // because terrain can have overhangs, caves, and underground features.
     // When neighbors load later, notifyBoundaryChange() will re-trigger meshing.
     if (requireNeighborsForMeshing_) {
-        // Only check 4 horizontal face-adjacent neighbors (X/Z plane)
-        constexpr int kHorizontalOffsets[4][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}};
-        for (int d = 0; d < 4; ++d) {
-            if (!simGrid_->hasChunk(coord.x + kHorizontalOffsets[d][0], coord.y, coord.z + kHorizontalOffsets[d][2])) {
-                FABRIC_LOG_DEBUG("Meshing deferred ({},{},{}): horizontal neighbor ({},{},{}) missing", coord.x,
-                                 coord.y, coord.z, coord.x + kHorizontalOffsets[d][0], coord.y,
-                                 coord.z + kHorizontalOffsets[d][2]);
+        // Check all 6 face-adjacent neighbors (±X, ±Y, ±Z)
+        constexpr int kFaceNeighborOffsets[6][3] = {
+            {1, 0, 0}, {-1, 0, 0}, // ±X
+            {0, 1, 0}, {0, -1, 0}, // ±Y
+            {0, 0, 1}, {0, 0, -1}  // ±Z
+        };
+        for (int d = 0; d < 6; ++d) {
+            if (!simGrid_->hasChunk(coord.x + kFaceNeighborOffsets[d][0], coord.y + kFaceNeighborOffsets[d][1],
+                                    coord.z + kFaceNeighborOffsets[d][2])) {
+                FABRIC_LOG_DEBUG("Meshing deferred ({},{},{}): face neighbor ({},{},{}) missing", coord.x, coord.y,
+                                 coord.z, coord.x + kFaceNeighborOffsets[d][0], coord.y + kFaceNeighborOffsets[d][1],
+                                 coord.z + kFaceNeighborOffsets[d][2]);
                 return; // Neighbor missing - defer meshing
             }
         }
