@@ -24,6 +24,7 @@ class CharacterMovementSystem;
 class VoxelRenderSystem;
 class OITRenderSystem;
 class VoxelMeshingSystem;
+class VoxelSimulationSystem;
 
 /// Debug overlays, HUD, panels, and developer console.
 /// Registered to the Render phase (after VoxelRenderSystem and OITRenderSystem)
@@ -66,6 +67,7 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
     TerrainSystem* terrain_ = nullptr;
     CharacterMovementSystem* charMovement_ = nullptr;
     VoxelMeshingSystem* meshSystem_ = nullptr;
+    VoxelSimulationSystem* voxelSim_ = nullptr;
 };
 
 } // namespace recurse::systems

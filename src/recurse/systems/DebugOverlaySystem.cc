@@ -8,6 +8,8 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/SceneView.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/simulation/ChunkActivityTracker.hh"
+#include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/utils/BVH.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/ai/BehaviorAI.hh"
@@ -23,6 +25,7 @@
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelMeshingSystem.hh"
 #include "recurse/systems/VoxelRenderSystem.hh"
+#include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/ChunkStreaming.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 #include "recurse/world/VoxelRaycast.hh"
@@ -45,6 +48,8 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
     meshSystem_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
+    voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
+    voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
     debugDraw_.init();
     debugHUD_.init(ctx.rmlContext);
@@ -99,6 +104,11 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
     dispatcher.addEventListener("toggle_bvh_debug", [this](fabric::Event&) {
         debugDraw_.toggleFlag(recurse::DebugDrawFlags::BVHOverlay);
         FABRIC_LOG_INFO("BVH overlay: {}", debugDraw_.hasFlag(recurse::DebugDrawFlags::BVHOverlay) ? "on" : "off");
+    });
+
+    dispatcher.addEventListener("toggle_chunk_states", [this](fabric::Event&) {
+        debugDraw_.toggleFlag(recurse::DebugDrawFlags::ChunkStates);
+        FABRIC_LOG_INFO("Chunk states: {}", debugDraw_.hasFlag(recurse::DebugDrawFlags::ChunkStates) ? "on" : "off");
     });
 
     dispatcher.addEventListener("toggle_content_browser", [this, appMode](fabric::Event&) {
@@ -198,6 +208,44 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             debugDraw_.setColor(color);
             debugDraw_.drawWireBox(bounds.min.x, bounds.min.y, bounds.min.z, bounds.max.x, bounds.max.y, bounds.max.z);
         });
+    }
+
+    // Chunk state visualization (F12)
+    if (debugDraw_.hasFlag(recurse::DebugDrawFlags::ChunkStates) && voxelSim_) {
+        auto& tracker = voxelSim_->activityTracker();
+        auto& grid = voxelSim_->simulationGrid();
+
+        for (auto [cx, cy, cz] : grid.allChunks()) {
+            fabric::simulation::ChunkPos pos{cx, cy, cz};
+            auto state = tracker.getState(pos);
+
+            // State-based colors (ABGR format)
+            uint32_t color;
+            switch (state) {
+                case fabric::simulation::ChunkState::Sleeping:
+                    color = 0x80666680; // Semi-transparent gray-blue
+                    break;
+                case fabric::simulation::ChunkState::Active:
+                    color = 0xcc4de666; // Bright green
+                    break;
+                case fabric::simulation::ChunkState::BoundaryDirty:
+                    color = 0xb3cc33ff; // Yellow-orange
+                    break;
+                default:
+                    color = 0x80808080; // Gray
+                    break;
+            }
+
+            float x0 = static_cast<float>(cx * recurse::kChunkSize);
+            float y0 = static_cast<float>(cy * recurse::kChunkSize);
+            float z0 = static_cast<float>(cz * recurse::kChunkSize);
+            float x1 = x0 + static_cast<float>(recurse::kChunkSize);
+            float y1 = y0 + static_cast<float>(recurse::kChunkSize);
+            float z1 = z0 + static_cast<float>(recurse::kChunkSize);
+
+            debugDraw_.setColor(color);
+            debugDraw_.drawWireBox(x0, y0, z0, x1, y1, z1);
+        }
     }
 
     debugDraw_.end();
@@ -337,6 +385,7 @@ void DebugOverlaySystem::configureDependencies() {
     after<AIGameSystem>();
     after<TerrainSystem>();
     after<CharacterMovementSystem>();
+    after<VoxelSimulationSystem>();
 }
 
 } // namespace recurse::systems

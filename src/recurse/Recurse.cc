@@ -119,6 +119,7 @@ fabric::FabricAppDesc buildRecurseDesc() {
         ctx.inputManager->bindKey("toggle_collision_debug", SDLK_F10);
         ctx.inputManager->bindKey("toggle_bvh_debug", SDLK_F6);
         ctx.inputManager->bindKey("toggle_content_browser", SDLK_F7);
+        ctx.inputManager->bindKey("toggle_chunk_states", SDLK_F9);
         ctx.inputManager->bindKey("toggle_bt_debug", SDLK_F11);
         ctx.inputManager->bindKey("cycle_bt_npc", SDLK_F8);
 

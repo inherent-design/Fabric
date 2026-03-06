@@ -10,6 +10,7 @@ enum class DebugDrawFlags : uint32_t {
     Wireframe = 1 << 0,
     CollisionShapes = 1 << 1,
     BVHOverlay = 1 << 2,
+    ChunkStates = 1 << 3, // Color-coded chunk state visualization
 };
 
 constexpr DebugDrawFlags operator|(DebugDrawFlags a, DebugDrawFlags b) {
