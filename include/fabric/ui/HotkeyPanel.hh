@@ -39,7 +39,7 @@ class HotkeyPanel {
     Rml::ElementDocument* document_ = nullptr;
     bool initialized_ = false;
     bool visible_ = false;
-    AppMode currentMode_ = AppMode::Game;
+    AppMode currentMode_ = AppMode::Menu; // Initialize to Menu so first setMode() triggers rebuild
 
     // Data model bindings
     Rml::String modeName_;
