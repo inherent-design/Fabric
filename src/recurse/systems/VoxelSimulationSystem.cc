@@ -143,19 +143,34 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
         dispatcher_->dispatchEvent(e);
     }
 
-    // Notify all 6 face-adjacent existing chunks so they re-mesh boundaries
-    constexpr int kFaceOffsets[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+    // Notify all face-adjacent AND diagonal (in X/Z plane) existing chunks so they re-mesh boundaries.
+    // Corner vertices sample across diagonal chunks, so diagonal neighbors must also remesh.
+    // 6 face-adjacent: ±X, ±Y, ±Z
+    // 4 X/Z diagonal: (±X, ±Z) combinations (Y is same since flat terrain)
+    constexpr int kNeighborOffsets[10][3] = {// Face-adjacent (6)
+                                             {1, 0, 0},
+                                             {-1, 0, 0},
+                                             {0, 1, 0},
+                                             {0, -1, 0},
+                                             {0, 0, 1},
+                                             {0, 0, -1},
+                                             // X/Z diagonal (4) - corner vertices sample across these
+                                             {1, 0, 1},
+                                             {1, 0, -1},
+                                             {-1, 0, 1},
+                                             {-1, 0, -1}};
     int notifiedCount = 0;
-    for (int d = 0; d < 6; ++d) {
-        fabric::simulation::ChunkPos neighbor{cx + kFaceOffsets[d][0], cy + kFaceOffsets[d][1],
-                                              cz + kFaceOffsets[d][2]};
+    for (int d = 0; d < 10; ++d) {
+        fabric::simulation::ChunkPos neighbor{cx + kNeighborOffsets[d][0], cy + kNeighborOffsets[d][1],
+                                              cz + kNeighborOffsets[d][2]};
         if (fabSim_->grid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
             fabSim_->activityTracker().notifyBoundaryChange(neighbor);
             ++notifiedCount;
         }
     }
     if (notifiedCount > 0) {
-        FABRIC_LOG_DEBUG("Notified {} existing neighbors after loading chunk ({},{},{})", notifiedCount, cx, cy, cz);
+        FABRIC_LOG_DEBUG("Notified {} existing neighbors (face+diagonal) after loading chunk ({},{},{})", notifiedCount,
+                         cx, cy, cz);
     }
 }
 
