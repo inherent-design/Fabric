@@ -38,6 +38,9 @@ void HotkeyPanel::init(Rml::Context* context) {
 }
 
 void HotkeyPanel::setMode(AppMode mode) {
+    FABRIC_LOG_INFO("HotkeyPanel::setMode({}) START - initialized_={}, visible_={}, currentMode_={}",
+                    static_cast<int>(mode), initialized_, visible_, static_cast<int>(currentMode_));
+
     if (!initialized_) {
         FABRIC_LOG_WARN("HotkeyPanel::setMode called before init");
         return;
@@ -53,13 +56,15 @@ void HotkeyPanel::setMode(AppMode mode) {
 
     if (document_) {
         if (shouldShow && !visible_) {
+            FABRIC_LOG_INFO("HotkeyPanel: Calling document_->Show()");
             document_->Show();
             visible_ = true;
-            FABRIC_LOG_INFO("HotkeyPanel: Show() called");
         } else if (!shouldShow && visible_) {
+            FABRIC_LOG_INFO("HotkeyPanel: Calling document_->Hide()");
             document_->Hide();
             visible_ = false;
-            FABRIC_LOG_INFO("HotkeyPanel: Hide() called");
+        } else {
+            FABRIC_LOG_INFO("HotkeyPanel: No action needed (shouldShow={}, visible_={})", shouldShow, visible_);
         }
     } else {
         FABRIC_LOG_WARN("HotkeyPanel::setMode - no document");
