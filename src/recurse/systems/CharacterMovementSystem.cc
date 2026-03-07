@@ -244,7 +244,6 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
 void CharacterMovementSystem::configureDependencies() {
     after<PhysicsGameSystem>();
     after<TerrainSystem>();
-    after<CameraGameSystem>();
 }
 
 } // namespace recurse::systems
