@@ -2,28 +2,62 @@
 
 #include "fabric/core/Rendering.hh"
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <limits>
 #include <vector>
 
 namespace fabric {
 
+/// Bounding Volume Hierarchy with eager rebuild and batch transaction support.
+///
+/// Default mode (eager): insert() and remove() trigger immediate rebuild.
+/// Const query methods (query, queryFrustum, visitNodes) never modify state.
+///
+/// Batch mode (transaction pattern):
+///   bvh.beginBatch();    // defer rebuilds
+///   bvh.insert(a);       // marks dirty, no rebuild
+///   bvh.remove(b);       // marks dirty, no rebuild
+///   bvh.commitBatch();   // single rebuild, ends batch
+///
+/// Querying during an open batch: asserts in debug, returns stale results in release.
+/// Batch boundaries align with game tick boundaries for future concurrency support.
+///
+/// Complexity: O(n log n) build, O(log n) query, O(1) amortized insert in batch mode.
 template <typename T> class BVH {
   public:
     void insert(const AABB& bounds, T data) {
         items_.push_back({bounds, std::move(data)});
-        dirty_ = true;
+        if (batching_) {
+            dirty_ = true;
+        } else {
+            build();
+        }
     }
 
     bool remove(const T& data) {
         for (auto it = items_.begin(); it != items_.end(); ++it) {
             if (it->data == data) {
                 items_.erase(it);
-                dirty_ = true;
+                if (batching_) {
+                    dirty_ = true;
+                } else {
+                    build();
+                }
                 return true;
             }
         }
         return false;
+    }
+
+    void beginBatch() { batching_ = true; }
+
+    void commitBatch() {
+        if (dirty_) {
+            build();
+        }
+        batching_ = false;
+        dirty_ = false;
     }
 
     void build() {
@@ -50,9 +84,7 @@ template <typename T> class BVH {
     }
 
     std::vector<T> query(const AABB& region) const {
-        if (dirty_) {
-            const_cast<BVH*>(this)->build();
-        }
+        assert(!dirty_ && "BVH::query() called on dirty tree; call build() or commitBatch() first");
 
         std::vector<T> results;
         if (root_ >= 0) {
@@ -62,9 +94,7 @@ template <typename T> class BVH {
     }
 
     std::vector<T> queryFrustum(const Frustum& frustum) const {
-        if (dirty_) {
-            const_cast<BVH*>(this)->build();
-        }
+        assert(!dirty_ && "BVH::queryFrustum() called on dirty tree; call build() or commitBatch() first");
 
         std::vector<T> results;
         if (root_ >= 0) {
@@ -85,9 +115,7 @@ template <typename T> class BVH {
 
     /// Traverse all nodes, calling callback(bounds, depth, isLeaf) for each.
     template <typename Callback> void visitNodes(const Callback& callback) const {
-        if (dirty_) {
-            const_cast<BVH*>(this)->build();
-        }
+        assert(!dirty_ && "BVH::visitNodes() called on dirty tree; call build() or commitBatch() first");
         if (root_ >= 0) {
             visitNodesRecursive(root_, 0, callback);
         }
@@ -110,6 +138,7 @@ template <typename T> class BVH {
     std::vector<Node> nodes_;
     int root_ = -1;
     bool dirty_ = true;
+    bool batching_ = false;
 
     void buildRecursive(int nodeIndex, std::vector<int>& indices, int start, int end) {
         // Compute bounding box for all items in [start, end)

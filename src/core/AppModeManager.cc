@@ -124,7 +124,7 @@ std::string AppModeManager::addObserver(const AppModeCallback& callback) {
         throwError("AppMode observer callback cannot be null");
     }
     std::lock_guard<std::mutex> lock(observerMutex_);
-    auto id = Utils::generateUniqueId("appmode_");
+    auto id = utils::generateUniqueId("appmode_");
     observers_.push_back({id, callback});
     return id;
 }

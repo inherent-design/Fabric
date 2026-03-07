@@ -22,7 +22,7 @@ class Plugin {
     virtual std::string getAuthor() const = 0;
     virtual std::string getDescription() const = 0;
 
-    virtual bool initialize() = 0;
+    virtual bool init() = 0;
     virtual void shutdown() = 0;
 
     virtual std::vector<std::shared_ptr<Component>> getComponents() = 0;
@@ -51,7 +51,7 @@ class PluginManager {
     std::shared_ptr<Plugin> getPlugin(const std::string& name) const;
     std::unordered_map<std::string, std::shared_ptr<Plugin>> getPlugins() const;
 
-    bool initializeAll();
+    bool initAll();
     void shutdownAll();
 
     bool hasDependencyCycle() const;
@@ -78,8 +78,8 @@ class PluginManager {
                      std::unordered_set<std::string>& recursionStack) const;
     std::vector<std::string> computeTopologicalOrder() const;
 
-    mutable std::mutex pluginMutex;
-    std::unordered_map<std::string, PluginInfo> plugins;
+    mutable std::mutex pluginMutex_;
+    std::unordered_map<std::string, PluginInfo> plugins_;
     FileWatcher fileWatcher_;
 };
 

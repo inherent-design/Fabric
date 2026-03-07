@@ -66,8 +66,8 @@ class InputSystem : public System<InputSystem> {
     explicit InputSystem(EventDispatcher& dispatcher);
 
     // --- System lifecycle overrides ---
-    void init(AppContext& ctx) override;
-    void shutdown() override;
+    void doInit(AppContext& ctx) override;
+    void doShutdown() override;
     void update(AppContext& ctx, float dt) override;
 
     // --- Frame lifecycle ---

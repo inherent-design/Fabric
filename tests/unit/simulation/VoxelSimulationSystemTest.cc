@@ -1,4 +1,17 @@
 #include "fabric/simulation/VoxelSimulationSystem.hh"
+#include "fabric/simulation/ChunkActivityTracker.hh"
+#include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/world/ChunkedGrid.hh"
+
+#include "fabric/core/AppContext.hh"
+#include "fabric/core/AssetRegistry.hh"
+#include "fabric/core/ConfigManager.hh"
+#include "fabric/core/ResourceHub.hh"
+#include "fabric/core/SystemRegistry.hh"
+#include "recurse/systems/TerrainSystem.hh"
+#include "recurse/systems/VoxelSimulationSystem.hh"
+
 #include <gtest/gtest.h>
 
 using namespace fabric::simulation;
@@ -216,4 +229,124 @@ TEST_F(VoxelSimulationSystemTest, MatterConservation) {
 
     int finalSand = countMaterial(material_ids::SAND);
     EXPECT_EQ(finalSand, initialSand) << "Sand count must be conserved";
+}
+
+// 9. System lifecycle via recurse wrapper
+TEST(RecurseVoxelSimSystemTest, SystemLifecycle_InitUpdateShutdown) {
+    fabric::World world;
+    fabric::Timeline timeline;
+    fabric::EventDispatcher dispatcher;
+    fabric::ResourceHub hub;
+    hub.disableWorkerThreadsForTesting();
+    fabric::AssetRegistry assetRegistry{hub};
+    fabric::SystemRegistry sysReg;
+    fabric::ConfigManager configManager;
+
+    sysReg.registerSystem<recurse::systems::TerrainSystem>(fabric::SystemPhase::FixedUpdate);
+    sysReg.registerSystem<recurse::systems::VoxelSimulationSystem>(fabric::SystemPhase::FixedUpdate);
+    ASSERT_TRUE(sysReg.resolve());
+
+    fabric::AppContext ctx{
+        .world = world,
+        .timeline = timeline,
+        .dispatcher = dispatcher,
+        .resourceHub = hub,
+        .assetRegistry = assetRegistry,
+        .systemRegistry = sysReg,
+        .configManager = configManager,
+    };
+    sysReg.initAll(ctx);
+
+    auto* sim = sysReg.get<recurse::systems::VoxelSimulationSystem>();
+    ASSERT_NE(sim, nullptr);
+    EXPECT_NO_THROW(sim->simulationGrid());
+
+    // Run one fixed update tick
+    sysReg.runFixedUpdate(ctx, 1.0f / 60.0f);
+
+    sysReg.shutdownAll();
+}
+
+// 10. Liquid flows horizontally
+TEST(RecurseVoxelSimSystemTest, LiquidFlowsHorizontally) {
+    VoxelSimulationSystem sim;
+    sim.workerPool().disableForTesting();
+    auto& grid = sim.grid();
+
+    for (int x = 0; x < kChunkSize; ++x)
+        for (int z = 0; z < kChunkSize; ++z)
+            grid.writeCell(x, 0, z, VoxelCell{material_ids::STONE});
+    grid.advanceEpoch();
+
+    for (int y = 1; y <= 4; ++y)
+        grid.writeCell(16, y, 16, VoxelCell{material_ids::WATER});
+    grid.advanceEpoch();
+
+    auto countWater = [&]() {
+        int count = 0;
+        for (auto [cx, cy, cz] : grid.allChunks())
+            for (int lz = 0; lz < kChunkSize; ++lz)
+                for (int ly = 0; ly < kChunkSize; ++ly)
+                    for (int lx = 0; lx < kChunkSize; ++lx)
+                        if (grid.readCell(cx * kChunkSize + lx, cy * kChunkSize + ly, cz * kChunkSize + lz)
+                                .materialId == material_ids::WATER)
+                            ++count;
+        return count;
+    };
+
+    int initialWater = countWater();
+    sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
+
+    for (int i = 0; i < 30; ++i)
+        sim.tick();
+
+    int finalWater = countWater();
+    EXPECT_EQ(finalWater, initialWater) << "Water voxel count must be conserved";
+}
+
+// 11. Wake on neighbor activity
+TEST(RecurseVoxelSimSystemTest, WakeOnNeighborActivity) {
+    VoxelSimulationSystem sim;
+    sim.workerPool().disableForTesting();
+    auto& grid = sim.grid();
+
+    grid.fillChunk(0, 0, 0, VoxelCell{material_ids::STONE});
+    grid.advanceEpoch();
+    sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Sleeping);
+
+    for (int x = kChunkSize; x < kChunkSize * 2; ++x)
+        for (int z = 0; z < kChunkSize; ++z)
+            grid.writeCell(x, 0, z, VoxelCell{material_ids::STONE});
+    grid.advanceEpoch();
+
+    grid.writeCell(kChunkSize, 5, 16, VoxelCell{material_ids::SAND});
+    grid.advanceEpoch();
+    sim.activityTracker().setState(ChunkPos{1, 0, 0}, ChunkState::Active);
+
+    for (int i = 0; i < 10; ++i)
+        sim.tick();
+
+    auto stateA = sim.activityTracker().getState(ChunkPos{0, 0, 0});
+    EXPECT_NE(stateA, ChunkState::Sleeping) << "Neighbor activity should wake sleeping chunk";
+}
+
+// 12. Ghost cell copy correctness
+TEST(RecurseVoxelSimSystemTest, GhostCellCopyCorrectness) {
+    VoxelSimulationSystem sim;
+    sim.workerPool().disableForTesting();
+    auto& grid = sim.grid();
+
+    grid.writeCell(31, 0, 0, VoxelCell{material_ids::STONE});
+    grid.advanceEpoch();
+
+    grid.materializeChunk(0, 0, 0);
+    grid.materializeChunk(1, 0, 0);
+
+    sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
+    sim.activityTracker().setState(ChunkPos{1, 0, 0}, ChunkState::Active);
+
+    sim.tick();
+
+    auto cell = grid.readCell(31, 0, 0);
+    EXPECT_EQ(cell.materialId, material_ids::STONE) << "Boundary voxel should be preserved after ghost sync";
 }

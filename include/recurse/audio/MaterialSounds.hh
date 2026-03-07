@@ -33,7 +33,7 @@ struct MaterialSoundSet {
     std::vector<std::string> impactSounds;
 };
 
-using Essence = Vector4<float, Space::World>;
+using EssenceColor = Vector4<float, Space::World>;
 
 class MaterialSounds {
   public:
@@ -42,13 +42,13 @@ class MaterialSounds {
 
     void registerMaterial(MaterialType type, MaterialSoundSet sounds);
 
-    static MaterialType mapEssenceToMaterial(const Essence& essence);
+    static MaterialType mapEssenceToMaterial(const EssenceColor& essence);
 
     std::string getFootstepSound(MaterialType type);
     std::string getImpactSound(MaterialType type);
 
-    MaterialType detectSurfaceBelow(const ChunkedGrid<float>& density, const ChunkedGrid<Essence>& essence, float x,
-                                    float y, float z);
+    MaterialType detectSurfaceBelow(const ChunkedGrid<float>& density, const ChunkedGrid<EssenceColor>& essence,
+                                    float x, float y, float z);
 
   private:
     std::string pickSound(const std::vector<std::string>& sounds, MaterialType type,

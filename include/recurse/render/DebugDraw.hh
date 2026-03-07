@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
+
+struct DebugDrawEncoder;
 
 namespace recurse {
 
@@ -39,7 +42,7 @@ inline DebugDrawFlags& operator&=(DebugDrawFlags& a, DebugDrawFlags b) {
 /// and F4 wireframe toggle.
 class DebugDraw {
   public:
-    DebugDraw() = default;
+    DebugDraw();
     ~DebugDraw();
 
     DebugDraw(const DebugDraw&) = delete;
@@ -81,7 +84,7 @@ class DebugDraw {
   private:
     DebugDrawFlags flags_ = DebugDrawFlags::None;
     bool initialized_ = false;
-    void* encoder_ = nullptr; // opaque DebugDrawEncoder*
+    std::unique_ptr<DebugDrawEncoder> encoder_;
 };
 
 } // namespace recurse

@@ -5,11 +5,9 @@
 #include <string>
 #include <vector>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Rendering.hh"
+#include "fabric/core/Spatial.hh"
 
 namespace recurse {
 
@@ -18,7 +16,11 @@ using fabric::AABB;
 using fabric::DensityField;
 using fabric::EssenceField;
 namespace Space = fabric::Space;
+using fabric::Vector3;
 using fabric::Vector4;
+
+using Vec3f = Vector3<float, Space::World>;
+using Vec3i = Vector3<int, Space::World>;
 
 // ---- Essence constants for voxelization ----
 
@@ -40,10 +42,10 @@ struct LSystemRule {
 
 /// A line segment produced by turtle interpretation.
 struct TurtleSegment {
-    glm::vec3 start{0.0f}; ///< Segment start position.
-    glm::vec3 end{0.0f};   ///< Segment end position.
-    float radius = 1.0f;   ///< Segment radius (decays along branches).
-    int materialTag = 0;   ///< 0 = wood, 1 = leaf.
+    Vec3f start{0.0f, 0.0f, 0.0f}; ///< Segment start position.
+    Vec3f end{0.0f, 0.0f, 0.0f};   ///< Segment end position.
+    float radius = 1.0f;           ///< Segment radius (decays along branches).
+    int materialTag = 0;           ///< 0 = wood, 1 = leaf.
 };
 
 // ---- Built-in presets ----
@@ -109,7 +111,7 @@ void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceFie
 /// Rasterize an entire tree (vector of segments) into density and essence fields.
 /// Each segment is offset by the given origin before voxelization.
 void voxelizeTree(const std::vector<TurtleSegment>& segments, DensityField& density, EssenceField& essence,
-                  const glm::ivec3& origin);
+                  const Vec3i& origin);
 
 // ---- Vegetation placement ----
 

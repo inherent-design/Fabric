@@ -75,6 +75,10 @@ const float* ChunkDensityCache::data() const {
     return data_.data();
 }
 
+float* ChunkDensityCache::data() {
+    return data_.data();
+}
+
 // -- ChunkMaterialCache -------------------------------------------------------
 
 void ChunkMaterialCache::build(int cx, int cy, int cz, const ChunkedGrid<uint16_t>& materialGrid) {

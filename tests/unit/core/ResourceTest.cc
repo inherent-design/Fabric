@@ -89,31 +89,8 @@ class TestResourceFactory {
 // For enabling debug output in tests
 #define DEBUG_RESOURCE_MANAGER
 
-// Define our timeout helper
-template <typename Func> bool RunWithTimeout(Func&& func, std::chrono::milliseconds timeout) {
-    std::atomic<bool> completed{false};
-
-    std::thread t([&]() {
-        func();
-        completed = true;
-    });
-
-    auto start = std::chrono::steady_clock::now();
-    while (!completed) {
-        auto now = std::chrono::steady_clock::now();
-        if (now - start > timeout) {
-            std::cout << "WARNING: Function timed out after "
-                      << std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() << "ms"
-                      << std::endl;
-            t.detach(); // Let thread continue running but detach from it
-            return false;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-
-    t.join();
-    return true;
-}
+// Use the thread-safe version from Testing.hh instead of the old detach-based local copy
+using fabric::Testing::RunWithTimeout;
 
 // Helper function to ensure TestResource factory is registered
 // This guarantees that even if tests run in a different order, the factory is available

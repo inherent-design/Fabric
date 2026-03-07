@@ -9,7 +9,7 @@
 
 namespace recurse::systems {
 
-void AudioGameSystem::init(fabric::AppContext& ctx) {
+void AudioGameSystem::doInit(fabric::AppContext& ctx) {
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
 
@@ -28,7 +28,7 @@ void AudioGameSystem::update(fabric::AppContext& /*ctx*/, float dt) {
     audioSystem_.update(dt);
 }
 
-void AudioGameSystem::shutdown() {
+void AudioGameSystem::doShutdown() {
     audioSystem_.shutdown();
     FABRIC_LOG_INFO("AudioGameSystem shut down");
 }

@@ -11,7 +11,7 @@
 
 namespace recurse::systems {
 
-void CameraGameSystem::init(fabric::AppContext& ctx) {
+void CameraGameSystem::doInit(fabric::AppContext& ctx) {
     cameraCtrl_ = std::make_unique<recurse::CameraController>(*ctx.camera);
 
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
@@ -39,7 +39,7 @@ void CameraGameSystem::update(fabric::AppContext& ctx, float dt) {
     cameraCtrl_->update(playerPosD, dt, &terrain_->densityGrid());
 }
 
-void CameraGameSystem::shutdown() {
+void CameraGameSystem::doShutdown() {
     cameraCtrl_.reset();
     FABRIC_LOG_INFO("CameraGameSystem shut down");
 }

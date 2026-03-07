@@ -1,4 +1,5 @@
 # FabricToml.cmake - Fetch and configure toml++ (header-only TOML v1.0 parser)
+include_guard()
 
 CPMAddPackage(
     NAME tomlplusplus

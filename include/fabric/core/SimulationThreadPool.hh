@@ -29,7 +29,7 @@ class SimulationThreadPool {
     void resumeAfterTesting();
 
   private:
-    std::unique_ptr<Utils::ThreadPoolExecutor> pool_;
+    std::unique_ptr<utils::ThreadPoolExecutor> pool_;
     std::vector<std::future<void>> futures_;
     size_t threadCount_;
 };

@@ -1,4 +1,5 @@
 #include "fabric/core/SystemBase.hh"
+#include "fabric/core/AppContext.hh"
 #include <cstdlib>
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -6,6 +7,20 @@
 #endif
 
 namespace fabric {
+
+void SystemBase::init(AppContext& ctx) {
+    if (!initialized_) {
+        initialized_ = true;
+        doInit(ctx);
+    }
+}
+
+void SystemBase::shutdown() {
+    if (initialized_ && !shutDown_) {
+        shutDown_ = true;
+        doShutdown();
+    }
+}
 
 std::string SystemBase::name() const {
 #if defined(__GNUC__) || defined(__clang__)

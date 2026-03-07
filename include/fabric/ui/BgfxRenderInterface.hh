@@ -59,9 +59,9 @@ class BgfxRenderInterface : public Rml::RenderInterface {
         uint32_t indexCount;
     };
 
-    static constexpr bgfx::ViewId kDefaultViewId = 255;
+    static constexpr bgfx::ViewId K_DEFAULT_VIEW_ID = 255;
 
-    bgfx::ViewId viewId_ = kDefaultViewId;
+    bgfx::ViewId viewId_ = K_DEFAULT_VIEW_ID;
     bgfx::VertexLayout layout_;
     bgfx::ProgramHandle program_ = BGFX_INVALID_HANDLE;
     bgfx::UniformHandle texUniform_ = BGFX_INVALID_HANDLE;

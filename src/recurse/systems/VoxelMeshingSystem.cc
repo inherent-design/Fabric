@@ -1,4 +1,5 @@
 #include "recurse/systems/VoxelMeshingSystem.hh"
+#include "recurse/world/ChunkCoordUtils.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Log.hh"
@@ -7,7 +8,7 @@
 #include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/utils/Profiler.hh"
-#include "recurse/render/SmoothVertexPool.hh"
+#include "recurse/render/VertexPool.hh"
 #include "recurse/systems/ShadowRenderSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/ChunkDensityCache.hh"
@@ -41,7 +42,7 @@ VoxelMeshingSystem::VoxelMeshingSystem() : mesher_(std::make_unique<SnapMCMesher
 
 VoxelMeshingSystem::~VoxelMeshingSystem() = default;
 
-void VoxelMeshingSystem::init(fabric::AppContext& ctx) {
+void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
     simSystem_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
     if (simSystem_) {
         simGrid_ = &simSystem_->simulationGrid();
@@ -62,7 +63,7 @@ void VoxelMeshingSystem::init(fabric::AppContext& ctx) {
                     meshBudget_, simGrid_ != nullptr, activityTracker_ != nullptr, gpuUploadEnabled_);
 }
 
-void VoxelMeshingSystem::shutdown() {
+void VoxelMeshingSystem::doShutdown() {
     for (auto& [_, gpuMesh] : gpuMeshes_)
         destroyChunkMesh(gpuMesh);
     gpuMeshes_.clear();
@@ -156,19 +157,13 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
     // legitimately has no Y neighbors, and sampling air above/below is correct.
     // When horizontal neighbors load later, notifyBoundaryChange() re-triggers meshing.
     if (requireNeighborsForMeshing_) {
-        // Horizontal neighbors (±X, ±Z) - MUST exist to avoid X/Z boundary gaps
-        constexpr int K_HORIZONTAL_NEIGHBOR_OFFSETS[4][3] = {
-            {1, 0, 0},
-            {-1, 0, 0}, // ±X
-            {0, 0, 1},
-            {0, 0, -1} // ±Z
-        };
+        // Horizontal neighbors (+/-X, +/-Z) - MUST exist to avoid X/Z boundary gaps
         for (int d = 0; d < 4; ++d) {
-            if (!simGrid_->hasChunk(coord.x + K_HORIZONTAL_NEIGHBOR_OFFSETS[d][0], coord.y,
-                                    coord.z + K_HORIZONTAL_NEIGHBOR_OFFSETS[d][2])) {
+            if (!simGrid_->hasChunk(coord.x + K_HORIZONTAL_NEIGHBORS[d][0], coord.y,
+                                    coord.z + K_HORIZONTAL_NEIGHBORS[d][2])) {
                 FABRIC_LOG_DEBUG("Meshing deferred ({},{},{}): horizontal neighbor ({},{},{}) missing", coord.x,
-                                 coord.y, coord.z, coord.x + K_HORIZONTAL_NEIGHBOR_OFFSETS[d][0], coord.y,
-                                 coord.z + K_HORIZONTAL_NEIGHBOR_OFFSETS[d][2]);
+                                 coord.y, coord.z, coord.x + K_HORIZONTAL_NEIGHBORS[d][0], coord.y,
+                                 coord.z + K_HORIZONTAL_NEIGHBORS[d][2]);
                 return; // Horizontal neighbor missing - defer meshing
             }
         }

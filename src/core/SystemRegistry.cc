@@ -131,68 +131,55 @@ void SystemRegistry::shutdownAll() {
     for (auto it = initOrder_.rbegin(); it != initOrder_.rend(); ++it) {
         auto entryIt = systems_.find(*it);
         if (entryIt != systems_.end()) {
-            FABRIC_LOG_DEBUG("Shutting down system: {}", entryIt->second.system->name());
-            entryIt->second.system->shutdown();
+            try {
+                FABRIC_LOG_DEBUG("Shutting down system: {}", entryIt->second.system->name());
+                entryIt->second.system->shutdown();
+            } catch (const std::exception& e) {
+                FABRIC_LOG_ERROR("Exception shutting down system {}: {}", entryIt->second.system->name(), e.what());
+            } catch (...) {
+                FABRIC_LOG_ERROR("Unknown exception shutting down system: {}", entryIt->second.system->name());
+            }
         }
     }
 }
 
-// Phase dispatch: PreUpdate, Update, PostUpdate call update(ctx, dt)
-void SystemRegistry::runPreUpdate(AppContext& ctx, float dt) {
-    for (const auto& typeId : phaseOrder_[static_cast<size_t>(SystemPhase::PreUpdate)]) {
-        auto& entry = systems_.at(typeId);
+namespace {
+template <typename Systems, typename PhaseOrder, typename Fn>
+void dispatchPhase(SystemPhase phase, PhaseOrder& phaseOrder, Systems& systems, Fn&& fn) {
+    for (const auto& typeId : phaseOrder[static_cast<size_t>(phase)]) {
+        auto& entry = systems.at(typeId);
         if (entry.enabled)
-            entry.system->update(ctx, dt);
+            fn(*entry.system);
     }
+}
+} // namespace
+
+void SystemRegistry::runPreUpdate(AppContext& ctx, float dt) {
+    dispatchPhase(SystemPhase::PreUpdate, phaseOrder_, systems_, [&](SystemBase& s) { s.update(ctx, dt); });
 }
 
 void SystemRegistry::runFixedUpdate(AppContext& ctx, float fixedDt) {
-    for (const auto& typeId : phaseOrder_[static_cast<size_t>(SystemPhase::FixedUpdate)]) {
-        auto& entry = systems_.at(typeId);
-        if (entry.enabled)
-            entry.system->fixedUpdate(ctx, fixedDt);
-    }
+    dispatchPhase(SystemPhase::FixedUpdate, phaseOrder_, systems_, [&](SystemBase& s) { s.fixedUpdate(ctx, fixedDt); });
 }
 
 void SystemRegistry::runUpdate(AppContext& ctx, float dt) {
-    for (const auto& typeId : phaseOrder_[static_cast<size_t>(SystemPhase::Update)]) {
-        auto& entry = systems_.at(typeId);
-        if (entry.enabled)
-            entry.system->update(ctx, dt);
-    }
+    dispatchPhase(SystemPhase::Update, phaseOrder_, systems_, [&](SystemBase& s) { s.update(ctx, dt); });
 }
 
 void SystemRegistry::runPostUpdate(AppContext& ctx, float dt) {
-    for (const auto& typeId : phaseOrder_[static_cast<size_t>(SystemPhase::PostUpdate)]) {
-        auto& entry = systems_.at(typeId);
-        if (entry.enabled)
-            entry.system->update(ctx, dt);
-    }
+    dispatchPhase(SystemPhase::PostUpdate, phaseOrder_, systems_, [&](SystemBase& s) { s.update(ctx, dt); });
 }
 
-// PreRender, Render, PostRender call render(ctx)
 void SystemRegistry::runPreRender(AppContext& ctx) {
-    for (const auto& typeId : phaseOrder_[static_cast<size_t>(SystemPhase::PreRender)]) {
-        auto& entry = systems_.at(typeId);
-        if (entry.enabled)
-            entry.system->render(ctx);
-    }
+    dispatchPhase(SystemPhase::PreRender, phaseOrder_, systems_, [&](SystemBase& s) { s.render(ctx); });
 }
 
 void SystemRegistry::runRender(AppContext& ctx) {
-    for (const auto& typeId : phaseOrder_[static_cast<size_t>(SystemPhase::Render)]) {
-        auto& entry = systems_.at(typeId);
-        if (entry.enabled)
-            entry.system->render(ctx);
-    }
+    dispatchPhase(SystemPhase::Render, phaseOrder_, systems_, [&](SystemBase& s) { s.render(ctx); });
 }
 
 void SystemRegistry::runPostRender(AppContext& ctx) {
-    for (const auto& typeId : phaseOrder_[static_cast<size_t>(SystemPhase::PostRender)]) {
-        auto& entry = systems_.at(typeId);
-        if (entry.enabled)
-            entry.system->render(ctx);
-    }
+    dispatchPhase(SystemPhase::PostRender, phaseOrder_, systems_, [&](SystemBase& s) { s.render(ctx); });
 }
 
 void SystemRegistry::setEnabledImpl(std::type_index id, bool enabled) {

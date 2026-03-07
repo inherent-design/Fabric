@@ -10,7 +10,7 @@
 
 namespace recurse::systems {
 
-void PhysicsGameSystem::init(fabric::AppContext& ctx) {
+void PhysicsGameSystem::doInit(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
 
     physicsWorld_.init(4096, 0);
@@ -28,7 +28,7 @@ void PhysicsGameSystem::init(fabric::AppContext& ctx) {
     FABRIC_LOG_INFO("PhysicsGameSystem initialized");
 }
 
-void PhysicsGameSystem::shutdown() {
+void PhysicsGameSystem::doShutdown() {
     ragdoll_.shutdown();
     physicsWorld_.shutdown();
 }

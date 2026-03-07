@@ -34,7 +34,7 @@ int SimulationGrid::writeIndex() const {
     return static_cast<int>((epoch_ + 1) & 1);
 }
 
-VoxelCell SimulationGrid::readCell(int wx, int wy, int wz) const {
+VoxelCell SimulationGrid::readFromBuffer(int wx, int wy, int wz, int bufferIdx) const {
     int cx, cy, cz, lx, ly, lz;
     recurse::ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
     auto key = packKey(cx, cy, cz);
@@ -45,21 +45,15 @@ VoxelCell SimulationGrid::readCell(int wx, int wy, int wz) const {
     if (!pair.isMaterialized())
         return pair.fillValue;
     int idx = lx + ly * kChunkSize + lz * kChunkSize * kChunkSize;
-    return (*pair.buffers[readIndex()])[idx];
+    return (*pair.buffers[bufferIdx])[idx];
+}
+
+VoxelCell SimulationGrid::readCell(int wx, int wy, int wz) const {
+    return readFromBuffer(wx, wy, wz, readIndex());
 }
 
 VoxelCell SimulationGrid::readFromWriteBuffer(int wx, int wy, int wz) const {
-    int cx, cy, cz, lx, ly, lz;
-    recurse::ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
-    auto key = packKey(cx, cy, cz);
-    auto it = chunks_.find(key);
-    if (it == chunks_.end())
-        return VoxelCell{};
-    const auto& pair = it->second;
-    if (!pair.isMaterialized())
-        return pair.fillValue;
-    int idx = lx + ly * kChunkSize + lz * kChunkSize * kChunkSize;
-    return (*pair.buffers[writeIndex()])[idx];
+    return readFromBuffer(wx, wy, wz, writeIndex());
 }
 
 void SimulationGrid::writeCell(int wx, int wy, int wz, VoxelCell cell) {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdexcept>
+#include "fabric/utils/ErrorHandling.hh"
 #include <string>
 
 namespace fabric {
@@ -14,33 +14,33 @@ namespace fabric {
 /**
  * @brief Exception thrown when a cycle is detected in the graph
  */
-class CycleDetectedException : public std::runtime_error {
+class CycleDetectedException : public FabricException {
   public:
-    explicit CycleDetectedException(const std::string& message) : std::runtime_error(message) {}
+    explicit CycleDetectedException(const std::string& message) : FabricException(message) {}
 };
 
 /**
  * @brief Exception thrown when a lock cannot be acquired
  */
-class LockAcquisitionException : public std::runtime_error {
+class LockAcquisitionException : public FabricException {
   public:
-    explicit LockAcquisitionException(const std::string& message) : std::runtime_error(message) {}
+    explicit LockAcquisitionException(const std::string& message) : FabricException(message) {}
 };
 
 /**
  * @brief Exception thrown when a deadlock is detected in the lock graph
  */
-class DeadlockDetectedException : public std::runtime_error {
+class DeadlockDetectedException : public FabricException {
   public:
-    explicit DeadlockDetectedException(const std::string& message) : std::runtime_error(message) {}
+    explicit DeadlockDetectedException(const std::string& message) : FabricException(message) {}
 };
 
 /**
  * @brief Exception thrown when a lock acquisition times out
  */
-class LockTimeoutException : public std::runtime_error {
+class LockTimeoutException : public FabricException {
   public:
-    explicit LockTimeoutException(const std::string& message) : std::runtime_error(message) {}
+    explicit LockTimeoutException(const std::string& message) : FabricException(message) {}
 };
 
 } // namespace fabric

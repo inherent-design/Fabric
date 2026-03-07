@@ -18,11 +18,13 @@ class SystemBase {
     /// Default returns demangled type name (GCC/Clang) or raw typeid name.
     virtual std::string name() const;
 
-    /// Lifecycle: called once after all systems are registered and sorted.
-    virtual void init(AppContext& ctx) { (void)ctx; }
+    /// Non-virtual lifecycle wrappers (call these, don't override).
+    /// Idempotent: init runs doInit once, shutdown runs doShutdown once.
+    void init(AppContext& ctx);
+    void shutdown();
 
-    /// Lifecycle: called once in reverse init order during shutdown.
-    virtual void shutdown() {}
+    bool isInitialized() const { return initialized_; }
+    bool isShutDown() const { return shutDown_; }
 
     /// Called each frame for PreUpdate, Update, PostUpdate phase systems.
     virtual void update(AppContext& ctx, float dt) {
@@ -47,6 +49,10 @@ class SystemBase {
     virtual std::type_index typeId() const = 0;
 
   protected:
+    /// Subclasses override these instead of init()/shutdown().
+    virtual void doInit(AppContext& ctx) { (void)ctx; }
+    virtual void doShutdown() {}
+
     /// Declare: this system must run after the given dependency.
     void after(std::type_index dep);
     void before(std::type_index dep);
@@ -59,6 +65,8 @@ class SystemBase {
     friend class SystemRegistry;
     std::vector<std::type_index> afterDeps_;
     std::vector<std::type_index> beforeDeps_;
+    bool initialized_ = false;
+    bool shutDown_ = false;
 };
 
 /// CRTP helper that provides typeId() automatically.

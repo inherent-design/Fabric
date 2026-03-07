@@ -1,5 +1,7 @@
 #pragma once
 
+#include "recurse/world/ChunkCoordUtils.hh"
+
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -48,11 +50,6 @@ class StructuralIntegrity {
     uint64_t getProcessedCells() const;
 
   private:
-    static int64_t packKey(int x, int y, int z) {
-        return (static_cast<int64_t>(x) << 42) | (static_cast<int64_t>(y & 0x1FFFFF) << 21) |
-               (static_cast<int64_t>(z & 0x1FFFFF));
-    }
-
     bool globalFloodFill(const ChunkedGrid<float>& grid);
 
     float perFrameBudgetMs_ = 1.0f;

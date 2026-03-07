@@ -41,23 +41,23 @@ namespace {
 
 /// Turtle state for push/pop operations.
 struct TurtleState {
-    glm::vec3 position{0.0f, 0.0f, 0.0f};
-    glm::vec3 heading{0.0f, 1.0f, 0.0f}; // forward (up = +Y default)
-    glm::vec3 left{-1.0f, 0.0f, 0.0f};   // left axis
-    glm::vec3 up{0.0f, 0.0f, 1.0f};      // up axis (perpendicular to heading)
+    Vec3f position{0.0f, 0.0f, 0.0f};
+    Vec3f heading{0.0f, 1.0f, 0.0f}; // forward (up = +Y default)
+    Vec3f left{-1.0f, 0.0f, 0.0f};   // left axis
+    Vec3f up{0.0f, 0.0f, 1.0f};      // up axis (perpendicular to heading)
     float radius = 1.0f;
     int materialTag = 0;
 };
 
 /// Rotate a vector around an axis by an angle in radians.
-glm::vec3 rotateAround(const glm::vec3& v, const glm::vec3& axis, float angleRad) {
+Vec3f rotateAround(const Vec3f& v, const Vec3f& axis, float angleRad) {
     float c = std::cos(angleRad);
     float s = std::sin(angleRad);
     float t = 1.0f - c;
-    glm::vec3 a = glm::normalize(axis);
+    Vec3f a = axis.normalized();
 
     // Rodrigues' rotation formula
-    return v * c + glm::cross(a, v) * s + a * glm::dot(a, v) * t;
+    return v * c + a.cross(v) * s + a * a.dot(v) * t;
 }
 
 } // anonymous namespace
@@ -76,8 +76,8 @@ std::vector<TurtleSegment> interpret(const std::string& expanded, const LSystemR
         switch (c) {
             case 'F': {
                 // Move forward, creating a segment.
-                glm::vec3 start = turtle.position;
-                turtle.position += turtle.heading * params.segmentLength;
+                Vec3f start = turtle.position;
+                turtle.position = turtle.position + turtle.heading * params.segmentLength;
 
                 TurtleSegment seg;
                 seg.start = start;
@@ -90,7 +90,7 @@ std::vector<TurtleSegment> interpret(const std::string& expanded, const LSystemR
 
             case 'f': {
                 // Move forward without creating a segment.
-                turtle.position += turtle.heading * params.segmentLength;
+                turtle.position = turtle.position + turtle.heading * params.segmentLength;
                 break;
             }
 
@@ -173,8 +173,8 @@ void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceFie
     // Choose essence by material tag.
     auto ess = (seg.materialTag == 0) ? kWoodEssence : kLeafEssence;
 
-    glm::vec3 delta = seg.end - seg.start;
-    float length = glm::length(delta);
+    Vec3f delta = seg.end - seg.start;
+    float length = delta.length();
 
     if (length < 1e-6f) {
         // Degenerate segment: stamp a single voxel at start.
@@ -187,7 +187,7 @@ void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceFie
         return;
     }
 
-    glm::vec3 dir = delta / length;
+    Vec3f dir = delta / length;
 
     // Number of steps: at least 1 per voxel along the line.
     int steps = static_cast<int>(std::ceil(length)) + 1;
@@ -196,7 +196,7 @@ void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceFie
 
     for (int s = 0; s <= steps; ++s) {
         float t = static_cast<float>(s) * stepSize;
-        glm::vec3 pos = seg.start + dir * t;
+        Vec3f pos = seg.start + dir * t;
 
         int cx = static_cast<int>(std::floor(pos.x));
         int cy = static_cast<int>(std::floor(pos.y));
@@ -228,11 +228,12 @@ void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceFie
 // ---------- voxelizeTree ----------
 
 void voxelizeTree(const std::vector<TurtleSegment>& segments, DensityField& density, EssenceField& essence,
-                  const glm::ivec3& origin) {
+                  const Vec3i& origin) {
+    Vec3f originF(static_cast<float>(origin.x), static_cast<float>(origin.y), static_cast<float>(origin.z));
     for (const auto& seg : segments) {
         TurtleSegment offset = seg;
-        offset.start += glm::vec3(origin);
-        offset.end += glm::vec3(origin);
+        offset.start = offset.start + originF;
+        offset.end = offset.end + originF;
         voxelizeSegment(offset, density, essence);
     }
 }
@@ -320,8 +321,8 @@ void VegetationPlacer::generate(DensityField& density, EssenceField& essence, co
             // Generate tree: expand L-system, interpret, voxelize.
             const auto& rule = species[static_cast<size_t>(speciesIdx)];
             std::string expanded = expand(rule);
-            auto segments = interpret(expanded, rule);
-            voxelizeTree(segments, density, essence, glm::ivec3(x, surfaceY + 1, z));
+            auto treeSegments = interpret(expanded, rule);
+            voxelizeTree(treeSegments, density, essence, Vec3i(x, surfaceY + 1, z));
         }
     }
 }

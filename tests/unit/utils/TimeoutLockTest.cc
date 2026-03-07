@@ -8,7 +8,7 @@
 namespace fabric {
 namespace Tests {
 
-using Utils::TimeoutLock;
+using utils::TimeoutLock;
 using SharedMutex = std::shared_timed_mutex;
 
 // -- tryLockShared --

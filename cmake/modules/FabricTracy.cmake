@@ -1,4 +1,5 @@
 # FabricTracy.cmake - Fetch and configure Tracy Profiler
+include_guard()
 
 option(FABRIC_ENABLE_PROFILING "Enable Tracy profiler instrumentation" OFF)
 

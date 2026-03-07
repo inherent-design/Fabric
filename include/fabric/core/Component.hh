@@ -40,7 +40,7 @@ class Component {
      * it is rendered for the first time. Use this method to perform any
      * initialization tasks.
      */
-    virtual void initialize() = 0;
+    virtual void init() = 0;
 
     /**
      * @brief Render the component
@@ -63,12 +63,12 @@ class Component {
     virtual void update(float deltaTime) = 0;
 
     /**
-     * @brief Clean up component resources
+     * @brief Shut down component resources
      *
      * This method is called before the component is destroyed.
-     * Override this method to perform any cleanup tasks.
+     * Override this method to perform any shutdown tasks.
      */
-    virtual void cleanup() = 0;
+    virtual void shutdown() = 0;
 
     /**
      * @brief Set a property value
@@ -108,12 +108,12 @@ class Component {
     std::vector<std::shared_ptr<Component>> getChildren() const;
 
   private:
-    std::string id;
-    mutable std::mutex propertiesMutex; // Mutex for thread-safe property access
-    std::unordered_map<std::string, PropertyValue> properties;
+    std::string id_;
+    mutable std::mutex propertiesMutex_; // Mutex for thread-safe property access
+    std::unordered_map<std::string, PropertyValue> properties_;
 
-    mutable std::mutex childrenMutex; // Mutex for thread-safe children access
-    std::vector<std::shared_ptr<Component>> children;
+    mutable std::mutex childrenMutex_; // Mutex for thread-safe children access
+    std::vector<std::shared_ptr<Component>> children_;
 };
 
 } // namespace fabric

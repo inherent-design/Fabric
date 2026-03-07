@@ -1,4 +1,5 @@
 #include "recurse/systems/TerrainSystem.hh"
+#include "recurse/world/DensitySync.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Log.hh"
@@ -12,7 +13,7 @@ namespace recurse::systems {
 TerrainSystem::TerrainSystem() = default;
 TerrainSystem::~TerrainSystem() = default;
 
-void TerrainSystem::init(fabric::AppContext& /*ctx*/) {
+void TerrainSystem::doInit(fabric::AppContext& /*ctx*/) {
     simGrid_ = std::make_unique<fabric::simulation::SimulationGrid>();
     // Create default generator but don't generate terrain yet
     // This allows MainMenuSystem to swap the generator before world generation
@@ -49,7 +50,7 @@ void TerrainSystem::generateInitialWorld() {
                     simGrid_->allChunks().size());
 }
 
-void TerrainSystem::shutdown() {
+void TerrainSystem::doShutdown() {
     worldGen_.reset();
     simGrid_.reset();
 }
@@ -78,44 +79,8 @@ void TerrainSystem::syncDensityFromSimulation() {
 }
 
 void TerrainSystem::syncDensityFromGrid(const fabric::simulation::SimulationGrid& grid) {
-    // Convert VoxelCell data from SimulationGrid to density values
-    // Density = 1.0f for solid materials (non-Air), 0.0f for Air
-    using namespace fabric::simulation;
-
-    constexpr int kChunkSize = 32;
     for (const auto& [cx, cy, cz] : grid.allChunks()) {
-        int baseX = cx * kChunkSize;
-        int baseY = cy * kChunkSize;
-        int baseZ = cz * kChunkSize;
-
-        const auto* readBuf = grid.readBuffer(cx, cy, cz);
-
-        if (readBuf) {
-            // Chunk is materialized, use buffer data
-            for (int lz = 0; lz < kChunkSize; ++lz) {
-                for (int ly = 0; ly < kChunkSize; ++ly) {
-                    for (int lx = 0; lx < kChunkSize; ++lx) {
-                        size_t idx = static_cast<size_t>(lx + ly * kChunkSize + lz * kChunkSize * kChunkSize);
-                        const VoxelCell& cell = (*readBuf)[idx];
-                        float density = (cell.materialId == material_ids::AIR) ? 0.0f : 1.0f;
-                        density_.write(baseX + lx, baseY + ly, baseZ + lz, density);
-                    }
-                }
-            }
-        } else if (grid.hasChunk(cx, cy, cz)) {
-            // Chunk exists as sentinel (fillChunk was called but not materialized)
-            // Use the fill value directly
-            VoxelCell fillValue = grid.getChunkFillValue(cx, cy, cz);
-            float density = (fillValue.materialId == material_ids::AIR) ? 0.0f : 1.0f;
-
-            for (int lz = 0; lz < kChunkSize; ++lz) {
-                for (int ly = 0; ly < kChunkSize; ++ly) {
-                    for (int lx = 0; lx < kChunkSize; ++lx) {
-                        density_.write(baseX + lx, baseY + ly, baseZ + lz, density);
-                    }
-                }
-            }
-        }
+        syncChunkDensity(grid, density_.grid(), cx, cy, cz);
     }
 }
 

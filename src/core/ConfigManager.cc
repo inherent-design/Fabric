@@ -20,34 +20,34 @@ namespace fabric {
 ConfigManager::ConfigManager() : userConfigPath_(defaultUserConfigPath()) {
     // Build Layer 0 from compiled defaults
     toml::table window;
-    window.insert_or_assign("title", DefaultConfig::kWindowTitle);
-    window.insert_or_assign("width", static_cast<int64_t>(DefaultConfig::kWindowWidth));
-    window.insert_or_assign("height", static_cast<int64_t>(DefaultConfig::kWindowHeight));
-    window.insert_or_assign("min_width", static_cast<int64_t>(DefaultConfig::kMinWindowWidth));
-    window.insert_or_assign("min_height", static_cast<int64_t>(DefaultConfig::kMinWindowHeight));
-    window.insert_or_assign("display", static_cast<int64_t>(DefaultConfig::kDisplay));
-    window.insert_or_assign("fullscreen", DefaultConfig::kFullscreen);
-    window.insert_or_assign("borderless", DefaultConfig::kBorderless);
-    window.insert_or_assign("resizable", DefaultConfig::kResizable);
-    window.insert_or_assign("hidpi", DefaultConfig::kHiDPI);
-    window.insert_or_assign("maximized", DefaultConfig::kMaximized);
+    window.insert_or_assign("title", DefaultConfig::K_WINDOW_TITLE);
+    window.insert_or_assign("width", static_cast<int64_t>(DefaultConfig::K_WINDOW_WIDTH));
+    window.insert_or_assign("height", static_cast<int64_t>(DefaultConfig::K_WINDOW_HEIGHT));
+    window.insert_or_assign("min_width", static_cast<int64_t>(DefaultConfig::K_MIN_WINDOW_WIDTH));
+    window.insert_or_assign("min_height", static_cast<int64_t>(DefaultConfig::K_MIN_WINDOW_HEIGHT));
+    window.insert_or_assign("display", static_cast<int64_t>(DefaultConfig::K_DISPLAY));
+    window.insert_or_assign("fullscreen", DefaultConfig::K_FULLSCREEN);
+    window.insert_or_assign("borderless", DefaultConfig::K_BORDERLESS);
+    window.insert_or_assign("resizable", DefaultConfig::K_RESIZABLE);
+    window.insert_or_assign("hidpi", DefaultConfig::K_HI_DPI);
+    window.insert_or_assign("maximized", DefaultConfig::K_MAXIMIZED);
 
     toml::table renderer;
-    renderer.insert_or_assign("backend", DefaultConfig::kRendererBackend);
-    renderer.insert_or_assign("debug", DefaultConfig::kRendererDebug);
-    renderer.insert_or_assign("vsync", DefaultConfig::kVsync);
+    renderer.insert_or_assign("backend", DefaultConfig::K_RENDERER_BACKEND);
+    renderer.insert_or_assign("debug", DefaultConfig::K_RENDERER_DEBUG);
+    renderer.insert_or_assign("vsync", DefaultConfig::K_VSYNC);
 
     toml::table logging;
-    logging.insert_or_assign("level", DefaultConfig::kLogLevel);
-    logging.insert_or_assign("file_sink", DefaultConfig::kFileSink);
-    logging.insert_or_assign("console_sink", DefaultConfig::kConsoleSink);
+    logging.insert_or_assign("level", DefaultConfig::K_LOG_LEVEL);
+    logging.insert_or_assign("file_sink", DefaultConfig::K_FILE_SINK);
+    logging.insert_or_assign("console_sink", DefaultConfig::K_CONSOLE_SINK);
 
     toml::table profiling;
-    profiling.insert_or_assign("enabled", DefaultConfig::kProfilingEnabled);
-    profiling.insert_or_assign("connect_address", DefaultConfig::kProfilingConnectAddress);
+    profiling.insert_or_assign("enabled", DefaultConfig::K_PROFILING_ENABLED);
+    profiling.insert_or_assign("connect_address", DefaultConfig::K_PROFILING_CONNECT_ADDRESS);
 
     toml::table platform;
-    platform.insert_or_assign("mimalloc_override", DefaultConfig::kMimallocOverride);
+    platform.insert_or_assign("mimalloc_override", DefaultConfig::K_MIMALLOC_OVERRIDE);
 
     defaults_.insert_or_assign("window", std::move(window));
     defaults_.insert_or_assign("renderer", std::move(renderer));
@@ -190,7 +190,7 @@ void ConfigManager::flushIfDirty() {
     if (!userDirty_)
         return;
     auto now = std::chrono::steady_clock::now();
-    if (now - lastDirtyTime_ < kDebounceMs)
+    if (now - lastDirtyTime_ < K_DEBOUNCE_MS)
         return;
 
     auto dir = userConfigPath_.parent_path();

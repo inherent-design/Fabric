@@ -38,7 +38,7 @@
 
 namespace recurse::systems {
 
-void DebugOverlaySystem::init(fabric::AppContext& ctx) {
+void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
     // Cache sibling system pointers
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
     chunks_ = ctx.systemRegistry.get<ChunkPipelineSystem>();
@@ -48,7 +48,6 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
     meshSystem_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
-    voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
     debugDraw_.init();
@@ -193,6 +192,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
     // BVH overlay with depth coloring (F6)
     if (debugDraw_.hasFlag(recurse::DebugDrawFlags::BVHOverlay)) {
         fabric::BVH<int> chunkBVH;
+        chunkBVH.beginBatch();
         int idx = 0;
         for (const auto& [coord, ent] : chunks_->chunkEntities()) {
             // Use world coordinates for BVH construction
@@ -204,7 +204,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             float z1 = z0 + static_cast<float>(recurse::kChunkSize);
             chunkBVH.insert(fabric::AABB(fabric::Vec3f(x0, y0, z0), fabric::Vec3f(x1, y1, z1)), idx++);
         }
-        chunkBVH.build();
+        chunkBVH.commitBatch();
 
         // Get camera world position for coordinate conversion
         auto camWorldPos = ctx.camera->worldPositionD();
@@ -390,7 +390,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
     }
 }
 
-void DebugOverlaySystem::shutdown() {
+void DebugOverlaySystem::doShutdown() {
     devConsole_.shutdown();
     contentBrowser_.shutdown();
     btDebugPanel_.shutdown();
@@ -414,6 +414,7 @@ void DebugOverlaySystem::configureDependencies() {
     after<TerrainSystem>();
     after<CharacterMovementSystem>();
     after<VoxelSimulationSystem>();
+    after<VoxelMeshingSystem>();
 }
 
 } // namespace recurse::systems

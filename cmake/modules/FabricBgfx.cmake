@@ -1,4 +1,5 @@
 # FabricBgfx.cmake - Fetch and configure bgfx rendering backend
+include_guard()
 
 # bgfx requires Objective-C++ on Apple for Metal and Vulkan (MoltenVK) renderers
 if(APPLE)
@@ -64,15 +65,8 @@ if(APPLE AND TARGET bgfx)
     )
 endif()
 
-# Homebrew LLVM ships a newer libc++ than the macOS system; shaderc needs
-# the same rpath fix as FabricLib so __hash_memory resolves at link time.
-if(APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
-        AND NOT CMAKE_CXX_COMPILER MATCHES "/usr/bin"
-        AND TARGET shaderc)
-    get_filename_component(_bgfx_compiler_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
-    get_filename_component(_bgfx_llvm_root "${_bgfx_compiler_dir}" DIRECTORY)
-    set(_bgfx_libcxx "${_bgfx_llvm_root}/lib/c++")
-    if(EXISTS "${_bgfx_libcxx}/libc++.dylib")
-        target_link_options(shaderc PRIVATE "-L${_bgfx_libcxx}" "-Wl,-rpath,${_bgfx_libcxx}")
-    endif()
+# Homebrew LLVM rpath fix for shaderc
+include(FabricHomebrew)
+if(TARGET shaderc)
+    fabric_fix_homebrew_llvm_rpath(shaderc)
 endif()

@@ -1,4 +1,5 @@
 #include "recurse/audio/ReverbZone.hh"
+#include "recurse/world/ChunkCoordUtils.hh"
 
 #include <algorithm>
 #include <array>
@@ -9,21 +10,8 @@ namespace recurse {
 // ---------- Coordinate packing ----------
 
 int64_t ReverbZoneEstimator::packCoord(int x, int y, int z) {
-    // Same packing scheme as ChunkedGrid::packKey but at voxel level.
-    return (static_cast<int64_t>(x) << 42) | (static_cast<int64_t>(y & 0x1FFFFF) << 21) |
-           static_cast<int64_t>(z & 0x1FFFFF);
+    return static_cast<int64_t>(packChunkKey(x, y, z));
 }
-
-// ---------- 6-connected neighbor offsets ----------
-
-static constexpr std::array<std::array<int, 3>, 6> kNeighborOffsets = {{
-    {{1, 0, 0}},
-    {{-1, 0, 0}},
-    {{0, 1, 0}},
-    {{0, -1, 0}},
-    {{0, 0, 1}},
-    {{0, 0, -1}},
-}};
 
 // ---------- One-shot estimateZone ----------
 
@@ -71,7 +59,7 @@ void ReverbZoneEstimator::advanceBFS(const ChunkedGrid<float>& density, float th
         ++processed;
 
         // Check 6-connected neighbors.
-        for (const auto& off : kNeighborOffsets) {
+        for (const auto& off : K_FACE_NEIGHBORS) {
             int nx = x + off[0];
             int ny = y + off[1];
             int nz = z + off[2];

@@ -14,9 +14,9 @@ class ParticleGameSystem;
 /// Frustum-filters chunks using the ECS visibility set from SceneView::render().
 class VoxelRenderSystem : public fabric::System<VoxelRenderSystem> {
   public:
-    void init(fabric::AppContext& ctx) override;
+    void doInit(fabric::AppContext& ctx) override;
     void render(fabric::AppContext& ctx) override;
-    void shutdown() override;
+    void doShutdown() override;
     void configureDependencies() override;
 
     recurse::VoxelRenderer& voxelRenderer() { return voxelRenderer_; }

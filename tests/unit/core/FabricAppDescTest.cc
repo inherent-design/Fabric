@@ -8,7 +8,7 @@ namespace fabric {
 class TestSystemA : public System<TestSystemA> {
   public:
     bool initialized = false;
-    void init(AppContext& /*ctx*/) override { initialized = true; }
+    void doInit(AppContext& /*ctx*/) override { initialized = true; }
 };
 
 class TestSystemB : public System<TestSystemB> {

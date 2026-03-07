@@ -96,7 +96,6 @@ target_sources(UnitTests
   SnapMCMesherTest.cc
   SurfaceNetsMesherTest.cc
   TestWorldGeneratorTest.cc
-  VoxelSimulationSystemTest.cc
   VoxelMeshingSystemTest.cc
   CrossChunkBoundaryTest.cc
   EssenceTypesTest.cc

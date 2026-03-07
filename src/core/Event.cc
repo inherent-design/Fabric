@@ -106,7 +106,7 @@ std::string EventDispatcher::addEventListener(const std::string& eventType, cons
     std::lock_guard<std::mutex> lock(listenersMutex_);
 
     HandlerEntry entry;
-    entry.id = Utils::generateUniqueId("h_");
+    entry.id = utils::generateUniqueId("h_");
     entry.handler = handler;
     entry.priority = priority;
 

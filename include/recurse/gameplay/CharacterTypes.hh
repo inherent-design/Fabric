@@ -17,7 +17,7 @@ enum class CharacterState : uint8_t {
     Ragdoll,
     Dashing,
     Boosting,
-    NOCLIP // Debug mode: fly + no collision
+    Noclip // Debug mode: fly + no collision
 };
 
 // ECS components (POD structs for Flecs)

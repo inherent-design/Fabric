@@ -1,4 +1,5 @@
 # FabricMimalloc.cmake - Fetch and configure mimalloc
+include_guard()
 
 CPMAddPackage(
     NAME mimalloc

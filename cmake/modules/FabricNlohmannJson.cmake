@@ -1,4 +1,5 @@
 # FabricNlohmannJson.cmake - Fetch and configure nlohmann/json
+include_guard()
 
 CPMAddPackage(
     NAME nlohmann_json

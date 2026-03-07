@@ -7,7 +7,7 @@
 #include <thread>
 
 namespace fabric {
-namespace Utils {
+namespace utils {
 
 /**
  * @brief Utility for timeout-protected lock acquisition
@@ -120,5 +120,5 @@ template <typename MutexType> class TimeoutLock {
     }
 };
 
-} // namespace Utils
+} // namespace utils
 } // namespace fabric

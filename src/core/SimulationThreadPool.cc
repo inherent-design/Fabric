@@ -11,7 +11,7 @@ SimulationThreadPool::SimulationThreadPool(size_t threadCount) {
     } else {
         threadCount_ = threadCount;
     }
-    pool_ = std::make_unique<Utils::ThreadPoolExecutor>(threadCount_);
+    pool_ = std::make_unique<utils::ThreadPoolExecutor>(threadCount_);
 }
 
 SimulationThreadPool::~SimulationThreadPool() {

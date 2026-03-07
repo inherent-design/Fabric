@@ -12,7 +12,8 @@ namespace recurse::systems {
 /// Runs during PreRender so shadow data is ready before geometry submission.
 class ShadowRenderSystem : public fabric::System<ShadowRenderSystem> {
   public:
-    void init(fabric::AppContext& ctx) override;
+    void doInit(fabric::AppContext& ctx) override;
+    void doShutdown() override;
     void render(fabric::AppContext& ctx) override;
     void configureDependencies() override;
 

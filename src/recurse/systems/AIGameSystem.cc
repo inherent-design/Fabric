@@ -7,7 +7,7 @@
 
 namespace recurse::systems {
 
-void AIGameSystem::init(fabric::AppContext& ctx) {
+void AIGameSystem::doInit(fabric::AppContext& ctx) {
     behaviorAI_.init(ctx.world.get());
     pathfinding_.init();
     animEvents_.init();
@@ -15,7 +15,7 @@ void AIGameSystem::init(fabric::AppContext& ctx) {
     FABRIC_LOG_INFO("AIGameSystem initialized");
 }
 
-void AIGameSystem::shutdown() {
+void AIGameSystem::doShutdown() {
     animEvents_.shutdown();
     pathfinding_.shutdown();
     behaviorAI_.shutdown();

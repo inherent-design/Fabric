@@ -1,5 +1,4 @@
-#ifndef FABRIC_CORE_TEMPORAL_HH
-#define FABRIC_CORE_TEMPORAL_HH
+#pragma once
 
 #include <cstring>
 #include <deque>
@@ -114,5 +113,3 @@ class Timeline {
 };
 
 } // namespace fabric
-
-#endif // FABRIC_CORE_TEMPORAL_HH

@@ -8,8 +8,6 @@
 #include "fabric/simulation/VoxelMaterial.hh"
 #include "recurse/render/LODGrid.hh"
 #include "recurse/render/LODMeshManager.hh"
-#include "recurse/systems/ChunkPipelineSystem.hh"
-#include "recurse/systems/VoxelMeshingSystem.hh"
 #include "recurse/world/ChunkedGrid.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 
@@ -20,17 +18,15 @@ namespace recurse::systems {
 
 LODSystem::LODSystem() : grid_(std::make_unique<LODGrid>()) {}
 
-LODSystem::~LODSystem() {
-    shutdown();
-}
+LODSystem::~LODSystem() = default;
 
-void LODSystem::init(fabric::AppContext& /*ctx*/) {
+void LODSystem::doInit(fabric::AppContext& /*ctx*/) {
     // Note: In a full implementation, materials would be obtained from ctx
     // For now, we LODSystem doesn't require materials for basic operation
-    FABRIC_LOG_INFO("[LODSystem] Initialized");
+    FABRIC_LOG_INFO("LODSystem initialized");
 }
 
-void LODSystem::shutdown() {
+void LODSystem::doShutdown() {
     // Destroy GPU resources
     for (auto& [key, gpu] : gpuSections_) {
         releaseGPUSection(LODSectionKey{key});
@@ -39,15 +35,15 @@ void LODSystem::shutdown() {
     visibleSections_.clear();
     pendingChunks_.clear();
 
-    FABRIC_LOG_INFO("[LODSystem] Shutdown complete");
+    FABRIC_LOG_INFO("LODSystem shut down");
 }
 
 void LODSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fixedDt*/) {
     // Process pending chunks: build LOD0 sections
     int processedThisFrame = 0;
-    constexpr int kMaxPerFrame = 10;
+    constexpr int K_MAX_PER_FRAME = 10;
 
-    while (!pendingChunks_.empty() && processedThisFrame < kMaxPerFrame) {
+    while (!pendingChunks_.empty() && processedThisFrame < K_MAX_PER_FRAME) {
         auto [cx, cy, cz] = pendingChunks_.front();
         pendingChunks_.pop_front();
         buildLOD0Section(cx, cy, cz);
@@ -123,7 +119,7 @@ void LODSystem::setMaterialRegistry(const fabric::simulation::MaterialRegistry* 
     materials_ = materials;
     if (materials_ && grid_) {
         meshManager_ = std::make_unique<LODMeshManager>(*grid_, *materials_);
-        FABRIC_LOG_INFO("[LODSystem] LODMeshManager created with MaterialRegistry");
+        FABRIC_LOG_INFO("LODSystem LODMeshManager created with MaterialRegistry");
     }
 }
 
@@ -138,7 +134,7 @@ void LODSystem::buildLOD0Section(int cx, int cy, int cz) {
     int sz = cz;
     auto* section = grid_->getOrCreate(0, sx, sy, sz);
     section->origin =
-        glm::ivec3(cx * LODGrid::kSectionWorldSize, cy * LODGrid::kSectionWorldSize, cz * LODGrid::kSectionWorldSize);
+        Vec3i(cx * LODGrid::kSectionWorldSize, cy * LODGrid::kSectionWorldSize, cz * LODGrid::kSectionWorldSize);
     section->palette.clear();
     section->palette.push_back(1); // Index 0 = air (materialId 1)
     section->blockIndices.assign(LODSection::kVolume, 0);
@@ -183,15 +179,15 @@ void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRa
     visibleSections_.clear();
 
     auto camPosRaw = camera.getPosition();
-    glm::vec3 camPos{camPosRaw.x, camPosRaw.y, camPosRaw.z};
+    Vec3f camPos{camPosRaw.x, camPosRaw.y, camPosRaw.z};
 
     grid_->forEach([this, &camPos, baseRadius](const LODSection& section) {
         // Compute world-space center of section
         int scale = 1 << section.level;
         float worldSize = static_cast<float>(LODSection::kSize * scale);
-        glm::vec3 center{static_cast<float>(section.origin.x) + worldSize * 0.5f,
-                         static_cast<float>(section.origin.y) + worldSize * 0.5f,
-                         static_cast<float>(section.origin.z) + worldSize * 0.5f};
+        Vec3f center{static_cast<float>(section.origin.x) + worldSize * 0.5f,
+                     static_cast<float>(section.origin.y) + worldSize * 0.5f,
+                     static_cast<float>(section.origin.z) + worldSize * 0.5f};
 
         // Distance from camera
         float dx = center.x - camPos.x;
@@ -222,7 +218,7 @@ void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRa
         }
 
         VisibleSection vis;
-        vis.section = const_cast<LODSection*>(&section);
+        vis.section = &section;
         vis.distance = distance;
         vis.key = key;
         visibleSections_.push_back(vis);
@@ -248,13 +244,15 @@ void LODSystem::uploadSection(LODSectionKey key, const recurse::LODMeshManager::
         bgfx::destroy(gpu.ibh);
     }
 
-    // Create vertex buffer
+    // Create vertex buffer (copy: mesh data is temporary)
     bgfx::VertexLayout layout = SmoothVoxelVertex::getVertexLayout();
     gpu.vbh = bgfx::createVertexBuffer(
-        bgfx::makeRef(mesh.vertices.data(), mesh.vertices.size() * sizeof(SmoothVoxelVertex)), layout);
+        bgfx::copy(mesh.vertices.data(), static_cast<uint32_t>(mesh.vertices.size() * sizeof(SmoothVoxelVertex))),
+        layout);
 
-    // Create index buffer
-    gpu.ibh = bgfx::createIndexBuffer(bgfx::makeRef(mesh.indices.data(), mesh.indices.size() * sizeof(uint32_t)));
+    // Create index buffer (copy: mesh data is temporary)
+    gpu.ibh = bgfx::createIndexBuffer(
+        bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t))));
 
     gpu.indexCount = static_cast<uint32_t>(mesh.indices.size());
     gpu.palette = mesh.palette;

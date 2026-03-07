@@ -258,12 +258,12 @@ TEST(LSystemVegetationTest, YawProducesNonCollinearSegments) {
     ASSERT_EQ(segments.size(), 2u);
 
     // First segment direction should be (0,1,0).
-    glm::vec3 dir1 = segments[0].end - segments[0].start;
+    Vec3f dir1 = segments[0].end - segments[0].start;
     // Second segment direction should be rotated 90 degrees around up (Z).
-    glm::vec3 dir2 = segments[1].end - segments[1].start;
+    Vec3f dir2 = segments[1].end - segments[1].start;
 
     // Dot product of perpendicular directions should be ~0.
-    float dot = glm::dot(glm::normalize(dir1), glm::normalize(dir2));
+    float dot = dir1.normalized().dot(dir2.normalized());
     EXPECT_NEAR(dot, 0.0f, 1e-5f);
 }
 
@@ -302,8 +302,8 @@ TEST(LSystemVegetationTest, VoxelizeSingleSegmentNonZeroDensity) {
     EssenceField essence;
 
     TurtleSegment seg;
-    seg.start = glm::vec3(0.0f, 0.0f, 0.0f);
-    seg.end = glm::vec3(5.0f, 0.0f, 0.0f);
+    seg.start = Vec3f(0.0f, 0.0f, 0.0f);
+    seg.end = Vec3f(5.0f, 0.0f, 0.0f);
     seg.radius = 1.0f;
     seg.materialTag = 0; // wood
 
@@ -328,14 +328,14 @@ TEST(LSystemVegetationTest, VoxelizeWoodVsLeafDistinctEssence) {
     EssenceField essenceW, essenceL;
 
     TurtleSegment wood;
-    wood.start = glm::vec3(0.0f);
-    wood.end = glm::vec3(3.0f, 0.0f, 0.0f);
+    wood.start = Vec3f(0.0f, 0.0f, 0.0f);
+    wood.end = Vec3f(3.0f, 0.0f, 0.0f);
     wood.radius = 1.0f;
     wood.materialTag = 0;
 
     TurtleSegment leaf;
-    leaf.start = glm::vec3(0.0f);
-    leaf.end = glm::vec3(3.0f, 0.0f, 0.0f);
+    leaf.start = Vec3f(0.0f, 0.0f, 0.0f);
+    leaf.end = Vec3f(3.0f, 0.0f, 0.0f);
     leaf.radius = 1.0f;
     leaf.materialTag = 1;
 
@@ -365,14 +365,14 @@ TEST(LSystemVegetationTest, VoxelizeRadiusControlsWidth) {
     EssenceField essenceNarrow, essenceWide;
 
     TurtleSegment narrow;
-    narrow.start = glm::vec3(0.0f, 0.0f, 0.0f);
-    narrow.end = glm::vec3(10.0f, 0.0f, 0.0f);
+    narrow.start = Vec3f(0.0f, 0.0f, 0.0f);
+    narrow.end = Vec3f(10.0f, 0.0f, 0.0f);
     narrow.radius = 1.0f;
     narrow.materialTag = 0;
 
     TurtleSegment wide;
-    wide.start = glm::vec3(0.0f, 0.0f, 0.0f);
-    wide.end = glm::vec3(10.0f, 0.0f, 0.0f);
+    wide.start = Vec3f(0.0f, 0.0f, 0.0f);
+    wide.end = Vec3f(10.0f, 0.0f, 0.0f);
     wide.radius = 3.0f;
     wide.materialTag = 0;
 
@@ -404,8 +404,8 @@ TEST(LSystemVegetationTest, VoxelizeDensityClamped) {
     // Voxelize many overlapping segments to try to exceed 1.0.
     for (int i = 0; i < 10; ++i) {
         TurtleSegment seg;
-        seg.start = glm::vec3(0.0f);
-        seg.end = glm::vec3(3.0f, 0.0f, 0.0f);
+        seg.start = Vec3f(0.0f, 0.0f, 0.0f);
+        seg.end = Vec3f(3.0f, 0.0f, 0.0f);
         seg.radius = 1.0f;
         seg.materialTag = 0;
         voxelizeSegment(seg, density, essence);
@@ -427,12 +427,12 @@ TEST(LSystemVegetationTest, VoxelizeTreeOriginOffset) {
     EssenceField essence;
 
     TurtleSegment seg;
-    seg.start = glm::vec3(0.0f, 0.0f, 0.0f);
-    seg.end = glm::vec3(0.0f, 5.0f, 0.0f);
+    seg.start = Vec3f(0.0f, 0.0f, 0.0f);
+    seg.end = Vec3f(0.0f, 5.0f, 0.0f);
     seg.radius = 1.0f;
     seg.materialTag = 0;
 
-    glm::ivec3 origin(100, 200, 300);
+    Vec3i origin(100, 200, 300);
     voxelizeTree({seg}, density, essence, origin);
 
     // Density at the origin-shifted location should be non-zero.
@@ -458,7 +458,7 @@ TEST(LSystemVegetationTest, VoxelizeEmptySegmentsNoChange) {
     EssenceField essence;
 
     std::vector<TurtleSegment> empty;
-    glm::ivec3 origin(0, 0, 0);
+    Vec3i origin(0, 0, 0);
     voxelizeTree(empty, density, essence, origin);
 
     // Grid should have no allocated chunks.

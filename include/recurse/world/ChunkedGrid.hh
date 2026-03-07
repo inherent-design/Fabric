@@ -1,5 +1,7 @@
 #pragma once
 
+#include "recurse/world/ChunkCoordUtils.hh"
+
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -31,7 +33,7 @@ template <typename T> class ChunkedGrid {
     T get(int x, int y, int z) const {
         int cx, cy, cz, lx, ly, lz;
         worldToChunk(x, y, z, cx, cy, cz, lx, ly, lz);
-        auto key = packKey(cx, cy, cz);
+        auto key = packChunkKey(cx, cy, cz);
         auto it = chunks_.find(key);
         if (it == chunks_.end())
             return T{};
@@ -41,7 +43,7 @@ template <typename T> class ChunkedGrid {
     void set(int x, int y, int z, const T& value) {
         int cx, cy, cz, lx, ly, lz;
         worldToChunk(x, y, z, cx, cy, cz, lx, ly, lz);
-        auto key = packKey(cx, cy, cz);
+        auto key = packChunkKey(cx, cy, cz);
         auto& chunk = chunks_[key];
         if (!chunk) {
             chunk = std::make_unique<std::array<T, kChunkVolume>>();
@@ -50,9 +52,9 @@ template <typename T> class ChunkedGrid {
         (*chunk)[localIndex(lx, ly, lz)] = value;
     }
 
-    bool hasChunk(int cx, int cy, int cz) const { return chunks_.contains(packKey(cx, cy, cz)); }
+    bool hasChunk(int cx, int cy, int cz) const { return chunks_.contains(packChunkKey(cx, cy, cz)); }
 
-    void removeChunk(int cx, int cy, int cz) { chunks_.erase(packKey(cx, cy, cz)); }
+    void removeChunk(int cx, int cy, int cz) { chunks_.erase(packChunkKey(cx, cy, cz)); }
 
     size_t chunkCount() const { return chunks_.size(); }
 
@@ -60,14 +62,14 @@ template <typename T> class ChunkedGrid {
         std::vector<std::tuple<int, int, int>> result;
         result.reserve(chunks_.size());
         for (const auto& [key, _] : chunks_) {
-            auto [cx, cy, cz] = unpackKey(key);
+            auto [cx, cy, cz] = unpackChunkKey(key);
             result.emplace_back(cx, cy, cz);
         }
         return result;
     }
 
     void forEachCell(int cx, int cy, int cz, std::function<void(int, int, int, T&)> fn) {
-        auto key = packKey(cx, cy, cz);
+        auto key = packChunkKey(cx, cy, cz);
         auto it = chunks_.find(key);
         if (it == chunks_.end())
             return;
@@ -84,9 +86,27 @@ template <typename T> class ChunkedGrid {
         }
     }
 
+    void forEachCell(int cx, int cy, int cz, std::function<void(int, int, int, const T&)> fn) const {
+        auto key = packChunkKey(cx, cy, cz);
+        auto it = chunks_.find(key);
+        if (it == chunks_.end())
+            return;
+        const auto& data = *it->second;
+        int baseX = cx * kChunkSize;
+        int baseY = cy * kChunkSize;
+        int baseZ = cz * kChunkSize;
+        for (int lz = 0; lz < kChunkSize; ++lz) {
+            for (int ly = 0; ly < kChunkSize; ++ly) {
+                for (int lx = 0; lx < kChunkSize; ++lx) {
+                    fn(baseX + lx, baseY + ly, baseZ + lz, data[localIndex(lx, ly, lz)]);
+                }
+            }
+        }
+    }
+
     void forEachChunk(std::function<void(int, int, int)> fn) const {
         for (const auto& [key, _] : chunks_) {
-            auto [cx, cy, cz] = unpackKey(key);
+            auto [cx, cy, cz] = unpackChunkKey(key);
             fn(cx, cy, cz);
         }
     }
@@ -134,12 +154,7 @@ template <typename T> class ChunkedGrid {
   private:
     std::map<int64_t, std::unique_ptr<std::array<T, kChunkVolume>>> chunks_;
 
-    static int64_t packKey(int cx, int cy, int cz) {
-        return (static_cast<int64_t>(cx) << 42) | (static_cast<int64_t>(cy & 0x1FFFFF) << 21) |
-               static_cast<int64_t>(cz & 0x1FFFFF);
-    }
-
-    static std::tuple<int, int, int> unpackKey(int64_t key) {
+    static std::tuple<int, int, int> unpackChunkKey(int64_t key) {
         int cx = static_cast<int>(key >> 42);
         int cy = static_cast<int>((key >> 21) & 0x1FFFFF);
         int cz = static_cast<int>(key & 0x1FFFFF);

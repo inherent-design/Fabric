@@ -38,8 +38,7 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
 
     // Fill density cache: 1.0 = solid, 0.0 = air
     // The LOD section is 32^3, the cache is 34^3 (adds 1-voxel border)
-    float* densityData = const_cast<float*>(density.data());
-    uint16_t* materialData = reinterpret_cast<uint16_t*>(&densityData[kCacheVolume]); // Temporary aliasing for build
+    float* densityData = density.data();
 
     // Initialize to air
     for (int i = 0; i < kCacheVolume; ++i) {

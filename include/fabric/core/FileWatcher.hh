@@ -78,7 +78,7 @@ class FileWatcher {
 
     // Debounce: track last event timestamp per path
     std::unordered_map<std::string, std::chrono::steady_clock::time_point> lastEventTime_;
-    static constexpr std::chrono::milliseconds kDebounceWindow{100};
+    static constexpr std::chrono::milliseconds K_DEBOUNCE_WINDOW{100};
 };
 
 } // namespace fabric

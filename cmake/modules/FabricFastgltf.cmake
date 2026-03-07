@@ -1,4 +1,5 @@
 # FabricFastgltf.cmake - Fetch and configure fastgltf (glTF 2.0 parser)
+include_guard()
 
 set(FASTGLTF_COMPILE_AS_CPP20 ON CACHE BOOL "" FORCE)
 set(FASTGLTF_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)

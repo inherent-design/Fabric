@@ -1,17 +1,11 @@
 #pragma once
 
 #include "fabric/core/AppModeManager.hh"
-#include <RmlUi/Core/DataModelHandle.h>
+#include "fabric/ui/RmlPanel.hh"
 #include <RmlUi/Core/Types.h>
-
-namespace Rml {
-class Context;
-class ElementDocument;
-} // namespace Rml
 
 namespace fabric {
 
-/// Data collected from a per-frame crosshair raycast.
 struct WAILAData {
     bool hasHit = false;
     int voxelX = 0, voxelY = 0, voxelZ = 0;
@@ -22,29 +16,18 @@ struct WAILAData {
     float essenceR = 0.0f, essenceG = 0.0f, essenceB = 0.0f;
 };
 
-/// "What Am I Looking At" info panel. Displays crosshair target data
-/// (position, density, essence color) from a per-frame voxel raycast.
-/// Always visible during gameplay (Game/Paused modes), hidden in Menu.
-class WAILAPanel {
+class WAILAPanel : public RmlPanel {
   public:
     WAILAPanel() = default;
-    ~WAILAPanel() = default;
+    ~WAILAPanel() override = default;
 
     void init(Rml::Context* context);
     void update(const WAILAData& data);
     void setMode(AppMode mode);
-    void toggle();
-    void shutdown();
-    bool isVisible() const;
 
   private:
-    Rml::Context* context_ = nullptr;
-    Rml::ElementDocument* document_ = nullptr;
-    bool visible_ = false;
-    bool initialized_ = false;
     AppMode currentMode_ = AppMode::Game;
 
-    // Bound variables for the "waila" data model
     bool hasHit_ = false;
     Rml::String displayText_;
     int voxelX_ = 0, voxelY_ = 0, voxelZ_ = 0;
@@ -53,8 +36,6 @@ class WAILAPanel {
     float distance_ = 0.0f;
     float density_ = 0.0f;
     Rml::String essenceStr_;
-
-    Rml::DataModelHandle modelHandle_;
 };
 
 } // namespace fabric

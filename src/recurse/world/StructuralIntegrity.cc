@@ -43,7 +43,6 @@ void StructuralIntegrity::update(const ChunkedGrid<float>& grid, float dt) {
 
 bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
     constexpr float kDensityThreshold = 0.5f;
-    constexpr int kNeighborOffsets[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
     constexpr int kBudgetCheckInterval = 256;
 
     const auto budgetNs = static_cast<int64_t>(perFrameBudgetMs_ * 1'000'000.0f);
@@ -69,7 +68,7 @@ bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
                         if (grid.get(wx, wy, wz) >= kDensityThreshold) {
                             floodFillState_.allDenseVoxels.push_back({wx, wy, wz});
                             if (wy <= 0) {
-                                const int64_t key = packKey(wx, wy, wz);
+                                const int64_t key = static_cast<int64_t>(packChunkKey(wx, wy, wz));
                                 if (floodFillState_.supported.insert(key).second) {
                                     floodFillState_.queue.push({wx, wy, wz});
                                 }
@@ -95,7 +94,7 @@ bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
         ++floodFillState_.processedCells;
         ++popsSinceCheck;
 
-        for (const auto& off : kNeighborOffsets) {
+        for (const auto& off : K_FACE_NEIGHBORS) {
             const int nx = current[0] + off[0];
             const int ny = current[1] + off[1];
             const int nz = current[2] + off[2];
@@ -104,7 +103,7 @@ bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
                 continue;
             }
 
-            const int64_t nkey = packKey(nx, ny, nz);
+            const int64_t nkey = static_cast<int64_t>(packChunkKey(nx, ny, nz));
             if (floodFillState_.supported.insert(nkey).second) {
                 floodFillState_.queue.push({nx, ny, nz});
             }
@@ -122,7 +121,7 @@ bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
 
     // Phase 3: BFS complete -- report disconnected voxels as debris
     for (const auto& voxel : floodFillState_.allDenseVoxels) {
-        const int64_t key = packKey(voxel[0], voxel[1], voxel[2]);
+        const int64_t key = static_cast<int64_t>(packChunkKey(voxel[0], voxel[1], voxel[2]));
         if (floodFillState_.supported.count(key) == 0) {
             const float density = grid.get(voxel[0], voxel[1], voxel[2]);
             if (density > 0.0f) {

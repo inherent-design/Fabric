@@ -93,7 +93,7 @@ class ConfigManager {
 
     mutable std::mutex mutex_;
 
-    static constexpr auto kDebounceMs = std::chrono::milliseconds(500);
+    static constexpr auto K_DEBOUNCE_MS = std::chrono::milliseconds(500);
 };
 
 // -- Template implementations --

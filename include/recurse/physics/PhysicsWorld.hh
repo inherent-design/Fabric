@@ -24,11 +24,9 @@
 #include <vector>
 
 namespace recurse {
+
 class JoltCharacterController;
 struct JoltCharacterConfig;
-} // namespace recurse
-
-namespace recurse {
 
 namespace physics {
 

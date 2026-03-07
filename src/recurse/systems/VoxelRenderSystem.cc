@@ -21,7 +21,7 @@
 
 namespace recurse::systems {
 
-void VoxelRenderSystem::init(fabric::AppContext& ctx) {
+void VoxelRenderSystem::doInit(fabric::AppContext& ctx) {
     chunks_ = ctx.systemRegistry.get<ChunkPipelineSystem>();
     meshSystem_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
     shadow_ = ctx.systemRegistry.get<ShadowRenderSystem>();
@@ -120,7 +120,7 @@ void VoxelRenderSystem::render(fabric::AppContext& ctx) {
     }
 }
 
-void VoxelRenderSystem::shutdown() {
+void VoxelRenderSystem::doShutdown() {
     voxelRenderer_.shutdown();
     FABRIC_LOG_INFO("VoxelRenderSystem shut down");
 }

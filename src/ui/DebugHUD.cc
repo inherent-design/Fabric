@@ -4,7 +4,6 @@
 #include "fabric/utils/Profiler.hh"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
-#include <RmlUi/Core/ElementDocument.h>
 
 namespace fabric {
 
@@ -14,9 +13,7 @@ void DebugHUD::init(Rml::Context* context) {
         return;
     }
 
-    context_ = context;
-
-    Rml::DataModelConstructor constructor = context_->CreateDataModel("debug_hud");
+    Rml::DataModelConstructor constructor = context->CreateDataModel("debug_hud");
     if (!constructor) {
         FABRIC_LOG_ERROR("DebugHUD: failed to create data model");
         return;
@@ -44,21 +41,13 @@ void DebugHUD::init(Rml::Context* context) {
 
     modelHandle_ = constructor.GetModelHandle();
 
-    document_ = context_->LoadDocument("assets/ui/debug_hud.rml");
-    if (document_) {
-        document_->Hide();
-        FABRIC_LOG_INFO("DebugHUD document loaded");
-    } else {
-        FABRIC_LOG_WARN("DebugHUD: failed to load debug_hud.rml");
-    }
-
-    initialized_ = true;
+    initBase(context, "debug_hud", "assets/ui/debug_hud.rml");
+    FABRIC_LOG_INFO("DebugHUD document loaded");
 }
 
 void DebugHUD::update(const DebugData& data) {
-    if (!initialized_) {
+    if (!initialized_)
         return;
-    }
 
     fps_ = data.fps;
     frameTimeMs_ = data.frameTimeMs;
@@ -90,37 +79,6 @@ void DebugHUD::update(const DebugData& data) {
     if (modelHandle_) {
         modelHandle_.DirtyAllVariables();
     }
-}
-
-void DebugHUD::toggle() {
-    visible_ = !visible_;
-    if (!initialized_)
-        return;
-    if (document_) {
-        if (visible_) {
-            document_->Show();
-        } else {
-            document_->Hide();
-        }
-    }
-}
-
-void DebugHUD::shutdown() {
-    initialized_ = false;
-    if (document_) {
-        document_->Close();
-        document_ = nullptr;
-    }
-    if (context_ && modelHandle_) {
-        context_->RemoveDataModel("debug_hud");
-    }
-    modelHandle_ = {};
-    visible_ = false;
-    context_ = nullptr;
-}
-
-bool DebugHUD::isVisible() const {
-    return visible_;
 }
 
 } // namespace fabric

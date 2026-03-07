@@ -20,7 +20,7 @@ class MovementFSM {
     bool isGrounded() const;
     bool isAirborne() const;
     bool isFlying() const;
-    bool isNOCLIP() const;
+    bool isNoclip() const;
     bool canDash() const;
 
     static std::string stateToString(CharacterState state);

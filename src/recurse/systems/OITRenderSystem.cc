@@ -12,7 +12,7 @@
 
 namespace recurse::systems {
 
-void OITRenderSystem::init(fabric::AppContext& ctx) {
+void OITRenderSystem::doInit(fabric::AppContext& ctx) {
     int pw, ph;
     SDL_GetWindowSizeInPixels(ctx.window, &pw, &ph);
     oitCompositor_.init(static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
@@ -40,7 +40,7 @@ void OITRenderSystem::render(fabric::AppContext& ctx) {
                              static_cast<uint16_t>(oitPH));
 }
 
-void OITRenderSystem::shutdown() {
+void OITRenderSystem::doShutdown() {
     oitCompositor_.shutdown();
     FABRIC_LOG_INFO("OITRenderSystem shut down");
 }

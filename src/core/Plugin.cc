@@ -8,7 +8,7 @@
 namespace fabric {
 
 void PluginManager::registerPlugin(const std::string& name, const PluginFactory& factory) {
-    std::lock_guard<std::mutex> lock(pluginMutex);
+    std::lock_guard<std::mutex> lock(pluginMutex_);
 
     if (name.empty()) {
         throwError("Plugin name cannot be empty");
@@ -18,8 +18,8 @@ void PluginManager::registerPlugin(const std::string& name, const PluginFactory&
         throwError("Plugin factory cannot be null");
     }
 
-    auto it = plugins.find(name);
-    if (it != plugins.end()) {
+    auto it = plugins_.find(name);
+    if (it != plugins_.end()) {
         throwError("Plugin '" + name + "' is already registered");
     }
 
@@ -42,7 +42,7 @@ void PluginManager::registerPlugin(const std::string& name, const PluginFactory&
         throwError("Failed to inspect plugin '" + name + "': unknown error");
     }
 
-    plugins.emplace(name, std::move(info));
+    plugins_.emplace(name, std::move(info));
     FABRIC_LOG_DEBUG("Registered plugin '{}'", name);
 }
 
@@ -57,15 +57,15 @@ bool PluginManager::detectCycle(const std::string& start, std::unordered_set<std
     visited.insert(start);
     recursionStack.insert(start);
 
-    auto it = plugins.find(start);
-    if (it == plugins.end()) {
+    auto it = plugins_.find(start);
+    if (it == plugins_.end()) {
         recursionStack.erase(start);
         return false;
     }
 
     for (const auto& dep : it->second.dependencies) {
-        auto depIt = plugins.find(dep);
-        if (depIt == plugins.end()) {
+        auto depIt = plugins_.find(dep);
+        if (depIt == plugins_.end()) {
             continue;
         }
 
@@ -88,19 +88,19 @@ std::vector<std::string> PluginManager::computeTopologicalOrder() const {
     std::unordered_map<std::string, int> inDegree;
     std::unordered_map<std::string, std::vector<std::string>> adjList;
 
-    for (const auto& pair : plugins) {
+    for (const auto& pair : plugins_) {
         const auto& name = pair.first;
         inDegree[name] = 0;
         adjList[name] = {};
     }
 
-    for (const auto& pair : plugins) {
+    for (const auto& pair : plugins_) {
         const auto& name = pair.first;
         const auto& info = pair.second;
 
         for (const auto& dep : info.dependencies) {
-            auto depIt = plugins.find(dep);
-            if (depIt == plugins.end()) {
+            auto depIt = plugins_.find(dep);
+            if (depIt == plugins_.end()) {
                 continue;
             }
 
@@ -139,14 +139,14 @@ std::vector<std::string> PluginManager::computeTopologicalOrder() const {
 }
 
 std::vector<std::string> PluginManager::getInitializationOrder() const {
-    std::lock_guard<std::mutex> lock(pluginMutex);
+    std::lock_guard<std::mutex> lock(pluginMutex_);
     return computeTopologicalOrder();
 }
 
 bool PluginManager::hasDependencyCycle() const {
-    std::lock_guard<std::mutex> lock(pluginMutex);
+    std::lock_guard<std::mutex> lock(pluginMutex_);
 
-    for (const auto& pair : plugins) {
+    for (const auto& pair : plugins_) {
         const auto& name = pair.first;
         std::unordered_set<std::string> visited;
         std::unordered_set<std::string> recursionStack;
@@ -159,10 +159,10 @@ bool PluginManager::hasDependencyCycle() const {
 }
 
 bool PluginManager::loadPlugin(const std::string& name) {
-    std::lock_guard<std::mutex> lock(pluginMutex);
+    std::lock_guard<std::mutex> lock(pluginMutex_);
 
-    auto it = plugins.find(name);
-    if (it == plugins.end()) {
+    auto it = plugins_.find(name);
+    if (it == plugins_.end()) {
         FABRIC_LOG_ERROR("Plugin '{}' is not registered", name);
         return false;
     }
@@ -218,10 +218,10 @@ bool PluginManager::unloadPlugin(const std::string& name) {
     std::shared_ptr<Plugin> pluginToUnload;
 
     {
-        std::lock_guard<std::mutex> lock(pluginMutex);
+        std::lock_guard<std::mutex> lock(pluginMutex_);
 
-        auto it = plugins.find(name);
-        if (it == plugins.end() || !it->second.isLoaded) {
+        auto it = plugins_.find(name);
+        if (it == plugins_.end() || !it->second.isLoaded) {
             FABRIC_LOG_WARN("Plugin '{}' is not loaded", name);
             return false;
         }
@@ -249,9 +249,9 @@ bool PluginManager::unloadPlugin(const std::string& name) {
 
 bool PluginManager::reloadPlugin(const std::string& name) {
     {
-        std::lock_guard<std::mutex> lock(pluginMutex);
-        auto it = plugins.find(name);
-        if (it == plugins.end()) {
+        std::lock_guard<std::mutex> lock(pluginMutex_);
+        auto it = plugins_.find(name);
+        if (it == plugins_.end()) {
             FABRIC_LOG_ERROR("Plugin '{}' is not registered", name);
             return false;
         }
@@ -271,10 +271,10 @@ bool PluginManager::reloadPlugin(const std::string& name) {
 }
 
 std::shared_ptr<Plugin> PluginManager::getPlugin(const std::string& name) const {
-    std::lock_guard<std::mutex> lock(pluginMutex);
+    std::lock_guard<std::mutex> lock(pluginMutex_);
 
-    auto it = plugins.find(name);
-    if (it == plugins.end() || !it->second.isLoaded) {
+    auto it = plugins_.find(name);
+    if (it == plugins_.end() || !it->second.isLoaded) {
         return nullptr;
     }
 
@@ -282,10 +282,10 @@ std::shared_ptr<Plugin> PluginManager::getPlugin(const std::string& name) const 
 }
 
 std::unordered_map<std::string, std::shared_ptr<Plugin>> PluginManager::getPlugins() const {
-    std::lock_guard<std::mutex> lock(pluginMutex);
+    std::lock_guard<std::mutex> lock(pluginMutex_);
 
     std::unordered_map<std::string, std::shared_ptr<Plugin>> result;
-    for (const auto& pair : plugins) {
+    for (const auto& pair : plugins_) {
         const auto& name = pair.first;
         const auto& info = pair.second;
 
@@ -296,22 +296,22 @@ std::unordered_map<std::string, std::shared_ptr<Plugin>> PluginManager::getPlugi
     return result;
 }
 
-bool PluginManager::initializeAll() {
+bool PluginManager::initAll() {
     std::vector<std::pair<std::string, std::shared_ptr<Plugin>>> pluginsToInit;
     std::vector<std::string> order;
 
     {
-        std::lock_guard<std::mutex> lock(pluginMutex);
+        std::lock_guard<std::mutex> lock(pluginMutex_);
         order = computeTopologicalOrder();
 
-        if (order.empty() && !plugins.empty()) {
+        if (order.empty() && !plugins_.empty()) {
             FABRIC_LOG_ERROR("Cannot initialize plugins due to dependency cycle");
             return false;
         }
 
         for (const auto& name : order) {
-            const auto it = plugins.find(name);
-            if (it != plugins.end() && it->second.isLoaded && it->second.instance) {
+            const auto it = plugins_.find(name);
+            if (it != plugins_.end() && it->second.isLoaded && it->second.instance) {
                 pluginsToInit.emplace_back(name, it->second.instance);
             }
         }
@@ -330,7 +330,7 @@ bool PluginManager::initializeAll() {
         }
 
         try {
-            if (!plugin->initialize()) {
+            if (!plugin->init()) {
                 FABRIC_LOG_ERROR("Failed to initialize plugin '{}'", name);
                 success = false;
             } else {
@@ -353,11 +353,11 @@ void PluginManager::shutdownAll() {
     std::vector<std::string> order;
 
     {
-        std::lock_guard<std::mutex> lock(pluginMutex);
+        std::lock_guard<std::mutex> lock(pluginMutex_);
         order = computeTopologicalOrder();
 
-        if (order.empty() && !plugins.empty()) {
-            for (const auto& pair : plugins) {
+        if (order.empty() && !plugins_.empty()) {
+            for (const auto& pair : plugins_) {
                 const auto& name = pair.first;
                 const auto& info = pair.second;
                 if (info.isLoaded && info.instance) {
@@ -366,14 +366,14 @@ void PluginManager::shutdownAll() {
             }
         } else {
             for (auto it = order.rbegin(); it != order.rend(); ++it) {
-                const auto pluginIt = plugins.find(*it);
-                if (pluginIt != plugins.end() && pluginIt->second.isLoaded && pluginIt->second.instance) {
+                const auto pluginIt = plugins_.find(*it);
+                if (pluginIt != plugins_.end() && pluginIt->second.isLoaded && pluginIt->second.instance) {
                     pluginsToShutdown.emplace_back(*it, pluginIt->second.instance);
                 }
             }
         }
 
-        for (auto& pair : plugins) {
+        for (auto& pair : plugins_) {
             auto& info = pair.second;
             info.instance.reset();
             info.isLoaded = false;
@@ -409,8 +409,8 @@ void PluginManager::enableHotReload(const std::string& watchDir) {
     fileWatcher_.watchDirectory(watchDir);
 
     // Register each loaded plugin with a library path for hot-reload
-    std::lock_guard<std::mutex> lock(pluginMutex);
-    for (auto& [name, info] : plugins) {
+    std::lock_guard<std::mutex> lock(pluginMutex_);
+    for (auto& [name, info] : plugins_) {
         if (info.isLoaded && info.libraryPath.has_value()) {
             std::string pluginName = name;
             fileWatcher_.registerResource(

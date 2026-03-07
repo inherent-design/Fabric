@@ -3,11 +3,10 @@
 #include <string>
 
 namespace fabric {
+namespace utils {
 
-class Utils {
-  public:
-    // Thread-safe. Generates prefix + `length` random hex digits.
-    static std::string generateUniqueId(const std::string& prefix, int length = 8);
-};
+// Thread-safe. Generates prefix + `length` random hex digits.
+std::string generateUniqueId(const std::string& prefix, int length = 8);
 
+} // namespace utils
 } // namespace fabric

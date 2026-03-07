@@ -14,33 +14,24 @@ void HotkeyPanel::init(Rml::Context* context) {
         return;
     }
 
-    context_ = context;
-
-    // Create data model for mode name display
-    Rml::DataModelConstructor constructor = context_->CreateDataModel("hotkeys");
+    Rml::DataModelConstructor constructor = context->CreateDataModel("hotkeys");
     if (constructor) {
         constructor.Bind("mode_name", &modeName_);
         modelHandle_ = constructor.GetModelHandle();
     }
 
-    document_ = context_->LoadDocument("assets/ui/hotkey_ref.rml");
+    initBase(context, "hotkeys", "assets/ui/hotkey_ref.rml");
+
+    // HotkeyPanel starts visible (visible_ = true by default via setMode)
+    visible_ = true;
     if (document_) {
-        // Initialize hidden, will be shown via setMode()
-        document_->Hide();
-        visible_ = false; // Explicitly track hidden state
-        FABRIC_LOG_INFO("HotkeyPanel document loaded (id={})", document_->GetId().c_str());
-    } else {
-        FABRIC_LOG_ERROR("HotkeyPanel: failed to load hotkey_ref.rml");
+        document_->Show();
     }
 
-    initialized_ = true;
-    FABRIC_LOG_INFO("HotkeyPanel::init complete, initialized_={}, visible_={}", initialized_, visible_);
+    FABRIC_LOG_INFO("HotkeyPanel::init complete");
 }
 
 void HotkeyPanel::setMode(AppMode mode) {
-    FABRIC_LOG_INFO("HotkeyPanel::setMode({}) START - initialized_={}, visible_={}, currentMode_={}",
-                    static_cast<int>(mode), initialized_, visible_, static_cast<int>(currentMode_));
-
     if (!initialized_) {
         FABRIC_LOG_WARN("HotkeyPanel::setMode called before init");
         return;
@@ -49,28 +40,18 @@ void HotkeyPanel::setMode(AppMode mode) {
     bool modeChanged = (mode != currentMode_);
     currentMode_ = mode;
 
-    // Show hotkey panel during gameplay modes, hide in Menu
     bool shouldShow = (mode != AppMode::Menu);
-    FABRIC_LOG_INFO("HotkeyPanel::setMode({}) - shouldShow={}, visible_={}, modeChanged={}", static_cast<int>(mode),
-                    shouldShow, visible_, modeChanged);
 
     if (document_) {
         if (shouldShow && !visible_) {
-            FABRIC_LOG_INFO("HotkeyPanel: Calling document_->Show()");
             document_->Show();
             visible_ = true;
         } else if (!shouldShow && visible_) {
-            FABRIC_LOG_INFO("HotkeyPanel: Calling document_->Hide()");
             document_->Hide();
             visible_ = false;
-        } else {
-            FABRIC_LOG_INFO("HotkeyPanel: No action needed (shouldShow={}, visible_={})", shouldShow, visible_);
         }
-    } else {
-        FABRIC_LOG_WARN("HotkeyPanel::setMode - no document");
     }
 
-    // Only rebuild hotkeys if mode actually changed
     if (modeChanged) {
         rebuildHotkeys();
     }
@@ -80,7 +61,6 @@ void HotkeyPanel::rebuildHotkeys() {
     if (!document_)
         return;
 
-    // Update mode name
     switch (currentMode_) {
         case AppMode::Game:
             modeName_ = "Game";
@@ -106,19 +86,16 @@ void HotkeyPanel::rebuildHotkeys() {
         modelHandle_.DirtyVariable("mode_name");
     }
 
-    // Find the content container
     auto* panel = document_->GetElementById("hotkey-panel");
     if (!panel)
         return;
 
-    // Clear existing content (keep title)
     while (panel->GetNumChildren() > 1) {
         panel->RemoveChild(panel->GetLastChild());
     }
 
     hotkeys_.clear();
 
-    // Build hotkey list based on mode
     switch (currentMode_) {
         case AppMode::Game:
             addHotkey("Movement", "W A S D", "Move");
@@ -172,10 +149,8 @@ void HotkeyPanel::rebuildHotkeys() {
             break;
     }
 
-    // Add hotkey elements to document
     Rml::String currentCategory;
     for (const auto& hk : hotkeys_) {
-        // Add category header if changed
         if (hk.category != currentCategory) {
             currentCategory = hk.category;
             auto* section = panel->AppendChild(document_->CreateElement("div"));
@@ -183,7 +158,6 @@ void HotkeyPanel::rebuildHotkeys() {
             section->SetInnerRML(hk.category);
         }
 
-        // Add hotkey row
         auto* row = panel->AppendChild(document_->CreateElement("div"));
         row->SetClassNames("hk-row");
 
@@ -199,23 +173,6 @@ void HotkeyPanel::rebuildHotkeys() {
 
 void HotkeyPanel::addHotkey(const char* category, const char* key, const char* action) {
     hotkeys_.push_back({Rml::String(category), Rml::String(key), Rml::String(action)});
-}
-
-void HotkeyPanel::shutdown() {
-    if (document_) {
-        document_->Close();
-        document_ = nullptr;
-    }
-    if (context_ && modelHandle_) {
-        context_->RemoveDataModel("hotkeys");
-    }
-    modelHandle_ = {};
-    initialized_ = false;
-    context_ = nullptr;
-}
-
-bool HotkeyPanel::isVisible() const {
-    return true; // Always visible
 }
 
 } // namespace fabric

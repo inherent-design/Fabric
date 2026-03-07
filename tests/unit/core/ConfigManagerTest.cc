@@ -33,10 +33,10 @@ class ConfigManagerTest : public ::testing::Test {
 
 TEST_F(ConfigManagerTest, DefaultsAvailableWithoutTOML) {
     ConfigManager config;
-    EXPECT_EQ(config.get<int>("window.width"), DefaultConfig::kWindowWidth);
-    EXPECT_EQ(config.get<int>("window.height"), DefaultConfig::kWindowHeight);
-    EXPECT_EQ(config.get<bool>("window.fullscreen"), DefaultConfig::kFullscreen);
-    EXPECT_EQ(config.get<bool>("renderer.vsync"), DefaultConfig::kVsync);
+    EXPECT_EQ(config.get<int>("window.width"), DefaultConfig::K_WINDOW_WIDTH);
+    EXPECT_EQ(config.get<int>("window.height"), DefaultConfig::K_WINDOW_HEIGHT);
+    EXPECT_EQ(config.get<bool>("window.fullscreen"), DefaultConfig::K_FULLSCREEN);
+    EXPECT_EQ(config.get<bool>("renderer.vsync"), DefaultConfig::K_VSYNC);
     EXPECT_EQ(config.get<std::string>("logging.level"), std::string("info"));
 }
 
@@ -71,7 +71,7 @@ TEST_F(ConfigManagerTest, EngineConfigOverridesDefaults) {
     EXPECT_EQ(config.get<int>("window.width"), 1920);
     EXPECT_EQ(config.get<int>("window.height"), 1080);
     // Unset values still come from defaults
-    EXPECT_EQ(config.get<bool>("window.fullscreen"), DefaultConfig::kFullscreen);
+    EXPECT_EQ(config.get<bool>("window.fullscreen"), DefaultConfig::K_FULLSCREEN);
 }
 
 // -- App config (Layer 2) --
@@ -218,7 +218,7 @@ TEST_F(ConfigManagerTest, GetWithDefault) {
     EXPECT_EQ(config.get<int>("nonexistent.key", 999), 999);
     EXPECT_EQ(config.get<std::string>("nonexistent.key", std::string("fallback")), "fallback");
     // Existing key ignores default
-    EXPECT_EQ(config.get<int>("window.width", 999), DefaultConfig::kWindowWidth);
+    EXPECT_EQ(config.get<int>("window.width", 999), DefaultConfig::K_WINDOW_WIDTH);
 }
 
 // -- set() and dirty tracking --
@@ -277,7 +277,7 @@ TEST_F(ConfigManagerTest, MissingTOMLFileSkipsGracefully) {
     config.loadUserConfig("/nonexistent/user.toml");
 
     // Defaults still work
-    EXPECT_EQ(config.get<int>("window.width"), DefaultConfig::kWindowWidth);
+    EXPECT_EQ(config.get<int>("window.width"), DefaultConfig::K_WINDOW_WIDTH);
 }
 
 // -- Section enumeration / nested access --
@@ -308,7 +308,7 @@ TEST_F(ConfigManagerTest, MalformedTOMLFileSkipsGracefully) {
     config.loadEngineConfig(path);
 
     // Defaults still intact after failed parse
-    EXPECT_EQ(config.get<int>("window.width"), DefaultConfig::kWindowWidth);
+    EXPECT_EQ(config.get<int>("window.width"), DefaultConfig::K_WINDOW_WIDTH);
 }
 
 TEST_F(ConfigManagerTest, MalformedAppConfigPreservesExistingLayers) {
@@ -343,7 +343,7 @@ TEST_F(ConfigManagerTest, EmptyTOMLFileLoadsWithoutError) {
     config.loadEngineConfig(path);
 
     // Defaults intact
-    EXPECT_EQ(config.get<int>("window.width"), DefaultConfig::kWindowWidth);
+    EXPECT_EQ(config.get<int>("window.width"), DefaultConfig::K_WINDOW_WIDTH);
 }
 
 TEST_F(ConfigManagerTest, EmptyAppConfigPreservesEngine) {
@@ -447,7 +447,7 @@ TEST_F(ConfigManagerTest, CLIEmptyArgvIsNoOp) {
     config.applyCLIOverrides(1, args);
 
     // Defaults still intact
-    EXPECT_EQ(config.get<int>("window.width"), DefaultConfig::kWindowWidth);
+    EXPECT_EQ(config.get<int>("window.width"), DefaultConfig::K_WINDOW_WIDTH);
 }
 
 // -- set() with deep nested paths --
@@ -520,28 +520,28 @@ TEST_F(ConfigManagerTest, FlushIfDirtyWritesAfterDebounce) {
 
 TEST_F(ConfigManagerTest, DefaultConfigConstexprValues) {
     // Verify the compiled defaults have expected types and values
-    static_assert(DefaultConfig::kWindowWidth == 1280);
-    static_assert(DefaultConfig::kWindowHeight == 720);
-    static_assert(DefaultConfig::kMinWindowWidth == 640);
-    static_assert(DefaultConfig::kMinWindowHeight == 480);
-    static_assert(DefaultConfig::kDisplay == 0);
-    static_assert(DefaultConfig::kFullscreen == false);
-    static_assert(DefaultConfig::kBorderless == false);
-    static_assert(DefaultConfig::kResizable == true);
-    static_assert(DefaultConfig::kHiDPI == true);
-    static_assert(DefaultConfig::kMaximized == false);
-    static_assert(DefaultConfig::kRendererDebug == false);
-    static_assert(DefaultConfig::kVsync == true);
-    static_assert(DefaultConfig::kProfilingEnabled == false);
-    static_assert(DefaultConfig::kMimallocOverride == false);
-    static_assert(DefaultConfig::kFileSink == true);
-    static_assert(DefaultConfig::kConsoleSink == true);
+    static_assert(DefaultConfig::K_WINDOW_WIDTH == 1280);
+    static_assert(DefaultConfig::K_WINDOW_HEIGHT == 720);
+    static_assert(DefaultConfig::K_MIN_WINDOW_WIDTH == 640);
+    static_assert(DefaultConfig::K_MIN_WINDOW_HEIGHT == 480);
+    static_assert(DefaultConfig::K_DISPLAY == 0);
+    static_assert(DefaultConfig::K_FULLSCREEN == false);
+    static_assert(DefaultConfig::K_BORDERLESS == false);
+    static_assert(DefaultConfig::K_RESIZABLE == true);
+    static_assert(DefaultConfig::K_HI_DPI == true);
+    static_assert(DefaultConfig::K_MAXIMIZED == false);
+    static_assert(DefaultConfig::K_RENDERER_DEBUG == false);
+    static_assert(DefaultConfig::K_VSYNC == true);
+    static_assert(DefaultConfig::K_PROFILING_ENABLED == false);
+    static_assert(DefaultConfig::K_MIMALLOC_OVERRIDE == false);
+    static_assert(DefaultConfig::K_FILE_SINK == true);
+    static_assert(DefaultConfig::K_CONSOLE_SINK == true);
 
     // Runtime check that string constants are accessible
-    EXPECT_STREQ(DefaultConfig::kWindowTitle, "Fabric");
-    EXPECT_STREQ(DefaultConfig::kRendererBackend, "vulkan");
-    EXPECT_STREQ(DefaultConfig::kLogLevel, "info");
-    EXPECT_STREQ(DefaultConfig::kProfilingConnectAddress, "");
+    EXPECT_STREQ(DefaultConfig::K_WINDOW_TITLE, "Fabric");
+    EXPECT_STREQ(DefaultConfig::K_RENDERER_BACKEND, "vulkan");
+    EXPECT_STREQ(DefaultConfig::K_LOG_LEVEL, "info");
+    EXPECT_STREQ(DefaultConfig::K_PROFILING_CONNECT_ADDRESS, "");
 }
 
 // -- Deep merge with array values --

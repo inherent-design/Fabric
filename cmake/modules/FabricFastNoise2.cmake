@@ -1,4 +1,5 @@
 # FabricFastNoise2.cmake - Fetch and configure FastNoise2 (SIMD noise generation)
+include_guard()
 
 set(FASTNOISE2_TESTS OFF CACHE BOOL "" FORCE)
 set(FASTNOISE2_TOOLS OFF CACHE BOOL "" FORCE)

@@ -3,6 +3,7 @@
 #include <flecs.h>
 
 #include <array>
+#include <memory>
 
 namespace fabric {
 
@@ -45,12 +46,12 @@ struct Renderable {
 class World {
   public:
     World();
-    ~World();
+    ~World() = default;
 
     World(const World&) = delete;
     World& operator=(const World&) = delete;
-    World(World&&) noexcept;
-    World& operator=(World&&) noexcept;
+    World(World&&) noexcept = default;
+    World& operator=(World&&) noexcept = default;
 
     flecs::world& get();
     const flecs::world& get() const;
@@ -77,7 +78,7 @@ class World {
     flecs::entity createChildEntity(flecs::entity parent, const char* name = nullptr);
 
   private:
-    flecs::world* world_;
+    std::unique_ptr<flecs::world> world_;
 };
 
 } // namespace fabric

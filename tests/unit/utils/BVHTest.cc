@@ -14,6 +14,7 @@ TEST(BVHTest, EmptyBVH) {
     EXPECT_TRUE(bvh.empty());
     EXPECT_EQ(bvh.size(), 0u);
 
+    bvh.build();
     auto results = bvh.query(makeBox(0, 0, 0, 10));
     EXPECT_TRUE(results.empty());
 }
@@ -83,11 +84,11 @@ TEST(BVHTest, BuildQueryConsistency) {
         bvh.insert(makeBox(static_cast<float>(i * 10), 0, 0, 1), i);
     }
 
-    // Query before explicit build (auto-builds)
+    // Query after eager build (inserts build eagerly)
     AABB region(Vec3f(-2, -2, -2), Vec3f(12, 2, 2));
     auto before = bvh.query(region);
 
-    // Explicit build then query again
+    // Explicit rebuild then query again
     bvh.build();
     auto after = bvh.query(region);
 
@@ -159,6 +160,7 @@ TEST(BVHTest, ClearResetsState) {
     EXPECT_EQ(bvh.size(), 0u);
     EXPECT_TRUE(bvh.empty());
 
+    bvh.build();
     auto results = bvh.query(makeBox(0, 0, 0, 100));
     EXPECT_TRUE(results.empty());
 }

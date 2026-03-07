@@ -18,14 +18,14 @@ static std::vector<std::string> lifecycleLog;
 
 class RecorderSystemA : public System<RecorderSystemA> {
   public:
-    void init(AppContext& /*ctx*/) override { lifecycleLog.push_back("A::init"); }
-    void shutdown() override { lifecycleLog.push_back("A::shutdown"); }
+    void doInit(AppContext& /*ctx*/) override { lifecycleLog.push_back("A::init"); }
+    void doShutdown() override { lifecycleLog.push_back("A::shutdown"); }
 };
 
 class RecorderSystemB : public System<RecorderSystemB> {
   public:
-    void init(AppContext& /*ctx*/) override { lifecycleLog.push_back("B::init"); }
-    void shutdown() override { lifecycleLog.push_back("B::shutdown"); }
+    void doInit(AppContext& /*ctx*/) override { lifecycleLog.push_back("B::init"); }
+    void doShutdown() override { lifecycleLog.push_back("B::shutdown"); }
 };
 
 class FabricAppTest : public ::testing::Test {
@@ -180,15 +180,15 @@ TEST_F(FabricAppTest, CyclicDependencyReturnsExitCodeOne) {
 // Verify systems init/shutdown in dependency order through FabricApp::run()
 class DepOrderA : public System<DepOrderA> {
   public:
-    void init(AppContext& /*ctx*/) override { lifecycleLog.push_back("DepA::init"); }
-    void shutdown() override { lifecycleLog.push_back("DepA::shutdown"); }
+    void doInit(AppContext& /*ctx*/) override { lifecycleLog.push_back("DepA::init"); }
+    void doShutdown() override { lifecycleLog.push_back("DepA::shutdown"); }
 };
 
 class DepOrderB : public System<DepOrderB> {
   public:
     void configureDependencies() override { after<DepOrderA>(); }
-    void init(AppContext& /*ctx*/) override { lifecycleLog.push_back("DepB::init"); }
-    void shutdown() override { lifecycleLog.push_back("DepB::shutdown"); }
+    void doInit(AppContext& /*ctx*/) override { lifecycleLog.push_back("DepB::init"); }
+    void doShutdown() override { lifecycleLog.push_back("DepB::shutdown"); }
 };
 
 TEST_F(FabricAppTest, DependencyOrderedInitShutdownThroughRun) {
@@ -224,25 +224,25 @@ TEST_F(FabricAppTest, DependencyOrderedInitShutdownThroughRun) {
 
 class InitOkSystem : public System<InitOkSystem> {
   public:
-    void init(AppContext& /*ctx*/) override { lifecycleLog.push_back("InitOk::init"); }
-    void shutdown() override { lifecycleLog.push_back("InitOk::shutdown"); }
+    void doInit(AppContext& /*ctx*/) override { lifecycleLog.push_back("InitOk::init"); }
+    void doShutdown() override { lifecycleLog.push_back("InitOk::shutdown"); }
 };
 
 class InitFailSystem : public System<InitFailSystem> {
   public:
     void configureDependencies() override { after<InitOkSystem>(); }
-    void init(AppContext& /*ctx*/) override {
+    void doInit(AppContext& /*ctx*/) override {
         lifecycleLog.push_back("InitFail::init");
         throw std::runtime_error("InitFailSystem blew up");
     }
-    void shutdown() override { lifecycleLog.push_back("InitFail::shutdown"); }
+    void doShutdown() override { lifecycleLog.push_back("InitFail::shutdown"); }
 };
 
 class InitNeverSystem : public System<InitNeverSystem> {
   public:
     void configureDependencies() override { after<InitFailSystem>(); }
-    void init(AppContext& /*ctx*/) override { lifecycleLog.push_back("InitNever::init"); }
-    void shutdown() override { lifecycleLog.push_back("InitNever::shutdown"); }
+    void doInit(AppContext& /*ctx*/) override { lifecycleLog.push_back("InitNever::init"); }
+    void doShutdown() override { lifecycleLog.push_back("InitNever::shutdown"); }
 };
 
 TEST_F(FabricAppTest, InitFailureRecovery) {

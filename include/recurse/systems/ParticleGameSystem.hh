@@ -12,9 +12,9 @@ namespace recurse::systems {
 /// camera matrices available only at render time.
 class ParticleGameSystem : public fabric::System<ParticleGameSystem> {
   public:
-    void init(fabric::AppContext& ctx) override;
+    void doInit(fabric::AppContext& ctx) override;
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
-    void shutdown() override;
+    void doShutdown() override;
     void configureDependencies() override;
 
     /// Called by the Render phase to submit particle billboard draws.

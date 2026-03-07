@@ -11,31 +11,15 @@ CharacterController::CharacterController(float width, float height, float depth)
     : width_(width), height_(height), depth_(depth) {}
 
 AABB CharacterController::getAABB(const Vec3f& pos) const {
-    float hw = width_ * 0.5f;
-    float hd = depth_ * 0.5f;
-    Vec3f minCorner(pos.x - hw, pos.y, pos.z - hd);
-    Vec3f maxCorner(pos.x + hw, pos.y + height_, pos.z + hd);
-    return AABB(minCorner, maxCorner);
+    return physics::getAABB(pos, width_, height_, depth_);
 }
 
 bool CharacterController::isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid, float threshold) const {
-    return grid.get(vx, vy, vz) >= threshold;
+    return physics::isSolid(vx, vy, vz, grid, threshold);
 }
 
 bool CharacterController::aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold) const {
-    int minVX = static_cast<int>(std::floor(box.min.x));
-    int minVY = static_cast<int>(std::floor(box.min.y));
-    int minVZ = static_cast<int>(std::floor(box.min.z));
-    int maxVX = static_cast<int>(std::floor(box.max.x - kGroundEpsilon));
-    int maxVY = static_cast<int>(std::floor(box.max.y - kGroundEpsilon));
-    int maxVZ = static_cast<int>(std::floor(box.max.z - kGroundEpsilon));
-
-    for (int vy = minVY; vy <= maxVY; ++vy)
-        for (int vz = minVZ; vz <= maxVZ; ++vz)
-            for (int vx = minVX; vx <= maxVX; ++vx)
-                if (isSolid(vx, vy, vz, grid, threshold))
-                    return true;
-    return false;
+    return physics::aabbOverlapsSolid(box, grid, threshold, kGroundEpsilon);
 }
 
 float CharacterController::tryStepUp(const Vec3f& pos, float dx, float dz, const ChunkedGrid<float>& grid,

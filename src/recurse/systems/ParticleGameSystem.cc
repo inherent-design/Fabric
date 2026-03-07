@@ -6,7 +6,7 @@
 
 namespace recurse::systems {
 
-void ParticleGameSystem::init(fabric::AppContext& /*ctx*/) {
+void ParticleGameSystem::doInit(fabric::AppContext& /*ctx*/) {
     particleSystem_.init();
 
     debrisPool_.enableParticleConversion(true);
@@ -24,7 +24,7 @@ void ParticleGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt)
     particleSystem_.update(fixedDt);
 }
 
-void ParticleGameSystem::shutdown() {
+void ParticleGameSystem::doShutdown() {
     particleSystem_.shutdown();
     FABRIC_LOG_INFO("ParticleGameSystem shut down");
 }

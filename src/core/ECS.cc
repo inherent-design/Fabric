@@ -7,24 +7,7 @@
 
 namespace fabric {
 
-World::World() : world_(new flecs::world()) {}
-
-World::~World() {
-    delete world_;
-}
-
-World::World(World&& other) noexcept : world_(other.world_) {
-    other.world_ = nullptr;
-}
-
-World& World::operator=(World&& other) noexcept {
-    if (this != &other) {
-        delete world_;
-        world_ = other.world_;
-        other.world_ = nullptr;
-    }
-    return *this;
-}
+World::World() : world_(std::make_unique<flecs::world>()) {}
 
 flecs::world& World::get() {
     return *world_;

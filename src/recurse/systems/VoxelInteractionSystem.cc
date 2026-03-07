@@ -3,6 +3,7 @@
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
+#include "recurse/world/ChunkCoordUtils.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/InputManager.hh"
@@ -18,7 +19,15 @@ namespace recurse::systems {
 
 VoxelInteractionSystem::~VoxelInteractionSystem() = default;
 
-void VoxelInteractionSystem::init(fabric::AppContext& ctx) {
+void VoxelInteractionSystem::doShutdown() {
+    voxelInteraction_.reset();
+    terrain_ = nullptr;
+    camera_ = nullptr;
+    voxelSim_ = nullptr;
+    FABRIC_LOG_INFO("VoxelInteractionSystem shut down");
+}
+
+void VoxelInteractionSystem::doInit(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
@@ -54,10 +63,9 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
                                                           VoxelCell{material_ids::AIR, 128, voxel_flags::UPDATED});
                     voxelSim_->activityTracker().notifyBoundaryChange(ChunkPos{r.cx, r.cy, r.cz});
                     // Notify face-adjacent neighbors (they share boundary vertices)
-                    constexpr int K_NEIGHBORS[6][3] = {{1, 0, 0},  {-1, 0, 0}, {0, 1, 0},
-                                                       {0, -1, 0}, {0, 0, 1},  {0, 0, -1}};
                     for (int i = 0; i < 6; ++i) {
-                        ChunkPos neighbor{r.cx + K_NEIGHBORS[i][0], r.cy + K_NEIGHBORS[i][1], r.cz + K_NEIGHBORS[i][2]};
+                        ChunkPos neighbor{r.cx + K_FACE_NEIGHBORS[i][0], r.cy + K_FACE_NEIGHBORS[i][1],
+                                          r.cz + K_FACE_NEIGHBORS[i][2]};
                         if (voxelSim_->simulationGrid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
                             voxelSim_->activityTracker().notifyBoundaryChange(neighbor);
                         }
@@ -81,10 +89,9 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
                                                           VoxelCell{material_ids::SAND, 128, voxel_flags::UPDATED});
                     voxelSim_->activityTracker().notifyBoundaryChange(ChunkPos{r.cx, r.cy, r.cz});
                     // Notify face-adjacent neighbors
-                    constexpr int K_NEIGHBORS[6][3] = {{1, 0, 0},  {-1, 0, 0}, {0, 1, 0},
-                                                       {0, -1, 0}, {0, 0, 1},  {0, 0, -1}};
                     for (int i = 0; i < 6; ++i) {
-                        ChunkPos neighbor{r.cx + K_NEIGHBORS[i][0], r.cy + K_NEIGHBORS[i][1], r.cz + K_NEIGHBORS[i][2]};
+                        ChunkPos neighbor{r.cx + K_FACE_NEIGHBORS[i][0], r.cy + K_FACE_NEIGHBORS[i][1],
+                                          r.cz + K_FACE_NEIGHBORS[i][2]};
                         if (voxelSim_->simulationGrid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
                             voxelSim_->activityTracker().notifyBoundaryChange(neighbor);
                         }

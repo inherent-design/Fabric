@@ -15,9 +15,9 @@ class TerrainSystem;
 /// then tracks the player position with spring arm collision.
 class CameraGameSystem : public fabric::System<CameraGameSystem> {
   public:
-    void init(fabric::AppContext& ctx) override;
+    void doInit(fabric::AppContext& ctx) override;
     void update(fabric::AppContext& ctx, float dt) override;
-    void shutdown() override;
+    void doShutdown() override;
     void configureDependencies() override;
 
     fabric::Vector3<float, fabric::Space::World> position() const;

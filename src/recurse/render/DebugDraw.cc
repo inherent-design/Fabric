@@ -10,6 +10,8 @@ using namespace fabric;
 
 namespace recurse {
 
+DebugDraw::DebugDraw() = default;
+
 DebugDraw::~DebugDraw() {
     if (initialized_) {
         shutdown();
@@ -22,7 +24,7 @@ void DebugDraw::init() {
     }
 
     ddInit();
-    encoder_ = new DebugDrawEncoder();
+    encoder_ = std::make_unique<DebugDrawEncoder>();
     initialized_ = true;
     FABRIC_LOG_INFO("DebugDraw initialized");
 }
@@ -32,8 +34,7 @@ void DebugDraw::shutdown() {
         return;
     }
 
-    delete static_cast<DebugDrawEncoder*>(encoder_);
-    encoder_ = nullptr;
+    encoder_.reset();
 
     ddShutdown();
     initialized_ = false;
@@ -89,35 +90,35 @@ void DebugDraw::begin(uint16_t viewId) {
     if (!initialized_ || !encoder_) {
         return;
     }
-    static_cast<DebugDrawEncoder*>(encoder_)->begin(viewId);
+    encoder_->begin(viewId);
 }
 
 void DebugDraw::end() {
     if (!initialized_ || !encoder_) {
         return;
     }
-    static_cast<DebugDrawEncoder*>(encoder_)->end();
+    encoder_->end();
 }
 
 void DebugDraw::setColor(uint32_t abgr) {
     if (!initialized_ || !encoder_) {
         return;
     }
-    static_cast<DebugDrawEncoder*>(encoder_)->setColor(abgr);
+    encoder_->setColor(abgr);
 }
 
 void DebugDraw::setWireframe(bool enabled) {
     if (!initialized_ || !encoder_) {
         return;
     }
-    static_cast<DebugDrawEncoder*>(encoder_)->setWireframe(enabled);
+    encoder_->setWireframe(enabled);
 }
 
 void DebugDraw::drawWireBox(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
     if (!initialized_ || !encoder_) {
         return;
     }
-    auto* enc = static_cast<DebugDrawEncoder*>(encoder_);
+    auto* enc = encoder_.get();
     // Bottom face
     enc->moveTo(minX, minY, minZ);
     enc->lineTo(maxX, minY, minZ);

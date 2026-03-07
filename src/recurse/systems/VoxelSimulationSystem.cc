@@ -1,4 +1,6 @@
 #include "recurse/systems/VoxelSimulationSystem.hh"
+#include "recurse/world/ChunkCoordUtils.hh"
+#include "recurse/world/DensitySync.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Event.hh"
@@ -15,7 +17,7 @@ namespace recurse::systems {
 VoxelSimulationSystem::VoxelSimulationSystem() = default;
 VoxelSimulationSystem::~VoxelSimulationSystem() = default;
 
-void VoxelSimulationSystem::init(fabric::AppContext& ctx) {
+void VoxelSimulationSystem::doInit(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     dispatcher_ = &ctx.dispatcher;
     fabSim_ = std::make_unique<fabric::simulation::VoxelSimulationSystem>();
@@ -25,7 +27,7 @@ void VoxelSimulationSystem::init(fabric::AppContext& ctx) {
     FABRIC_LOG_INFO("VoxelSimulationSystem initialized (awaiting world generation)");
 }
 
-void VoxelSimulationSystem::shutdown() {
+void VoxelSimulationSystem::doShutdown() {
     fabSim_.reset();
     terrain_ = nullptr;
     dispatcher_ = nullptr;
@@ -114,39 +116,7 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
                                         fabric::simulation::ChunkState::Active);
 
     // Sync density for this chunk to TerrainSystem's density field
-    // (sync just this chunk, not all chunks)
-    constexpr int K_CHUNK_SIZE = 32;
-    int baseX = cx * K_CHUNK_SIZE;
-    int baseY = cy * K_CHUNK_SIZE;
-    int baseZ = cz * K_CHUNK_SIZE;
-
-    // Sync density - handle both materialized chunks and sentinels (non-materialized)
-    using namespace fabric::simulation;
-    const auto* readBuf = fabSim_->grid().readBuffer(cx, cy, cz);
-    if (readBuf) {
-        // Materialized chunk: read from buffer
-        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
-            for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
-                for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
-                    size_t idx = static_cast<size_t>(lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE);
-                    const VoxelCell& cell = (*readBuf)[idx];
-                    float density = (cell.materialId == material_ids::AIR) ? 0.0f : 1.0f;
-                    terrain_->densityGrid().set(baseX + lx, baseY + ly, baseZ + lz, density);
-                }
-            }
-        }
-    } else if (fabSim_->grid().hasChunk(cx, cy, cz)) {
-        // Sentinel chunk (not materialized): use fill value for uniform density
-        VoxelCell fillValue = fabSim_->grid().getChunkFillValue(cx, cy, cz);
-        float density = (fillValue.materialId == material_ids::AIR) ? 0.0f : 1.0f;
-        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
-            for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
-                for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
-                    terrain_->densityGrid().set(baseX + lx, baseY + ly, baseZ + lz, density);
-                }
-            }
-        }
-    }
+    syncChunkDensity(fabSim_->grid(), terrain_->densityGrid(), cx, cy, cz);
 
     // Initialize Jolt physics collision for this chunk (always dispatch, even for sentinels)
     if (dispatcher_) {
@@ -159,24 +129,11 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
 
     // Notify all face-adjacent AND diagonal (in X/Z plane) existing chunks so they re-mesh boundaries.
     // Corner vertices sample across diagonal chunks, so diagonal neighbors must also remesh.
-    // 6 face-adjacent: ±X, ±Y, ±Z
-    // 4 X/Z diagonal: (±X, ±Z) combinations (Y is same since flat terrain)
-    constexpr int K_NEIGHBOR_OFFSETS[10][3] = {// Face-adjacent (6)
-                                               {1, 0, 0},
-                                               {-1, 0, 0},
-                                               {0, 1, 0},
-                                               {0, -1, 0},
-                                               {0, 0, 1},
-                                               {0, 0, -1},
-                                               // X/Z diagonal (4) - corner vertices sample across these
-                                               {1, 0, 1},
-                                               {1, 0, -1},
-                                               {-1, 0, 1},
-                                               {-1, 0, -1}};
     int notifiedCount = 0;
     for (int d = 0; d < 10; ++d) {
-        fabric::simulation::ChunkPos neighbor{cx + K_NEIGHBOR_OFFSETS[d][0], cy + K_NEIGHBOR_OFFSETS[d][1],
-                                              cz + K_NEIGHBOR_OFFSETS[d][2]};
+        fabric::simulation::ChunkPos neighbor{cx + K_FACE_DIAGONAL_NEIGHBORS[d][0],
+                                              cy + K_FACE_DIAGONAL_NEIGHBORS[d][1],
+                                              cz + K_FACE_DIAGONAL_NEIGHBORS[d][2]};
         if (fabSim_->grid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
             fabSim_->activityTracker().notifyBoundaryChange(neighbor);
             ++notifiedCount;

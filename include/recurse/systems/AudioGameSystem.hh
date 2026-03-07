@@ -12,9 +12,9 @@ class TerrainSystem;
 /// the audio engine each frame.
 class AudioGameSystem : public fabric::System<AudioGameSystem> {
   public:
-    void init(fabric::AppContext& ctx) override;
+    void doInit(fabric::AppContext& ctx) override;
     void update(fabric::AppContext& ctx, float dt) override;
-    void shutdown() override;
+    void doShutdown() override;
     void configureDependencies() override;
 
     recurse::AudioSystem& audioSystem() { return audioSystem_; }

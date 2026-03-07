@@ -1,4 +1,5 @@
 # FabricBehaviorTree.cmake - Fetch and configure BehaviorTree.CPP v4
+include_guard()
 
 set(BTCPP_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(BTCPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)

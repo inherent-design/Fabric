@@ -145,7 +145,7 @@ void FileWatcher::poll() {
         // Debounce: skip if within window of last event for this path
         auto it = lastEventTime_.find(event.fullPath);
         if (it != lastEventTime_.end()) {
-            if ((event.timestamp - it->second) < kDebounceWindow) {
+            if ((event.timestamp - it->second) < K_DEBOUNCE_WINDOW) {
                 continue;
             }
         }

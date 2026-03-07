@@ -5,8 +5,9 @@
 #include <sstream>
 
 namespace fabric {
+namespace utils {
 
-std::string Utils::generateUniqueId(const std::string& prefix, int length) {
+std::string generateUniqueId(const std::string& prefix, int length) {
     // Mutex must be acquired before touching the PRNG so that TSan sees
     // a clean happens-before on the static initialisation of gen/dis.
     static std::mutex idMutex;
@@ -25,4 +26,5 @@ std::string Utils::generateUniqueId(const std::string& prefix, int length) {
     return ss.str();
 }
 
+} // namespace utils
 } // namespace fabric

@@ -1,0 +1,1 @@
+../shared/varying_voxel_lighting.def.sc

@@ -323,6 +323,7 @@ void BehaviorAI::rebuildSpatialIndex() {
     spatialIndex_.clear();
 
     // Insert all NPCs with Position into BVH
+    spatialIndex_.beginBatch();
     auto q = world_->query_builder<const NPCTag>().with<Position>().build();
     q.each([&](flecs::entity e, const NPCTag&) {
         if (!e.has<Position>())
@@ -334,9 +335,7 @@ void BehaviorAI::rebuildSpatialIndex() {
                     Vec3f(epos.x + 0.1f, epos.y + 0.1f, epos.z + 0.1f));
         spatialIndex_.insert(bounds, e);
     });
-
-    // Build BVH tree for O(log n) queries
-    spatialIndex_.build();
+    spatialIndex_.commitBatch();
 }
 
 } // namespace recurse

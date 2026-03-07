@@ -3,7 +3,6 @@
 #include "fabric/core/Log.hh"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
-#include <RmlUi/Core/ElementDocument.h>
 
 namespace fabric {
 
@@ -13,9 +12,7 @@ void ChunkDebugPanel::init(Rml::Context* context) {
         return;
     }
 
-    context_ = context;
-
-    Rml::DataModelConstructor constructor = context_->CreateDataModel("chunk_debug");
+    Rml::DataModelConstructor constructor = context->CreateDataModel("chunk_debug");
     if (!constructor) {
         FABRIC_LOG_ERROR("ChunkDebugPanel: failed to create data model");
         return;
@@ -34,21 +31,13 @@ void ChunkDebugPanel::init(Rml::Context* context) {
 
     modelHandle_ = constructor.GetModelHandle();
 
-    document_ = context_->LoadDocument("assets/ui/chunk_debug.rml");
-    if (document_) {
-        document_->Hide();
-        FABRIC_LOG_INFO("ChunkDebugPanel document loaded, id={}", document_->GetId());
-    } else {
-        FABRIC_LOG_ERROR("ChunkDebugPanel: failed to load chunk_debug.rml");
-    }
-
-    initialized_ = true;
+    initBase(context, "chunk_debug", "assets/ui/chunk_debug.rml");
+    FABRIC_LOG_INFO("ChunkDebugPanel document loaded");
 }
 
 void ChunkDebugPanel::update(const ChunkDebugData& data) {
-    if (!initialized_) {
+    if (!initialized_)
         return;
-    }
 
     activeChunks_ = static_cast<int>(data.activeChunks);
     chunksRendered_ = data.chunksRendered;
@@ -64,40 +53,6 @@ void ChunkDebugPanel::update(const ChunkDebugData& data) {
     if (modelHandle_) {
         modelHandle_.DirtyAllVariables();
     }
-}
-
-void ChunkDebugPanel::toggle() {
-    visible_ = !visible_;
-    FABRIC_LOG_INFO("ChunkDebugPanel toggle: visible_={}, initialized_={}", visible_, initialized_);
-    if (!initialized_)
-        return;
-    if (document_) {
-        if (visible_) {
-            document_->Show();
-            FABRIC_LOG_INFO("ChunkDebugPanel: showing document");
-        } else {
-            document_->Hide();
-            FABRIC_LOG_INFO("ChunkDebugPanel: hiding document");
-        }
-    }
-}
-
-void ChunkDebugPanel::shutdown() {
-    initialized_ = false;
-    if (document_) {
-        document_->Close();
-        document_ = nullptr;
-    }
-    if (context_ && modelHandle_) {
-        context_->RemoveDataModel("chunk_debug");
-    }
-    modelHandle_ = {};
-    visible_ = false;
-    context_ = nullptr;
-}
-
-bool ChunkDebugPanel::isVisible() const {
-    return visible_;
 }
 
 } // namespace fabric

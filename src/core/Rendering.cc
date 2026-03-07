@@ -199,6 +199,7 @@ void FrustumCuller::buildSceneBVH(flecs::world& world) {
     bvh_->clear();
     alwaysVisible_.clear();
 
+    bvh_->beginBatch();
     world.each([&](flecs::entity e, const SceneEntity&) {
         const auto* bb = e.try_get<BoundingBox>();
         if (bb) {
@@ -208,8 +209,7 @@ void FrustumCuller::buildSceneBVH(flecs::world& world) {
             alwaysVisible_.push_back(e);
         }
     });
-
-    bvh_->build();
+    bvh_->commitBatch();
 }
 
 std::vector<flecs::entity> FrustumCuller::cull(const float* viewProjection, flecs::world& world) {

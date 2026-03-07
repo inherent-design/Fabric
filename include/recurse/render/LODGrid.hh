@@ -1,16 +1,17 @@
 #pragma once
 
+#include "fabric/core/Spatial.hh"
+
 #include <cstdint>
 #include <functional>
-#include <glm/glm.hpp>
 #include <memory>
 #include <unordered_map>
 #include <vector>
 
 namespace recurse {
 
-using glm::ivec3;
-using glm::vec3;
+using Vec3i = fabric::Vector3<int, fabric::Space::World>;
+using Vec3f = fabric::Vector3<float, fabric::Space::World>;
 
 // 64-bit packed section key: [level:4][sx:20][sy:20][sz:20]
 struct LODSectionKey {
@@ -37,7 +38,7 @@ struct LODSection {
     static constexpr int kVolume = kSize * kSize * kSize;
 
     int level = 0;
-    ivec3 origin{0, 0, 0};              // World-space origin in LOD0 coords
+    Vec3i origin{0, 0, 0};              // World-space origin in LOD0 coords
     std::vector<uint16_t> blockIndices; // kVolume entries, palette-indexed
     std::vector<uint16_t> palette;      // materialId list (index 0 = air)
     bool dirty = true;
@@ -75,6 +76,12 @@ class LODGrid {
 
     template <typename Fn> void forEach(Fn&& fn) {
         for (auto& [key, section] : sections_) {
+            fn(*section);
+        }
+    }
+
+    template <typename Fn> void forEach(Fn&& fn) const {
+        for (const auto& [key, section] : sections_) {
             fn(*section);
         }
     }

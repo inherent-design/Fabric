@@ -24,28 +24,28 @@ class MockComponent : public Component {
   public:
     explicit MockComponent(const std::string& id) : Component(id) {}
 
-    void initialize() override { initialize_impl(); }
+    void init() override { initImpl(); }
     std::string render() override {
         render_impl();
         return "<mock-component id=\"" + getId() + "\"></mock-component>";
     }
     void update(float deltaTime) override { update_impl(deltaTime); }
-    void cleanup() override { cleanup_impl(); }
+    void shutdown() override { shutdownImpl(); }
 
     // Test helpers
-    int initializeCallCount = 0;
+    int initCallCount = 0;
     int renderCallCount = 0;
     int updateCallCount = 0;
-    int cleanupCallCount = 0;
+    int shutdownCallCount = 0;
 
     // Override these methods for testing
-    void initialize_impl() { initializeCallCount++; }
+    void initImpl() { initCallCount++; }
     std::string render_impl() {
         renderCallCount++;
         return "";
     }
     void update_impl(float deltaTime) { updateCallCount++; }
-    void cleanup_impl() { cleanupCallCount++; }
+    void shutdownImpl() { shutdownCallCount++; }
 };
 
 /**
@@ -159,26 +159,8 @@ class LifecycleRecorder {
  * @return true if the function completed before the timeout, false otherwise
  */
 template <typename Func> bool RunWithTimeout(Func&& func, std::chrono::milliseconds timeout) {
-    std::atomic<bool> completed{false};
-
-    std::thread t([&]() {
-        func();
-        completed = true;
-    });
-
-    // Wait for completion or timeout
-    auto start = std::chrono::steady_clock::now();
-    while (!completed) {
-        auto now = std::chrono::steady_clock::now();
-        if (now - start > timeout) {
-            t.detach(); // Don't join the thread if it's still running
-            return false;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-
-    t.join();
-    return true;
+    auto future = std::async(std::launch::async, std::forward<Func>(func));
+    return future.wait_for(timeout) == std::future_status::ready;
 }
 
 /**

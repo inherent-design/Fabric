@@ -10,8 +10,8 @@
 namespace fabric {
 namespace Tests {
 
-using Utils::ThreadPoolExecutor;
-using Utils::ThreadPoolTimeoutException;
+using utils::ThreadPoolExecutor;
+using utils::ThreadPoolTimeoutException;
 
 // -- Construction --
 

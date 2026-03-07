@@ -59,17 +59,16 @@ nlohmann::json SceneSerializer::serializeChunks(DensityField& density, EssenceFi
         std::vector<float> densityData;
         std::vector<float> essenceData;
 
-        const_cast<ChunkedGrid<float>&>(density.grid()).forEachCell(cx, cy, cz, [&](int wx, int wy, int wz, float d) {
-            densityData.push_back(d);
-        });
+        const auto& densityGrid = density.grid();
+        densityGrid.forEachCell(cx, cy, cz, [&](int wx, int wy, int wz, const float& d) { densityData.push_back(d); });
 
-        const_cast<ChunkedGrid<Vector4<float, Space::World>>&>(essence.grid())
-            .forEachCell(cx, cy, cz, [&](int wx, int wy, int wz, const Vector4<float, Space::World>& e) {
-                essenceData.push_back(e.x);
-                essenceData.push_back(e.y);
-                essenceData.push_back(e.z);
-                essenceData.push_back(e.w);
-            });
+        const auto& essenceGrid = essence.grid();
+        essenceGrid.forEachCell(cx, cy, cz, [&](int wx, int wy, int wz, const Vector4<float, Space::World>& e) {
+            essenceData.push_back(e.x);
+            essenceData.push_back(e.y);
+            essenceData.push_back(e.z);
+            essenceData.push_back(e.w);
+        });
 
         chunkJson["density"] = densityData;
         chunkJson["essence"] = essenceData;

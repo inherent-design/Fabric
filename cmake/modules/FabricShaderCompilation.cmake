@@ -1,13 +1,18 @@
-# FabricVoxelShaders.cmake - Compile voxel mesh shaders
+# FabricShaderCompilation.cmake - Shared bgfx shader compilation function
+#
+# Provides fabric_compile_shader() to compile .sc shader sources to embedded
+# .bin.h headers using bgfx shaderc. Called by per-domain shader modules.
+#
+# Requires: _SHADER_PROFILES, _SHADER_EXTS, _SHADER_PLATFORM, and
+# FABRIC_BGFX_SHADER_INCLUDE set by FabricRmlUi.cmake.
 include_guard()
 
-set(FABRIC_VOXEL_SHADER_DIR "${CMAKE_SOURCE_DIR}/shaders/voxel")
-set(FABRIC_VOXEL_SHADER_OUT "${CMAKE_BINARY_DIR}/generated/shaders/voxel")
+# fabric_compile_shader(SHADER_FILE SHADER_TYPE OUT_VAR
+#     SHADER_OUT_DIR <output dir>
+#     VARYING_DEF <path to varying.def.sc>)
+function(fabric_compile_shader SHADER_FILE SHADER_TYPE OUT_VAR)
+    cmake_parse_arguments(_FSC "" "SHADER_OUT_DIR;VARYING_DEF" "" ${ARGN})
 
-# Reuse shader compilation infrastructure from FabricRmlUi.cmake
-# (platform profiles, bgfx include path, shaderc target are set there)
-
-function(_fabric_compile_voxel_shader SHADER_FILE SHADER_TYPE OUT_VAR)
     get_filename_component(_NAME "${SHADER_FILE}" NAME_WE)
     get_filename_component(_BASENAME "${SHADER_FILE}" NAME)
 
@@ -19,7 +24,7 @@ function(_fabric_compile_voxel_shader SHADER_FILE SHADER_TYPE OUT_VAR)
         list(GET _SHADER_PROFILES ${_IDX} _PROFILE)
         list(GET _SHADER_EXTS ${_IDX} _EXT)
 
-        set(_OUT_DIR "${FABRIC_VOXEL_SHADER_OUT}/${_EXT}")
+        set(_OUT_DIR "${_FSC_SHADER_OUT_DIR}/${_EXT}")
         set(_OUT_FILE "${_OUT_DIR}/${_BASENAME}.bin.h")
 
         set(_PLAT ${_SHADER_PLATFORM})
@@ -37,10 +42,10 @@ function(_fabric_compile_voxel_shader SHADER_FILE SHADER_TYPE OUT_VAR)
                 --platform ${_PLAT}
                 -p ${_PROFILE}
                 -i "${FABRIC_BGFX_SHADER_INCLUDE}"
-                --varyingdef "${FABRIC_VOXEL_SHADER_DIR}/varying.def.sc"
+                --varyingdef "${_FSC_VARYING_DEF}"
                 --bin2c "${_NAME}_${_EXT}"
             MAIN_DEPENDENCY "${SHADER_FILE}"
-            DEPENDS "${FABRIC_VOXEL_SHADER_DIR}/varying.def.sc"
+            DEPENDS "${_FSC_VARYING_DEF}"
             COMMENT "Compiling ${_BASENAME} [${_EXT}]"
         )
 
@@ -49,8 +54,3 @@ function(_fabric_compile_voxel_shader SHADER_FILE SHADER_TYPE OUT_VAR)
 
     set(${OUT_VAR} ${_OUTPUTS} PARENT_SCOPE)
 endfunction()
-
-_fabric_compile_voxel_shader("${FABRIC_VOXEL_SHADER_DIR}/vs_voxel.sc" vertex VOXEL_VS_OUTPUTS)
-_fabric_compile_voxel_shader("${FABRIC_VOXEL_SHADER_DIR}/fs_voxel.sc" fragment VOXEL_FS_OUTPUTS)
-
-add_custom_target(FabricVoxelShaders DEPENDS ${VOXEL_VS_OUTPUTS} ${VOXEL_FS_OUTPUTS})

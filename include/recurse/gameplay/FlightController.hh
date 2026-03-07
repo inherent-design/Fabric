@@ -2,6 +2,7 @@
 
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/Spatial.hh"
+#include "recurse/physics/VoxelCollision.hh"
 #include "recurse/world/ChunkedGrid.hh"
 
 namespace recurse {

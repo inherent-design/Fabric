@@ -18,6 +18,7 @@ class ChunkDensityCache {
     float at(int lx, int ly, int lz) const;
     float sample(float lx, float ly, float lz) const;
     const float* data() const;
+    float* data();
 
   private:
     std::array<float, kCacheVolume> data_{};

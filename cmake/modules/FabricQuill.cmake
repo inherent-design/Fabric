@@ -1,4 +1,5 @@
 # FabricQuill.cmake - Fetch and configure Quill logging
+include_guard()
 
 CPMAddPackage(
     NAME quill

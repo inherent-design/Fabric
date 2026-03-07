@@ -10,8 +10,8 @@
 class UtilsTest : public ::testing::Test {};
 
 TEST_F(UtilsTest, TestGenerateUniqueId) {
-    std::string id1 = fabric::Utils::generateUniqueId("test_");
-    std::string id2 = fabric::Utils::generateUniqueId("test_");
+    std::string id1 = fabric::utils::generateUniqueId("test_");
+    std::string id2 = fabric::utils::generateUniqueId("test_");
 
     ASSERT_FALSE(id1.empty());
     ASSERT_FALSE(id2.empty());
@@ -19,7 +19,7 @@ TEST_F(UtilsTest, TestGenerateUniqueId) {
     ASSERT_TRUE(id2.starts_with("test_"));
     ASSERT_NE(id1, id2);
 
-    std::string id3 = fabric::Utils::generateUniqueId("prefix_", 4);
+    std::string id3 = fabric::utils::generateUniqueId("prefix_", 4);
     ASSERT_EQ(id3.length(), 11); // "prefix_" (7) + 4 hex digits
 }
 
@@ -34,7 +34,7 @@ TEST_F(UtilsTest, TestGenerateUniqueIdThreadSafety) {
         threadIds.reserve(idsPerThread);
 
         for (int i = 0; i < idsPerThread; i++) {
-            threadIds.push_back(fabric::Utils::generateUniqueId("thread_"));
+            threadIds.push_back(fabric::utils::generateUniqueId("thread_"));
         }
 
         std::lock_guard<std::mutex> lock(idsMutex);

@@ -15,7 +15,7 @@ void MaterialSounds::registerMaterial(MaterialType type, MaterialSoundSet sounds
     registry_[type] = std::move(sounds);
 }
 
-MaterialType MaterialSounds::mapEssenceToMaterial(const Essence& e) {
+MaterialType MaterialSounds::mapEssenceToMaterial(const EssenceColor& e) {
     // Essence is a vec4 (r, g, b, a) representing material properties.
     // Simple threshold classifier on dominant color channels (order matters):
     //   1. White/bright (r > 0.8, g > 0.8, b > 0.8)          -> Snow
@@ -92,15 +92,15 @@ std::string MaterialSounds::getImpactSound(MaterialType type) {
     return pickSound(it->second.impactSounds, type, lastImpact_);
 }
 
-MaterialType MaterialSounds::detectSurfaceBelow(const ChunkedGrid<float>& density, const ChunkedGrid<Essence>& essence,
-                                                float x, float y, float z) {
+MaterialType MaterialSounds::detectSurfaceBelow(const ChunkedGrid<float>& density,
+                                                const ChunkedGrid<EssenceColor>& essence, float x, float y, float z) {
     // Cast a short downward ray (maxDistance = 2.0 voxels)
     auto hit = castRay(density, x, y, z, 0.0f, -1.0f, 0.0f, 2.0f);
     if (!hit.has_value()) {
         return MaterialType::Default;
     }
 
-    Essence voxelEssence = essence.get(hit->x, hit->y, hit->z);
+    EssenceColor voxelEssence = essence.get(hit->x, hit->y, hit->z);
     return mapEssenceToMaterial(voxelEssence);
 }
 

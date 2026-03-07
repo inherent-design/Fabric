@@ -1,4 +1,5 @@
 # FabricAsio.cmake - Fetch and configure Standalone Asio (header-only)
+include_guard()
 
 CPMAddPackage(
     NAME asio

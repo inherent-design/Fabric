@@ -5,6 +5,33 @@ namespace fabric::simulation {
 
 using recurse::kChunkSize;
 
+namespace {
+// Directional-alternating sweep: reverses x/z iteration each frame to prevent
+// systematic bias in cellular automata. cellFn returns true if it moved a cell.
+template <typename Fn> bool sweepChunk(uint64_t frameIndex, Fn&& cellFn) {
+    bool anyChange = false;
+    bool reverseDir = (frameIndex & 1) != 0;
+
+    for (int ly = 0; ly < kChunkSize; ++ly) {
+        int lxStart = reverseDir ? kChunkSize - 1 : 0;
+        int lxEnd = reverseDir ? -1 : kChunkSize;
+        int lxStep = reverseDir ? -1 : 1;
+
+        int lzStart = reverseDir ? kChunkSize - 1 : 0;
+        int lzEnd = reverseDir ? -1 : kChunkSize;
+        int lzStep = reverseDir ? -1 : 1;
+
+        for (int lz = lzStart; lz != lzEnd; lz += lzStep) {
+            for (int lx = lxStart; lx != lxEnd; lx += lxStep) {
+                if (cellFn(lx, ly, lz))
+                    anyChange = true;
+            }
+        }
+    }
+    return anyChange;
+}
+} // namespace
+
 FallingSandSystem::FallingSandSystem(const MaterialRegistry& registry) : registry_(registry) {}
 
 VoxelCell FallingSandSystem::readCell(ChunkPos pos, int lx, int ly, int lz, const SimulationGrid& grid,
@@ -66,127 +93,86 @@ void FallingSandSystem::writeSwap(ChunkPos pos, int srcLx, int srcLy, int srcLz,
 bool FallingSandSystem::simulateGravity(ChunkPos pos, SimulationGrid& grid, const GhostCellManager& ghosts,
                                         ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng) {
 
-    bool anyChange = false;
-    bool reverseDir = (frameIndex & 1) != 0;
+    return sweepChunk(frameIndex, [&](int lx, int ly, int lz) -> bool {
+        VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
+        if (cell.materialId == material_ids::AIR)
+            return false;
 
-    for (int ly = 0; ly < kChunkSize; ++ly) { // bottom-up
-        int lxStart = reverseDir ? kChunkSize - 1 : 0;
-        int lxEnd = reverseDir ? -1 : kChunkSize;
-        int lxStep = reverseDir ? -1 : 1;
+        const auto& def = registry_.get(cell.materialId);
+        if (def.moveType == MoveType::Static || def.moveType == MoveType::Liquid)
+            return false;
 
-        int lzStart = reverseDir ? kChunkSize - 1 : 0;
-        int lzEnd = reverseDir ? -1 : kChunkSize;
-        int lzStep = reverseDir ? -1 : 1;
+        // Try direct fall (down = ly-1)
+        VoxelCell below = readCell(pos, lx, ly - 1, lz, grid, ghosts);
+        if (canDisplace(cell, below)) {
+            writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, grid, tracker);
+            return true;
+        }
 
-        for (int lz = lzStart; lz != lzEnd; lz += lzStep) {
-            for (int lx = lxStart; lx != lxEnd; lx += lxStep) {
-                VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
-                if (cell.materialId == material_ids::AIR)
-                    continue;
+        // Powder diagonal cascade
+        if (def.moveType == MoveType::Powder) {
+            struct Offset {
+                int dx, dy, dz;
+            };
+            std::array<Offset, 4> diags = {{{-1, -1, 0}, {1, -1, 0}, {0, -1, -1}, {0, -1, 1}}};
+            std::shuffle(diags.begin(), diags.end(), rng);
 
-                const auto& def = registry_.get(cell.materialId);
-                if (def.moveType == MoveType::Static || def.moveType == MoveType::Liquid)
-                    continue;
-
-                // Try direct fall (down = ly-1)
-                VoxelCell below = readCell(pos, lx, ly - 1, lz, grid, ghosts);
-                if (canDisplace(cell, below)) {
-                    writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, grid, tracker);
-                    anyChange = true;
-                    continue;
-                }
-
-                // Powder diagonal cascade
-                if (def.moveType == MoveType::Powder) {
-                    struct Offset {
-                        int dx, dy, dz;
-                    };
-                    std::array<Offset, 4> diags = {{{-1, -1, 0}, {1, -1, 0}, {0, -1, -1}, {0, -1, 1}}};
-                    std::shuffle(diags.begin(), diags.end(), rng);
-
-                    for (const auto& [dx, dy, dz] : diags) {
-                        VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
-                        if (canDisplace(cell, target)) {
-                            writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker);
-                            anyChange = true;
-                            break;
-                        }
-                    }
+            for (const auto& [dx, dy, dz] : diags) {
+                VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
+                if (canDisplace(cell, target)) {
+                    writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker);
+                    return true;
                 }
             }
         }
-    }
-
-    return anyChange;
+        return false;
+    });
 }
 
 bool FallingSandSystem::simulateLiquid(ChunkPos pos, SimulationGrid& grid, const GhostCellManager& ghosts,
                                        ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng) {
 
-    bool anyChange = false;
-    bool reverseDir = (frameIndex & 1) != 0;
+    return sweepChunk(frameIndex, [&](int lx, int ly, int lz) -> bool {
+        VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
+        const auto& def = registry_.get(cell.materialId);
+        if (def.moveType != MoveType::Liquid)
+            return false;
 
-    for (int ly = 0; ly < kChunkSize; ++ly) {
-        int lxStart = reverseDir ? kChunkSize - 1 : 0;
-        int lxEnd = reverseDir ? -1 : kChunkSize;
-        int lxStep = reverseDir ? -1 : 1;
+        // 1. Gravity (same as powder)
+        VoxelCell below = readCell(pos, lx, ly - 1, lz, grid, ghosts);
+        if (canDisplace(cell, below)) {
+            writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, grid, tracker);
+            return true;
+        }
 
-        int lzStart = reverseDir ? kChunkSize - 1 : 0;
-        int lzEnd = reverseDir ? -1 : kChunkSize;
-        int lzStep = reverseDir ? -1 : 1;
+        // 2. Diagonal-down
+        struct Offset {
+            int dx, dy, dz;
+        };
+        std::array<Offset, 4> diags = {{{-1, -1, 0}, {1, -1, 0}, {0, -1, -1}, {0, -1, 1}}};
+        std::shuffle(diags.begin(), diags.end(), rng);
 
-        for (int lz = lzStart; lz != lzEnd; lz += lzStep) {
-            for (int lx = lxStart; lx != lxEnd; lx += lxStep) {
-                VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
-                const auto& def = registry_.get(cell.materialId);
-                if (def.moveType != MoveType::Liquid)
-                    continue;
-
-                // 1. Gravity (same as powder)
-                VoxelCell below = readCell(pos, lx, ly - 1, lz, grid, ghosts);
-                if (canDisplace(cell, below)) {
-                    writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, grid, tracker);
-                    anyChange = true;
-                    continue;
-                }
-
-                // 2. Diagonal-down
-                struct Offset {
-                    int dx, dy, dz;
-                };
-                std::array<Offset, 4> diags = {{{-1, -1, 0}, {1, -1, 0}, {0, -1, -1}, {0, -1, 1}}};
-                std::shuffle(diags.begin(), diags.end(), rng);
-
-                bool moved = false;
-                for (const auto& [dx, dy, dz] : diags) {
-                    VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
-                    if (canDisplace(cell, target)) {
-                        writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker);
-                        anyChange = true;
-                        moved = true;
-                        break;
-                    }
-                }
-                if (moved)
-                    continue;
-
-                // 3. Horizontal flow (1 cell/tick)
-                std::array<Offset, 4> horiz = {{{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}}};
-                std::shuffle(horiz.begin(), horiz.end(), rng);
-
-                for (const auto& [dx, dy, dz] : horiz) {
-                    VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
-                    if (target.materialId == material_ids::AIR) {
-                        writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker);
-                        anyChange = true;
-                        break;
-                    }
-                }
+        for (const auto& [dx, dy, dz] : diags) {
+            VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
+            if (canDisplace(cell, target)) {
+                writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker);
+                return true;
             }
         }
-    }
 
-    return anyChange;
+        // 3. Horizontal flow (1 cell/tick)
+        std::array<Offset, 4> horiz = {{{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}}};
+        std::shuffle(horiz.begin(), horiz.end(), rng);
+
+        for (const auto& [dx, dy, dz] : horiz) {
+            VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
+            if (target.materialId == material_ids::AIR) {
+                writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker);
+                return true;
+            }
+        }
+        return false;
+    });
 }
 
 void FallingSandSystem::simulateChunk(ChunkPos pos, SimulationGrid& grid, const GhostCellManager& ghosts,

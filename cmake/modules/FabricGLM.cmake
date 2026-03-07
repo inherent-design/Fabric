@@ -1,4 +1,5 @@
 # FabricGLM.cmake - Fetch and configure GLM for Fabric Engine
+include_guard()
 
 CPMAddPackage(
     NAME glm

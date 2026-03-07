@@ -104,7 +104,7 @@ template <typename StateEnum> class StateMachine {
         }
 
         std::lock_guard<std::mutex> lock(hooksMutex_);
-        auto id = Utils::generateUniqueId("hook_");
+        auto id = utils::generateUniqueId("hook_");
         stateHooks_[state].push_back(HookEntry{id, hook});
         FABRIC_LOG_DEBUG("Added state hook for '{}' with ID '{}'", toStringFn_(state), id);
         return id;
@@ -116,7 +116,7 @@ template <typename StateEnum> class StateMachine {
         }
 
         std::lock_guard<std::mutex> lock(hooksMutex_);
-        auto id = Utils::generateUniqueId("transition_");
+        auto id = utils::generateUniqueId("transition_");
         auto key = transitionKey(from, to);
         transitionHooks_[key].push_back(HookEntry{id, hook});
         FABRIC_LOG_DEBUG("Added transition hook from '{}' to '{}' with ID '{}'", toStringFn_(from), toStringFn_(to),

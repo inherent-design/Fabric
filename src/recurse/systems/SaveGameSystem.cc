@@ -13,7 +13,14 @@ namespace recurse::systems {
 
 SaveGameSystem::~SaveGameSystem() = default;
 
-void SaveGameSystem::init(fabric::AppContext& ctx) {
+void SaveGameSystem::doShutdown() {
+    saveManager_.reset();
+    terrain_ = nullptr;
+    charMovement_ = nullptr;
+    FABRIC_LOG_INFO("SaveGameSystem shut down");
+}
+
+void SaveGameSystem::doInit(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
 

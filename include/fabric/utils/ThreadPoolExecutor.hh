@@ -7,7 +7,6 @@
 #include <future>
 #include <mutex>
 #include <queue>
-#include <stdexcept>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -16,14 +15,14 @@
 #include "fabric/utils/ErrorHandling.hh"
 
 namespace fabric {
-namespace Utils {
+namespace utils {
 
 /**
  * @brief Exception thrown when a thread pool operation times out
  */
-class ThreadPoolTimeoutException : public std::runtime_error {
+class ThreadPoolTimeoutException : public FabricException {
   public:
-    explicit ThreadPoolTimeoutException(const std::string& message) : std::runtime_error(message) {}
+    explicit ThreadPoolTimeoutException(const std::string& message) : FabricException(message) {}
 };
 
 /**
@@ -227,5 +226,5 @@ class ThreadPoolExecutor {
     std::atomic<bool> pausedForTesting_{false};
 };
 
-} // namespace Utils
+} // namespace utils
 } // namespace fabric

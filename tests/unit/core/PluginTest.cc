@@ -15,9 +15,9 @@ class MockPlugin : public Plugin {
     std::string getAuthor() const override { return "Test Author"; }
     std::string getDescription() const override { return "A mock plugin for testing"; }
 
-    bool initialize() override {
-        initializeCalled = true;
-        return initializeResult;
+    bool init() override {
+        initCalled = true;
+        return initResult;
     }
 
     void shutdown() override { shutdownCalled = true; }
@@ -29,8 +29,8 @@ class MockPlugin : public Plugin {
         return components;
     }
 
-    bool initializeCalled = false;
-    bool initializeResult = true;
+    bool initCalled = false;
+    bool initResult = true;
     bool shutdownCalled = false;
 };
 
@@ -44,9 +44,9 @@ class PluginWithDependencies : public Plugin {
     explicit PluginWithDependencies(const std::string& name, const std::vector<std::string>& deps)
         : name_(name), dependencies_(deps) {}
 
-    bool initialize() override {
-        initializeCalled = true;
-        initializeOrder.push_back(name_);
+    bool init() override {
+        initCalled = true;
+        initOrder.push_back(name_);
         return true;
     }
 
@@ -59,9 +59,9 @@ class PluginWithDependencies : public Plugin {
 
     std::vector<std::string> getDependencies() const override { return dependencies_; }
 
-    bool initializeCalled = false;
+    bool initCalled = false;
     bool shutdownCalled = false;
-    static std::vector<std::string> initializeOrder;
+    static std::vector<std::string> initOrder;
     static std::vector<std::string> shutdownOrder;
 
   private:
@@ -69,13 +69,13 @@ class PluginWithDependencies : public Plugin {
     std::vector<std::string> dependencies_;
 };
 
-std::vector<std::string> PluginWithDependencies::initializeOrder;
+std::vector<std::string> PluginWithDependencies::initOrder;
 std::vector<std::string> PluginWithDependencies::shutdownOrder;
 
 class PluginTest : public ::testing::Test {
   protected:
     void SetUp() override {
-        PluginWithDependencies::initializeOrder.clear();
+        PluginWithDependencies::initOrder.clear();
         PluginWithDependencies::shutdownOrder.clear();
     }
 
@@ -166,21 +166,21 @@ TEST_F(PluginTest, UnloadNonexistentPlugin) {
 TEST_F(PluginTest, InitializeAll) {
     manager.registerPlugin("MockPlugin", []() { return std::make_shared<MockPlugin>(); });
     manager.loadPlugin("MockPlugin");
-    EXPECT_TRUE(manager.initializeAll());
+    EXPECT_TRUE(manager.initAll());
 
     auto pluginObj = std::dynamic_pointer_cast<MockPlugin>(manager.getPlugin("MockPlugin"));
-    EXPECT_TRUE(pluginObj->initializeCalled);
+    EXPECT_TRUE(pluginObj->initCalled);
 }
 
 TEST_F(PluginTest, InitializeAllFailure) {
     manager.registerPlugin("FailingPlugin", []() {
         auto plugin = std::make_shared<MockPlugin>();
-        plugin->initializeResult = false;
+        plugin->initResult = false;
         return plugin;
     });
 
     manager.loadPlugin("FailingPlugin");
-    EXPECT_FALSE(manager.initializeAll());
+    EXPECT_FALSE(manager.initAll());
 }
 
 TEST_F(PluginTest, ShutdownAll) {
@@ -220,9 +220,9 @@ TEST_F(PluginTest, SimpleDependencyChain) {
     manager.loadPlugin("PluginB");
     manager.loadPlugin("PluginC");
 
-    EXPECT_TRUE(manager.initializeAll());
+    EXPECT_TRUE(manager.initAll());
 
-    const auto& order = PluginWithDependencies::initializeOrder;
+    const auto& order = PluginWithDependencies::initOrder;
     EXPECT_EQ(order.size(), 3);
     EXPECT_EQ(order[0], "PluginA");
     EXPECT_EQ(order[1], "PluginB");

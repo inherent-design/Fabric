@@ -2,7 +2,7 @@
 #include "fabric/core/Log.hh"
 
 namespace fabric {
-namespace Utils {
+namespace utils {
 
 ThreadPoolExecutor::ThreadPoolExecutor(size_t threadCount)
     : threadCount_(threadCount > 0 ? threadCount : std::thread::hardware_concurrency()) {
@@ -219,5 +219,5 @@ void ThreadPoolExecutor::workerThread(size_t index) {
     }
 }
 
-} // namespace Utils
+} // namespace utils
 } // namespace fabric

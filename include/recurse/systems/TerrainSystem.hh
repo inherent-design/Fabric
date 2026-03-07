@@ -25,8 +25,8 @@ class TerrainSystem : public fabric::System<TerrainSystem> {
     TerrainSystem();
     ~TerrainSystem() override;
 
-    void init(fabric::AppContext& ctx) override;
-    void shutdown() override;
+    void doInit(fabric::AppContext& ctx) override;
+    void doShutdown() override;
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
     void configureDependencies() override;
 
@@ -54,8 +54,6 @@ class TerrainSystem : public fabric::System<TerrainSystem> {
     /// Sync density field from an external SimulationGrid (e.g., VoxelSimulationSystem's grid)
     void syncDensityFromGrid(const fabric::simulation::SimulationGrid& grid);
 
-    // Deprecated: old field accessors kept for compile compat with legacy systems.
-    // These return empty default-constructed fields -- callers are dead code paths.
     fabric::DensityField& density() { return density_; }
     const fabric::DensityField& density() const { return density_; }
     fabric::EssenceField& essence() { return essence_; }

@@ -1,14 +1,9 @@
 #pragma once
 
 #include "fabric/core/Spatial.hh"
-#include <RmlUi/Core/DataModelHandle.h>
+#include "fabric/ui/RmlPanel.hh"
 #include <RmlUi/Core/Types.h>
 #include <string>
-
-namespace Rml {
-class Context;
-class ElementDocument;
-} // namespace Rml
 
 namespace fabric {
 
@@ -32,25 +27,15 @@ struct DebugData {
     int chunkMeshQueueSize = 0;
 };
 
-// Debug overlay using RmlUI data binding. Displays engine metrics in a
-// semi-transparent panel. Toggle visibility with F3 or via toggle().
-class DebugHUD {
+class DebugHUD : public RmlPanel {
   public:
     DebugHUD() = default;
-    ~DebugHUD() = default;
+    ~DebugHUD() override = default;
 
     void init(Rml::Context* context);
     void update(const DebugData& data);
-    void toggle();
-    void shutdown();
-    bool isVisible() const;
 
   private:
-    Rml::Context* context_ = nullptr;
-    Rml::ElementDocument* document_ = nullptr;
-    bool visible_ = false;
-    bool initialized_ = false;
-
     float fps_ = 0.0f;
     float frameTimeMs_ = 0.0f;
     int entityCount_ = 0;
@@ -70,8 +55,6 @@ class DebugHUD {
     int physicsBodyCount_ = 0;
     int audioVoiceCount_ = 0;
     int chunkMeshQueueSize_ = 0;
-
-    Rml::DataModelHandle modelHandle_;
 };
 
 } // namespace fabric

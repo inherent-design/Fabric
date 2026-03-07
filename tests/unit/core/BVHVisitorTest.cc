@@ -96,11 +96,12 @@ TEST(BVHVisitorTest, LeavesAtGreaterOrEqualDepthThanInternal) {
     EXPECT_GE(minLeafDepth, maxInternalDepth);
 }
 
-TEST(BVHVisitorTest, AutoBuildsWhenDirty) {
+TEST(BVHVisitorTest, EagerBuildAfterInserts) {
     BVH<int> bvh;
     bvh.insert(makeBox(0, 0, 0, 1), 1);
     bvh.insert(makeBox(10, 0, 0, 1), 2);
 
+    // Eager build: each insert rebuilds, so tree is ready for query
     int count = 0;
     bvh.visitNodes([&](const AABB&, int, bool) { ++count; });
     EXPECT_EQ(count, 3); // 2 leaves + 1 internal

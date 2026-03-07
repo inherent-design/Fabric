@@ -1,10 +1,8 @@
 #include "fabric/ui/WAILAPanel.hh"
 
-#include "fabric/core/AppModeManager.hh"
 #include "fabric/core/Log.hh"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
-#include <RmlUi/Core/ElementDocument.h>
 
 #include <cstdio>
 
@@ -16,9 +14,7 @@ void WAILAPanel::init(Rml::Context* context) {
         return;
     }
 
-    context_ = context;
-
-    Rml::DataModelConstructor constructor = context_->CreateDataModel("waila");
+    Rml::DataModelConstructor constructor = context->CreateDataModel("waila");
     if (!constructor) {
         FABRIC_LOG_ERROR("WAILAPanel: failed to create data model");
         return;
@@ -39,21 +35,13 @@ void WAILAPanel::init(Rml::Context* context) {
 
     modelHandle_ = constructor.GetModelHandle();
 
-    document_ = context_->LoadDocument("assets/ui/waila.rml");
-    if (document_) {
-        document_->Hide(); // Start hidden, will be shown via setMode()
-        FABRIC_LOG_INFO("WAILAPanel document loaded");
-    } else {
-        FABRIC_LOG_WARN("WAILAPanel: failed to load waila.rml");
-    }
-
-    initialized_ = true;
+    initBase(context, "waila", "assets/ui/waila.rml");
+    FABRIC_LOG_INFO("WAILAPanel document loaded");
 }
 
 void WAILAPanel::update(const WAILAData& data) {
-    if (!initialized_) {
+    if (!initialized_)
         return;
-    }
 
     hasHit_ = data.hasHit;
 
@@ -68,12 +56,10 @@ void WAILAPanel::update(const WAILAData& data) {
         distance_ = data.distance;
         density_ = data.density;
 
-        // Format normal as readable string (e.g. "+X", "-Y", "+Z")
         char normalBuf[16];
         std::snprintf(normalBuf, sizeof(normalBuf), "%d, %d, %d", data.normalX, data.normalY, data.normalZ);
         normalStr_ = normalBuf;
 
-        // Format essence color as hex (e.g. "#FF8844")
         auto clamp = [](float v) -> int {
             return static_cast<int>(v * 255.0f + 0.5f) & 0xFF;
         };
@@ -90,27 +76,12 @@ void WAILAPanel::update(const WAILAData& data) {
     }
 }
 
-void WAILAPanel::toggle() {
-    visible_ = !visible_;
-    if (!initialized_)
-        return;
-    if (document_) {
-        if (visible_) {
-            document_->Show();
-        } else {
-            document_->Hide();
-        }
-    }
-}
-
 void WAILAPanel::setMode(AppMode mode) {
     if (!initialized_)
         return;
 
     currentMode_ = mode;
 
-    // Only show WAILA during gameplay modes (Game, Paused)
-    // Hide in Menu, Console, Editor modes
     bool shouldShow = (mode == AppMode::Game || mode == AppMode::Paused);
 
     if (document_) {
@@ -122,24 +93,6 @@ void WAILAPanel::setMode(AppMode mode) {
             visible_ = false;
         }
     }
-}
-
-void WAILAPanel::shutdown() {
-    initialized_ = false;
-    if (document_) {
-        document_->Close();
-        document_ = nullptr;
-    }
-    if (context_ && modelHandle_) {
-        context_->RemoveDataModel("waila");
-    }
-    modelHandle_ = {};
-    visible_ = false;
-    context_ = nullptr;
-}
-
-bool WAILAPanel::isVisible() const {
-    return visible_;
 }
 
 } // namespace fabric

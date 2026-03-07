@@ -21,12 +21,12 @@ class MockA : public System<MockA> {
     int renderCount = 0;
     int shutdownCount = 0;
 
-    void init(AppContext& ctx) override {
+    void doInit(AppContext& ctx) override {
         ++initCount;
         if (g_callLog)
             g_callLog->push_back("A::init");
     }
-    void shutdown() override {
+    void doShutdown() override {
         ++shutdownCount;
         if (g_callLog)
             g_callLog->push_back("A::shutdown");
@@ -56,12 +56,12 @@ class MockB : public System<MockB> {
 
     void configureDependencies() override { after<MockA>(); }
 
-    void init(AppContext& ctx) override {
+    void doInit(AppContext& ctx) override {
         ++initCount;
         if (g_callLog)
             g_callLog->push_back("B::init");
     }
-    void shutdown() override {
+    void doShutdown() override {
         ++shutdownCount;
         if (g_callLog)
             g_callLog->push_back("B::shutdown");
@@ -81,12 +81,12 @@ class MockC : public System<MockC> {
 
     void configureDependencies() override { after<MockB>(); }
 
-    void init(AppContext& ctx) override {
+    void doInit(AppContext& ctx) override {
         ++initCount;
         if (g_callLog)
             g_callLog->push_back("C::init");
     }
-    void shutdown() override {
+    void doShutdown() override {
         ++shutdownCount;
         if (g_callLog)
             g_callLog->push_back("C::shutdown");
@@ -103,11 +103,11 @@ class MockD : public System<MockD> {
   public:
     void configureDependencies() override { before<MockA>(); }
 
-    void init(AppContext& ctx) override {
+    void doInit(AppContext& ctx) override {
         if (g_callLog)
             g_callLog->push_back("D::init");
     }
-    void shutdown() override {
+    void doShutdown() override {
         if (g_callLog)
             g_callLog->push_back("D::shutdown");
     }
@@ -380,11 +380,11 @@ namespace {
 
 class DiamondD : public System<DiamondD> {
   public:
-    void init(AppContext& ctx) override {
+    void doInit(AppContext& ctx) override {
         if (g_callLog)
             g_callLog->push_back("DD::init");
     }
-    void shutdown() override {
+    void doShutdown() override {
         if (g_callLog)
             g_callLog->push_back("DD::shutdown");
     }
@@ -393,7 +393,7 @@ class DiamondD : public System<DiamondD> {
 class DiamondB : public System<DiamondB> {
   public:
     void configureDependencies() override { after<DiamondD>(); }
-    void init(AppContext& ctx) override {
+    void doInit(AppContext& ctx) override {
         if (g_callLog)
             g_callLog->push_back("DB::init");
     }
@@ -402,7 +402,7 @@ class DiamondB : public System<DiamondB> {
 class DiamondC : public System<DiamondC> {
   public:
     void configureDependencies() override { after<DiamondD>(); }
-    void init(AppContext& ctx) override {
+    void doInit(AppContext& ctx) override {
         if (g_callLog)
             g_callLog->push_back("DC::init");
     }
@@ -414,7 +414,7 @@ class DiamondA : public System<DiamondA> {
         after<DiamondB>();
         after<DiamondC>();
     }
-    void init(AppContext& ctx) override {
+    void doInit(AppContext& ctx) override {
         if (g_callLog)
             g_callLog->push_back("DA::init");
     }

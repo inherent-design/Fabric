@@ -8,8 +8,8 @@ using namespace recurse;
 
 namespace {
 
-VertexPool::Config testConfig(uint32_t buckets = 8) {
-    VertexPool::Config cfg;
+VoxelVertexPool::Config testConfig(uint32_t buckets = 8) {
+    VoxelVertexPool::Config cfg;
     cfg.maxVerticesPerBucket = 64;
     cfg.maxIndicesPerBucket = 96;
     cfg.initialBuckets = buckets;
@@ -31,14 +31,14 @@ void makeDummyMesh(std::vector<VoxelVertex>& verts, std::vector<uint32_t>& indic
 } // namespace
 
 TEST(VertexPoolTest, NotValidBeforeInit) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     EXPECT_FALSE(pool.isValid());
     EXPECT_EQ(pool.allocatedBuckets(), 0u);
     EXPECT_EQ(pool.totalBuckets(), 0u);
 }
 
 TEST(VertexPoolTest, InitCreatesValidPool) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     pool.init(testConfig());
     EXPECT_TRUE(pool.isValid());
     EXPECT_EQ(pool.totalBuckets(), 8u);
@@ -46,7 +46,7 @@ TEST(VertexPoolTest, InitCreatesValidPool) {
 }
 
 TEST(VertexPoolTest, AllocateReturnsValidSlot) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     pool.init(testConfig());
 
     std::vector<VoxelVertex> verts;
@@ -61,7 +61,7 @@ TEST(VertexPoolTest, AllocateReturnsValidSlot) {
 }
 
 TEST(VertexPoolTest, AllocateAssignsCorrectOffsets) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     auto cfg = testConfig();
     pool.init(cfg);
 
@@ -84,7 +84,7 @@ TEST(VertexPoolTest, AllocateAssignsCorrectOffsets) {
 }
 
 TEST(VertexPoolTest, FreeReturnsSlotForReuse) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     pool.init(testConfig());
 
     std::vector<VoxelVertex> verts;
@@ -105,7 +105,7 @@ TEST(VertexPoolTest, FreeReturnsSlotForReuse) {
 }
 
 TEST(VertexPoolTest, AllocFreeCycle) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     auto cfg = testConfig(4);
     pool.init(cfg);
 
@@ -135,7 +135,7 @@ TEST(VertexPoolTest, AllocFreeCycle) {
 }
 
 TEST(VertexPoolTest, FullPoolReturnsInvalidSlot) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     auto cfg = testConfig(2);
     pool.init(cfg);
 
@@ -156,7 +156,7 @@ TEST(VertexPoolTest, FullPoolReturnsInvalidSlot) {
 }
 
 TEST(VertexPoolTest, OversizedMeshReturnsInvalidSlot) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     auto cfg = testConfig();
     pool.init(cfg);
 
@@ -177,7 +177,7 @@ TEST(VertexPoolTest, OversizedMeshReturnsInvalidSlot) {
 }
 
 TEST(VertexPoolTest, ShutdownSafety) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     pool.init(testConfig());
     EXPECT_TRUE(pool.isValid());
 
@@ -191,7 +191,7 @@ TEST(VertexPoolTest, ShutdownSafety) {
 }
 
 TEST(VertexPoolTest, DoubleInitIsNoOp) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     auto cfg = testConfig(4);
     pool.init(cfg);
     EXPECT_EQ(pool.totalBuckets(), 4u);
@@ -203,7 +203,7 @@ TEST(VertexPoolTest, DoubleInitIsNoOp) {
 }
 
 TEST(VertexPoolTest, FreeInvalidSlotIsNoOp) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     pool.init(testConfig());
 
     PoolSlot invalid;
@@ -213,7 +213,7 @@ TEST(VertexPoolTest, FreeInvalidSlotIsNoOp) {
 }
 
 TEST(VertexPoolTest, FreeSameSlotTwiceIsNoOp) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     pool.init(testConfig());
 
     std::vector<VoxelVertex> verts;
@@ -230,7 +230,7 @@ TEST(VertexPoolTest, FreeSameSlotTwiceIsNoOp) {
 }
 
 TEST(VertexPoolTest, AllocateBeforeInitReturnsInvalid) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     std::vector<VoxelVertex> verts;
     std::vector<uint32_t> indices;
     makeDummyMesh(verts, indices, 4, 6);
@@ -240,7 +240,7 @@ TEST(VertexPoolTest, AllocateBeforeInitReturnsInvalid) {
 }
 
 TEST(VertexPoolTest, ConfigAccessors) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     auto cfg = testConfig();
     pool.init(cfg);
 
@@ -249,7 +249,7 @@ TEST(VertexPoolTest, ConfigAccessors) {
 }
 
 TEST(VertexPoolTest, SlotOffsetsAreContiguous) {
-    VertexPool pool;
+    VoxelVertexPool pool;
     auto cfg = testConfig(4);
     pool.init(cfg);
 

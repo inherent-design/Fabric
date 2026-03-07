@@ -1,4 +1,5 @@
 #include "recurse/systems/ChunkPipelineSystem.hh"
+#include "recurse/gameplay/GameConstants.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
@@ -13,17 +14,11 @@
 
 #include <cmath>
 
-namespace {
-constexpr float kSpawnX = 16.0f;
-constexpr float kSpawnY = 48.0f;
-constexpr float kSpawnZ = 16.0f;
-} // namespace
-
 namespace recurse::systems {
 
 ChunkPipelineSystem::~ChunkPipelineSystem() = default;
 
-void ChunkPipelineSystem::init(fabric::AppContext& ctx) {
+void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     simSystem_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
     physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
@@ -41,7 +36,7 @@ void ChunkPipelineSystem::init(fabric::AppContext& ctx) {
     {
         FABRIC_ZONE_SCOPED_N("initial_terrain");
         auto& ecsWorld = ctx.world;
-        auto initLoad = streaming_->update(kSpawnX, kSpawnY, kSpawnZ, 0.0f);
+        auto initLoad = streaming_->update(K_DEFAULT_SPAWN_X, K_DEFAULT_SPAWN_Y, K_DEFAULT_SPAWN_Z, 0.0f);
 
         for (const auto& coord : initLoad.toLoad) {
             auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
@@ -56,7 +51,7 @@ void ChunkPipelineSystem::init(fabric::AppContext& ctx) {
     }
 }
 
-void ChunkPipelineSystem::shutdown() {
+void ChunkPipelineSystem::doShutdown() {
     for (auto& [_, entity] : chunkEntities_) {
         entity.destruct();
     }
@@ -68,7 +63,7 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
     auto& ecsWorld = ctx.world;
 
     // Streaming: load/unload chunks around player position
-    float px = kSpawnX, py = kSpawnY, pz = kSpawnZ;
+    float px = K_DEFAULT_SPAWN_X, py = K_DEFAULT_SPAWN_Y, pz = K_DEFAULT_SPAWN_Z;
     float speed = 0.0f;
 
     if (charMovement_) {

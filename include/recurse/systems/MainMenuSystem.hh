@@ -57,8 +57,8 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     MainMenuSystem();
     ~MainMenuSystem() override;
 
-    void init(fabric::AppContext& ctx) override;
-    void shutdown() override;
+    void doInit(fabric::AppContext& ctx) override;
+    void doShutdown() override;
     void update(fabric::AppContext& ctx, float dt) override;
     void render(fabric::AppContext& ctx) override;
     void configureDependencies() override;
@@ -78,7 +78,6 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
   private:
     // RmlUi setup
     void initRmlDataModel();
-    void loadDocument(const std::string& rmlPath);
     void showDocument(const std::string& rmlPath);
     void hideCurrentDocument();
 

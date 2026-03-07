@@ -10,31 +10,15 @@ FlightController::FlightController(float width, float height, float depth)
     : width_(width), height_(height), depth_(depth) {}
 
 AABB FlightController::getAABB(const Vec3f& pos) const {
-    float hw = width_ * 0.5f;
-    float hd = depth_ * 0.5f;
-    Vec3f minCorner(pos.x - hw, pos.y, pos.z - hd);
-    Vec3f maxCorner(pos.x + hw, pos.y + height_, pos.z + hd);
-    return AABB(minCorner, maxCorner);
+    return physics::getAABB(pos, width_, height_, depth_);
 }
 
 bool FlightController::isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid, float threshold) const {
-    return grid.get(vx, vy, vz) >= threshold;
+    return physics::isSolid(vx, vy, vz, grid, threshold);
 }
 
 bool FlightController::aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold) const {
-    int minVX = static_cast<int>(std::floor(box.min.x));
-    int minVY = static_cast<int>(std::floor(box.min.y));
-    int minVZ = static_cast<int>(std::floor(box.min.z));
-    int maxVX = static_cast<int>(std::floor(box.max.x - kEpsilon));
-    int maxVY = static_cast<int>(std::floor(box.max.y - kEpsilon));
-    int maxVZ = static_cast<int>(std::floor(box.max.z - kEpsilon));
-
-    for (int vy = minVY; vy <= maxVY; ++vy)
-        for (int vz = minVZ; vz <= maxVZ; ++vz)
-            for (int vx = minVX; vx <= maxVX; ++vx)
-                if (isSolid(vx, vy, vz, grid, threshold))
-                    return true;
-    return false;
+    return physics::aabbOverlapsSolid(box, grid, threshold, kEpsilon);
 }
 
 Vec3f FlightController::applyDrag(const Vec3f& velocity, float dragCoefficient, float dt) {

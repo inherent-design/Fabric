@@ -67,11 +67,25 @@ For ResourceHub tests, prefer:
 
 - `.hh` for headers, `.cc` for source files
 - Namespace: `fabric::` (with sub-namespaces `fabric::log`, `fabric::async`, etc.)
-- PascalCase for classes, camelCase for methods
-- Use `std::unique_ptr` or `std::shared_ptr` for ownership management
+- PascalCase for classes, camelCase for methods, K_SCREAMING_SNAKE_CASE for constants
 - Prefer `const` where possible
+- `const_cast` is prohibited except in CoordinatedGraphCore.hh (deliberate lock pattern)
+  and test code (string literal to char** conversion). If const_cast seems necessary,
+  the API is missing a const overload; fix the API instead.
 - Clean code, minimal comments (only for complex or interesting logic)
 - No em/en-dashes, no emojis, no double-hyphens except title cases
+
+### Static over dynamic
+
+C++20 for clarity and safety; C99-style performance instincts for hot paths. Prefer compile-time resolution over runtime dispatch.
+
+- **Ownership:** `std::unique_ptr` by default. `std::shared_ptr` only when shared ownership is genuinely required and provable; never as a lazy default.
+- **Polymorphism:** Prefer templates, `if constexpr`, and CRTP over virtual dispatch. Use virtual only at system boundaries (SystemBase, RmlPanel) where the runtime set is small and fixed.
+- **Allocation:** Value types and stack allocation first. Arena/pool allocation (BufferPool, VertexPool) for batch lifetimes. Heap allocation as last resort.
+- **Containers:** `std::array` and fixed-size buffers over `std::vector` when size is known. Raw arrays are acceptable in performance-critical inner loops.
+- **Indirection:** Minimize pointer chasing. Flat SOA layouts for cache-friendly iteration. Avoid deep `unique_ptr` nesting.
+- **constexpr/consteval:** Push computation to compile time where possible (lookup tables, type traits, config constants).
+- **C99 patterns welcome:** Plain structs, free functions, static arrays, bitwise packing, union type-punning (via `std::bit_cast`) are all acceptable when they produce cleaner or faster code than C++ alternatives.
 
 ## Logging
 
@@ -177,7 +191,7 @@ pipeline.process(myString);
 
 All dependencies are managed via CPM.cmake v0.42.1 (`cmake/CPM.cmake`). Each library has a dedicated module in `cmake/modules/Fabric*.cmake` using `CPMAddPackage()`. Set `CPM_SOURCE_CACHE=~/.cache/CPM` (configured in `mise.toml`) to share sources across builds.
 
-bgfx v1.139.9155 is fetched via `cmake/modules/FabricBgfx.cmake`. CMake targets are `bgfx`, `bx`, `bimg` (no namespace prefix). On macOS, bgfx uses Metal by default. Shader tools (shaderc, texturec, geometryc) are built alongside.
+bgfx v1.139.9155 is fetched via `cmake/modules/FabricBgfx.cmake`. CMake targets are `bgfx`, `bx`, `bimg` (no namespace prefix). Rendering uses Vulkan on all platforms; macOS translates via MoltenVK. All shaders compile to SPIR-V. Shader tools (shaderc, texturec, geometryc) are built alongside.
 
 ## Breaking circular dependencies
 

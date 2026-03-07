@@ -13,8 +13,8 @@ class AIGameSystem : public fabric::System<AIGameSystem> {
   public:
     AIGameSystem() = default;
 
-    void init(fabric::AppContext& ctx) override;
-    void shutdown() override;
+    void doInit(fabric::AppContext& ctx) override;
+    void doShutdown() override;
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
 
     void configureDependencies() override;

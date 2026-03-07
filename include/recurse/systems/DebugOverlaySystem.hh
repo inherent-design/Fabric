@@ -32,9 +32,9 @@ class VoxelSimulationSystem;
 /// frame submission. RmlUi panels update independently.
 class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
   public:
-    void init(fabric::AppContext& ctx) override;
+    void doInit(fabric::AppContext& ctx) override;
     void render(fabric::AppContext& ctx) override;
-    void shutdown() override;
+    void doShutdown() override;
     void configureDependencies() override;
 
     recurse::DebugDraw& debugDraw() { return debugDraw_; }

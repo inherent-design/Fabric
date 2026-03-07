@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "recurse/render/SmoothVertexPool.hh"
+#include "recurse/render/VertexPool.hh"
 
 using namespace recurse;
 

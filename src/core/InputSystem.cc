@@ -13,11 +13,11 @@ InputSystem::InputSystem(EventDispatcher& dispatcher) : dispatcher_(&dispatcher)
 
 // --- System lifecycle ---
 
-void InputSystem::init(AppContext& ctx) {
+void InputSystem::doInit(AppContext& ctx) {
     (void)ctx;
 }
 
-void InputSystem::shutdown() {
+void InputSystem::doShutdown() {
     for (auto& device : connectedDevices_) {
         if (device.gamepad) {
             SDL_CloseGamepad(device.gamepad);

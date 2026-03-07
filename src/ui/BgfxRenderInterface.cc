@@ -30,8 +30,8 @@ namespace fabric {
 namespace {
 
 // Premultiplied alpha: SRC=ONE, DST=INV_SRC_ALPHA
-constexpr uint64_t kRenderState = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_MSAA |
-                                  BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_ONE, BGFX_STATE_BLEND_INV_SRC_ALPHA);
+constexpr uint64_t K_RENDER_STATE = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_MSAA |
+                                    BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_ONE, BGFX_STATE_BLEND_INV_SRC_ALPHA);
 
 } // namespace
 
@@ -167,7 +167,7 @@ void BgfxRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, R
                          static_cast<uint16_t>(scissorRect_.Width()), static_cast<uint16_t>(scissorRect_.Height()));
     }
 
-    bgfx::setState(kRenderState);
+    bgfx::setState(K_RENDER_STATE);
     bgfx::submit(viewId_, program_);
 }
 

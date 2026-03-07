@@ -16,8 +16,10 @@ class SimulationGrid;
 
 namespace recurse {
 class SnapMCMesher;
-class SmoothVertexPool;
 } // namespace recurse
+
+// SmoothVertexPool is a type alias, cannot forward-declare
+#include "recurse/render/VertexPool.hh"
 
 namespace recurse::systems {
 
@@ -39,8 +41,8 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     VoxelMeshingSystem();
     ~VoxelMeshingSystem() override;
 
-    void init(fabric::AppContext& ctx) override;
-    void shutdown() override;
+    void doInit(fabric::AppContext& ctx) override;
+    void doShutdown() override;
     void render(fabric::AppContext& ctx) override;
     void configureDependencies() override;
 

@@ -115,39 +115,11 @@ include(FabricToml)
 # efsw - cross-platform file system watcher for hot-reload
 include(FabricEfsw)
 
-# SDL3 Configuration
-set(SDL_SHARED OFF)
-set(SDL_STATIC ON)
-set(SDL_TEST OFF)
+# SDL3 - cross-platform windowing and input
+include(FabricSDL3)
 
-# Enable core SDL3 subsystems
-foreach(SUBSYSTEM IN ITEMS AUDIO VIDEO RENDER EVENTS JOYSTICK HIDAPI SENSOR THREADS TIMERS)
-    set(SDL_${SUBSYSTEM} ON)
-endforeach()
-
-CPMAddPackage(
-    NAME SDL3
-    GITHUB_REPOSITORY libsdl-org/SDL
-    GIT_TAG release-3.4.2
-    SYSTEM
-    EXCLUDE_FROM_ALL
-)
-
-# WebView
-option(FABRIC_USE_WEBVIEW "Enable WebView support" ON)
-
-# Set WebKitGTK API version for Linux (4.1 is available on Ubuntu 22.04+, Fedora 38+, Arch)
-if(UNIX AND NOT APPLE)
-    set(WEBVIEW_WEBKITGTK_API "4.1" CACHE STRING "WebKitGTK API version")
-endif()
-
-CPMAddPackage(
-    NAME webview
-    GITHUB_REPOSITORY webview/webview
-    GIT_TAG 0.12.0
-    SYSTEM
-    EXCLUDE_FROM_ALL
-)
+# WebView - embedded web UI
+include(FabricWebView)
 
 #------------------------------------------------------------------------------
 # Source Files and Library Configuration
@@ -194,6 +166,7 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/PostProcess.cc
     src/core/SkyRenderer.cc
     src/core/SimulationThreadPool.cc
+    src/core/ChunkDirtyTracker.cc
 )
 
 #------------------------------------------------------------------------------
@@ -220,6 +193,7 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/physics/PhysicsWorld.cc
     src/recurse/physics/JoltCharacterController.cc
     src/recurse/physics/Ragdoll.cc
+    src/recurse/physics/VoxelCollision.cc
     # ai/
     src/recurse/ai/BehaviorAI.cc
     src/recurse/ai/Pathfinding.cc
@@ -237,13 +211,12 @@ set(RECURSE_GAME_SOURCE_FILES
     # world/ (smooth pipeline)
     src/recurse/world/ChunkDensityCache.cc
     src/recurse/world/SnapMCMesher.cc
+    src/recurse/world/SnapMCTables.cc
     src/recurse/world/SurfaceNetsMesher.cc
     # render/
     src/recurse/render/OITCompositor.cc
-    src/recurse/render/SmoothVertexPool.cc
     src/recurse/render/ParticleSystem.cc
     src/recurse/render/ShadowSystem.cc
-    src/recurse/render/VertexPool.cc
     src/recurse/render/DebugDraw.cc
     src/recurse/render/VoxelRenderer.cc
     # persistence/
@@ -311,7 +284,6 @@ set(FABRIC_WORLD_SOURCE_FILES
 
 # Utils library components
 set(FABRIC_UTILS_SOURCE_FILES
-    src/utils/BufferPool.cc
     src/utils/ErrorHandling.cc
     src/utils/ThreadPoolExecutor.cc
     src/utils/Utils.cc
@@ -330,9 +302,8 @@ set(FABRIC_PLATFORM_SOURCE_FILES
     src/platform/CursorManager.cc
 )
 
-# Codec library components
+# Codec library components (header-only; source list kept for future additions)
 set(FABRIC_CODEC_SOURCE_FILES
-    src/codec/Codec.cc
 )
 
 # UI library components
@@ -341,6 +312,7 @@ set(FABRIC_UI_SOURCE_FILES
     src/ui/BgfxRenderInterface.cc
     src/ui/BgfxSystemInterface.cc
     src/ui/StbImage.cc
+    src/ui/RmlPanel.cc
     src/ui/DebugHUD.cc
     src/ui/ChunkDebugPanel.cc
     src/ui/WAILAPanel.cc
@@ -476,16 +448,9 @@ set_source_files_properties(
     COMPILE_DEFINITIONS "FABRIC_CORE_API"
 )
 
-# Homebrew LLVM ships a newer libc++ than the macOS system; link against it
-# so symbols like __hash_memory resolve.
-if(APPLE AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT CMAKE_CXX_COMPILER MATCHES "/usr/bin")
-    get_filename_component(_compiler_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
-    get_filename_component(_llvm_root "${_compiler_dir}" DIRECTORY)
-    set(_libcxx_path "${_llvm_root}/lib/c++")
-    if(EXISTS "${_libcxx_path}/libc++.dylib")
-        target_link_options(FabricLib PUBLIC "-L${_libcxx_path}" "-Wl,-rpath,${_libcxx_path}")
-    endif()
-endif()
+# Homebrew LLVM rpath fix (shared with FabricBgfx shaderc)
+include(FabricHomebrew)
+fabric_fix_homebrew_llvm_rpath(FabricLib)
 
 # Create the Recurse executable (canonical entry point, FabricAppDesc pattern).
 # Uses FabricApp::run() with lifecycle callbacks; all game logic in Recurse.cc.

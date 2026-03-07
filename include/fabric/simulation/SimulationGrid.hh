@@ -44,6 +44,7 @@ class SimulationGrid {
     uint64_t epoch_ = 0;
     std::unordered_map<int64_t, ChunkBufferPair> chunks_;
     static int64_t packKey(int cx, int cy, int cz);
+    VoxelCell readFromBuffer(int wx, int wy, int wz, int bufferIdx) const;
     int readIndex() const;
     int writeIndex() const;
 };

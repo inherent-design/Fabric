@@ -15,9 +15,6 @@
 
 namespace recurse::systems {
 
-class ChunkPipelineSystem;
-class VoxelMeshingSystem;
-
 /// ECS system that manages LOD generation, cascade, selection, and rendering.
 ///
 /// LOD Generation: Reads SimulationGrid to build LOD0 sections from chunks.
@@ -29,8 +26,8 @@ class LODSystem : public fabric::System<LODSystem> {
     LODSystem();
     ~LODSystem() override;
 
-    void init(fabric::AppContext& ctx) override;
-    void shutdown() override;
+    void doInit(fabric::AppContext& ctx) override;
+    void doShutdown() override;
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
     void render(fabric::AppContext& ctx) override;
     void configureDependencies() override;
@@ -58,7 +55,7 @@ class LODSystem : public fabric::System<LODSystem> {
 
     // Distance-based LOD selection + frustum culling
     struct VisibleSection {
-        LODSection* section;
+        const LODSection* section;
         float distance;
         LODSectionKey key;
     };
@@ -80,8 +77,6 @@ class LODSystem : public fabric::System<LODSystem> {
     std::unique_ptr<LODMeshManager> meshManager_;
 
     // References to other systems
-    ChunkPipelineSystem* chunks_ = nullptr;
-    VoxelMeshingSystem* meshSystem_ = nullptr;
     fabric::simulation::SimulationGrid* simGrid_ = nullptr;
     const fabric::simulation::MaterialRegistry* materials_ = nullptr;
 

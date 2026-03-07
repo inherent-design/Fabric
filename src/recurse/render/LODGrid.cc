@@ -25,7 +25,7 @@ LODSection* LODGrid::getOrCreate(int level, int sx, int sy, int sz) {
 
     auto section = std::make_unique<LODSection>();
     section->level = level;
-    section->origin = ivec3(sx * kSectionWorldSize, sy * kSectionWorldSize, sz * kSectionWorldSize);
+    section->origin = Vec3i(sx * kSectionWorldSize, sy * kSectionWorldSize, sz * kSectionWorldSize);
     section->blockIndices.assign(LODSection::kVolume, 0);
     section->palette.clear();
     section->palette.push_back(0); // Index 0 = air (materialId 1)

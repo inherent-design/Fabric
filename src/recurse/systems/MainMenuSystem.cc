@@ -1,4 +1,5 @@
 #include "recurse/systems/MainMenuSystem.hh"
+#include "recurse/gameplay/GameConstants.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/AppModeManager.hh"
@@ -64,7 +65,7 @@ class MenuButtonListener : public Rml::EventListener {
 MainMenuSystem::MainMenuSystem() = default;
 MainMenuSystem::~MainMenuSystem() = default;
 
-void MainMenuSystem::init(fabric::AppContext& ctx) {
+void MainMenuSystem::doInit(fabric::AppContext& ctx) {
     FABRIC_LOG_INFO("MainMenuSystem::init starting");
 
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
@@ -118,8 +119,9 @@ void MainMenuSystem::init(fabric::AppContext& ctx) {
         if (characterMovement_) {
             // Flat world ground is at y=32, spawn 10 units above
             float spawnY = (type == WorldType::Flat) ? 42.0f : 64.0f;
-            characterMovement_->setPlayerPosition(fabric::Vec3f(16.0f, spawnY, 16.0f));
-            FABRIC_LOG_INFO("MainMenu: Player position reset to (16, {}, 16)", spawnY);
+            characterMovement_->setPlayerPosition(fabric::Vec3f(K_DEFAULT_SPAWN_X, spawnY, K_DEFAULT_SPAWN_Z));
+            FABRIC_LOG_INFO("MainMenu: Player position reset to ({}, {}, {})", K_DEFAULT_SPAWN_X, spawnY,
+                            K_DEFAULT_SPAWN_Z);
         }
 
         // Transition to Game mode
@@ -174,7 +176,7 @@ void MainMenuSystem::initRmlDataModel() {
     dataModelHandle_ = constructor.GetModelHandle();
 }
 
-void MainMenuSystem::shutdown() {
+void MainMenuSystem::doShutdown() {
     hideCurrentDocument();
     if (rmlContext_ && dataModelHandle_) {
         rmlContext_->RemoveDataModel("main_menu");
@@ -205,6 +207,10 @@ void MainMenuSystem::render(fabric::AppContext& ctx) {
 
 void MainMenuSystem::configureDependencies() {
     after<TerrainSystem>();
+    after<VoxelSimulationSystem>();
+    after<VoxelMeshingSystem>();
+    after<CharacterMovementSystem>();
+    after<PhysicsGameSystem>();
 }
 
 void MainMenuSystem::setSplashEntries(std::vector<SplashEntry> entries) {

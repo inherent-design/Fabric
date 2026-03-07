@@ -1,4 +1,5 @@
 #include "recurse/ai/Pathfinding.hh"
+#include "recurse/world/ChunkCoordUtils.hh"
 
 #include "fabric/core/Log.hh"
 
@@ -23,8 +24,7 @@ bool Pathfinding::isWalkable(const ChunkedGrid<float>& grid, int x, int y, int z
 }
 
 int64_t Pathfinding::packCoord(int x, int y, int z) {
-    return (static_cast<int64_t>(x) << 42) | (static_cast<int64_t>(y & 0x1FFFFF) << 21) |
-           static_cast<int64_t>(z & 0x1FFFFF);
+    return static_cast<int64_t>(packChunkKey(x, y, z));
 }
 
 float Pathfinding::heuristic(int x, int y, int z, int gx, int gy, int gz) {
@@ -60,9 +60,6 @@ PathResult Pathfinding::findPath(const ChunkedGrid<float>& grid, int sx, int sy,
     std::vector<AStarNode> nodes;
     std::unordered_map<int64_t, int> visited;
 
-    constexpr std::array<std::array<int, 3>, 6> dirs = {
-        {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}};
-
     float h = heuristic(sx, sy, sz, gx, gy, gz);
     nodes.push_back({sx, sy, sz, 0.0f, h, -1});
     open.push({h, 0});
@@ -96,7 +93,7 @@ PathResult Pathfinding::findPath(const ChunkedGrid<float>& grid, int sx, int sy,
             continue;
         }
 
-        for (const auto& d : dirs) {
+        for (const auto& d : K_FACE_NEIGHBORS) {
             int nx = cur.x + d[0];
             int ny = cur.y + d[1];
             int nz = cur.z + d[2];

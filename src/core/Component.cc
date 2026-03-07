@@ -5,24 +5,24 @@
 
 namespace fabric {
 
-Component::Component(const std::string& id) : id(id) {
+Component::Component(const std::string& id) : id_(id) {
     if (id.empty()) {
         throwError("Component ID cannot be empty");
     }
 }
 
 const std::string& Component::getId() const {
-    return id;
+    return id_;
 }
 
 bool Component::hasProperty(const std::string& name) const {
-    std::lock_guard<std::mutex> lock(propertiesMutex);
-    return properties.find(name) != properties.end();
+    std::lock_guard<std::mutex> lock(propertiesMutex_);
+    return properties_.find(name) != properties_.end();
 }
 
 bool Component::removeProperty(const std::string& name) {
-    std::lock_guard<std::mutex> lock(propertiesMutex);
-    return properties.erase(name) > 0;
+    std::lock_guard<std::mutex> lock(propertiesMutex_);
+    return properties_.erase(name) > 0;
 }
 
 void Component::addChild(std::shared_ptr<Component> child) {
@@ -30,28 +30,28 @@ void Component::addChild(std::shared_ptr<Component> child) {
         throwError("Cannot add null child to component");
     }
 
-    std::lock_guard<std::mutex> lock(childrenMutex);
+    std::lock_guard<std::mutex> lock(childrenMutex_);
 
     // Check for duplicate IDs
-    for (const auto& existingChild : children) {
+    for (const auto& existingChild : children_) {
         if (existingChild->getId() == child->getId()) {
             throwError("Child component with ID '" + child->getId() + "' already exists");
         }
     }
 
-    children.push_back(child);
-    FABRIC_LOG_DEBUG("Added child '{}' to component '{}'", child->getId(), id);
+    children_.push_back(child);
+    FABRIC_LOG_DEBUG("Added child '{}' to component '{}'", child->getId(), id_);
 }
 
 bool Component::removeChild(const std::string& childId) {
-    std::lock_guard<std::mutex> lock(childrenMutex);
+    std::lock_guard<std::mutex> lock(childrenMutex_);
 
-    auto it = std::find_if(children.begin(), children.end(),
+    auto it = std::find_if(children_.begin(), children_.end(),
                            [&childId](const auto& child) { return child->getId() == childId; });
 
-    if (it != children.end()) {
-        children.erase(it);
-        FABRIC_LOG_DEBUG("Removed child '{}' from component '{}'", childId, id);
+    if (it != children_.end()) {
+        children_.erase(it);
+        FABRIC_LOG_DEBUG("Removed child '{}' from component '{}'", childId, id_);
         return true;
     }
 
@@ -59,12 +59,12 @@ bool Component::removeChild(const std::string& childId) {
 }
 
 std::shared_ptr<Component> Component::getChild(const std::string& childId) const {
-    std::lock_guard<std::mutex> lock(childrenMutex);
+    std::lock_guard<std::mutex> lock(childrenMutex_);
 
-    auto it = std::find_if(children.begin(), children.end(),
+    auto it = std::find_if(children_.begin(), children_.end(),
                            [&childId](const auto& child) { return child->getId() == childId; });
 
-    if (it != children.end()) {
+    if (it != children_.end()) {
         return *it;
     }
 
@@ -72,8 +72,8 @@ std::shared_ptr<Component> Component::getChild(const std::string& childId) const
 }
 
 std::vector<std::shared_ptr<Component>> Component::getChildren() const {
-    std::lock_guard<std::mutex> lock(childrenMutex);
-    return children;
+    std::lock_guard<std::mutex> lock(childrenMutex_);
+    return children_;
 }
 
 template <typename T> void Component::setProperty(const std::string& name, const T& value) {
@@ -82,8 +82,8 @@ template <typename T> void Component::setProperty(const std::string& name, const
                       std::is_same_v<T, std::shared_ptr<Component>>,
                   "Property type not supported. Must be one of the types in PropertyValue.");
 
-    std::lock_guard<std::mutex> lock(propertiesMutex);
-    properties[name] = value;
+    std::lock_guard<std::mutex> lock(propertiesMutex_);
+    properties_[name] = value;
 }
 
 template <typename T> T Component::getProperty(const std::string& name) const {
@@ -92,11 +92,11 @@ template <typename T> T Component::getProperty(const std::string& name) const {
                       std::is_same_v<T, std::shared_ptr<Component>>,
                   "Property type not supported. Must be one of the types in PropertyValue.");
 
-    std::lock_guard<std::mutex> lock(propertiesMutex);
+    std::lock_guard<std::mutex> lock(propertiesMutex_);
 
-    auto it = properties.find(name);
-    if (it == properties.end()) {
-        throwError("Property '" + name + "' not found in component '" + id + "'");
+    auto it = properties_.find(name);
+    if (it == properties_.end()) {
+        throwError("Property '" + name + "' not found in component '" + id_ + "'");
     }
 
     try {

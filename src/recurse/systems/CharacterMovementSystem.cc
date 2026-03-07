@@ -19,6 +19,15 @@ namespace recurse::systems {
 
 CharacterMovementSystem::~CharacterMovementSystem() = default;
 
+void CharacterMovementSystem::doShutdown() {
+    flightCtrl_.reset();
+    joltCharCtrl_ = nullptr;
+    terrain_ = nullptr;
+    camera_ = nullptr;
+    physics_ = nullptr;
+    FABRIC_LOG_INFO("CharacterMovementSystem shut down");
+}
+
 void CharacterMovementSystem::setPlayerWorldOffset(double x, double y, double z) {
     playerPosD_ = fabric::Vector3<double, fabric::Space::World>(x, y, z);
     playerPos_ = fabric::Vec3f(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
@@ -45,7 +54,7 @@ void syncPlayerPositionViews(fabric::Vector3<double, fabric::Space::World>& play
 
 } // namespace
 
-void CharacterMovementSystem::init(fabric::AppContext& ctx) {
+void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
     playerPosD_ = fabric::Vector3<double, fabric::Space::World>(
         static_cast<double>(playerPos_.x), static_cast<double>(playerPos_.y), static_cast<double>(playerPos_.z));
 
@@ -57,7 +66,7 @@ void CharacterMovementSystem::init(fabric::AppContext& ctx) {
     constexpr float kCharHeight = 1.8f;
     constexpr float kCharDepth = 0.6f;
 
-    // Flight controller for Flying/NOCLIP modes
+    // Flight controller for Flying/Noclip modes
     flightCtrl_ = std::make_unique<FlightController>(kCharWidth, kCharHeight, kCharDepth);
 
     // Jolt-based controller required for ground movement
@@ -81,16 +90,16 @@ void CharacterMovementSystem::init(fabric::AppContext& ctx) {
     joltCharCtrl_->setPosition(playerPos_);
     FABRIC_LOG_INFO("JoltCharacterController enabled for player movement");
 
-    // Toggle fly/noclip mode: Grounded -> Flying -> NOCLIP -> Grounded
+    // Toggle fly/noclip mode: Grounded -> Flying -> Noclip -> Grounded
     ctx.dispatcher.addEventListener("toggle_fly", [this](fabric::Event&) {
-        if (movementFSM_.isNOCLIP()) {
-            // NOCLIP -> Falling (exit to normal mode)
+        if (movementFSM_.isNoclip()) {
+            // Noclip -> Falling (exit to normal mode)
             movementFSM_.tryTransition(CharacterState::Falling);
-            FABRIC_LOG_INFO("NOCLIP mode: off (falling)");
+            FABRIC_LOG_INFO("Noclip mode: off (falling)");
         } else if (movementFSM_.isFlying()) {
-            // Flying -> NOCLIP
-            movementFSM_.tryTransition(CharacterState::NOCLIP);
-            FABRIC_LOG_INFO("NOCLIP mode: on (fly + no collision)");
+            // Flying -> Noclip
+            movementFSM_.tryTransition(CharacterState::Noclip);
+            FABRIC_LOG_INFO("Noclip mode: on (fly + no collision)");
         } else {
             // Grounded/Falling/Jumping -> Flying
             movementFSM_.tryTransition(CharacterState::Flying);
@@ -148,15 +157,15 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
             moveDir = fabric::Vec3f(moveDir.x / len, moveDir.y / len, moveDir.z / len);
 
         // Determine speed: base flight/noclip speed, with LCTRL multiplier
-        float baseSpeed = movementFSM_.isNOCLIP() ? charConfig_.noclipSpeed : charConfig_.flightSpeed;
+        float baseSpeed = movementFSM_.isNoclip() ? charConfig_.noclipSpeed : charConfig_.flightSpeed;
         if (inputManager->isActionActive("speed_boost"))
             baseSpeed *= charConfig_.speedMultiplier;
 
         fabric::Vec3f displacement(moveDir.x * baseSpeed * fixedDt, moveDir.y * baseSpeed * fixedDt,
                                    moveDir.z * baseSpeed * fixedDt);
 
-        if (movementFSM_.isNOCLIP()) {
-            // NOCLIP: no collision, direct position update
+        if (movementFSM_.isNoclip()) {
+            // Noclip: no collision, direct position update
             playerPos_ = fabric::Vec3f(playerPos_.x + displacement.x, playerPos_.y + displacement.y,
                                        playerPos_.z + displacement.z);
             syncPlayerPositionViews(playerPosD_, playerPos_, playerPos_);
@@ -235,6 +244,7 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
 void CharacterMovementSystem::configureDependencies() {
     after<PhysicsGameSystem>();
     after<TerrainSystem>();
+    after<CameraGameSystem>();
 }
 
 } // namespace recurse::systems

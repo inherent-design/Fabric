@@ -8,7 +8,15 @@
 
 namespace recurse::systems {
 
-void ShadowRenderSystem::init(fabric::AppContext& /*ctx*/) {
+void ShadowRenderSystem::doShutdown() {
+    if (shadowSystem_) {
+        FABRIC_LOG_DEBUG("ShadowRenderSystem: releasing ShadowSystem GPU resources");
+        shadowSystem_.reset();
+    }
+    FABRIC_LOG_INFO("ShadowRenderSystem shut down");
+}
+
+void ShadowRenderSystem::doInit(fabric::AppContext& /*ctx*/) {
     shadowSystem_ =
         std::make_unique<recurse::ShadowSystem>(recurse::presetConfig(recurse::ShadowQualityPreset::Medium));
 
