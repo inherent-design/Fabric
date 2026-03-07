@@ -25,10 +25,7 @@ const NPCArchetype Treant = {"Treant",
                              1.5f};
 
 const NPCArchetype ChaosImp = {
-    "Chaos Imp",
-    {0.0f, 0.9f, 0.0f, 0.1f},
-    {0.1f, 0.15f, 0.1f, 0.1f},
-    0xFF4500,
+    "Chaos Imp", {0.0f, 0.9f, 0.0f, 0.1f}, {0.1f, 0.15f, 0.1f, 0.1f}, 0xFF4500,
     0x8B0000, // Red/orange demon colors
     50.0f,
     5.0f // Fast but weak

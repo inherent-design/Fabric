@@ -4,16 +4,29 @@
 #include "fabric/core/PostProcess.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/SkyRenderer.hh"
+#include "recurse/render/PaniniPass.hh"
 #include <cstdint>
 #include <flecs.h>
 #include <vector>
 
 namespace fabric {
 
+// Camera projection mode for post-processing.
+// TODO(ProjectionMode): Add Fisheye (spherical distortion) and Isometric (camera-level, not post-process)
+// TODO(ProjectionMode): Consider VR Stereo (dual-view, separate pass) for future HMD support
+// TODO(Console): Make this configurable via console commands for runtime exploration
+enum class ProjectionMode {
+    Perspective, // Default rectilinear projection (no correction)
+    Panini,      // Cylindrical projection for high-FOV (120-150°)
+    Equirect,    // 360° panoramic (TODO: implement shader)
+    // TODO: Fisheye, Isometric, VR_Stereo
+};
+
 // View ID layout:
 //   viewId_     = sky dome (clear color+depth, fullscreen triangle)
 //   viewId_+1   = opaque geometry pass (depth write on)
 //   viewId_+2   = transparent geometry pass (depth write off, alpha blend, back-to-front)
+//   199         = projection correction (Panini/Equirect/Fisheye)
 //   200..205    = post-process chain (bright, blur x4, tonemap)
 //   240..243    = shadows
 class SceneView {
@@ -58,6 +71,10 @@ class SceneView {
     uint16_t viewWidth() const { return viewWidth_; }
     uint16_t viewHeight() const { return viewHeight_; }
 
+    // Camera projection mode
+    ProjectionMode projectionMode() const;
+    void cycleProjectionMode(); // Alt+C: Panini -> Equirect -> Panini
+
   private:
     uint8_t viewId_;
     Camera& camera_;
@@ -73,6 +90,10 @@ class SceneView {
     uint32_t clearColor_ = 0x303030ff;
     uint16_t viewWidth_ = 0;
     uint16_t viewHeight_ = 0;
+
+    // Projection correction pass (Panini/Equirect)
+    recurse::PaniniPass paniniPass_;
+    ProjectionMode projectionMode_ = ProjectionMode::Panini; // Default to Panini
 
     // Build a DrawCall for an entity and add it to the given render list with the given view ID
     void buildDrawCall(flecs::entity entity, uint8_t viewId, RenderList& list);

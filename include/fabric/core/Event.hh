@@ -31,14 +31,14 @@ class Event {
 
     // Any-typed data for richer payloads without expanding Variant
     template <typename T> void setAnyData(const std::string& key, T value) {
-        std::lock_guard<std::mutex> lock(dataMutex);
-        anyData[key] = std::any(std::move(value));
+        std::lock_guard<std::mutex> lock(dataMutex_);
+        anyData_[key] = std::any(std::move(value));
     }
 
     template <typename T> T getAnyData(const std::string& key) const {
-        std::lock_guard<std::mutex> lock(dataMutex);
-        auto it = anyData.find(key);
-        if (it == anyData.end()) {
+        std::lock_guard<std::mutex> lock(dataMutex_);
+        auto it = anyData_.find(key);
+        if (it == anyData_.end()) {
             throwError("Event any-data key '" + key + "' not found");
         }
         try {
@@ -58,13 +58,13 @@ class Event {
     void setCancelled(bool cancelled = true);
 
   private:
-    std::string type;
-    std::string source;
-    mutable std::mutex dataMutex;
-    std::unordered_map<std::string, DataValue> data;
-    std::unordered_map<std::string, std::any> anyData;
-    std::atomic<bool> handled{false};
-    std::atomic<bool> cancelled{false};
+    std::string type_;
+    std::string source_;
+    mutable std::mutex dataMutex_;
+    std::unordered_map<std::string, DataValue> data_;
+    std::unordered_map<std::string, std::any> anyData_;
+    std::atomic<bool> handled_{false};
+    std::atomic<bool> cancelled_{false};
 };
 
 using EventHandler = std::function<void(Event&)>;
@@ -87,8 +87,8 @@ class EventDispatcher {
         int32_t priority = 0;
     };
 
-    mutable std::mutex listenersMutex;
-    std::unordered_map<std::string, std::vector<HandlerEntry>> listeners;
+    mutable std::mutex listenersMutex_;
+    std::unordered_map<std::string, std::vector<HandlerEntry>> listeners_;
 };
 
 } // namespace fabric

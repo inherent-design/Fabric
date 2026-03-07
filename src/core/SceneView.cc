@@ -1,13 +1,19 @@
 #include "fabric/core/SceneView.hh"
 #include "fabric/core/ECS.hh"
+#include "fabric/core/Log.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/utils/Profiler.hh"
+#include "recurse/render/PaniniPass.hh"
 #include <bgfx/bgfx.h>
 
 namespace fabric {
 
+namespace {
+constexpr uint8_t K_PROJECTION_VIEW_ID = 199; // View ID for Panini/Equirect projection
+}
+
 SceneView::SceneView(uint8_t viewId, Camera& camera, flecs::world& world)
-    : viewId_(viewId), camera_(camera), world_(world) {}
+    : viewId_(viewId), camera_(camera), world_(world), projectionMode_(ProjectionMode::Panini) {}
 
 void SceneView::setClearColor(uint32_t rgba) {
     clearColor_ = rgba;
@@ -111,7 +117,19 @@ void SceneView::render() {
         bgfx::touch(transparentViewId());
     }
 
-    // 9. Post-process: bright extract -> blur -> tonemap to backbuffer
+    // 9. Projection correction (Panini/Equirect/Fisheye) at viewId 199
+    //    When enabled, reads HDR framebuffer and applies correction before bloom.
+    bgfx::TextureHandle inputTex = BGFX_INVALID_HANDLE;
+    if (postProcess_.isValid() && paniniPass_.isValid()) {
+        inputTex = bgfx::getTexture(postProcess_.hdrFramebuffer(), 0);
+
+        // Apply Panini projection (or pass-through if disabled/mode != Panini)
+        bool applyProjection = (projectionMode_ == ProjectionMode::Panini);
+        paniniPass_.setEnabled(applyProjection);
+        paniniPass_.execute(inputTex, K_PROJECTION_VIEW_ID);
+    }
+
+    // 10. Post-process: bright extract -> blur -> tonemap to backbuffer
     if (postProcess_.isValid()) {
         postProcess_.render(200);
     }
@@ -160,6 +178,34 @@ void SceneView::setViewport(uint16_t width, uint16_t height) {
 
 void SceneView::enablePostProcess(uint16_t width, uint16_t height) {
     postProcess_.init(width, height);
+    paniniPass_.init(width, height);
+}
+
+void SceneView::cycleProjectionMode() {
+    // Cycle: Panini -> Equirect -> Panini (repeat)
+    // TODO(ProjectionMode): Add Fisheye, Isometric, VRStereo modes when implemented
+    switch (projectionMode_) {
+        case ProjectionMode::Perspective:
+            projectionMode_ = ProjectionMode::Panini;
+            paniniPass_.setEnabled(true);
+            FABRIC_LOG_INFO("Projection mode: Panini");
+            break;
+        case ProjectionMode::Panini:
+            projectionMode_ = ProjectionMode::Equirect;
+            paniniPass_.setEnabled(false);
+            FABRIC_LOG_INFO("Projection mode: Equirect");
+            break;
+        case ProjectionMode::Equirect:
+            projectionMode_ = ProjectionMode::Panini;
+            paniniPass_.setEnabled(true);
+            FABRIC_LOG_INFO("Projection mode: Panini");
+            break;
+    }
+    // FIXME(ProjectionMode): Fisheye, Isometric, VRStereo not yet implemented
+}
+
+ProjectionMode SceneView::projectionMode() const {
+    return projectionMode_;
 }
 
 } // namespace fabric

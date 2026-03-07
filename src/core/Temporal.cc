@@ -59,7 +59,7 @@ void Timeline::update(double deltaTime) {
             history_.push_back(createSnapshotLocked());
             snapshotCounter_ -= snapshotInterval_;
 
-            if (history_.size() > kMaxHistorySize) {
+            if (history_.size() > K_MAX_HISTORY_SIZE) {
                 history_.pop_front();
             }
         }

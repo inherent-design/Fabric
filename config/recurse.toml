@@ -7,3 +7,10 @@ title = "Recurse"
 [terrain]
 seed = 42
 chunk_radius = 8
+
+[panini]
+enabled = false
+strength = 0.5
+fov = 150.0
+fill = 1.0
+vertical_compensation = 0.0

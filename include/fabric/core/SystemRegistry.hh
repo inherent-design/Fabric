@@ -88,7 +88,7 @@ class SystemRegistry {
 
     std::unordered_map<std::type_index, SystemEntry> systems_;
     std::vector<std::type_index> initOrder_;
-    std::array<std::vector<std::type_index>, kSystemPhaseCount> phaseOrder_;
+    std::array<std::vector<std::type_index>, K_SYSTEM_PHASE_COUNT> phaseOrder_;
     bool resolved_ = false;
 };
 

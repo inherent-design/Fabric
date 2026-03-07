@@ -33,10 +33,10 @@ class ParallelSimulationTest : public ::testing::Test {
             int baseX = cx * kChunkSize;
             for (int x = baseX; x < baseX + kChunkSize; ++x)
                 for (int z = 0; z < kChunkSize; ++z)
-                    sim.grid().writeCell(x, 0, z, makeMaterial(MaterialIds::Stone));
+                    sim.grid().writeCell(x, 0, z, makeMaterial(material_ids::STONE));
 
             // Sand at y=10
-            sim.grid().writeCell(baseX + 16, 10, 16, makeMaterial(MaterialIds::Sand));
+            sim.grid().writeCell(baseX + 16, 10, 16, makeMaterial(material_ids::SAND));
         }
         sim.grid().advanceEpoch();
     }
@@ -148,8 +148,8 @@ TEST_F(ParallelSimulationTest, NoDeadlock100Chunks) {
         int baseX = cx * kChunkSize;
         for (int x = baseX; x < baseX + kChunkSize; ++x)
             for (int z = 0; z < kChunkSize; ++z)
-                sim.grid().writeCell(x, 0, z, makeMaterial(MaterialIds::Stone));
-        sim.grid().writeCell(baseX + 16, 10, 16, makeMaterial(MaterialIds::Sand));
+                sim.grid().writeCell(x, 0, z, makeMaterial(material_ids::STONE));
+        sim.grid().writeCell(baseX + 16, 10, 16, makeMaterial(material_ids::SAND));
     }
     sim.grid().advanceEpoch();
 
@@ -176,17 +176,17 @@ TEST_F(ParallelSimulationTest, GravityTestsStillPass) {
     // Stone floor
     for (int x = 0; x < kChunkSize; ++x)
         for (int z = 0; z < kChunkSize; ++z)
-            sim.grid().writeCell(x, 0, z, makeMaterial(MaterialIds::Stone));
+            sim.grid().writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     // Contained column
     for (int y = 1; y <= 12; ++y) {
-        sim.grid().writeCell(15, y, 16, makeMaterial(MaterialIds::Stone));
-        sim.grid().writeCell(17, y, 16, makeMaterial(MaterialIds::Stone));
-        sim.grid().writeCell(16, y, 15, makeMaterial(MaterialIds::Stone));
-        sim.grid().writeCell(16, y, 17, makeMaterial(MaterialIds::Stone));
+        sim.grid().writeCell(15, y, 16, makeMaterial(material_ids::STONE));
+        sim.grid().writeCell(17, y, 16, makeMaterial(material_ids::STONE));
+        sim.grid().writeCell(16, y, 15, makeMaterial(material_ids::STONE));
+        sim.grid().writeCell(16, y, 17, makeMaterial(material_ids::STONE));
     }
     sim.grid().advanceEpoch();
 
-    sim.grid().writeCell(16, 10, 16, makeMaterial(MaterialIds::Sand));
+    sim.grid().writeCell(16, 10, 16, makeMaterial(material_ids::SAND));
     sim.grid().advanceEpoch();
 
     for (int i = 0; i < 15; ++i) {
@@ -195,7 +195,7 @@ TEST_F(ParallelSimulationTest, GravityTestsStillPass) {
         sim.tick();
     }
 
-    EXPECT_EQ(sim.grid().readCell(16, 1, 16).materialId, MaterialIds::Sand);
+    EXPECT_EQ(sim.grid().readCell(16, 1, 16).materialId, material_ids::SAND);
 }
 
 // 6. Liquid tests still pass through the parallel dispatch path
@@ -207,17 +207,17 @@ TEST_F(ParallelSimulationTest, LiquidTestsStillPass) {
     // Stone box
     for (int x = 10; x <= 14; ++x)
         for (int z = 10; z <= 14; ++z) {
-            sim.grid().writeCell(x, 0, z, makeMaterial(MaterialIds::Stone));
+            sim.grid().writeCell(x, 0, z, makeMaterial(material_ids::STONE));
             for (int y = 1; y <= 4; ++y)
                 if (x == 10 || x == 14 || z == 10 || z == 14)
-                    sim.grid().writeCell(x, y, z, makeMaterial(MaterialIds::Stone));
+                    sim.grid().writeCell(x, y, z, makeMaterial(material_ids::STONE));
         }
     sim.grid().advanceEpoch();
 
     // Pour water
     for (int x = 11; x <= 13; ++x)
         for (int z = 11; z <= 13; ++z)
-            sim.grid().writeCell(x, 4, z, makeMaterial(MaterialIds::Water));
+            sim.grid().writeCell(x, 4, z, makeMaterial(material_ids::WATER));
     sim.grid().advanceEpoch();
 
     for (int i = 0; i < 50; ++i) {
@@ -230,7 +230,7 @@ TEST_F(ParallelSimulationTest, LiquidTestsStillPass) {
     int bottomWater = 0;
     for (int x = 11; x <= 13; ++x)
         for (int z = 11; z <= 13; ++z)
-            if (sim.grid().readCell(x, 1, z).materialId == MaterialIds::Water)
+            if (sim.grid().readCell(x, 1, z).materialId == material_ids::WATER)
                 ++bottomWater;
     EXPECT_EQ(bottomWater, 9);
 }

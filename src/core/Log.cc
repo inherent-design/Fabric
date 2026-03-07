@@ -118,17 +118,17 @@ void init(const LogConfig& config) {
     quill::Backend::start(backend_opts);
 
     // Determine log path (with per-run folder if enabled)
-    std::filesystem::path logPath = config.logs_dir;
-    if (config.use_per_run_folders) {
-        logPath = createRunFolder(config.logs_dir);
+    std::filesystem::path logPath = config.logsDir;
+    if (config.usePerRunFolders) {
+        logPath = createRunFolder(config.logsDir);
     } else {
         std::filesystem::create_directories(logPath);
     }
 
     // Create filtered console sink with include/exclude patterns
     auto filtered_console = std::make_shared<FilteredConsoleSink>();
-    filtered_console->setIncludePatterns(config.console_include_patterns);
-    filtered_console->setExcludePatterns(config.console_exclude_patterns);
+    filtered_console->setIncludePatterns(config.consoleIncludePatterns);
+    filtered_console->setExcludePatterns(config.consoleExcludePatterns);
 
     auto console_sink = filtered_console;
     auto pattern = makePatternOptions();
@@ -138,13 +138,13 @@ void init(const LogConfig& config) {
         std::vector<std::shared_ptr<quill::Sink>> sinks;
 
         // Add console sink if enabled
-        if (cfg.console_enabled) {
+        if (cfg.consoleEnabled) {
             sinks.push_back(console_sink);
         }
 
         // Add file sink if enabled
-        if (cfg.file_enabled) {
-            std::string fileName = cfg.file_name.empty() ? name + ".log" : cfg.file_name;
+        if (cfg.fileEnabled) {
+            std::string fileName = cfg.fileName.empty() ? name + ".log" : cfg.fileName;
             auto filePath = (logPath / fileName).string();
             sinks.push_back(makeFileSink(filePath));
         }
@@ -158,9 +158,9 @@ void init(const LogConfig& config) {
 
         // Set log level (use the higher of console/file for the logger's level,
         // since Quill uses a single level per logger)
-        LogLevel maxLevel = static_cast<uint8_t>(cfg.console_level) > static_cast<uint8_t>(cfg.file_level)
-                                ? cfg.console_level
-                                : cfg.file_level;
+        LogLevel maxLevel = static_cast<uint8_t>(cfg.consoleLevel) > static_cast<uint8_t>(cfg.fileLevel)
+                                ? cfg.consoleLevel
+                                : cfg.fileLevel;
         quill::LogLevel quillLevel = toQuillLevel(maxLevel);
         logger->set_log_level(quillLevel);
 

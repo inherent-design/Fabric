@@ -50,7 +50,7 @@ class FallingSandLiquidTest : public ::testing::Test {
     void buildStoneFloor() {
         for (int x = 0; x < kChunkSize; ++x)
             for (int z = 0; z < kChunkSize; ++z)
-                grid.writeCell(x, 0, z, makeMaterial(MaterialIds::Stone));
+                grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
         grid.advanceEpoch();
     }
 
@@ -59,11 +59,11 @@ class FallingSandLiquidTest : public ::testing::Test {
         for (int x = xmin; x <= xmax; ++x) {
             for (int z = zmin; z <= zmax; ++z) {
                 // Floor
-                grid.writeCell(x, 0, z, makeMaterial(MaterialIds::Stone));
+                grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
                 // Walls
                 for (int y = 1; y <= h; ++y) {
                     if (x == xmin || x == xmax || z == zmin || z == zmax)
-                        grid.writeCell(x, y, z, makeMaterial(MaterialIds::Stone));
+                        grid.writeCell(x, y, z, makeMaterial(material_ids::STONE));
                 }
             }
         }
@@ -83,20 +83,20 @@ class FallingSandLiquidTest : public ::testing::Test {
 
 // 1. Water falls in air
 TEST_F(FallingSandLiquidTest, WaterFallsInAir) {
-    grid.writeCell(16, 10, 16, makeMaterial(MaterialIds::Water));
+    grid.writeCell(16, 10, 16, makeMaterial(material_ids::WATER));
     grid.advanceEpoch();
 
     runLiquidTick(ChunkPos{0, 0, 0}, 0);
 
-    EXPECT_EQ(grid.readCell(16, 9, 16).materialId, MaterialIds::Water);
-    EXPECT_EQ(grid.readCell(16, 10, 16).materialId, MaterialIds::Air);
+    EXPECT_EQ(grid.readCell(16, 9, 16).materialId, material_ids::WATER);
+    EXPECT_EQ(grid.readCell(16, 10, 16).materialId, material_ids::AIR);
 }
 
 // 2. Water spreads horizontally on flat surface
 TEST_F(FallingSandLiquidTest, WaterFlowsHorizontally) {
     buildStoneFloor();
 
-    grid.writeCell(16, 1, 16, makeMaterial(MaterialIds::Water));
+    grid.writeCell(16, 1, 16, makeMaterial(material_ids::WATER));
     grid.advanceEpoch();
 
     // Run several ticks -- water should spread
@@ -106,12 +106,12 @@ TEST_F(FallingSandLiquidTest, WaterFlowsHorizontally) {
     // With immediate-mode reads, water cascades multiple cells per tick
     // (scan sees its own writes). After 10 ticks, water is far from origin.
     // Verify: (1) origin is empty, (2) water exists somewhere at y=1.
-    EXPECT_NE(grid.readCell(16, 1, 16).materialId, MaterialIds::Water) << "Water should have moved from origin";
+    EXPECT_NE(grid.readCell(16, 1, 16).materialId, material_ids::WATER) << "Water should have moved from origin";
 
     bool anyWaterAtY1 = false;
     for (int x = 0; x < kChunkSize && !anyWaterAtY1; ++x)
         for (int z = 0; z < kChunkSize && !anyWaterAtY1; ++z)
-            if (grid.readCell(x, 1, z).materialId == MaterialIds::Water)
+            if (grid.readCell(x, 1, z).materialId == material_ids::WATER)
                 anyWaterAtY1 = true;
     EXPECT_TRUE(anyWaterAtY1) << "Water should still exist at y=1 level";
 }
@@ -124,14 +124,14 @@ TEST_F(FallingSandLiquidTest, WaterFillsContainer) {
     // Pour 9 cells of water from the top
     for (int x = 11; x <= 13; ++x)
         for (int z = 11; z <= 13; ++z)
-            grid.writeCell(x, 4, z, makeMaterial(MaterialIds::Water));
+            grid.writeCell(x, 4, z, makeMaterial(material_ids::WATER));
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 50; ++f)
         runChunkTick(ChunkPos{0, 0, 0}, f);
 
     // Water should have settled at bottom (y=1)
-    int bottomWater = countMaterial(MaterialIds::Water, 11, 13, 1, 1, 11, 13);
+    int bottomWater = countMaterial(material_ids::WATER, 11, 13, 1, 1, 11, 13);
     EXPECT_EQ(bottomWater, 9) << "All water should settle at bottom of container";
 }
 
@@ -146,33 +146,33 @@ TEST_F(FallingSandLiquidTest, WaterFindsLevel) {
     for (int z = 14; z <= 18; ++z) {
         for (int y = 1; y <= 5; ++y) {
             // Left wall
-            grid.writeCell(5, y, z, makeMaterial(MaterialIds::Stone));
+            grid.writeCell(5, y, z, makeMaterial(material_ids::STONE));
             // Right wall
-            grid.writeCell(15, y, z, makeMaterial(MaterialIds::Stone));
+            grid.writeCell(15, y, z, makeMaterial(material_ids::STONE));
             // Front/back walls
-            grid.writeCell(5, y, 14, makeMaterial(MaterialIds::Stone));
-            grid.writeCell(5, y, 18, makeMaterial(MaterialIds::Stone));
+            grid.writeCell(5, y, 14, makeMaterial(material_ids::STONE));
+            grid.writeCell(5, y, 18, makeMaterial(material_ids::STONE));
             for (int x = 5; x <= 15; ++x) {
-                grid.writeCell(x, y, 14, makeMaterial(MaterialIds::Stone));
-                grid.writeCell(x, y, 18, makeMaterial(MaterialIds::Stone));
+                grid.writeCell(x, y, 14, makeMaterial(material_ids::STONE));
+                grid.writeCell(x, y, 18, makeMaterial(material_ids::STONE));
             }
         }
         // Divider at x=10, y=2..5 only (gap at y=1 allows flow)
         for (int y = 2; y <= 5; ++y)
-            grid.writeCell(10, y, z, makeMaterial(MaterialIds::Stone));
+            grid.writeCell(10, y, z, makeMaterial(material_ids::STONE));
     }
     grid.advanceEpoch();
 
     // 10 water cells in left chamber
     for (int y = 1; y <= 2; ++y)
         for (int x = 6; x <= 9; ++x)
-            grid.writeCell(x, y, 16, makeMaterial(MaterialIds::Water));
+            grid.writeCell(x, y, 16, makeMaterial(material_ids::WATER));
     // Extra 2 to make 10
-    grid.writeCell(6, 3, 16, makeMaterial(MaterialIds::Water));
-    grid.writeCell(7, 3, 16, makeMaterial(MaterialIds::Water));
+    grid.writeCell(6, 3, 16, makeMaterial(material_ids::WATER));
+    grid.writeCell(7, 3, 16, makeMaterial(material_ids::WATER));
     grid.advanceEpoch();
 
-    int totalBefore = countMaterial(MaterialIds::Water, 0, 31, 0, 31, 0, 31);
+    int totalBefore = countMaterial(material_ids::WATER, 0, 31, 0, 31, 0, 31);
 
     for (uint64_t f = 0; f < 200; ++f) {
         tracker.setState(ChunkPos{0, 0, 0}, ChunkState::Active);
@@ -180,12 +180,12 @@ TEST_F(FallingSandLiquidTest, WaterFindsLevel) {
     }
 
     // Water should have distributed to both sides
-    int leftWater = countMaterial(MaterialIds::Water, 6, 9, 1, 5, 15, 17);
-    int rightWater = countMaterial(MaterialIds::Water, 11, 14, 1, 5, 15, 17);
+    int leftWater = countMaterial(material_ids::WATER, 6, 9, 1, 5, 15, 17);
+    int rightWater = countMaterial(material_ids::WATER, 11, 14, 1, 5, 15, 17);
 
     EXPECT_GT(rightWater, 0) << "Water should flow to right chamber";
     // Conservation
-    int totalAfter = countMaterial(MaterialIds::Water, 0, 31, 0, 31, 0, 31);
+    int totalAfter = countMaterial(material_ids::WATER, 0, 31, 0, 31, 0, 31);
     EXPECT_EQ(totalAfter, totalBefore) << "Water count must be conserved";
 }
 
@@ -195,18 +195,18 @@ TEST_F(FallingSandLiquidTest, WaterBlockedByWalls) {
     buildStoneBox(10, 14, 10, 14, 4);
 
     // Water inside
-    grid.writeCell(12, 1, 12, makeMaterial(MaterialIds::Water));
+    grid.writeCell(12, 1, 12, makeMaterial(material_ids::WATER));
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 50; ++f)
         runChunkTick(ChunkPos{0, 0, 0}, f);
 
     // No water should escape the box
-    int insideWater = countMaterial(MaterialIds::Water, 11, 13, 1, 3, 11, 13);
+    int insideWater = countMaterial(material_ids::WATER, 11, 13, 1, 3, 11, 13);
     EXPECT_EQ(insideWater, 1);
 
-    int outsideWater =
-        countMaterial(MaterialIds::Water, 0, 9, 0, 31, 0, 31) + countMaterial(MaterialIds::Water, 15, 31, 0, 31, 0, 31);
+    int outsideWater = countMaterial(material_ids::WATER, 0, 9, 0, 31, 0, 31) +
+                       countMaterial(material_ids::WATER, 15, 31, 0, 31, 0, 31);
     EXPECT_EQ(outsideWater, 0) << "No water should escape the box";
 }
 
@@ -220,11 +220,11 @@ TEST_F(FallingSandLiquidTest, CrossChunkHorizontalFlow) {
     // Stone floor in both chunks
     for (int x = -32; x < 32; ++x)
         for (int z = 0; z < kChunkSize; ++z)
-            grid.writeCell(x, 0, z, makeMaterial(MaterialIds::Stone));
+            grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
     // Water at x=0, y=1, z=16 (edge of chunk 0,0,0)
-    grid.writeCell(0, 1, 16, makeMaterial(MaterialIds::Water));
+    grid.writeCell(0, 1, 16, makeMaterial(material_ids::WATER));
     grid.advanceEpoch();
 
     // Run several ticks on chunk (0,0,0)
@@ -235,9 +235,9 @@ TEST_F(FallingSandLiquidTest, CrossChunkHorizontalFlow) {
     }
 
     // Water should have flowed into chunk(-1,0,0), i.e., world x=-1
-    bool flowedLeft = grid.readCell(-1, 1, 16).materialId == MaterialIds::Water;
+    bool flowedLeft = grid.readCell(-1, 1, 16).materialId == material_ids::WATER;
     // Or it might still be at x=0 if it flowed other directions first
-    int totalWater = countMaterial(MaterialIds::Water, -2, 2, 1, 1, 15, 17);
+    int totalWater = countMaterial(material_ids::WATER, -2, 2, 1, 1, 15, 17);
     EXPECT_GE(totalWater, 1) << "Water should exist near the boundary";
 }
 
@@ -245,7 +245,7 @@ TEST_F(FallingSandLiquidTest, CrossChunkHorizontalFlow) {
 TEST_F(FallingSandLiquidTest, ViscosityLimitsFlowRate) {
     buildStoneFloor();
 
-    grid.writeCell(16, 1, 16, makeMaterial(MaterialIds::Water));
+    grid.writeCell(16, 1, 16, makeMaterial(material_ids::WATER));
     grid.advanceEpoch();
 
     // After 1 tick, water can move at most 1 cell horizontally
@@ -255,7 +255,7 @@ TEST_F(FallingSandLiquidTest, ViscosityLimitsFlowRate) {
     bool foundFarWater = false;
     for (int x = 0; x < kChunkSize; ++x) {
         for (int z = 0; z < kChunkSize; ++z) {
-            if (grid.readCell(x, 1, z).materialId == MaterialIds::Water) {
+            if (grid.readCell(x, 1, z).materialId == material_ids::WATER) {
                 int dist = std::abs(x - 16) + std::abs(z - 16);
                 if (dist > 1)
                     foundFarWater = true;
@@ -274,12 +274,12 @@ TEST_F(FallingSandLiquidTest, WaterConservation) {
     for (int y = 1; y <= 4 && placed < 100; ++y)
         for (int x = 9; x <= 23 && placed < 100; ++x)
             for (int z = 9; z <= 23 && placed < 100; ++z) {
-                grid.writeCell(x, y, z, makeMaterial(MaterialIds::Water));
+                grid.writeCell(x, y, z, makeMaterial(material_ids::WATER));
                 ++placed;
             }
     grid.advanceEpoch();
 
-    int initialCount = countMaterial(MaterialIds::Water, 0, 31, 0, 31, 0, 31);
+    int initialCount = countMaterial(material_ids::WATER, 0, 31, 0, 31, 0, 31);
     EXPECT_EQ(initialCount, 100);
 
     for (uint64_t f = 0; f < 100; ++f) {
@@ -287,7 +287,7 @@ TEST_F(FallingSandLiquidTest, WaterConservation) {
         runChunkTick(ChunkPos{0, 0, 0}, f);
     }
 
-    int finalCount = countMaterial(MaterialIds::Water, 0, 31, 0, 31, 0, 31);
+    int finalCount = countMaterial(material_ids::WATER, 0, 31, 0, 31, 0, 31);
     EXPECT_EQ(finalCount, initialCount) << "Water count must be conserved";
 }
 
@@ -296,8 +296,8 @@ TEST_F(FallingSandLiquidTest, WaterDoesNotDisplaceSolids) {
     buildStoneFloor();
 
     // Stone block at y=1 with water above
-    grid.writeCell(16, 1, 16, makeMaterial(MaterialIds::Stone));
-    grid.writeCell(16, 2, 16, makeMaterial(MaterialIds::Water));
+    grid.writeCell(16, 1, 16, makeMaterial(material_ids::STONE));
+    grid.writeCell(16, 2, 16, makeMaterial(material_ids::WATER));
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 20; ++f) {
@@ -305,8 +305,8 @@ TEST_F(FallingSandLiquidTest, WaterDoesNotDisplaceSolids) {
         runChunkTick(ChunkPos{0, 0, 0}, f);
     }
 
-    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, MaterialIds::Stone);
-    EXPECT_EQ(grid.readCell(16, 0, 16).materialId, MaterialIds::Stone);
+    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::STONE);
+    EXPECT_EQ(grid.readCell(16, 0, 16).materialId, material_ids::STONE);
 }
 
 // 10. Performance: 10K liquid cells under 3ms
@@ -317,7 +317,7 @@ TEST_F(FallingSandLiquidTest, PerformanceLiquidSim) {
     for (int y = 1; y <= 15 && placed < 10000; ++y)
         for (int x = 0; x < kChunkSize && placed < 10000; ++x)
             for (int z = 0; z < kChunkSize && placed < 10000; ++z) {
-                grid.writeCell(x, y, z, makeMaterial(MaterialIds::Water));
+                grid.writeCell(x, y, z, makeMaterial(material_ids::WATER));
                 ++placed;
             }
     grid.advanceEpoch();

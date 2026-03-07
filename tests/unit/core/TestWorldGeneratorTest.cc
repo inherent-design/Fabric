@@ -26,7 +26,7 @@ TEST(TestWorldGenerator, FlatWorldGenerator_BelowGround_Stone) {
     // Chunk (0,0,0) spans y=[0,31], entirely below groundLevel=32
     for (int y = 0; y < kChunkSize; ++y) {
         auto cell = grid.readCell(0, y, 0);
-        EXPECT_EQ(cell.materialId, MaterialIds::Stone) << "y=" << y << " should be stone";
+        EXPECT_EQ(cell.materialId, material_ids::STONE) << "y=" << y << " should be stone";
     }
 }
 
@@ -38,7 +38,7 @@ TEST(TestWorldGenerator, FlatWorldGenerator_AboveGround_Air) {
 
     for (int y = 64; y < 96; ++y) {
         auto cell = grid.readCell(0, y, 0);
-        EXPECT_EQ(cell.materialId, MaterialIds::Air) << "y=" << y << " should be air";
+        EXPECT_EQ(cell.materialId, material_ids::AIR) << "y=" << y << " should be air";
     }
 }
 
@@ -53,12 +53,12 @@ TEST(TestWorldGenerator, LayeredWorldGenerator_StoneAndSand) {
     // Stone region: y=[0,27]
     for (int y = 0; y < 28; ++y) {
         auto cell = grid.readCell(0, y, 0);
-        EXPECT_EQ(cell.materialId, MaterialIds::Stone) << "y=" << y << " should be stone";
+        EXPECT_EQ(cell.materialId, material_ids::STONE) << "y=" << y << " should be stone";
     }
     // Sand region: y=[28,31]
     for (int y = 28; y < 32; ++y) {
         auto cell = grid.readCell(0, y, 0);
-        EXPECT_EQ(cell.materialId, MaterialIds::Sand) << "y=" << y << " should be sand";
+        EXPECT_EQ(cell.materialId, material_ids::SAND) << "y=" << y << " should be sand";
     }
 }
 
@@ -71,14 +71,14 @@ TEST(TestWorldGenerator, WorldGeneratorInterface_Swappable) {
     FlatWorldGenerator flat(32);
     flat.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
-    EXPECT_EQ(grid.readCell(0, 28, 0).materialId, MaterialIds::Stone);
+    EXPECT_EQ(grid.readCell(0, 28, 0).materialId, material_ids::STONE);
 
     // Re-generate same chunk with LayeredWorldGenerator(28, 4):
     // y=28 should now be sand instead of stone
     LayeredWorldGenerator layered(28, 4);
     layered.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
-    EXPECT_EQ(grid.readCell(0, 28, 0).materialId, MaterialIds::Sand);
+    EXPECT_EQ(grid.readCell(0, 28, 0).materialId, material_ids::SAND);
 }
 
 TEST(TestWorldGenerator, GeneratorName_ReturnsCorrect) {

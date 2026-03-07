@@ -60,10 +60,10 @@ LogConfig LogConfig::fromDefaults() {
 
     // Standard loggers with default settings
     LoggerConfig defaultLogger;
-    defaultLogger.console_level = LogLevel::Info;
-    defaultLogger.file_level = LogLevel::Debug;
-    defaultLogger.console_enabled = true;
-    defaultLogger.file_enabled = true;
+    defaultLogger.consoleLevel = LogLevel::Info;
+    defaultLogger.fileLevel = LogLevel::Debug;
+    defaultLogger.consoleEnabled = true;
+    defaultLogger.fileEnabled = true;
 
     cfg.loggers["fabric"] = defaultLogger;
     cfg.loggers["render"] = defaultLogger;
@@ -72,15 +72,15 @@ LogConfig LogConfig::fromDefaults() {
 
     // bgfx: console disabled by default (too verbose for TTY)
     LoggerConfig bgfxConfig;
-    bgfxConfig.console_level = LogLevel::Off;
-    bgfxConfig.console_enabled = false; // No console output by default
-    bgfxConfig.file_level = LogLevel::Debug;
-    bgfxConfig.file_enabled = true;
-    bgfxConfig.file_name = "bgfx.log";
+    bgfxConfig.consoleLevel = LogLevel::Off;
+    bgfxConfig.consoleEnabled = false; // No console output by default
+    bgfxConfig.fileLevel = LogLevel::Debug;
+    bgfxConfig.fileEnabled = true;
+    bgfxConfig.fileName = "bgfx.log";
     cfg.loggers["bgfx"] = bgfxConfig;
 
     // Default: exclude bgfx and vulkan from console
-    cfg.console_exclude_patterns = {"bgfx.*", "vulkan.*"};
+    cfg.consoleExcludePatterns = {"bgfx.*", "vulkan.*"};
 
     return cfg;
 }
@@ -112,7 +112,7 @@ LogConfig LogConfig::fromTOMLTable(const toml::table& tbl) {
         if (auto level = (*logging)["console_level"].value<std::string>()) {
             LogLevel lvl = parseLevelInternal(*level);
             for (auto& [name, loggerCfg] : cfg.loggers) {
-                loggerCfg.console_level = lvl;
+                loggerCfg.consoleLevel = lvl;
             }
         }
 
@@ -120,7 +120,7 @@ LogConfig LogConfig::fromTOMLTable(const toml::table& tbl) {
         if (auto level = (*logging)["file_level"].value<std::string>()) {
             LogLevel lvl = parseLevelInternal(*level);
             for (auto& [name, loggerCfg] : cfg.loggers) {
-                loggerCfg.file_level = lvl;
+                loggerCfg.fileLevel = lvl;
             }
         }
 
@@ -128,37 +128,37 @@ LogConfig LogConfig::fromTOMLTable(const toml::table& tbl) {
         if (auto level = (*logging)["level"].value<std::string>()) {
             LogLevel lvl = parseLevelInternal(*level);
             for (auto& [name, loggerCfg] : cfg.loggers) {
-                loggerCfg.console_level = lvl;
-                loggerCfg.file_level = lvl;
+                loggerCfg.consoleLevel = lvl;
+                loggerCfg.fileLevel = lvl;
             }
         }
 
         // Per-run folders toggle
         if (auto perRun = (*logging)["per_run_folders"].value<bool>()) {
-            cfg.use_per_run_folders = *perRun;
+            cfg.usePerRunFolders = *perRun;
         }
 
         // Logs directory
-        if (auto logsDir = (*logging)["logs_dir"].value<std::string>()) {
-            cfg.logs_dir = *logsDir;
+        if (auto logsDir = (*logging)["logsDir"].value<std::string>()) {
+            cfg.logsDir = *logsDir;
         }
 
         // Console include patterns
         if (auto arr = (*logging)["console_include"].as_array()) {
-            cfg.console_include_patterns.clear();
+            cfg.consoleIncludePatterns.clear();
             for (auto& elem : *arr) {
                 if (auto pattern = elem.value<std::string>()) {
-                    cfg.console_include_patterns.push_back(*pattern);
+                    cfg.consoleIncludePatterns.push_back(*pattern);
                 }
             }
         }
 
         // Console exclude patterns
         if (auto arr = (*logging)["console_exclude"].as_array()) {
-            cfg.console_exclude_patterns.clear();
+            cfg.consoleExcludePatterns.clear();
             for (auto& elem : *arr) {
                 if (auto pattern = elem.value<std::string>()) {
-                    cfg.console_exclude_patterns.push_back(*pattern);
+                    cfg.consoleExcludePatterns.push_back(*pattern);
                 }
             }
         }
@@ -176,19 +176,19 @@ LogConfig LogConfig::fromTOMLTable(const toml::table& tbl) {
                     auto& lc = cfg.loggers[loggerName];
 
                     if (auto level = (*loggerTbl)["console_level"].value<std::string>()) {
-                        lc.console_level = parseLevelInternal(*level);
+                        lc.consoleLevel = parseLevelInternal(*level);
                     }
                     if (auto level = (*loggerTbl)["file_level"].value<std::string>()) {
-                        lc.file_level = parseLevelInternal(*level);
+                        lc.fileLevel = parseLevelInternal(*level);
                     }
                     if (auto enabled = (*loggerTbl)["console_enabled"].value<bool>()) {
-                        lc.console_enabled = *enabled;
+                        lc.consoleEnabled = *enabled;
                     }
                     if (auto enabled = (*loggerTbl)["file_enabled"].value<bool>()) {
-                        lc.file_enabled = *enabled;
+                        lc.fileEnabled = *enabled;
                     }
                     if (auto fileName = (*loggerTbl)["file_name"].value<std::string>()) {
-                        lc.file_name = *fileName;
+                        lc.fileName = *fileName;
                     }
                 }
             }
@@ -205,8 +205,8 @@ LogConfig LogConfig::fromEnv() {
     if (const char* level = std::getenv("FABRIC_LOG_LEVEL")) {
         LogLevel lvl = parseLevelInternal(level);
         for (auto& [name, loggerCfg] : cfg.loggers) {
-            loggerCfg.console_level = lvl;
-            loggerCfg.file_level = lvl;
+            loggerCfg.consoleLevel = lvl;
+            loggerCfg.fileLevel = lvl;
         }
     }
 
@@ -214,7 +214,7 @@ LogConfig LogConfig::fromEnv() {
     if (const char* level = std::getenv("FABRIC_LOG_CONSOLE")) {
         LogLevel lvl = parseLevelInternal(level);
         for (auto& [name, loggerCfg] : cfg.loggers) {
-            loggerCfg.console_level = lvl;
+            loggerCfg.consoleLevel = lvl;
         }
     }
 
@@ -222,7 +222,7 @@ LogConfig LogConfig::fromEnv() {
     if (const char* level = std::getenv("FABRIC_LOG_FILE")) {
         LogLevel lvl = parseLevelInternal(level);
         for (auto& [name, loggerCfg] : cfg.loggers) {
-            loggerCfg.file_level = lvl;
+            loggerCfg.fileLevel = lvl;
         }
     }
 
@@ -230,11 +230,11 @@ LogConfig LogConfig::fromEnv() {
     if (const char* level = std::getenv("FABRIC_LOG_BGFX")) {
         if (cfg.loggers.find("bgfx") != cfg.loggers.end()) {
             LogLevel lvl = parseLevelInternal(level);
-            cfg.loggers["bgfx"].console_level = lvl;
-            cfg.loggers["bgfx"].file_level = lvl;
+            cfg.loggers["bgfx"].consoleLevel = lvl;
+            cfg.loggers["bgfx"].fileLevel = lvl;
             // Enable console if explicitly setting level
             if (lvl != LogLevel::Off) {
-                cfg.loggers["bgfx"].console_enabled = true;
+                cfg.loggers["bgfx"].consoleEnabled = true;
             }
         }
     }
@@ -242,35 +242,35 @@ LogConfig LogConfig::fromEnv() {
     if (const char* level = std::getenv("FABRIC_LOG_RENDER")) {
         if (cfg.loggers.find("render") != cfg.loggers.end()) {
             LogLevel lvl = parseLevelInternal(level);
-            cfg.loggers["render"].console_level = lvl;
-            cfg.loggers["render"].file_level = lvl;
+            cfg.loggers["render"].consoleLevel = lvl;
+            cfg.loggers["render"].fileLevel = lvl;
         }
     }
 
     if (const char* level = std::getenv("FABRIC_LOG_PHYSICS")) {
         if (cfg.loggers.find("physics") != cfg.loggers.end()) {
             LogLevel lvl = parseLevelInternal(level);
-            cfg.loggers["physics"].console_level = lvl;
-            cfg.loggers["physics"].file_level = lvl;
+            cfg.loggers["physics"].consoleLevel = lvl;
+            cfg.loggers["physics"].fileLevel = lvl;
         }
     }
 
     if (const char* level = std::getenv("FABRIC_LOG_AUDIO")) {
         if (cfg.loggers.find("audio") != cfg.loggers.end()) {
             LogLevel lvl = parseLevelInternal(level);
-            cfg.loggers["audio"].console_level = lvl;
-            cfg.loggers["audio"].file_level = lvl;
+            cfg.loggers["audio"].consoleLevel = lvl;
+            cfg.loggers["audio"].fileLevel = lvl;
         }
     }
 
     // Console include patterns
     if (const char* include = std::getenv("FABRIC_LOG_CONSOLE_INCLUDE")) {
-        cfg.console_include_patterns = splitByComma(include);
+        cfg.consoleIncludePatterns = splitByComma(include);
     }
 
     // Console exclude patterns
     if (const char* exclude = std::getenv("FABRIC_LOG_CONSOLE_EXCLUDE")) {
-        cfg.console_exclude_patterns = splitByComma(exclude);
+        cfg.consoleExcludePatterns = splitByComma(exclude);
     }
 
     // Per-run folders toggle
@@ -279,12 +279,12 @@ LogConfig LogConfig::fromEnv() {
         for (char& c : val) {
             c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         }
-        cfg.use_per_run_folders = (val == "true" || val == "1" || val == "yes");
+        cfg.usePerRunFolders = (val == "true" || val == "1" || val == "yes");
     }
 
     // Logs directory
     if (const char* logsDir = std::getenv("FABRIC_LOG_DIR")) {
-        cfg.logs_dir = logsDir;
+        cfg.logsDir = logsDir;
     }
 
     return cfg;
@@ -298,32 +298,32 @@ void LogConfig::applyCLIOverrides(int argc, char* argv[]) {
         if (arg.rfind("--log.level=", 0) == 0) {
             LogLevel lvl = parseLevelInternal(arg.substr(12));
             for (auto& [name, loggerCfg] : loggers) {
-                loggerCfg.console_level = lvl;
-                loggerCfg.file_level = lvl;
+                loggerCfg.consoleLevel = lvl;
+                loggerCfg.fileLevel = lvl;
             }
         }
         // --log.console=LEVEL
         else if (arg.rfind("--log.console=", 0) == 0) {
             LogLevel lvl = parseLevelInternal(arg.substr(14));
             for (auto& [name, loggerCfg] : loggers) {
-                loggerCfg.console_level = lvl;
+                loggerCfg.consoleLevel = lvl;
             }
         }
         // --log.file=LEVEL
         else if (arg.rfind("--log.file=", 0) == 0) {
             LogLevel lvl = parseLevelInternal(arg.substr(11));
             for (auto& [name, loggerCfg] : loggers) {
-                loggerCfg.file_level = lvl;
+                loggerCfg.fileLevel = lvl;
             }
         }
         // --log.bgfx=LEVEL
         else if (arg.rfind("--log.bgfx=", 0) == 0) {
             if (loggers.find("bgfx") != loggers.end()) {
                 LogLevel lvl = parseLevelInternal(arg.substr(11));
-                loggers["bgfx"].console_level = lvl;
-                loggers["bgfx"].file_level = lvl;
+                loggers["bgfx"].consoleLevel = lvl;
+                loggers["bgfx"].fileLevel = lvl;
                 if (lvl != LogLevel::Off) {
-                    loggers["bgfx"].console_enabled = true;
+                    loggers["bgfx"].consoleEnabled = true;
                 }
             }
         }
@@ -331,33 +331,33 @@ void LogConfig::applyCLIOverrides(int argc, char* argv[]) {
         else if (arg.rfind("--log.render=", 0) == 0) {
             if (loggers.find("render") != loggers.end()) {
                 LogLevel lvl = parseLevelInternal(arg.substr(13));
-                loggers["render"].console_level = lvl;
-                loggers["render"].file_level = lvl;
+                loggers["render"].consoleLevel = lvl;
+                loggers["render"].fileLevel = lvl;
             }
         }
         // --log.physics=LEVEL
         else if (arg.rfind("--log.physics=", 0) == 0) {
             if (loggers.find("physics") != loggers.end()) {
                 LogLevel lvl = parseLevelInternal(arg.substr(14));
-                loggers["physics"].console_level = lvl;
-                loggers["physics"].file_level = lvl;
+                loggers["physics"].consoleLevel = lvl;
+                loggers["physics"].fileLevel = lvl;
             }
         }
         // --log.audio=LEVEL
         else if (arg.rfind("--log.audio=", 0) == 0) {
             if (loggers.find("audio") != loggers.end()) {
                 LogLevel lvl = parseLevelInternal(arg.substr(12));
-                loggers["audio"].console_level = lvl;
-                loggers["audio"].file_level = lvl;
+                loggers["audio"].consoleLevel = lvl;
+                loggers["audio"].fileLevel = lvl;
             }
         }
         // --log.include=PATTERN
         else if (arg.rfind("--log.include=", 0) == 0) {
-            console_include_patterns.push_back(arg.substr(14));
+            consoleIncludePatterns.push_back(arg.substr(14));
         }
         // --log.exclude=PATTERN
         else if (arg.rfind("--log.exclude=", 0) == 0) {
-            console_exclude_patterns.push_back(arg.substr(14));
+            consoleExcludePatterns.push_back(arg.substr(14));
         }
         // --log.per-run=BOOL
         else if (arg.rfind("--log.per-run=", 0) == 0) {
@@ -365,25 +365,25 @@ void LogConfig::applyCLIOverrides(int argc, char* argv[]) {
             for (char& c : val) {
                 c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             }
-            use_per_run_folders = (val == "true" || val == "1" || val == "yes");
+            usePerRunFolders = (val == "true" || val == "1" || val == "yes");
         }
         // --log.dir=PATH
         else if (arg.rfind("--log.dir=", 0) == 0) {
-            logs_dir = arg.substr(10);
+            logsDir = arg.substr(10);
         }
     }
 }
 
 void LogConfig::mergeFrom(const LogConfig& other) {
     // Override global settings from other (if non-default)
-    if (!other.run_id.empty()) {
-        run_id = other.run_id;
+    if (!other.runId.empty()) {
+        runId = other.runId;
     }
-    if (!other.logs_dir.empty() && other.logs_dir != "logs") {
-        logs_dir = other.logs_dir;
+    if (!other.logsDir.empty() && other.logsDir != "logs") {
+        logsDir = other.logsDir;
     }
     // Boolean: just copy
-    use_per_run_folders = other.use_per_run_folders;
+    usePerRunFolders = other.usePerRunFolders;
 
     // Merge loggers
     for (const auto& [name, otherCfg] : other.loggers) {
@@ -391,11 +391,11 @@ void LogConfig::mergeFrom(const LogConfig& other) {
     }
 
     // Merge patterns (append, don't replace)
-    for (const auto& pattern : other.console_include_patterns) {
-        console_include_patterns.push_back(pattern);
+    for (const auto& pattern : other.consoleIncludePatterns) {
+        consoleIncludePatterns.push_back(pattern);
     }
-    for (const auto& pattern : other.console_exclude_patterns) {
-        console_exclude_patterns.push_back(pattern);
+    for (const auto& pattern : other.consoleExcludePatterns) {
+        consoleExcludePatterns.push_back(pattern);
     }
 }
 

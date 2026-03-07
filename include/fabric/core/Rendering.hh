@@ -125,7 +125,7 @@ const RenderCaps& renderCaps();
 
 // OIT (order-independent transparency) view ID constants.
 // Placed between post-process (200..205) and shadows (240..243).
-constexpr uint8_t kOITAccumViewId = 210;
-constexpr uint8_t kOITCompositeViewId = 211;
+constexpr uint8_t K_OIT_ACCUM_VIEW_ID = 210;
+constexpr uint8_t K_OIT_COMPOSITE_VIEW_ID = 211;
 
 } // namespace fabric

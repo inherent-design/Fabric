@@ -50,12 +50,12 @@ class FallingSandGravityTest : public ::testing::Test {
 
 // 1. Sand falls one cell per tick
 TEST_F(FallingSandGravityTest, SandFallsOnePerTick) {
-    placeCellAndAdvance(16, 31, 16, makeMaterial(MaterialIds::Sand));
+    placeCellAndAdvance(16, 31, 16, makeMaterial(material_ids::SAND));
 
     runGravityTick(ChunkPos{0, 0, 0}, 0);
 
-    EXPECT_EQ(grid.readCell(16, 30, 16).materialId, MaterialIds::Sand);
-    EXPECT_EQ(grid.readCell(16, 31, 16).materialId, MaterialIds::Air);
+    EXPECT_EQ(grid.readCell(16, 30, 16).materialId, material_ids::SAND);
+    EXPECT_EQ(grid.readCell(16, 31, 16).materialId, material_ids::AIR);
 }
 
 // 2. Sand falls to ground (stone floor)
@@ -63,18 +63,18 @@ TEST_F(FallingSandGravityTest, SandFallsToGround) {
     // Stone floor at y=0
     for (int x = 0; x < kChunkSize; ++x)
         for (int z = 0; z < kChunkSize; ++z)
-            grid.writeCell(x, 0, z, makeMaterial(MaterialIds::Stone));
+            grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
     // Place sand at y=10
-    placeCellAndAdvance(16, 10, 16, makeMaterial(MaterialIds::Sand));
+    placeCellAndAdvance(16, 10, 16, makeMaterial(material_ids::SAND));
 
     // Run 10 ticks -- sand should fall from y=10 to y=1 (above stone)
     for (uint64_t f = 0; f < 10; ++f)
         runGravityTick(ChunkPos{0, 0, 0}, f);
 
-    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, MaterialIds::Sand);
-    EXPECT_EQ(grid.readCell(16, 0, 16).materialId, MaterialIds::Stone);
+    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::SAND);
+    EXPECT_EQ(grid.readCell(16, 0, 16).materialId, material_ids::STONE);
 }
 
 // 3. Two sand grains stack (contained column prevents diagonal cascade)
@@ -82,53 +82,53 @@ TEST_F(FallingSandGravityTest, SandStacksOnSand) {
     // Stone floor
     for (int x = 0; x < kChunkSize; ++x)
         for (int z = 0; z < kChunkSize; ++z)
-            grid.writeCell(x, 0, z, makeMaterial(MaterialIds::Stone));
+            grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     // Stone walls around column (16,_,16) to prevent diagonal cascade
     for (int y = 1; y <= 12; ++y) {
-        grid.writeCell(15, y, 16, makeMaterial(MaterialIds::Stone));
-        grid.writeCell(17, y, 16, makeMaterial(MaterialIds::Stone));
-        grid.writeCell(16, y, 15, makeMaterial(MaterialIds::Stone));
-        grid.writeCell(16, y, 17, makeMaterial(MaterialIds::Stone));
+        grid.writeCell(15, y, 16, makeMaterial(material_ids::STONE));
+        grid.writeCell(17, y, 16, makeMaterial(material_ids::STONE));
+        grid.writeCell(16, y, 15, makeMaterial(material_ids::STONE));
+        grid.writeCell(16, y, 17, makeMaterial(material_ids::STONE));
     }
     grid.advanceEpoch();
 
     // Two sand at y=5 and y=10, same column
-    grid.writeCell(16, 5, 16, makeMaterial(MaterialIds::Sand));
-    grid.writeCell(16, 10, 16, makeMaterial(MaterialIds::Sand));
+    grid.writeCell(16, 5, 16, makeMaterial(material_ids::SAND));
+    grid.writeCell(16, 10, 16, makeMaterial(material_ids::SAND));
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 15; ++f)
         runGravityTick(ChunkPos{0, 0, 0}, f);
 
-    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, MaterialIds::Sand);
-    EXPECT_EQ(grid.readCell(16, 2, 16).materialId, MaterialIds::Sand);
+    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::SAND);
+    EXPECT_EQ(grid.readCell(16, 2, 16).materialId, material_ids::SAND);
 }
 
 // 4. Powder cascades diagonally off a pillar
 TEST_F(FallingSandGravityTest, PowderCascadeDiagonal) {
     // Single stone pillar at (16,0,16)
-    grid.writeCell(16, 0, 16, makeMaterial(MaterialIds::Stone));
+    grid.writeCell(16, 0, 16, makeMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
     // Sand on top of stone
-    placeCellAndAdvance(16, 1, 16, makeMaterial(MaterialIds::Sand));
+    placeCellAndAdvance(16, 1, 16, makeMaterial(material_ids::SAND));
 
     // Run several ticks; sand cannot fall (stone below), should cascade diagonal
     for (uint64_t f = 0; f < 5; ++f)
         runGravityTick(ChunkPos{0, 0, 0}, f);
 
     // Sand should NOT be at (16,1,16) anymore -- it cascaded
-    EXPECT_NE(grid.readCell(16, 1, 16).materialId, MaterialIds::Sand);
+    EXPECT_NE(grid.readCell(16, 1, 16).materialId, material_ids::SAND);
 }
 
 // 5. Stone does not fall
 TEST_F(FallingSandGravityTest, StoneDoesNotFall) {
-    placeCellAndAdvance(16, 16, 16, makeMaterial(MaterialIds::Stone));
+    placeCellAndAdvance(16, 16, 16, makeMaterial(material_ids::STONE));
 
     for (uint64_t f = 0; f < 100; ++f)
         runGravityTick(ChunkPos{0, 0, 0}, f);
 
-    EXPECT_EQ(grid.readCell(16, 16, 16).materialId, MaterialIds::Stone);
+    EXPECT_EQ(grid.readCell(16, 16, 16).materialId, material_ids::STONE);
 }
 
 // 6. Density ordering: gravel sinks below sand (contained column)
@@ -136,27 +136,27 @@ TEST_F(FallingSandGravityTest, DensityOrdering) {
     // Stone floor
     for (int x = 0; x < kChunkSize; ++x)
         for (int z = 0; z < kChunkSize; ++z)
-            grid.writeCell(x, 0, z, makeMaterial(MaterialIds::Stone));
+            grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     // Stone walls around column (16,_,16) to prevent diagonal cascade after swap
     for (int y = 1; y <= 4; ++y) {
-        grid.writeCell(15, y, 16, makeMaterial(MaterialIds::Stone));
-        grid.writeCell(17, y, 16, makeMaterial(MaterialIds::Stone));
-        grid.writeCell(16, y, 15, makeMaterial(MaterialIds::Stone));
-        grid.writeCell(16, y, 17, makeMaterial(MaterialIds::Stone));
+        grid.writeCell(15, y, 16, makeMaterial(material_ids::STONE));
+        grid.writeCell(17, y, 16, makeMaterial(material_ids::STONE));
+        grid.writeCell(16, y, 15, makeMaterial(material_ids::STONE));
+        grid.writeCell(16, y, 17, makeMaterial(material_ids::STONE));
     }
     grid.advanceEpoch();
 
     // Sand at y=1, gravel at y=2
-    grid.writeCell(16, 1, 16, makeMaterial(MaterialIds::Sand));
-    grid.writeCell(16, 2, 16, makeMaterial(MaterialIds::Gravel));
+    grid.writeCell(16, 1, 16, makeMaterial(material_ids::SAND));
+    grid.writeCell(16, 2, 16, makeMaterial(material_ids::GRAVEL));
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 10; ++f)
         runGravityTick(ChunkPos{0, 0, 0}, f);
 
     // Gravel (density 170) should be below sand (density 130)
-    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, MaterialIds::Gravel);
-    EXPECT_EQ(grid.readCell(16, 2, 16).materialId, MaterialIds::Sand);
+    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::GRAVEL);
+    EXPECT_EQ(grid.readCell(16, 2, 16).materialId, material_ids::SAND);
 }
 
 // 7. Direction alternation produces roughly symmetric piles
@@ -164,12 +164,12 @@ TEST_F(FallingSandGravityTest, DirectionAlternationSymmetry) {
     // Stone floor
     for (int x = 0; x < kChunkSize; ++x)
         for (int z = 0; z < kChunkSize; ++z)
-            grid.writeCell(x, 0, z, makeMaterial(MaterialIds::Stone));
+            grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
     // Column of sand at x=16
     for (int y = 1; y <= 10; ++y)
-        grid.writeCell(16, y, 16, makeMaterial(MaterialIds::Sand));
+        grid.writeCell(16, y, 16, makeMaterial(material_ids::SAND));
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 100; ++f)
@@ -180,12 +180,12 @@ TEST_F(FallingSandGravityTest, DirectionAlternationSymmetry) {
     for (int x = 0; x < 16; ++x)
         for (int y = 0; y < kChunkSize; ++y)
             for (int z = 0; z < kChunkSize; ++z)
-                if (grid.readCell(x, y, z).materialId == MaterialIds::Sand)
+                if (grid.readCell(x, y, z).materialId == material_ids::SAND)
                     ++leftCount;
     for (int x = 17; x < kChunkSize; ++x)
         for (int y = 0; y < kChunkSize; ++y)
             for (int z = 0; z < kChunkSize; ++z)
-                if (grid.readCell(x, y, z).materialId == MaterialIds::Sand)
+                if (grid.readCell(x, y, z).materialId == material_ids::SAND)
                     ++rightCount;
 
     // Both sides should have at least some sand (rough symmetry)
@@ -209,7 +209,7 @@ TEST_F(FallingSandGravityTest, CrossChunkFalling) {
                 tracker.markSubRegionActive(ChunkPos{0, 1, 0}, lx, ly, lz);
 
     // Sand at chunk(0,1,0) local y=0 = world y=32
-    grid.writeCell(16, 32, 16, makeMaterial(MaterialIds::Sand));
+    grid.writeCell(16, 32, 16, makeMaterial(material_ids::SAND));
     grid.advanceEpoch();
 
     // Simulate chunk(0,1,0) -- sand at y=32 should fall to y=31 (chunk 0,0,0)
@@ -217,8 +217,8 @@ TEST_F(FallingSandGravityTest, CrossChunkFalling) {
     system.simulateGravity(ChunkPos{0, 1, 0}, grid, ghosts, tracker, 0, rng);
     grid.advanceEpoch();
 
-    EXPECT_EQ(grid.readCell(16, 31, 16).materialId, MaterialIds::Sand);
-    EXPECT_EQ(grid.readCell(16, 32, 16).materialId, MaterialIds::Air);
+    EXPECT_EQ(grid.readCell(16, 31, 16).materialId, material_ids::SAND);
+    EXPECT_EQ(grid.readCell(16, 32, 16).materialId, material_ids::AIR);
 }
 
 // 9. No movement -> simulateGravity returns false (caller handles sleep)
@@ -227,7 +227,7 @@ TEST_F(FallingSandGravityTest, NoMovementSleepsChunk) {
     for (int z = 0; z < kChunkSize; ++z)
         for (int y = 0; y < kChunkSize; ++y)
             for (int x = 0; x < kChunkSize; ++x)
-                grid.writeCell(x, y, z, makeMaterial(MaterialIds::Stone));
+                grid.writeCell(x, y, z, makeMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
     tracker.setState(ChunkPos{0, 0, 0}, ChunkState::Active);
@@ -246,7 +246,7 @@ TEST_F(FallingSandGravityTest, PerformanceSingleChunk) {
         for (int y = 0; y < kChunkSize; ++y)
             for (int x = 0; x < kChunkSize; ++x)
                 if ((x + y + z) % 2 == 0)
-                    grid.writeCell(x, y, z, makeMaterial(MaterialIds::Sand));
+                    grid.writeCell(x, y, z, makeMaterial(material_ids::SAND));
     grid.advanceEpoch();
 
     ghosts.syncGhostCells(ChunkPos{0, 0, 0}, grid);

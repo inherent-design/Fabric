@@ -1,4 +1,5 @@
 #include "recurse/systems/OITRenderSystem.hh"
+#include "recurse/render/OITCompositor.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Camera.hh"
@@ -33,9 +34,10 @@ void OITRenderSystem::render(fabric::AppContext& ctx) {
     int oitPW, oitPH;
     SDL_GetWindowSizeInPixels(window, &oitPW, &oitPH);
 
-    oitCompositor_.beginAccumulation(fabric::kOITAccumViewId, camera->viewMatrix(), camera->projectionMatrix(),
+    oitCompositor_.beginAccumulation(fabric::K_OIT_ACCUM_VIEW_ID, camera->viewMatrix(), camera->projectionMatrix(),
                                      static_cast<uint16_t>(oitPW), static_cast<uint16_t>(oitPH));
-    oitCompositor_.composite(fabric::kOITCompositeViewId, static_cast<uint16_t>(oitPW), static_cast<uint16_t>(oitPH));
+    oitCompositor_.composite(fabric::K_OIT_COMPOSITE_VIEW_ID, static_cast<uint16_t>(oitPW),
+                             static_cast<uint16_t>(oitPH));
 }
 
 void OITRenderSystem::shutdown() {

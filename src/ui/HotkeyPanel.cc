@@ -125,7 +125,8 @@ void HotkeyPanel::rebuildHotkeys() {
             addHotkey("Movement", "Space", "Up / Jump");
             addHotkey("Movement", "LShift", "Down / Crouch");
             addHotkey("Movement", "F", "Toggle Fly");
-            addHotkey("Movement", "V", "Toggle Camera");
+            addHotkey("Camera", "V", "1st/3rd Person");
+            addHotkey("Camera", "Alt+C", "Panini/Equirect");
             addHotkey("Interaction", "LMB", "Destroy Voxel");
             addHotkey("Interaction", "RMB", "Place Voxel");
             addHotkey("Time", "P", "Pause Time");

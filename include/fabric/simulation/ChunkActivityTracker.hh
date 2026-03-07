@@ -44,6 +44,7 @@ class ChunkActivityTracker {
     void putToSleep(ChunkPos pos);
     void resolveBoundaryDirty(ChunkPos pos, bool needsSimulation);
     void remove(ChunkPos pos);
+    void clear(); // Remove all chunks (for world reset)
 
   private:
     struct ChunkInfo {

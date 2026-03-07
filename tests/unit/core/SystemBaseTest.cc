@@ -94,7 +94,7 @@ TEST(SystemPhaseTest, ToStringAllValues) {
 }
 
 TEST(SystemPhaseTest, PhaseCountMatchesEnum) {
-    EXPECT_EQ(kSystemPhaseCount, 7u);
+    EXPECT_EQ(K_SYSTEM_PHASE_COUNT, 7u);
     // Verify the last enum value is at index 6
     EXPECT_EQ(static_cast<std::size_t>(SystemPhase::PostRender), 6u);
 }

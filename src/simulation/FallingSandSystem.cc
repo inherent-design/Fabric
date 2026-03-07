@@ -21,7 +21,7 @@ VoxelCell FallingSandSystem::readCell(ChunkPos pos, int lx, int ly, int lz, cons
 }
 
 bool FallingSandSystem::canDisplace(VoxelCell mover, VoxelCell target) const {
-    if (target.materialId == MaterialIds::Air)
+    if (target.materialId == material_ids::AIR)
         return true;
     const auto& targetDef = registry_.get(target.materialId);
     if (targetDef.moveType == MoveType::Static)
@@ -81,7 +81,7 @@ bool FallingSandSystem::simulateGravity(ChunkPos pos, SimulationGrid& grid, cons
         for (int lz = lzStart; lz != lzEnd; lz += lzStep) {
             for (int lx = lxStart; lx != lxEnd; lx += lxStep) {
                 VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
-                if (cell.materialId == MaterialIds::Air)
+                if (cell.materialId == material_ids::AIR)
                     continue;
 
                 const auto& def = registry_.get(cell.materialId);
@@ -176,7 +176,7 @@ bool FallingSandSystem::simulateLiquid(ChunkPos pos, SimulationGrid& grid, const
 
                 for (const auto& [dx, dy, dz] : horiz) {
                     VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
-                    if (target.materialId == MaterialIds::Air) {
+                    if (target.materialId == material_ids::AIR) {
                         writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker);
                         anyChange = true;
                         break;

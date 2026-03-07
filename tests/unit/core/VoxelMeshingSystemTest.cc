@@ -12,7 +12,7 @@ using fabric::simulation::ChunkActivityTracker;
 using fabric::simulation::ChunkState;
 using fabric::simulation::SimulationGrid;
 using fabric::simulation::VoxelCell;
-namespace MaterialIds = fabric::simulation::MaterialIds;
+namespace MaterialIds = fabric::simulation::material_ids;
 using recurse::kChunkSize;
 using recurse::systems::VoxelMeshingSystem;
 
@@ -32,7 +32,7 @@ class VoxelMeshingSystemTest : public ::testing::Test {
 
     void fillChunkSolid(const ChunkCoord& coord) {
         VoxelCell solid;
-        solid.materialId = MaterialIds::Stone;
+        solid.materialId = MaterialIds::STONE;
         simGrid.fillChunk(coord.x, coord.y, coord.z, solid);
     }
 };
@@ -125,7 +125,7 @@ TEST_F(VoxelMeshingSystemTest, MeshUpdateReplacesOld) {
 TEST_F(VoxelMeshingSystemTest, KnownDensityFieldMesh) {
     ChunkCoord coord{0, 0, 0};
     VoxelCell solid;
-    solid.materialId = MaterialIds::Stone;
+    solid.materialId = MaterialIds::STONE;
 
     // Fill bottom half (y < 16) with stone, top half remains air
     for (int z = 0; z < kChunkSize; ++z)

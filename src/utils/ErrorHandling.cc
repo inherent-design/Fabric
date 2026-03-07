@@ -3,10 +3,10 @@
 
 namespace fabric {
 
-FabricException::FabricException(const std::string& message) : message(message) {}
+FabricException::FabricException(const std::string& message) : message_(message) {}
 
 const char* FabricException::what() const noexcept {
-    return message.c_str();
+    return message_.c_str();
 }
 
 void throwError(const std::string& message) {

@@ -52,7 +52,7 @@ class PostProcess {
     void render(uint8_t baseViewId = 200);
 
   private:
-    static constexpr uint16_t kBlurPasses = 4;
+    static constexpr uint16_t K_BLUR_PASSES = 4;
 
     void initPrograms();
     void createFramebuffers(uint16_t width, uint16_t height);
@@ -80,7 +80,7 @@ class PostProcess {
     bgfx::FrameBufferHandle hdrFb_;
 
     // Bloom chain framebuffers (progressively halved resolution)
-    bgfx::FrameBufferHandle bloomFb_[kBlurPasses];
+    bgfx::FrameBufferHandle bloomFb_[K_BLUR_PASSES];
 
     uint16_t width_ = 0;
     uint16_t height_ = 0;

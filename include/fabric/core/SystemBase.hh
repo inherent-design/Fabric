@@ -63,8 +63,11 @@ class SystemBase {
 
 /// CRTP helper that provides typeId() automatically.
 template <typename Derived> class System : public SystemBase {
+    System() = default;
+
   public:
     std::type_index typeId() const override { return std::type_index(typeid(Derived)); }
+    friend Derived;
 };
 
 } // namespace fabric

@@ -25,9 +25,9 @@ struct AppModeFlags {
     bool routeToGame;
 };
 
-static constexpr std::size_t kAppModeCount = 5;
+static constexpr std::size_t K_APP_MODE_COUNT = 5;
 
-static constexpr std::array<AppModeFlags, kAppModeCount> kAppModeFlagsTable = {{
+static constexpr std::array<AppModeFlags, K_APP_MODE_COUNT> K_APP_MODE_FLAGS_TABLE = {{
     {true, false, false, true}, // Game
     {false, true, true, false}, // Paused
     {false, false, true, true}, // Console

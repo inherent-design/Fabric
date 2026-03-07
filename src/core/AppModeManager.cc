@@ -106,10 +106,10 @@ AppMode AppModeManager::previous() const {
 
 const AppModeFlags& AppModeManager::flags(AppMode mode) {
     auto idx = static_cast<std::size_t>(mode);
-    if (idx >= kAppModeCount) {
+    if (idx >= K_APP_MODE_COUNT) {
         throwError("Invalid AppMode: " + std::to_string(idx));
     }
-    return kAppModeFlagsTable[idx];
+    return K_APP_MODE_FLAGS_TABLE[idx];
 }
 
 bool AppModeManager::isValidTransition(AppMode from, AppMode to) {

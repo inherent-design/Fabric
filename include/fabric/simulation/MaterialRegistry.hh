@@ -11,14 +11,14 @@ class MaterialRegistry {
     MaterialRegistry();
 
     const MaterialDef& get(MaterialId id) const {
-        assert(id < MaterialIds::Count && "MaterialId out of range");
+        assert(id < material_ids::COUNT && "MaterialId out of range");
         return materials_[id];
     }
 
-    MaterialId count() const { return MaterialIds::Count; }
+    MaterialId count() const { return material_ids::COUNT; }
 
   private:
-    std::array<MaterialDef, MaterialIds::Count> materials_{};
+    std::array<MaterialDef, material_ids::COUNT> materials_{};
 };
 
 } // namespace fabric::simulation

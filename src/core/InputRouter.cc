@@ -33,6 +33,11 @@ void InputRouter::registerKeyCallback(SDL_Keycode key, std::function<void()> cb)
     keyCallbacks_[key] = std::move(cb);
 }
 
+void InputRouter::registerKeyCallback(SDL_Keycode key, SDL_Keymod mod, std::function<void()> cb) {
+    uint32_t combined = (static_cast<uint32_t>(key) << 16) | static_cast<uint32_t>(mod);
+    modKeyCallbacks_[combined] = std::move(cb);
+}
+
 void InputRouter::unregisterKeyCallback(SDL_Keycode key) {
     keyCallbacks_.erase(key);
 }
@@ -63,6 +68,18 @@ bool InputRouter::routeEvent(const SDL_Event& event, Rml::Context* rmlContext) {
 
     // Key callbacks: fire on non-repeat key-down, suppressed in UIOnly mode
     if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && mode_ != InputMode::UIOnly) {
+        // Check modifier-aware callbacks first (higher priority)
+        // Iterate to find matching key + any required modifier
+        for (const auto& [combined, cb] : modKeyCallbacks_) {
+            SDL_Keycode key = static_cast<SDL_Keycode>(combined >> 16);
+            SDL_Keymod mod = static_cast<SDL_Keymod>(combined & 0xFFFF);
+            // Match if key matches AND any of the required modifiers are pressed
+            if (event.key.key == key && (event.key.mod & mod) != 0) {
+                cb();
+                return true;
+            }
+        }
+        // Fall back to plain key callbacks
         auto it = keyCallbacks_.find(event.key.key);
         if (it != keyCallbacks_.end()) {
             it->second();

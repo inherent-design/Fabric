@@ -77,10 +77,10 @@ TEST(VulkanRegression, ViewIdConstantsNoConflicts) {
         201,
         202,
         203,
-        204,                 // PostProcess range
-        kOITAccumViewId,     // 210
-        kOITCompositeViewId, // 211
-        kUIViewId,           // 255
+        204,                     // PostProcess range
+        K_OIT_ACCUM_VIEW_ID,     // 210
+        K_OIT_COMPOSITE_VIEW_ID, // 211
+        kUIViewId,               // 255
     };
     EXPECT_EQ(ids.size(), 12u) << "Duplicate view IDs detected";
 }
@@ -96,15 +96,15 @@ TEST(VulkanRegression, ViewIdExecutionOrder) {
     EXPECT_LT(kSkyViewId, kGeometryViewId);
     EXPECT_LT(kGeometryViewId, kTransparentViewId);
     EXPECT_LT(kTransparentViewId, ParticleSystem::kViewId);
-    EXPECT_LT(kOITAccumViewId, kOITCompositeViewId);
+    EXPECT_LT(K_OIT_ACCUM_VIEW_ID, K_OIT_COMPOSITE_VIEW_ID);
 
     // OIT composite (211) must execute AFTER opaque geometry (1).
     // This ordering caused the black screen bug -- the composite overwrites
     // the backbuffer if it writes opaque black.
-    EXPECT_GT(kOITCompositeViewId, kGeometryViewId);
+    EXPECT_GT(K_OIT_COMPOSITE_VIEW_ID, kGeometryViewId);
 
     // UI overlay is always last.
-    EXPECT_GT(kUIViewId, kOITCompositeViewId);
+    EXPECT_GT(kUIViewId, K_OIT_COMPOSITE_VIEW_ID);
 }
 
 // ---------------------------------------------------------------------------
@@ -125,14 +125,14 @@ TEST(VulkanRegression, OITCompositorNotValidByDefault) {
 
 TEST(VulkanRegression, OITCompositeViewIdIsAfterAccum) {
     // The composite pass must come after accumulation in view order.
-    EXPECT_GT(kOITCompositeViewId, kOITAccumViewId);
-    EXPECT_EQ(kOITCompositeViewId, kOITAccumViewId + 1);
+    EXPECT_GT(K_OIT_COMPOSITE_VIEW_ID, K_OIT_ACCUM_VIEW_ID);
+    EXPECT_EQ(K_OIT_COMPOSITE_VIEW_ID, K_OIT_ACCUM_VIEW_ID + 1);
 }
 
 TEST(VulkanRegression, OITAccumViewIdDoesNotOverlapPostProcess) {
     // PostProcess uses views 200..204; OIT starts at 210.
     constexpr uint8_t kPostProcessEndViewId = 204;
-    EXPECT_GT(kOITAccumViewId, kPostProcessEndViewId);
+    EXPECT_GT(K_OIT_ACCUM_VIEW_ID, kPostProcessEndViewId);
 }
 
 // ---------------------------------------------------------------------------

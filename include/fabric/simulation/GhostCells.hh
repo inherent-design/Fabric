@@ -17,11 +17,11 @@ enum class Face : uint8_t {
     PosZ,
     NegZ
 };
-inline constexpr int kFaceCount = 6;
-inline constexpr int kFaceArea = recurse::kChunkSize * recurse::kChunkSize; // 1024
+inline constexpr int K_FACE_COUNT = 6;
+inline constexpr int K_FACE_AREA = recurse::kChunkSize * recurse::kChunkSize; // 1024
 
 struct GhostCellStore {
-    std::array<std::array<VoxelCell, kFaceArea>, kFaceCount> faces{};
+    std::array<std::array<VoxelCell, K_FACE_AREA>, K_FACE_COUNT> faces{};
 
     VoxelCell get(Face face, int u, int v) const;
     void set(Face face, int u, int v, VoxelCell cell);

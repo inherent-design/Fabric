@@ -7,23 +7,23 @@
 
 namespace fabric {
 
-Event::Event(const std::string& type, const std::string& source) : type(type), source(source) {
-    if (type.empty()) {
+Event::Event(const std::string& type, const std::string& source) : type_(type), source_(source) {
+    if (type_.empty()) {
         throwError("Event type cannot be empty");
     }
 }
 
 const std::string& Event::getType() const {
-    return type;
+    return type_;
 }
 
 const std::string& Event::getSource() const {
-    return source;
+    return source_;
 }
 
 bool Event::hasData(const std::string& key) const {
-    std::lock_guard<std::mutex> lock(dataMutex);
-    return data.find(key) != data.end();
+    std::lock_guard<std::mutex> lock(dataMutex_);
+    return data_.find(key) != data_.end();
 }
 
 template <typename T> void Event::setData(const std::string& key, const T& value) {
@@ -32,8 +32,8 @@ template <typename T> void Event::setData(const std::string& key, const T& value
                       std::is_same_v<T, std::vector<uint8_t>>,
                   "Data type not supported. Must be one of the types in DataValue.");
 
-    std::lock_guard<std::mutex> lock(dataMutex);
-    data[key] = value;
+    std::lock_guard<std::mutex> lock(dataMutex_);
+    data_[key] = value;
 }
 
 template <typename T> T Event::getData(const std::string& key) const {
@@ -42,10 +42,10 @@ template <typename T> T Event::getData(const std::string& key) const {
                       std::is_same_v<T, std::vector<uint8_t>>,
                   "Data type not supported. Must be one of the types in DataValue.");
 
-    std::lock_guard<std::mutex> lock(dataMutex);
+    std::lock_guard<std::mutex> lock(dataMutex_);
 
-    auto it = data.find(key);
-    if (it == data.end()) {
+    auto it = data_.find(key);
+    if (it == data_.end()) {
         throwError("Event data key '" + key + "' not found");
     }
 
@@ -58,24 +58,24 @@ template <typename T> T Event::getData(const std::string& key) const {
 }
 
 bool Event::hasAnyData(const std::string& key) const {
-    std::lock_guard<std::mutex> lock(dataMutex);
-    return anyData.find(key) != anyData.end();
+    std::lock_guard<std::mutex> lock(dataMutex_);
+    return anyData_.find(key) != anyData_.end();
 }
 
 bool Event::isHandled() const {
-    return handled;
+    return handled_;
 }
 
 void Event::setHandled(bool handled) {
-    this->handled = handled;
+    handled_ = handled;
 }
 
 bool Event::isCancelled() const {
-    return cancelled;
+    return cancelled_;
 }
 
 void Event::setCancelled(bool cancelled) {
-    this->cancelled = cancelled;
+    cancelled_ = cancelled;
 }
 
 // Explicit template instantiations
@@ -103,7 +103,7 @@ std::string EventDispatcher::addEventListener(const std::string& eventType, cons
         throwError("Event handler cannot be null");
     }
 
-    std::lock_guard<std::mutex> lock(listenersMutex);
+    std::lock_guard<std::mutex> lock(listenersMutex_);
 
     HandlerEntry entry;
     entry.id = Utils::generateUniqueId("h_");
@@ -112,7 +112,7 @@ std::string EventDispatcher::addEventListener(const std::string& eventType, cons
 
     // Insert in priority-sorted order (lower priority first).
     // upper_bound preserves insertion order for equal priorities.
-    auto& vec = listeners[eventType];
+    auto& vec = listeners_[eventType];
     auto pos = std::upper_bound(vec.begin(), vec.end(), entry,
                                 [](const HandlerEntry& a, const HandlerEntry& b) { return a.priority < b.priority; });
     vec.insert(pos, entry);
@@ -123,10 +123,10 @@ std::string EventDispatcher::addEventListener(const std::string& eventType, cons
 }
 
 bool EventDispatcher::removeEventListener(const std::string& eventType, const std::string& handlerId) {
-    std::lock_guard<std::mutex> lock(listenersMutex);
+    std::lock_guard<std::mutex> lock(listenersMutex_);
 
-    auto it = listeners.find(eventType);
-    if (it == listeners.end()) {
+    auto it = listeners_.find(eventType);
+    if (it == listeners_.end()) {
         return false;
     }
 
@@ -147,10 +147,10 @@ bool EventDispatcher::dispatchEvent(Event& event) {
     std::vector<HandlerEntry> handlersToInvoke;
 
     {
-        std::lock_guard<std::mutex> lock(listenersMutex);
+        std::lock_guard<std::mutex> lock(listenersMutex_);
 
-        auto it = listeners.find(event.getType());
-        if (it == listeners.end()) {
+        auto it = listeners_.find(event.getType());
+        if (it == listeners_.end()) {
             return false;
         }
 

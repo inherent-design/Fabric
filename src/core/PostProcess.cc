@@ -22,12 +22,12 @@
 #include "spv/fs_tonemap.sc.bin.h"
 #include "spv/vs_fullscreen.sc.bin.h"
 
-static const bgfx::EmbeddedShader s_postShaders[] = {BGFX_EMBEDDED_SHADER(vs_fullscreen),
-                                                     BGFX_EMBEDDED_SHADER(fs_bright), BGFX_EMBEDDED_SHADER(fs_blur),
-                                                     BGFX_EMBEDDED_SHADER(fs_tonemap), BGFX_EMBEDDED_SHADER_END()};
+static const bgfx::EmbeddedShader g_s_postShaders[] = {BGFX_EMBEDDED_SHADER(vs_fullscreen),
+                                                       BGFX_EMBEDDED_SHADER(fs_bright), BGFX_EMBEDDED_SHADER(fs_blur),
+                                                       BGFX_EMBEDDED_SHADER(fs_tonemap), BGFX_EMBEDDED_SHADER_END()};
 
 // Fullscreen triangle vertices in clip space.
-static const float s_fullscreenVertices[] = {
+static const float g_s_fullscreenVertices[] = {
     -1.0f, -1.0f, 0.0f, 3.0f, -1.0f, 0.0f, -1.0f, 3.0f, 0.0f,
 };
 
@@ -208,8 +208,8 @@ void PostProcess::render(uint8_t baseViewId) {
         bgfx::submit(view, brightProgram_);
     }
 
-    // Passes 1..kBlurPasses-1: Dual Kawase blur (downsample chain)
-    for (uint16_t i = 1; i < kBlurPasses; ++i) {
+    // Passes 1..K_BLUR_PASSES-1: Dual Kawase blur (downsample chain)
+    for (uint16_t i = 1; i < K_BLUR_PASSES; ++i) {
         uint8_t view = baseViewId + i;
         bgfx::setViewName(view, "Bloom Blur");
 
@@ -235,7 +235,7 @@ void PostProcess::render(uint8_t baseViewId) {
 
     // Final pass: Tonemapping composite to backbuffer
     {
-        uint8_t view = baseViewId + kBlurPasses;
+        uint8_t view = baseViewId + K_BLUR_PASSES;
         bgfx::setViewName(view, "Tonemap");
         bgfx::setViewRect(view, 0, 0, width_, height_);
         bgfx::setViewFrameBuffer(view, BGFX_INVALID_HANDLE); // backbuffer
@@ -245,7 +245,7 @@ void PostProcess::render(uint8_t baseViewId) {
         bgfx::setUniform(uniformTonemapParams_, tonemapParams);
 
         bgfx::setTexture(0, samplerHdrColor_, bgfx::getTexture(hdrFb_, 0));
-        bgfx::setTexture(1, samplerBloomTex_, bgfx::getTexture(bloomFb_[kBlurPasses - 1], 0));
+        bgfx::setTexture(1, samplerBloomTex_, bgfx::getTexture(bloomFb_[K_BLUR_PASSES - 1], 0));
         bgfx::setVertexBuffer(0, vbh_);
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
         bgfx::submit(view, tonemapProgram_);
@@ -255,14 +255,14 @@ void PostProcess::render(uint8_t baseViewId) {
 void PostProcess::initPrograms() {
     bgfx::RendererType::Enum type = bgfx::getRendererType();
 
-    brightProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_postShaders, type, "vs_fullscreen"),
-                                         bgfx::createEmbeddedShader(s_postShaders, type, "fs_bright"), true);
+    brightProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
+                                         bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_bright"), true);
 
-    blurProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_postShaders, type, "vs_fullscreen"),
-                                       bgfx::createEmbeddedShader(s_postShaders, type, "fs_blur"), true);
+    blurProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
+                                       bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_blur"), true);
 
-    tonemapProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_postShaders, type, "vs_fullscreen"),
-                                          bgfx::createEmbeddedShader(s_postShaders, type, "fs_tonemap"), true);
+    tonemapProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
+                                          bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_tonemap"), true);
 
     uniformBloomParams_ = bgfx::createUniform("u_bloomParams", bgfx::UniformType::Vec4);
     uniformTexelSize_ = bgfx::createUniform("u_texelSize", bgfx::UniformType::Vec4);
@@ -274,7 +274,7 @@ void PostProcess::initPrograms() {
     // Fullscreen triangle vertex buffer
     bgfx::VertexLayout layout;
     layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
-    vbh_ = bgfx::createVertexBuffer(bgfx::makeRef(s_fullscreenVertices, sizeof(s_fullscreenVertices)), layout);
+    vbh_ = bgfx::createVertexBuffer(bgfx::makeRef(g_s_fullscreenVertices, sizeof(g_s_fullscreenVertices)), layout);
 
     if (!bgfx::isValid(brightProgram_) || !bgfx::isValid(blurProgram_) || !bgfx::isValid(tonemapProgram_) ||
         !bgfx::isValid(vbh_)) {
@@ -294,7 +294,7 @@ void PostProcess::createFramebuffers(uint16_t width, uint16_t height) {
     hdrFb_ = bgfx::createFrameBuffer(2, attachments, true);
 
     // Bloom chain: progressively halved RGBA16F (no depth needed)
-    for (uint16_t i = 0; i < kBlurPasses; ++i) {
+    for (uint16_t i = 0; i < K_BLUR_PASSES; ++i) {
         uint16_t w = width >> (i + 1);
         uint16_t h = height >> (i + 1);
         if (w < 1)

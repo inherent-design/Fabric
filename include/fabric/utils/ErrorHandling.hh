@@ -18,7 +18,7 @@ class FabricException : public std::exception {
     const char* what() const noexcept override;
 
   private:
-    std::string message;
+    std::string message_;
 };
 
 [[noreturn]] void throwError(const std::string& message);

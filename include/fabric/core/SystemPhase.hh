@@ -18,7 +18,7 @@ enum class SystemPhase : std::uint8_t {
     PostRender   // UI overlay, debug HUD, frame flip
 };
 
-constexpr std::size_t kSystemPhaseCount = 7;
+constexpr std::size_t K_SYSTEM_PHASE_COUNT = 7;
 
 std::string systemPhaseToString(SystemPhase phase);
 

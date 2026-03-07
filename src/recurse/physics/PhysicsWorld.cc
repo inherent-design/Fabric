@@ -354,6 +354,22 @@ void PhysicsWorld::removeChunkCollision(int cx, int cy, int cz) {
     chunkBodies_.erase(it);
 }
 
+void PhysicsWorld::clearChunkBodies() {
+    if (!initialized_)
+        return;
+
+    size_t count = chunkBodies_.size();
+    for (auto& [key, bodies] : chunkBodies_) {
+        auto& bi = physicsSystem_->GetBodyInterface();
+        for (auto& bodyId : bodies) {
+            bi.RemoveBody(bodyId);
+            bi.DestroyBody(bodyId);
+        }
+    }
+    chunkBodies_.clear();
+    FABRIC_LOG_DEBUG("PhysicsWorld: cleared {} chunk collision bodies", count);
+}
+
 uint32_t PhysicsWorld::chunkCollisionShapeCount(int cx, int cy, int cz) const {
     if (!initialized_)
         return 0;

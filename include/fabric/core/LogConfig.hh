@@ -33,27 +33,27 @@ enum class LogLevel : uint8_t {
 
 /// Configuration for a single logger (e.g., "fabric", "render", "bgfx")
 struct LoggerConfig {
-    LogLevel console_level = LogLevel::Info;
-    LogLevel file_level = LogLevel::Debug;
-    bool console_enabled = true;
-    bool file_enabled = true;
-    std::string file_name; // Empty = use logger name + ".log"
+    LogLevel consoleLevel = LogLevel::Info;
+    LogLevel fileLevel = LogLevel::Debug;
+    bool consoleEnabled = true;
+    bool fileEnabled = true;
+    std::string fileName; // Empty = use logger name + ".log"
 };
 
 /// Complete logging configuration
 struct LogConfig {
     // Global settings
-    std::string run_id;              // Timestamped folder name (e.g., "2026-03-04_14-30-00")
-    std::string logs_dir = "logs";   // Base directory for log files
-    bool use_per_run_folders = true; // Create timestamped subdirectories
+    std::string runId;            // Timestamped folder name (e.g., "2026-03-04_14-30-00")
+    std::string logsDir = "logs"; // Base directory for log files
+    bool usePerRunFolders = true; // Create timestamped subdirectories
 
     // Per-logger configs (key = logger name: "fabric", "render", "physics", "audio", "bgfx")
     std::map<std::string, LoggerConfig> loggers;
 
     // Console filtering: only show logs from these patterns
     // Pattern syntax: "fabric.*" matches "fabric", "fabric.render", etc.
-    std::vector<std::string> console_include_patterns;
-    std::vector<std::string> console_exclude_patterns;
+    std::vector<std::string> consoleIncludePatterns;
+    std::vector<std::string> consoleExcludePatterns;
 
     /// Create default configuration with standard loggers
     static LogConfig fromDefaults();

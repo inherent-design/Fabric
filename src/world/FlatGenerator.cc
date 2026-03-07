@@ -21,7 +21,7 @@ void FlatGenerator::generate(SimulationGrid& grid, ChunkPos pos) {
     // Entire chunk below surface -- all Stone
     if (topY < surfaceHeight_) {
         VoxelCell stone;
-        stone.materialId = MaterialIds::Stone;
+        stone.materialId = material_ids::STONE;
         grid.fillChunk(pos.x, pos.y, pos.z, stone);
         return;
     }
@@ -29,7 +29,7 @@ void FlatGenerator::generate(SimulationGrid& grid, ChunkPos pos) {
     // Mixed chunk: contains the surface layer
     // Pre-fill with Stone (most cells below surface), then overwrite
     VoxelCell stone;
-    stone.materialId = MaterialIds::Stone;
+    stone.materialId = material_ids::STONE;
     grid.fillChunk(pos.x, pos.y, pos.z, stone);
 
     for (int lz = 0; lz < kChunkSize; ++lz) {
@@ -38,7 +38,7 @@ void FlatGenerator::generate(SimulationGrid& grid, ChunkPos pos) {
             if (worldY == surfaceHeight_) {
                 // Surface layer = Dirt
                 VoxelCell dirt;
-                dirt.materialId = MaterialIds::Dirt;
+                dirt.materialId = material_ids::DIRT;
                 for (int lx = 0; lx < kChunkSize; ++lx) {
                     int wx = pos.x * kChunkSize + lx;
                     int wz = pos.z * kChunkSize + lz;

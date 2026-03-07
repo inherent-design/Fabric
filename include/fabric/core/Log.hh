@@ -52,7 +52,7 @@ namespace fabric::log {
 void init();
 
 /// Initialize with file sink in addition to console.
-void init(const char* log_file_path);
+void init(const char* logFilePath);
 
 /// Initialize with full LogConfig (recommended).
 /// Supports per-run folders, per-logger levels, and console filtering.

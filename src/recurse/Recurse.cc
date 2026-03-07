@@ -31,6 +31,7 @@
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/ChunkPipelineSystem.hh"
 #include "recurse/systems/DebugOverlaySystem.hh"
+#include "recurse/systems/LODSystem.hh"
 #include "recurse/systems/MainMenuSystem.hh"
 #include "recurse/systems/OITRenderSystem.hh"
 #include "recurse/systems/ParticleGameSystem.hh"
@@ -73,8 +74,9 @@ fabric::FabricAppDesc buildRecurseDesc() {
     desc.registerSystem<recurse::systems::AudioGameSystem>(SystemPhase::Update);
     desc.registerSystem<recurse::systems::CameraGameSystem>(SystemPhase::Update);
 
-    // PreRender: meshing, shadows
+    // PreRender: meshing, shadows, LOD
     desc.registerSystem<recurse::systems::VoxelMeshingSystem>(SystemPhase::PreRender);
+    desc.registerSystem<recurse::systems::LODSystem>(SystemPhase::PreRender);
     desc.registerSystem<recurse::systems::ShadowRenderSystem>(SystemPhase::PreRender);
 
     // Render: submission

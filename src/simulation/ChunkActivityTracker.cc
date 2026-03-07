@@ -109,4 +109,8 @@ void ChunkActivityTracker::remove(ChunkPos pos) {
     chunks_.erase(pos);
 }
 
+void ChunkActivityTracker::clear() {
+    chunks_.clear();
+}
+
 } // namespace fabric::simulation

@@ -70,7 +70,7 @@ class TimeRegion {
 
 class Timeline {
   public:
-    static constexpr size_t kMaxHistorySize = 100;
+    static constexpr size_t K_MAX_HISTORY_SIZE = 100;
 
     Timeline();
 

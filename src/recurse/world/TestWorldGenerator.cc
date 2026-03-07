@@ -21,7 +21,7 @@ void FlatWorldGenerator::generate(fabric::simulation::SimulationGrid& grid, int 
 
     // Entirely below ground: fill with stone sentinel (no allocation)
     if (topY < groundLevel_) {
-        grid.fillChunk(cx, cy, cz, VoxelCell{MaterialIds::Stone});
+        grid.fillChunk(cx, cy, cz, VoxelCell{material_ids::STONE});
         return;
     }
 
@@ -34,7 +34,7 @@ void FlatWorldGenerator::generate(fabric::simulation::SimulationGrid& grid, int 
             if (wy >= groundLevel_)
                 break;
             for (int lx = 0; lx < kChunkSize; ++lx) {
-                grid.writeCell(baseX + lx, wy, baseZ + lz, VoxelCell{MaterialIds::Stone});
+                grid.writeCell(baseX + lx, wy, baseZ + lz, VoxelCell{material_ids::STONE});
             }
         }
     }
@@ -58,7 +58,7 @@ void LayeredWorldGenerator::generate(fabric::simulation::SimulationGrid& grid, i
 
     // Entirely below stone level: all stone
     if (topY < stoneLevel_) {
-        grid.fillChunk(cx, cy, cz, VoxelCell{MaterialIds::Stone});
+        grid.fillChunk(cx, cy, cz, VoxelCell{material_ids::STONE});
         return;
     }
 
@@ -70,7 +70,7 @@ void LayeredWorldGenerator::generate(fabric::simulation::SimulationGrid& grid, i
             int wy = baseY + ly;
             if (wy >= totalGround)
                 break;
-            MaterialId mat = (wy < stoneLevel_) ? MaterialIds::Stone : MaterialIds::Sand;
+            MaterialId mat = (wy < stoneLevel_) ? material_ids::STONE : material_ids::SAND;
             for (int lx = 0; lx < kChunkSize; ++lx) {
                 grid.writeCell(baseX + lx, wy, baseZ + lz, VoxelCell{mat});
             }

@@ -6,15 +6,15 @@ namespace fabric::simulation {
 
 using MaterialId = uint16_t;
 
-namespace MaterialIds {
-inline constexpr MaterialId Air = 0;
-inline constexpr MaterialId Stone = 1;
-inline constexpr MaterialId Dirt = 2;
-inline constexpr MaterialId Sand = 3;
-inline constexpr MaterialId Water = 4;
-inline constexpr MaterialId Gravel = 5;
-inline constexpr MaterialId Count = 6;
-} // namespace MaterialIds
+namespace material_ids {
+inline constexpr MaterialId AIR = 0;
+inline constexpr MaterialId STONE = 1;
+inline constexpr MaterialId DIRT = 2;
+inline constexpr MaterialId SAND = 3;
+inline constexpr MaterialId WATER = 4;
+inline constexpr MaterialId GRAVEL = 5;
+inline constexpr MaterialId COUNT = 6;
+} // namespace material_ids
 
 enum class MoveType : uint8_t {
     Static = 0, // Stone, Dirt -- does not move
@@ -23,18 +23,18 @@ enum class MoveType : uint8_t {
     Gas = 3     // Future: Steam -- rises
 };
 
-namespace VoxelFlags {
-inline constexpr uint8_t None = 0;
-inline constexpr uint8_t Updated = 1 << 0;  // Modified this epoch
-inline constexpr uint8_t FreeFall = 1 << 1; // In free-fall (optimization)
+namespace voxel_flags {
+inline constexpr uint8_t NONE = 0;
+inline constexpr uint8_t UPDATED = 1 << 0;   // Modified this epoch
+inline constexpr uint8_t FREE_FALL = 1 << 1; // In free-fall (optimization)
 // Bits 2-7 reserved
-} // namespace VoxelFlags
+} // namespace voxel_flags
 
 /// 4-byte voxel cell. Fits 32768 cells per 32^3 chunk = 128 KB.
 struct VoxelCell {
-    MaterialId materialId{MaterialIds::Air}; // 2 bytes
-    uint8_t temperature{128};                // 1 byte (reserved, unused in v1)
-    uint8_t flags{VoxelFlags::None};         // 1 byte
+    MaterialId materialId{material_ids::AIR}; // 2 bytes
+    uint8_t temperature{128};                 // 1 byte (reserved, unused in v1)
+    uint8_t flags{voxel_flags::NONE};         // 1 byte
 };
 static_assert(sizeof(VoxelCell) == 4, "VoxelCell must be exactly 4 bytes");
 

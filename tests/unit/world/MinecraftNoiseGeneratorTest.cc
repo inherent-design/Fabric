@@ -18,7 +18,7 @@ class MinecraftNoiseGenTest : public ::testing::Test {
     int surfaceY(SimulationGrid& g, int wx, int wz, int minY, int maxY) {
         for (int y = maxY; y >= minY; --y) {
             auto mat = g.readCell(wx, y, wz).materialId;
-            if (mat != MaterialIds::Air && mat != MaterialIds::Water) {
+            if (mat != material_ids::AIR && mat != material_ids::WATER) {
                 return y;
             }
         }
@@ -86,7 +86,7 @@ TEST_F(MinecraftNoiseGenTest, SeaLevelProducesWater) {
                 for (int ly = 0; ly < kChunk; ++ly)
                     for (int lx = 0; lx < kChunk; lx += 4)
                         for (int lz = 0; lz < kChunk; lz += 4)
-                            if (grid.readCell(bx + lx, by + ly, bz + lz).materialId == MaterialIds::Water)
+                            if (grid.readCell(bx + lx, by + ly, bz + lz).materialId == material_ids::WATER)
                                 ++waterCount;
             }
         }
@@ -125,7 +125,7 @@ TEST_F(MinecraftNoiseGenTest, SurfaceMaterialVaries) {
                     int sy = surfaceY(grid, bx + lx, bz + lz, 0, 63);
                     if (sy >= 0) {
                         auto mat = grid.readCell(bx + lx, sy, bz + lz).materialId;
-                        if (mat != MaterialIds::Stone) {
+                        if (mat != material_ids::STONE) {
                             surfaceMats.insert(mat);
                         }
                     }
@@ -149,7 +149,7 @@ TEST_F(MinecraftNoiseGenTest, BulkUndergroundStone) {
 
     // All cells this deep should be Stone (density >> 3)
     for (int y = -32; y < -1; ++y) {
-        EXPECT_EQ(grid.readCell(0, y, 0).materialId, MaterialIds::Stone) << "Expected Stone at y=" << y;
+        EXPECT_EQ(grid.readCell(0, y, 0).materialId, material_ids::STONE) << "Expected Stone at y=" << y;
     }
 }
 

@@ -85,11 +85,11 @@ TEST(RecurseVoxelSimSystemTest, SandFallsUnderGravity) {
     // Place solid floor at y=0
     for (int x = 0; x < kChunkSize; ++x)
         for (int z = 0; z < kChunkSize; ++z)
-            grid.writeCell(x, 0, z, VoxelCell{MaterialIds::Stone});
+            grid.writeCell(x, 0, z, VoxelCell{material_ids::STONE});
     grid.advanceEpoch();
 
     // Place sand at y=10
-    grid.writeCell(16, 10, 16, VoxelCell{MaterialIds::Sand});
+    grid.writeCell(16, 10, 16, VoxelCell{material_ids::SAND});
     grid.advanceEpoch();
 
     // Mark chunk active so simulation picks it up
@@ -101,14 +101,14 @@ TEST(RecurseVoxelSimSystemTest, SandFallsUnderGravity) {
 
     // Sand should have fallen; check it's no longer at y=10
     auto cellAtStart = grid.readCell(16, 10, 16);
-    EXPECT_NE(cellAtStart.materialId, MaterialIds::Sand) << "Sand should have moved from y=10";
+    EXPECT_NE(cellAtStart.materialId, material_ids::SAND) << "Sand should have moved from y=10";
 
     // Sand should have settled on the floor at y=1
     auto cellAtRest = grid.readCell(16, 1, 16);
-    EXPECT_EQ(cellAtRest.materialId, MaterialIds::Sand) << "Sand should rest at y=1 (above stone floor)";
+    EXPECT_EQ(cellAtRest.materialId, material_ids::SAND) << "Sand should rest at y=1 (above stone floor)";
 
     // Conservation: exactly 1 sand voxel
-    EXPECT_EQ(countMaterial(grid, MaterialIds::Sand), 1);
+    EXPECT_EQ(countMaterial(grid, material_ids::SAND), 1);
 }
 
 // Test 3: Liquid flows horizontally
@@ -120,15 +120,15 @@ TEST(RecurseVoxelSimSystemTest, LiquidFlowsHorizontally) {
     // Place solid floor at y=0
     for (int x = 0; x < kChunkSize; ++x)
         for (int z = 0; z < kChunkSize; ++z)
-            grid.writeCell(x, 0, z, VoxelCell{MaterialIds::Stone});
+            grid.writeCell(x, 0, z, VoxelCell{material_ids::STONE});
     grid.advanceEpoch();
 
     // Place a column of water 4 voxels tall at center
     for (int y = 1; y <= 4; ++y)
-        grid.writeCell(16, y, 16, VoxelCell{MaterialIds::Water});
+        grid.writeCell(16, y, 16, VoxelCell{material_ids::WATER});
     grid.advanceEpoch();
 
-    int initialWater = countMaterial(grid, MaterialIds::Water);
+    int initialWater = countMaterial(grid, material_ids::WATER);
 
     sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
 
@@ -137,7 +137,7 @@ TEST(RecurseVoxelSimSystemTest, LiquidFlowsHorizontally) {
 
     // Water should have spread; at center column there should be fewer
     // (or water level is <=1 high after spreading)
-    int finalWater = countMaterial(grid, MaterialIds::Water);
+    int finalWater = countMaterial(grid, material_ids::WATER);
     EXPECT_EQ(finalWater, initialWater) << "Water voxel count must be conserved";
 }
 
@@ -148,7 +148,7 @@ TEST(RecurseVoxelSimSystemTest, SleepingChunkCostsZero) {
     auto& grid = sim.grid();
 
     // Fill chunk with stone (no movement possible)
-    grid.fillChunk(0, 0, 0, VoxelCell{MaterialIds::Stone});
+    grid.fillChunk(0, 0, 0, VoxelCell{material_ids::STONE});
     grid.advanceEpoch();
 
     // Chunk starts sleeping by default
@@ -167,18 +167,18 @@ TEST(RecurseVoxelSimSystemTest, WakeOnNeighborActivity) {
     auto& grid = sim.grid();
 
     // Chunk A (0,0,0): filled with stone, sleeping
-    grid.fillChunk(0, 0, 0, VoxelCell{MaterialIds::Stone});
+    grid.fillChunk(0, 0, 0, VoxelCell{material_ids::STONE});
     grid.advanceEpoch();
     sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Sleeping);
 
     // Chunk B (1,0,0): has floor + sand near boundary
     for (int x = kChunkSize; x < kChunkSize * 2; ++x)
         for (int z = 0; z < kChunkSize; ++z)
-            grid.writeCell(x, 0, z, VoxelCell{MaterialIds::Stone});
+            grid.writeCell(x, 0, z, VoxelCell{material_ids::STONE});
     grid.advanceEpoch();
 
     // Sand near the boundary at x=32 (first voxel of chunk 1)
-    grid.writeCell(kChunkSize, 5, 16, VoxelCell{MaterialIds::Sand});
+    grid.writeCell(kChunkSize, 5, 16, VoxelCell{material_ids::SAND});
     grid.advanceEpoch();
     sim.activityTracker().setState(ChunkPos{1, 0, 0}, ChunkState::Active);
 
@@ -198,7 +198,7 @@ TEST(RecurseVoxelSimSystemTest, GhostCellCopyCorrectness) {
     auto& grid = sim.grid();
 
     // Place stone at x=31 (boundary of chunk 0,0,0)
-    grid.writeCell(31, 0, 0, VoxelCell{MaterialIds::Stone});
+    grid.writeCell(31, 0, 0, VoxelCell{material_ids::STONE});
     grid.advanceEpoch();
 
     // Both chunks need to exist for ghost cells to work
@@ -213,7 +213,7 @@ TEST(RecurseVoxelSimSystemTest, GhostCellCopyCorrectness) {
 
     // Verify the stone is still readable at x=31
     auto cell = grid.readCell(31, 0, 0);
-    EXPECT_EQ(cell.materialId, MaterialIds::Stone) << "Boundary voxel should be preserved after ghost sync";
+    EXPECT_EQ(cell.materialId, material_ids::STONE) << "Boundary voxel should be preserved after ghost sync";
 }
 
 // Test 7: Matter conservation
@@ -225,7 +225,7 @@ TEST(RecurseVoxelSimSystemTest, MatterConservation) {
     // Place floor
     for (int x = 0; x < kChunkSize; ++x)
         for (int z = 0; z < kChunkSize; ++z)
-            grid.writeCell(x, 0, z, VoxelCell{MaterialIds::Stone});
+            grid.writeCell(x, 0, z, VoxelCell{material_ids::STONE});
     grid.advanceEpoch();
 
     // Place 5x5x5 region of sand at y=10
@@ -233,7 +233,7 @@ TEST(RecurseVoxelSimSystemTest, MatterConservation) {
     for (int z = 10; z < 15; ++z) {
         for (int y = 10; y < 15; ++y) {
             for (int x = 10; x < 15; ++x) {
-                grid.writeCell(x, y, z, VoxelCell{MaterialIds::Sand});
+                grid.writeCell(x, y, z, VoxelCell{material_ids::SAND});
                 ++sandPlaced;
             }
         }
@@ -242,13 +242,13 @@ TEST(RecurseVoxelSimSystemTest, MatterConservation) {
 
     sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
 
-    int sandBefore = countMaterial(grid, MaterialIds::Sand);
+    int sandBefore = countMaterial(grid, material_ids::SAND);
     EXPECT_EQ(sandBefore, sandPlaced);
 
     // Run 50 ticks of simulation
     for (int i = 0; i < 50; ++i)
         sim.tick();
 
-    int sandAfter = countMaterial(grid, MaterialIds::Sand);
+    int sandAfter = countMaterial(grid, material_ids::SAND);
     EXPECT_EQ(sandAfter, sandBefore) << "Sand count must be conserved after 50 ticks";
 }

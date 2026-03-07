@@ -73,6 +73,10 @@ void DebugOverlaySystem::init(fabric::AppContext& ctx) {
         devConsole_.toggle();
     });
 
+    // Alt+C: Cycle camera projection mode (Panini -> Equirect -> Panini)
+    auto* sceneView = ctx.sceneView;
+    inputRouter->registerKeyCallback(SDLK_C, SDL_KMOD_ALT, [sceneView]() { sceneView->cycleProjectionMode(); });
+
     // Console quit pushes SDL_QUIT
     devConsole_.setQuitCallback([]() {
         SDL_Event qe{};
@@ -205,13 +209,13 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         // Get camera world position for coordinate conversion
         auto camWorldPos = ctx.camera->worldPositionD();
 
-        constexpr float kMaxVisDepth = 8.0f;
+        constexpr float K_MAX_VIS_DEPTH = 8.0f;
         chunkBVH.visitNodes([&](const fabric::AABB& bounds, int depth, bool isLeaf) {
             uint32_t color;
             if (isLeaf) {
                 color = 0xff00ffff; // yellow for leaves (ABGR)
             } else {
-                float t = std::min(1.0f, static_cast<float>(depth) / kMaxVisDepth);
+                float t = std::min(1.0f, static_cast<float>(depth) / K_MAX_VIS_DEPTH);
                 auto r = static_cast<uint8_t>((1.0f - t) * 255);
                 auto b = static_cast<uint8_t>(t * 255);
                 color = 0xff000000u | (static_cast<uint32_t>(b) << 16) | static_cast<uint32_t>(r);
@@ -376,11 +380,11 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         chunkData.indexCount = meshSystem_->indexBufferSize();
 
         // Calculate buffer sizes in MB (vertex: 36 bytes, index: 4 bytes)
-        constexpr float kVertexSize = sizeof(recurse::SmoothVoxelVertex);
-        constexpr float kIndexSize = sizeof(uint32_t);
-        constexpr float kMB = 1024.0f * 1024.0f;
-        chunkData.vertexBufferMB = static_cast<float>(chunkData.vertexCount) * kVertexSize / kMB;
-        chunkData.indexBufferMB = static_cast<float>(chunkData.indexCount) * kIndexSize / kMB;
+        constexpr float K_VERTEX_SIZE = sizeof(recurse::SmoothVoxelVertex);
+        constexpr float K_INDEX_SIZE = sizeof(uint32_t);
+        constexpr float K_MB = 1024.0f * 1024.0f;
+        chunkData.vertexBufferMB = static_cast<float>(chunkData.vertexCount) * K_VERTEX_SIZE / K_MB;
+        chunkData.indexBufferMB = static_cast<float>(chunkData.indexCount) * K_INDEX_SIZE / K_MB;
 
         chunkDebugPanel_.update(chunkData);
     }

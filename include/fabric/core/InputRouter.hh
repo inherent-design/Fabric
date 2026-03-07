@@ -61,6 +61,12 @@ class InputRouter {
     /// callback for the same key.
     void registerKeyCallback(SDL_Keycode key, std::function<void()> cb);
 
+    /// Register a callback that fires on non-repeat key-down with modifier.
+    /// The callback only fires when ALL specified modifiers are pressed.
+    /// Use SDL_KMOD_* flags (e.g., SDL_KMOD_ALT, SDL_KMOD_SHIFT).
+    /// Callbacks are suppressed in UIOnly mode.
+    void registerKeyCallback(SDL_Keycode key, SDL_Keymod mod, std::function<void()> cb);
+
     /// Remove a previously registered key callback.
     void unregisterKeyCallback(SDL_Keycode key);
 
@@ -77,6 +83,8 @@ class InputRouter {
     std::function<void()> consoleToggleCallback_;
     std::function<void()> escapeCallback_;
     std::unordered_map<SDL_Keycode, std::function<void()>> keyCallbacks_;
+    // Key+Modifier combined: (key << 16) | mod
+    std::unordered_map<uint32_t, std::function<void()>> modKeyCallbacks_;
 
     bool forwardToRmlUI(const SDL_Event& event, Rml::Context* ctx);
     bool forwardToGame(const SDL_Event& event);

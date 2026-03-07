@@ -347,9 +347,9 @@ template <typename T> class Quaternion {
         Vector3<T, Space::World> angles;
 
         // Roll (x-axis rotation)
-        T sinr_cosp = 2 * (w * x + y * z);
-        T cosr_cosp = 1 - 2 * (x * x + y * y);
-        angles.x = std::atan2(sinr_cosp, cosr_cosp);
+        T sinrCosp = 2 * (w * x + y * z);
+        T cosrCosp = 1 - 2 * (x * x + y * y);
+        angles.x = std::atan2(sinrCosp, cosrCosp);
 
         // Pitch (y-axis rotation)
         T sinp = 2 * (w * y - z * x);
@@ -359,9 +359,9 @@ template <typename T> class Quaternion {
             angles.y = std::asin(sinp);
 
         // Yaw (z-axis rotation)
-        T siny_cosp = 2 * (w * z + x * y);
-        T cosy_cosp = 1 - 2 * (y * y + z * z);
-        angles.z = std::atan2(siny_cosp, cosy_cosp);
+        T sinyCosp = 2 * (w * z + x * y);
+        T cosyCosp = 1 - 2 * (y * y + z * z);
+        angles.z = std::atan2(sinyCosp, cosyCosp);
 
         return angles;
     }
