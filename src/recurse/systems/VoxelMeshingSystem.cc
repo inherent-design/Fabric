@@ -81,6 +81,13 @@ void VoxelMeshingSystem::shutdown() {
     FABRIC_LOG_INFO("VoxelMeshingSystem shutdown");
 }
 
+void VoxelMeshingSystem::clearAllMeshes() {
+    for (auto& [_, gpuMesh] : gpuMeshes_)
+        destroyChunkMesh(gpuMesh);
+    gpuMeshes_.clear();
+    FABRIC_LOG_INFO("VoxelMeshingSystem: cleared {} GPU meshes", gpuMeshes_.size());
+}
+
 void VoxelMeshingSystem::render(fabric::AppContext& /*ctx*/) {
     FABRIC_ZONE_SCOPED_N("voxel_meshing");
     processFrame();
@@ -150,18 +157,18 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
     // When horizontal neighbors load later, notifyBoundaryChange() re-triggers meshing.
     if (requireNeighborsForMeshing_) {
         // Horizontal neighbors (±X, ±Z) - MUST exist to avoid X/Z boundary gaps
-        constexpr int kHorizontalNeighborOffsets[4][3] = {
+        constexpr int K_HORIZONTAL_NEIGHBOR_OFFSETS[4][3] = {
             {1, 0, 0},
             {-1, 0, 0}, // ±X
             {0, 0, 1},
             {0, 0, -1} // ±Z
         };
         for (int d = 0; d < 4; ++d) {
-            if (!simGrid_->hasChunk(coord.x + kHorizontalNeighborOffsets[d][0], coord.y,
-                                    coord.z + kHorizontalNeighborOffsets[d][2])) {
+            if (!simGrid_->hasChunk(coord.x + K_HORIZONTAL_NEIGHBOR_OFFSETS[d][0], coord.y,
+                                    coord.z + K_HORIZONTAL_NEIGHBOR_OFFSETS[d][2])) {
                 FABRIC_LOG_DEBUG("Meshing deferred ({},{},{}): horizontal neighbor ({},{},{}) missing", coord.x,
-                                 coord.y, coord.z, coord.x + kHorizontalNeighborOffsets[d][0], coord.y,
-                                 coord.z + kHorizontalNeighborOffsets[d][2]);
+                                 coord.y, coord.z, coord.x + K_HORIZONTAL_NEIGHBOR_OFFSETS[d][0], coord.y,
+                                 coord.z + K_HORIZONTAL_NEIGHBOR_OFFSETS[d][2]);
                 return; // Horizontal neighbor missing - defer meshing
             }
         }
@@ -182,16 +189,16 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
     const int baseY = coord.y * kChunkSize;
     const int baseZ = coord.z * kChunkSize;
 
-    constexpr int kSampleMargin = 1; // 1 for cache boundary
-    for (int lz = -kSampleMargin; lz <= kChunkSize + kSampleMargin; ++lz) {
-        for (int ly = -kSampleMargin; ly <= kChunkSize + kSampleMargin; ++ly) {
-            for (int lx = -kSampleMargin; lx <= kChunkSize + kSampleMargin; ++lx) {
+    constexpr int K_SAMPLE_MARGIN = 1; // 1 for cache boundary
+    for (int lz = -K_SAMPLE_MARGIN; lz <= kChunkSize + K_SAMPLE_MARGIN; ++lz) {
+        for (int ly = -K_SAMPLE_MARGIN; ly <= kChunkSize + K_SAMPLE_MARGIN; ++ly) {
+            for (int lx = -K_SAMPLE_MARGIN; lx <= kChunkSize + K_SAMPLE_MARGIN; ++lx) {
                 const int wx = baseX + lx;
                 const int wy = baseY + ly;
                 const int wz = baseZ + lz;
 
                 const auto cell = simGrid_->readCell(wx, wy, wz);
-                const float density = (cell.materialId == fabric::simulation::MaterialIds::Air) ? 0.0f : 1.0f;
+                const float density = (cell.materialId == fabric::simulation::material_ids::AIR) ? 0.0f : 1.0f;
                 densityGrid.set(wx, wy, wz, density);
                 materialGrid.set(wx, wy, wz, cell.materialId);
             }
@@ -324,19 +331,18 @@ void VoxelMeshingSystem::destroyChunkMesh(ChunkGPUMesh& gpuMesh) {
 
 std::array<float, 4> VoxelMeshingSystem::materialColor(uint16_t materialId) const {
     using namespace fabric::simulation;
-
     switch (materialId) {
-        case MaterialIds::Stone:
+        case material_ids::STONE:
             return {0.56f, 0.56f, 0.60f, 1.0f};
-        case MaterialIds::Dirt:
+        case material_ids::DIRT:
             return {0.43f, 0.30f, 0.20f, 1.0f};
-        case MaterialIds::Sand:
+        case material_ids::SAND:
             return {0.84f, 0.77f, 0.52f, 1.0f};
-        case MaterialIds::Water:
+        case material_ids::WATER:
             return {0.24f, 0.45f, 0.82f, 1.0f};
-        case MaterialIds::Gravel:
+        case material_ids::GRAVEL:
             return {0.47f, 0.45f, 0.43f, 1.0f};
-        case MaterialIds::Air:
+        case material_ids::AIR:
         default:
             return {0.0f, 0.0f, 0.0f, 0.0f};
     }

@@ -44,6 +44,10 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     /// Called by MainMenuSystem when world type is selected.
     void generateInitialWorld();
 
+    /// Reset world state (clear all chunks, tracker).
+    /// Called before starting a new world.
+    void resetWorld();
+
     /// Remove a chunk from the simulation grid.
     /// Called by ChunkPipelineSystem during streaming unload.
     void removeChunk(int cx, int cy, int cz);

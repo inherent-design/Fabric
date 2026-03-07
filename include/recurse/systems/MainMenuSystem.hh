@@ -21,7 +21,9 @@ namespace recurse::systems {
 
 class TerrainSystem;
 class VoxelSimulationSystem;
+class VoxelMeshingSystem;
 class CharacterMovementSystem;
+class PhysicsGameSystem;
 
 /// Splash screen media entry
 struct SplashEntry {
@@ -100,6 +102,9 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     void onQuitToTitleClicked();
     void onExitToDesktopClicked();
 
+    // Reset all world state (meshes, physics, simulation, terrain)
+    void resetWorldState();
+
     // Members
     Rml::Context* rmlContext_ = nullptr;
     Rml::ElementDocument* currentDocument_ = nullptr;
@@ -113,7 +118,9 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     StartGameCallback startGameCallback_;
     TerrainSystem* terrain_ = nullptr;
     VoxelSimulationSystem* voxelSim_ = nullptr;
+    VoxelMeshingSystem* voxelMesh_ = nullptr;
     CharacterMovementSystem* characterMovement_ = nullptr;
+    PhysicsGameSystem* physics_ = nullptr;
     fabric::AppModeManager* appModeManager_ = nullptr;
 
     // Data model bindings

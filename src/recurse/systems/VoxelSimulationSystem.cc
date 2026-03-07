@@ -115,27 +115,41 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
 
     // Sync density for this chunk to TerrainSystem's density field
     // (sync just this chunk, not all chunks)
-    constexpr int kChunkSize = 32;
-    int baseX = cx * kChunkSize;
-    int baseY = cy * kChunkSize;
-    int baseZ = cz * kChunkSize;
+    constexpr int K_CHUNK_SIZE = 32;
+    int baseX = cx * K_CHUNK_SIZE;
+    int baseY = cy * K_CHUNK_SIZE;
+    int baseZ = cz * K_CHUNK_SIZE;
 
+    // Sync density - handle both materialized chunks and sentinels (non-materialized)
+    using namespace fabric::simulation;
     const auto* readBuf = fabSim_->grid().readBuffer(cx, cy, cz);
-    if (readBuf && dispatcher_) {
-        // Sync density
-        using namespace fabric::simulation;
-        for (int lz = 0; lz < kChunkSize; ++lz) {
-            for (int ly = 0; ly < kChunkSize; ++ly) {
-                for (int lx = 0; lx < kChunkSize; ++lx) {
-                    size_t idx = static_cast<size_t>(lx + ly * kChunkSize + lz * kChunkSize * kChunkSize);
+    if (readBuf) {
+        // Materialized chunk: read from buffer
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+            for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+                for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+                    size_t idx = static_cast<size_t>(lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE);
                     const VoxelCell& cell = (*readBuf)[idx];
-                    float density = (cell.materialId == MaterialIds::Air) ? 0.0f : 1.0f;
+                    float density = (cell.materialId == material_ids::AIR) ? 0.0f : 1.0f;
                     terrain_->densityGrid().set(baseX + lx, baseY + ly, baseZ + lz, density);
                 }
             }
         }
+    } else if (fabSim_->grid().hasChunk(cx, cy, cz)) {
+        // Sentinel chunk (not materialized): use fill value for uniform density
+        VoxelCell fillValue = fabSim_->grid().getChunkFillValue(cx, cy, cz);
+        float density = (fillValue.materialId == material_ids::AIR) ? 0.0f : 1.0f;
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+            for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+                for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+                    terrain_->densityGrid().set(baseX + lx, baseY + ly, baseZ + lz, density);
+                }
+            }
+        }
+    }
 
-        // Initialize Jolt physics collision for this chunk
+    // Initialize Jolt physics collision for this chunk (always dispatch, even for sentinels)
+    if (dispatcher_) {
         fabric::Event e(kVoxelChangedEvent, "VoxelSimulationSystem");
         e.setData("cx", cx);
         e.setData("cy", cy);
@@ -147,22 +161,22 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
     // Corner vertices sample across diagonal chunks, so diagonal neighbors must also remesh.
     // 6 face-adjacent: ±X, ±Y, ±Z
     // 4 X/Z diagonal: (±X, ±Z) combinations (Y is same since flat terrain)
-    constexpr int kNeighborOffsets[10][3] = {// Face-adjacent (6)
-                                             {1, 0, 0},
-                                             {-1, 0, 0},
-                                             {0, 1, 0},
-                                             {0, -1, 0},
-                                             {0, 0, 1},
-                                             {0, 0, -1},
-                                             // X/Z diagonal (4) - corner vertices sample across these
-                                             {1, 0, 1},
-                                             {1, 0, -1},
-                                             {-1, 0, 1},
-                                             {-1, 0, -1}};
+    constexpr int K_NEIGHBOR_OFFSETS[10][3] = {// Face-adjacent (6)
+                                               {1, 0, 0},
+                                               {-1, 0, 0},
+                                               {0, 1, 0},
+                                               {0, -1, 0},
+                                               {0, 0, 1},
+                                               {0, 0, -1},
+                                               // X/Z diagonal (4) - corner vertices sample across these
+                                               {1, 0, 1},
+                                               {1, 0, -1},
+                                               {-1, 0, 1},
+                                               {-1, 0, -1}};
     int notifiedCount = 0;
     for (int d = 0; d < 10; ++d) {
-        fabric::simulation::ChunkPos neighbor{cx + kNeighborOffsets[d][0], cy + kNeighborOffsets[d][1],
-                                              cz + kNeighborOffsets[d][2]};
+        fabric::simulation::ChunkPos neighbor{cx + K_NEIGHBOR_OFFSETS[d][0], cy + K_NEIGHBOR_OFFSETS[d][1],
+                                              cz + K_NEIGHBOR_OFFSETS[d][2]};
         if (fabSim_->grid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
             fabSim_->activityTracker().notifyBoundaryChange(neighbor);
             ++notifiedCount;
@@ -179,6 +193,18 @@ void VoxelSimulationSystem::removeChunk(int cx, int cy, int cz) {
         return;
     fabSim_->grid().removeChunk(cx, cy, cz);
     fabSim_->activityTracker().remove(fabric::simulation::ChunkPos{cx, cy, cz});
+}
+
+void VoxelSimulationSystem::resetWorld() {
+    if (!fabSim_)
+        return;
+
+    // Clear all simulation state
+    fabSim_->grid().clear();
+    fabSim_->activityTracker().clear();
+    lastActiveCount_ = 0;
+
+    FABRIC_LOG_INFO("VoxelSimulationSystem: World reset (grid and tracker cleared)");
 }
 
 } // namespace recurse::systems

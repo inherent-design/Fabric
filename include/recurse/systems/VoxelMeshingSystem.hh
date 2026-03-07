@@ -57,6 +57,9 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     /// Process one frame of meshing. Called by render(); exposed for testing.
     void processFrame();
 
+    /// Clear all GPU meshes (for world reset)
+    void clearAllMeshes();
+
     const auto& gpuMeshes() const { return gpuMeshes_; }
 
     /// Statistics accessors for debug panel.

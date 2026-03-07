@@ -7,7 +7,9 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/world/MinecraftNoiseGenerator.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
+#include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
+#include "recurse/systems/VoxelMeshingSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/TestWorldGenerator.hh"
 
@@ -67,7 +69,9 @@ void MainMenuSystem::init(fabric::AppContext& ctx) {
 
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
+    voxelMesh_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
     characterMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
+    physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
     appModeManager_ = ctx.appModeManager;
     rmlContext_ = ctx.rmlContext;
 
@@ -137,7 +141,8 @@ void MainMenuSystem::init(fabric::AppContext& ctx) {
                 // Resuming game - hide pause menu
                 transitionTo(MenuState::Hidden);
             } else if (to == fabric::AppMode::Menu && menuState_ != MenuState::TitleScreen) {
-                // Returning to title - show main menu
+                // Returning to title - reset world state and show main menu
+                resetWorldState();
                 transitionTo(MenuState::TitleScreen);
             }
         });
@@ -178,7 +183,9 @@ void MainMenuSystem::shutdown() {
     currentDocument_ = nullptr;
     terrain_ = nullptr;
     voxelSim_ = nullptr;
+    voxelMesh_ = nullptr;
     characterMovement_ = nullptr;
+    physics_ = nullptr;
     appModeManager_ = nullptr;
     FABRIC_LOG_INFO("MainMenuSystem shutdown");
 }
@@ -439,10 +446,31 @@ void MainMenuSystem::onResumeClicked() {
 
 void MainMenuSystem::onQuitToTitleClicked() {
     FABRIC_LOG_INFO("MainMenu: Quit to Title clicked");
-    // Return to title screen - transition to Menu mode
+    resetWorldState();
     transitionTo(MenuState::TitleScreen);
     if (appModeManager_) {
         appModeManager_->transition(fabric::AppMode::Menu);
+    }
+}
+
+void MainMenuSystem::resetWorldState() {
+    // Reset all world state before returning to title screen
+    // Order: meshes -> physics -> simulation -> terrain
+    if (voxelMesh_) {
+        voxelMesh_->clearAllMeshes();
+        FABRIC_LOG_DEBUG("MainMenu: Cleared GPU meshes");
+    }
+    if (physics_) {
+        physics_->clearAllCollisions();
+        FABRIC_LOG_DEBUG("MainMenu: Cleared physics collisions");
+    }
+    if (voxelSim_) {
+        voxelSim_->resetWorld();
+        FABRIC_LOG_DEBUG("MainMenu: Reset voxel simulation");
+    }
+    if (terrain_) {
+        terrain_->resetWorld();
+        FABRIC_LOG_DEBUG("MainMenu: Reset terrain");
     }
 }
 

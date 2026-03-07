@@ -42,4 +42,9 @@ void PhysicsGameSystem::configureDependencies() {
     after<TerrainSystem>();
 }
 
+void PhysicsGameSystem::clearAllCollisions() {
+    physicsWorld_.clearChunkBodies();
+    FABRIC_LOG_INFO("PhysicsGameSystem: All terrain collision bodies cleared");
+}
+
 } // namespace recurse::systems

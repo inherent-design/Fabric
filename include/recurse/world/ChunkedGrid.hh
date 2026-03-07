@@ -91,6 +91,8 @@ template <typename T> class ChunkedGrid {
         }
     }
 
+    void clear() { chunks_.clear(); }
+
     // Returns: [+x, -x, +y, -y, +z, -z]
     std::array<T, 6> getNeighbors6(int x, int y, int z) const {
         return {{get(x + 1, y, z), get(x - 1, y, z), get(x, y + 1, z), get(x, y - 1, z), get(x, y, z + 1),

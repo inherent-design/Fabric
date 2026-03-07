@@ -41,6 +41,10 @@ class TerrainSystem : public fabric::System<TerrainSystem> {
     /// Check if initial world has been generated
     bool isWorldGenerated() const { return worldGenerated_; }
 
+    /// Reset world state (clear density, reset flags).
+    /// Called before starting a new world.
+    void resetWorld();
+
     // VP0+ accessors
     fabric::simulation::SimulationGrid& simulationGrid();
     const fabric::simulation::SimulationGrid& simulationGrid() const;

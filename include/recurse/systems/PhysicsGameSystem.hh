@@ -26,6 +26,9 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
     JPH::PhysicsSystem* joltSystem() { return physicsWorld_.joltSystem(); }
     Ragdoll& ragdoll() { return ragdoll_; }
 
+    /// Clear all terrain collision bodies (for world reset)
+    void clearAllCollisions();
+
   private:
     TerrainSystem* terrain_ = nullptr;
     PhysicsWorld physicsWorld_;

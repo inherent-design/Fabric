@@ -155,6 +155,11 @@ void SimulationGrid::removeChunk(int cx, int cy, int cz) {
     chunks_.erase(packKey(cx, cy, cz));
 }
 
+void SimulationGrid::clear() {
+    chunks_.clear();
+    epoch_ = 0;
+}
+
 std::vector<std::tuple<int, int, int>> SimulationGrid::allChunks() const {
     std::vector<std::tuple<int, int, int>> result;
     result.reserve(chunks_.size());
