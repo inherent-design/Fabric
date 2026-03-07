@@ -11,6 +11,7 @@ namespace recurse::systems {
 
 class TerrainSystem;
 class CameraGameSystem;
+class VoxelSimulationSystem;
 
 /// Handles mouse-button voxel editing (destroy/create matter).
 /// Raycasts from camera position along camera forward, with a
@@ -26,10 +27,11 @@ class VoxelInteractionSystem : public fabric::System<VoxelInteractionSystem> {
     void configureDependencies() override;
 
   private:
-    static constexpr float kInteractionRate = 0.15f;
+    static constexpr float K_INTERACTION_RATE = 0.15f;
 
     TerrainSystem* terrain_ = nullptr;
     CameraGameSystem* camera_ = nullptr;
+    VoxelSimulationSystem* voxelSim_ = nullptr;
 
     std::unique_ptr<VoxelInteraction> voxelInteraction_;
     float interactionCooldown_ = 0.0f;
