@@ -31,7 +31,7 @@ class Camera {
 
     // World-space camera position (authoritative double, float convenience)
     Vector3<float, Space::World> getPosition() const;
-    Vector3<double, Space::World> worldPositionD() const;
+    const Vector3<double, Space::World>& worldPositionD() const;
     Vector3<float, Space::World> cameraRelative(const Vector3<double, Space::World>& worldPos) const;
 
     // Projection parameters

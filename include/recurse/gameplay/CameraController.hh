@@ -52,7 +52,7 @@ class CameraController {
     void update(const Vector3<double, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid = nullptr,
                 float densityThreshold = 0.5f);
 
-    Vector3<double, Space::World> positionD() const;
+    const Vector3<double, Space::World>& positionD() const;
 
     Vector3<float, Space::World> position() const;
 

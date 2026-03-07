@@ -37,7 +37,7 @@ class CharacterMovementSystem : public fabric::System<CharacterMovementSystem> {
     const fabric::Vec3f& playerPosition() const { return playerPos_; }
     fabric::Vec3f& playerPosition() { return playerPos_; }
     void setPlayerPosition(const fabric::Vec3f& pos);
-    fabric::Vector3<double, fabric::Space::World> playerWorldPositionD() const { return playerPosD_; }
+    const fabric::Vector3<double, fabric::Space::World>& playerWorldPositionD() const { return playerPosD_; }
 
     void setPlayerWorldOffset(double x, double y, double z);
     const Velocity& playerVelocity() const { return playerVel_; }

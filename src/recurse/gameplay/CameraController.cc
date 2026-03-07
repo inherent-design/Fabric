@@ -87,7 +87,7 @@ void CameraController::update(const Vector3<double, Space::World>& targetPos, fl
     camera_.updateView(cachedPositionD_, rot);
 }
 
-Vector3<double, Space::World> CameraController::positionD() const {
+const Vector3<double, Space::World>& CameraController::positionD() const {
     return cachedPositionD_;
 }
 

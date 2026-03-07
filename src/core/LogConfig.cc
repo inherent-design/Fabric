@@ -168,12 +168,7 @@ LogConfig LogConfig::fromTOMLTable(const toml::table& tbl) {
             for (auto& [name, node] : *loggers) {
                 std::string loggerName(name);
                 if (auto loggerTbl = node.as_table()) {
-                    // Create or get logger config
-                    if (cfg.loggers.find(loggerName) == cfg.loggers.end()) {
-                        cfg.loggers[loggerName] = LoggerConfig{};
-                    }
-
-                    auto& lc = cfg.loggers[loggerName];
+                    auto& lc = cfg.loggers.try_emplace(loggerName, LoggerConfig{}).first->second;
 
                     if (auto level = (*loggerTbl)["console_level"].value<std::string>()) {
                         lc.consoleLevel = parseLevelInternal(*level);

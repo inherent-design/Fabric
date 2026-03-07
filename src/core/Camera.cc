@@ -61,7 +61,7 @@ Vector3<float, Space::World> Camera::getPosition() const {
                                         static_cast<float>(worldPosD_.z));
 }
 
-Vector3<double, Space::World> Camera::worldPositionD() const {
+const Vector3<double, Space::World>& Camera::worldPositionD() const {
     return worldPosD_;
 }
 
