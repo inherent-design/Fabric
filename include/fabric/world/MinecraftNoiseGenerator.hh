@@ -10,11 +10,11 @@ struct NoiseGenConfig {
     int seed = 42;
     float seaLevel = 48.0f;
     float terrainHeight = 64.0f;
-    float continentalFreq = 0.003f;
-    float erosionFreq = 0.008f;
-    float peaksFreq = 0.015f;
-    float temperatureFreq = 0.002f;
-    float humidityFreq = 0.002f;
+    float continentalFreq = 0.006f; // 2x from 0.003f - smaller features
+    float erosionFreq = 0.016f;     // 2x from 0.008f
+    float peaksFreq = 0.030f;       // 2x from 0.015f
+    float temperatureFreq = 0.004f; // 2x from 0.002f
+    float humidityFreq = 0.004f;    // 2x from 0.002f
 };
 
 class MinecraftNoiseGenerator : public GeneratorInterface {

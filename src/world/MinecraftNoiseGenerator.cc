@@ -5,7 +5,7 @@
 namespace fabric::world {
 
 using simulation::MaterialId;
-namespace MaterialIds = simulation::MaterialIds;
+namespace material_ids = simulation::material_ids;
 using simulation::VoxelCell;
 
 MinecraftNoiseGenerator::MinecraftNoiseGenerator(const NoiseGenConfig& config)
@@ -37,9 +37,9 @@ MaterialId MinecraftNoiseGenerator::selectSurfaceMaterial(float temp, float humi
     // Should return the appropriate MaterialId based on biome conditions.
     // Current fallback: Sand near sea level, Dirt elsewhere.
     if (std::abs(wy - config_.seaLevel) <= 3.0f) {
-        return MaterialIds::Sand;
+        return material_ids::SAND;
     }
-    return MaterialIds::Dirt;
+    return material_ids::DIRT;
 }
 
 void MinecraftNoiseGenerator::generate(simulation::SimulationGrid& grid, simulation::ChunkPos pos) {
@@ -90,11 +90,11 @@ void MinecraftNoiseGenerator::generate(simulation::SimulationGrid& grid, simulat
 
                 VoxelCell cell;
                 if (density > 3.0f) {
-                    cell.materialId = MaterialIds::Stone;
+                    cell.materialId = material_ids::STONE;
                 } else if (density > 0.0f) {
                     cell.materialId = selectSurfaceMaterial(temp, humid, static_cast<float>(wy));
                 } else if (static_cast<float>(wy) < config_.seaLevel) {
-                    cell.materialId = MaterialIds::Water;
+                    cell.materialId = material_ids::WATER;
                 } else {
                     continue; // Air -- skip write (default)
                 }
