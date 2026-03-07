@@ -280,6 +280,14 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/systems/OITRenderSystem.cc
     src/recurse/systems/DebugOverlaySystem.cc
     src/recurse/systems/MainMenuSystem.cc
+
+    # LOD System (far-horizon terrain rendering)
+    src/recurse/render/LODGrid.cc
+    src/recurse/render/LODMeshManager.cc
+    src/recurse/systems/LODSystem.cc
+
+    # Panini projection post-processing
+    src/recurse/render/PaniniPass.cc
 )
 
 # Simulation library components (fabric::simulation namespace)
@@ -430,11 +438,14 @@ include(FabricParticleShaders)
 # OIT shaders (vs_oit_accum, fs_oit_accum, vs_oit_composite, fs_oit_composite)
 include(FabricOITShaders)
 
+# Panini projection shaders (vs_panini, fs_panini)
+include(FabricPaniniShaders)
+
 # Add shader output to include path
-target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_SMOOTH_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT} ${FABRIC_POST_SHADER_OUT} ${FABRIC_PARTICLE_SHADER_OUT} ${FABRIC_OIT_SHADER_OUT})
+target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_SMOOTH_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT} ${FABRIC_POST_SHADER_OUT} ${FABRIC_PARTICLE_SHADER_OUT} ${FABRIC_OIT_SHADER_OUT} ${FABRIC_PANINI_SHADER_OUT})
 
 # Shader compilation must finish before FabricLib sources compile
-add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricSmoothShaders FabricSkyShaders FabricPostShaders FabricParticleShaders FabricOITShaders)
+add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricSmoothShaders FabricSkyShaders FabricPostShaders FabricParticleShaders FabricOITShaders FabricPaniniShaders)
 
 # Per-target compile options (replaces global CMAKE_CXX_FLAGS_* variables)
 target_compile_options(FabricLib PRIVATE

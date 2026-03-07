@@ -1,0 +1,90 @@
+#pragma once
+
+#include <cstdint>
+#include <functional>
+#include <glm/glm.hpp>
+#include <memory>
+#include <unordered_map>
+#include <vector>
+
+namespace recurse {
+
+using glm::ivec3;
+using glm::vec3;
+
+// 64-bit packed section key: [level:4][sx:20][sy:20][sz:20]
+struct LODSectionKey {
+    uint64_t value = 0;
+
+    static LODSectionKey make(int level, int32_t sx, int32_t sy, int32_t sz) {
+        LODSectionKey k;
+        k.value = (static_cast<uint64_t>(level & 0xF) << 60) | (static_cast<uint64_t>(sx & 0xFFFFF) << 40) |
+                  (static_cast<uint64_t>(sy & 0xFFFFF) << 20) | (static_cast<uint64_t>(sz & 0xFFFFF));
+        return k;
+    }
+
+    int level() const { return static_cast<int>((value >> 60) & 0xF); }
+    int32_t x() const { return static_cast<int32_t>((value >> 40) & 0xFFFFF); }
+    int32_t y() const { return static_cast<int32_t>((value >> 20) & 0xFFFFF); }
+    int32_t z() const { return static_cast<int32_t>(value & 0xFFFFF); }
+
+    bool operator==(const LODSectionKey& other) const { return value == other.value; }
+};
+
+// 32^3 section at a specific LOD level
+struct LODSection {
+    static constexpr int kSize = 32;
+    static constexpr int kVolume = kSize * kSize * kSize;
+
+    int level = 0;
+    ivec3 origin{0, 0, 0};              // World-space origin in LOD0 coords
+    std::vector<uint16_t> blockIndices; // kVolume entries, palette-indexed
+    std::vector<uint16_t> palette;      // materialId list (index 0 = air)
+    bool dirty = true;
+
+    void set(int lx, int ly, int lz, uint16_t palIdx) {
+        if (blockIndices.size() != kVolume) {
+            blockIndices.assign(kVolume, 0);
+        }
+        blockIndices[lx + ly * kSize + lz * kSize * kSize] = palIdx;
+    }
+
+    uint16_t get(int lx, int ly, int lz) const {
+        if (blockIndices.empty())
+            return 0;
+        return blockIndices[lx + ly * kSize + lz * kSize * kSize];
+    }
+
+    uint16_t materialOf(uint16_t palIdx) const {
+        if (palIdx >= palette.size())
+            return 0;
+        return palette[palIdx];
+    }
+};
+
+class LODGrid {
+  public:
+    static constexpr int kSectionWorldSize = LODSection::kSize;
+
+    LODSection* get(LODSectionKey key);
+    LODSection* getOrCreate(int level, int sx, int sy, int sz);
+    void tryBuildParent(int childLevel, int cx, int cy, int cz);
+    void downsample(LODSection& parent, const std::array<LODSection*, 8>& children);
+    void remove(LODSectionKey key);
+    size_t sectionCount() const { return sections_.size(); }
+
+    template <typename Fn> void forEach(Fn&& fn) {
+        for (auto& [key, section] : sections_) {
+            fn(*section);
+        }
+    }
+
+  private:
+    std::unordered_map<uint64_t, std::unique_ptr<LODSection>> sections_;
+
+    static uint64_t packKey(int level, int sx, int sy, int sz) { return LODSectionKey::make(level, sx, sy, sz).value; }
+
+    bool hasAllChildren(int level, int sx, int sy, int sz);
+};
+
+} // namespace recurse
