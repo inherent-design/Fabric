@@ -169,7 +169,14 @@ SmoothChunkMeshData SnapMCMesher::meshChunk(const ChunkDensityCache& density, co
                         chunkZ = clampBoundary(chunkZ);
 
                         Vec3f normal = computeNormal(density, posX, posY, posZ);
-                        uint16_t mat = material.sampleNearest(posX, posY, posZ);
+                        // Sample material from the solid side of the isocrossing.
+                        // sampleNearest rounds to the nearest cell, which for half-integer
+                        // positions at flat surfaces systematically lands on the air side.
+                        int solidCorner = (v0 >= isovalue) ? c0 : c1;
+                        int slx = cx * stride + 1 + K_CORNER_OFFSETS[solidCorner][0] * stride;
+                        int sly = cy * stride + 1 + K_CORNER_OFFSETS[solidCorner][1] * stride;
+                        int slz = cz * stride + 1 + K_CORNER_OFFSETS[solidCorner][2] * stride;
+                        uint16_t mat = material.at(slx, sly, slz);
 
                         SmoothVoxelVertex vert{};
                         vert.px = chunkX;

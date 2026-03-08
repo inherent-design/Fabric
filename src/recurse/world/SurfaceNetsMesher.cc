@@ -102,7 +102,18 @@ SmoothChunkMeshData SurfaceNetsMesher::meshChunk(const ChunkDensityCache& densit
                 float chunkZ = posZ - 1.0f;
 
                 Vec3f normal = computeNormal(density, posX, posY, posZ);
-                uint16_t mat = material.sampleNearest(posX, posY, posZ);
+                // Sample material from a solid corner rather than rounding
+                // the averaged vertex position (which can land on the air side).
+                uint16_t mat = 0;
+                for (int i = 0; i < 8; ++i) {
+                    if (corners[i] >= isovalue) {
+                        int slx = cx * stride + 1 + K_CORNER_OFFSETS[i][0] * stride;
+                        int sly = cy * stride + 1 + K_CORNER_OFFSETS[i][1] * stride;
+                        int slz = cz * stride + 1 + K_CORNER_OFFSETS[i][2] * stride;
+                        mat = material.at(slx, sly, slz);
+                        break;
+                    }
+                }
 
                 SmoothVoxelVertex vert{};
                 vert.px = chunkX;

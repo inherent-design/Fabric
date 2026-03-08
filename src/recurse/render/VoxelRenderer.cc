@@ -56,7 +56,7 @@ void VoxelRenderer::initProgram() {
     program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_voxelShaders, type, "vs_smooth"),
                                        bgfx::createEmbeddedShader(s_voxelShaders, type, "fs_smooth"), true));
 
-    uniformPalette_.reset(bgfx::createUniform("u_palette", bgfx::UniformType::Vec4, 256));
+    uniformPalette_.reset(bgfx::createUniform("u_palette", bgfx::UniformType::Vec4, 128));
     uniformLightDir_.reset(bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4));
     uniformViewPos_.reset(bgfx::createUniform("u_viewPos", bgfx::UniformType::Vec4));
     uniformLitColor_.reset(bgfx::createUniform("u_litColor", bgfx::UniformType::Vec4));
@@ -75,8 +75,8 @@ void VoxelRenderer::initProgram() {
 
     constexpr float K_LIT_COLOR[4] = {0.85f, 0.85f, 0.85f, 1.0f};    // Neutral white-gray (was warm gold)
     constexpr float K_SHADOW_COLOR[4] = {0.35f, 0.35f, 0.40f, 1.0f}; // Neutral cool-gray (was purple-gray)
-    constexpr float K_RIM_PARAMS[4] = {3.0f, 0.0f, 0.0f, 0.0f};      // EXPERIMENT: zeroed to isolate disco bug
-    constexpr float K_OCEAN_PARAMS[4] = {16.0f, 0.0f, 0.0f, 0.0f};   // EXPERIMENT: zeroed to isolate disco bug
+    constexpr float K_RIM_PARAMS[4] = {3.0f, 0.15f, 0.0f, 0.0f};
+    constexpr float K_OCEAN_PARAMS[4] = {16.0f, 0.2f, 0.0f, 0.0f};
 
     std::copy(std::begin(K_LIT_COLOR), std::end(K_LIT_COLOR), litColor_);
     std::copy(std::begin(K_SHADOW_COLOR), std::end(K_SHADOW_COLOR), shadowColor_);
@@ -129,9 +129,10 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, float offse
     mtx[14] = offsetZ;
     bgfx::setTransform(mtx);
 
-    // Upload palette colors (up to 256 entries)
+    // Upload palette colors (up to 128 entries; bgfx shaderc stores array
+    // count as uint8_t so 256 overflows to 0, breaking uniform upload).
     if (!mesh.palette.empty()) {
-        auto count = static_cast<uint16_t>(std::min(mesh.palette.size(), static_cast<size_t>(256)));
+        auto count = static_cast<uint16_t>(std::min(mesh.palette.size(), static_cast<size_t>(128)));
         bgfx::setUniform(uniformPalette_.get(), mesh.palette.data(), count);
     }
 
@@ -244,7 +245,7 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
 
     for (const auto& group : groups) {
         if (!group.palette->empty()) {
-            auto cnt = static_cast<uint16_t>(std::min(group.palette->size(), static_cast<size_t>(256)));
+            auto cnt = static_cast<uint16_t>(std::min(group.palette->size(), static_cast<size_t>(128)));
             bgfx::setUniform(uniformPalette_.get(), group.palette->data(), cnt);
         }
         bgfx::setUniform(uniformLightDir_.get(), lightDir_);
