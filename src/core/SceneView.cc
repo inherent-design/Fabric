@@ -182,7 +182,7 @@ void SceneView::enablePostProcess(uint16_t width, uint16_t height) {
 }
 
 void SceneView::cycleProjectionMode() {
-    // Cycle: Panini -> Equirect -> Panini (repeat)
+    // Cycle: Perspective -> Panini -> Equirect -> Perspective (repeat)
     // TODO(ProjectionMode): Add Fisheye, Isometric, VRStereo modes when implemented
     switch (projectionMode_) {
         case ProjectionMode::Perspective:
@@ -196,9 +196,9 @@ void SceneView::cycleProjectionMode() {
             FABRIC_LOG_INFO("Projection mode: Equirect");
             break;
         case ProjectionMode::Equirect:
-            projectionMode_ = ProjectionMode::Panini;
-            paniniPass_.setEnabled(true);
-            FABRIC_LOG_INFO("Projection mode: Panini");
+            projectionMode_ = ProjectionMode::Perspective;
+            paniniPass_.setEnabled(false);
+            FABRIC_LOG_INFO("Projection mode: Perspective");
             break;
     }
     // FIXME(ProjectionMode): Fisheye, Isometric, VRStereo not yet implemented

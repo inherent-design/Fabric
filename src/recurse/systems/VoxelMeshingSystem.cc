@@ -83,10 +83,11 @@ void VoxelMeshingSystem::doShutdown() {
 }
 
 void VoxelMeshingSystem::clearAllMeshes() {
+    const auto count = gpuMeshes_.size();
     for (auto& [_, gpuMesh] : gpuMeshes_)
         destroyChunkMesh(gpuMesh);
     gpuMeshes_.clear();
-    FABRIC_LOG_INFO("VoxelMeshingSystem: cleared {} GPU meshes", gpuMeshes_.size());
+    FABRIC_LOG_INFO("VoxelMeshingSystem: cleared {} GPU meshes", count);
 }
 
 void VoxelMeshingSystem::render(fabric::AppContext& /*ctx*/) {

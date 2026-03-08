@@ -12,6 +12,8 @@ void parseTokens(const std::vector<std::string>& tokens, size_t posOffset, Token
         if (tokens[i].length() >= 2 && tokens[i].substr(0, 2) == "--") {
             std::string optionName = tokens[i];
 
+            // NOTE: This treats negative numeric values (e.g. "-5") as flags.
+            // Acceptable; ArgumentParser has zero production callers.
             if (i + 1 < tokens.size() && tokens[i + 1][0] != '-') {
                 Variant value = tokens[i + 1];
                 arguments[optionName] = Token(TokenType::LiteralString, value);

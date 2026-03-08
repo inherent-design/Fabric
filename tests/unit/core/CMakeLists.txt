@@ -99,6 +99,7 @@ target_sources(UnitTests
   VoxelMeshingSystemTest.cc
   CrossChunkBoundaryTest.cc
   EssenceTypesTest.cc
+  ChunkDirtyTrackerTest.cc
 )
 
 set_source_files_properties(
