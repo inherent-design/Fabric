@@ -1,17 +1,17 @@
 #pragma once
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/world/GeneratorInterface.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
 namespace fabric::world {
 
 class SingleMaterialGenerator : public GeneratorInterface {
   public:
-    explicit SingleMaterialGenerator(fabric::simulation::VoxelCell cell);
+    explicit SingleMaterialGenerator(recurse::simulation::VoxelCell cell);
     void generate(SimulationGrid& grid, ChunkPos pos) override;
     std::string name() const override { return "SingleMaterial"; }
 
   private:
-    fabric::simulation::VoxelCell cell_;
+    recurse::simulation::VoxelCell cell_;
 };
 
 } // namespace fabric::world

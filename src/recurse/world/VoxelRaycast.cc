@@ -1,7 +1,7 @@
 #include "recurse/world/VoxelRaycast.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/utils/Profiler.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
 namespace recurse {
 
@@ -163,14 +163,14 @@ std::vector<VoxelHit> castRayAll(const ChunkedGrid<float>& grid, float ox, float
     return hits;
 }
 
-std::optional<VoxelHit> castRay(const fabric::simulation::SimulationGrid& grid, float ox, float oy, float oz, float dx,
+std::optional<VoxelHit> castRay(const recurse::simulation::SimulationGrid& grid, float ox, float oy, float oz, float dx,
                                 float dy, float dz, float maxDistance) {
     FABRIC_ZONE_SCOPED_N("castRay(SimGrid)");
 
     auto s = initDDA(ox, oy, oz, dx, dy, dz);
 
     // Check starting voxel
-    if (grid.readCell(s.vx, s.vy, s.vz).materialId != fabric::simulation::material_ids::AIR) {
+    if (grid.readCell(s.vx, s.vy, s.vz).materialId != recurse::simulation::material_ids::AIR) {
         return VoxelHit{s.vx, s.vy, s.vz, 0, 0, 0, 0.0f};
     }
 
@@ -207,7 +207,7 @@ std::optional<VoxelHit> castRay(const fabric::simulation::SimulationGrid& grid, 
         if (t > maxDistance)
             break;
 
-        if (grid.readCell(s.vx, s.vy, s.vz).materialId != fabric::simulation::material_ids::AIR) {
+        if (grid.readCell(s.vx, s.vy, s.vz).materialId != recurse::simulation::material_ids::AIR) {
             return VoxelHit{s.vx, s.vy, s.vz, normalX, normalY, normalZ, t};
         }
     }
@@ -215,14 +215,14 @@ std::optional<VoxelHit> castRay(const fabric::simulation::SimulationGrid& grid, 
     return std::nullopt;
 }
 
-std::vector<VoxelHit> castRayAll(const fabric::simulation::SimulationGrid& grid, float ox, float oy, float oz, float dx,
-                                 float dy, float dz, float maxDistance) {
+std::vector<VoxelHit> castRayAll(const recurse::simulation::SimulationGrid& grid, float ox, float oy, float oz,
+                                 float dx, float dy, float dz, float maxDistance) {
     FABRIC_ZONE_SCOPED_N("castRayAll(SimGrid)");
 
     std::vector<VoxelHit> hits;
     auto s = initDDA(ox, oy, oz, dx, dy, dz);
 
-    if (grid.readCell(s.vx, s.vy, s.vz).materialId != fabric::simulation::material_ids::AIR) {
+    if (grid.readCell(s.vx, s.vy, s.vz).materialId != recurse::simulation::material_ids::AIR) {
         hits.push_back({s.vx, s.vy, s.vz, 0, 0, 0, 0.0f});
     }
 
@@ -259,7 +259,7 @@ std::vector<VoxelHit> castRayAll(const fabric::simulation::SimulationGrid& grid,
         if (t > maxDistance)
             break;
 
-        if (grid.readCell(s.vx, s.vy, s.vz).materialId != fabric::simulation::material_ids::AIR) {
+        if (grid.readCell(s.vx, s.vy, s.vz).materialId != recurse::simulation::material_ids::AIR) {
             hits.push_back({s.vx, s.vy, s.vz, normalX, normalY, normalZ, t});
         }
     }

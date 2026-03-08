@@ -1,13 +1,13 @@
-#include "fabric/simulation/ChunkActivityTracker.hh"
-#include "fabric/simulation/FallingSandSystem.hh"
-#include "fabric/simulation/GhostCells.hh"
-#include "fabric/simulation/MaterialRegistry.hh"
-#include "fabric/simulation/SimulationGrid.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/FallingSandSystem.hh"
+#include "recurse/simulation/GhostCells.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 #include <chrono>
 #include <gtest/gtest.h>
 #include <random>
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 using fabric::K_CHUNK_SIZE;
 
 class FallingSandGravityTest : public ::testing::Test {

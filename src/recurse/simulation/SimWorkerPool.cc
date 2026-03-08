@@ -1,10 +1,10 @@
-#include "fabric/simulation/SimWorkerPool.hh"
+#include "recurse/simulation/SimWorkerPool.hh"
 #include "fabric/utils/Profiler.hh"
 #include <algorithm>
 #include <future>
 #include <thread>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 SimWorkerPool::SimWorkerPool(size_t threadCount) {
     if (threadCount == 0) {
@@ -72,4 +72,4 @@ void SimWorkerPool::dispatchAndWait(const std::vector<std::function<void(std::mt
         f.get();
 }
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

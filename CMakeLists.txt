@@ -263,15 +263,15 @@ set(RECURSE_GAME_SOURCE_FILES
     src/core/PaniniPass.cc
 )
 
-# Simulation library components (fabric::simulation namespace)
+# Simulation library components (recurse::simulation namespace)
 set(FABRIC_SIMULATION_SOURCE_FILES
-    src/simulation/MaterialRegistry.cc
-    src/simulation/SimulationGrid.cc
-    src/simulation/ChunkActivityTracker.cc
-    src/simulation/GhostCells.cc
-    src/simulation/FallingSandSystem.cc
-    src/simulation/VoxelSimulationSystem.cc
-    src/simulation/SimWorkerPool.cc
+    src/recurse/simulation/MaterialRegistry.cc
+    src/recurse/simulation/SimulationGrid.cc
+    src/recurse/simulation/ChunkActivityTracker.cc
+    src/recurse/simulation/GhostCells.cc
+    src/recurse/simulation/FallingSandSystem.cc
+    src/recurse/simulation/VoxelSimulationSystem.cc
+    src/recurse/simulation/SimWorkerPool.cc
 )
 
 # World library components (fabric::world namespace)

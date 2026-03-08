@@ -3,7 +3,7 @@
 
 namespace fabric::world {
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 
 LayeredGenerator::LayeredGenerator(std::vector<LayerDef> layers) : layers_(std::move(layers)) {}
 

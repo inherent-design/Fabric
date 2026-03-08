@@ -1,11 +1,11 @@
 #include "fabric/world/MinecraftNoiseGenerator.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <chrono>
 #include <gtest/gtest.h>
 #include <set>
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 using namespace fabric::world;
 
 static constexpr int K_CHUNK = 32;

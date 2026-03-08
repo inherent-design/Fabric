@@ -104,9 +104,9 @@ struct SkinningData {
 
 } // namespace recurse
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 class SimulationGrid;
-} // namespace fabric::simulation
+} // namespace recurse::simulation
 
 namespace recurse {
 
@@ -129,7 +129,7 @@ struct FootIKConfig {
     float maxCorrectionDist = 0.5f;
     float raycastHeight = 2.0f;
     bool grounded = true;
-    const fabric::simulation::SimulationGrid* grid = nullptr;
+    const recurse::simulation::SimulationGrid* grid = nullptr;
     Vector3<float, Space::World> worldOffset{0.0f, 0.0f, 0.0f};
 };
 

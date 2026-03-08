@@ -1,5 +1,5 @@
 #include "fabric/world/MinecraftNoiseGenerator.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <cmath>
 
 namespace fabric::world {

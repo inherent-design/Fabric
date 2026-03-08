@@ -1,7 +1,7 @@
 #include "recurse/animation/IKSolver.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "recurse/animation/Animation.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 #include <ozz/animation/offline/raw_skeleton.h>
@@ -310,7 +310,7 @@ class FootIKTest : public ::testing::Test {
         return Vec3f(col3[0], col3[1], col3[2]);
     }
 
-    FootIKConfig makeConfig(const fabric::simulation::SimulationGrid* grid) {
+    FootIKConfig makeConfig(const recurse::simulation::SimulationGrid* grid) {
         FootIKConfig config;
         config.leftLeg = {leftHipIdx_, leftKneeIdx_, leftAnkleIdx_};
         config.rightLeg = {rightHipIdx_, rightKneeIdx_, rightAnkleIdx_};
@@ -323,8 +323,8 @@ class FootIKTest : public ::testing::Test {
         return config;
     }
 
-    fabric::simulation::SimulationGrid makeFlatGround(int groundVoxelY) {
-        using namespace fabric::simulation;
+    recurse::simulation::SimulationGrid makeFlatGround(int groundVoxelY) {
+        using namespace recurse::simulation;
         SimulationGrid grid;
         for (int x = -5; x <= 5; ++x) {
             for (int z = -5; z <= 5; ++z) {
@@ -358,7 +358,7 @@ TEST_F(FootIKTest, FlatTerrainContact) {
 }
 
 TEST_F(FootIKTest, SteppedTerrain) {
-    using namespace fabric::simulation;
+    using namespace recurse::simulation;
     // Left ground at Y=0 (voxel y=-1), right ground at Y=1 (voxel y=0)
     SimulationGrid grid;
     for (int x = -5; x < 0; ++x) {
@@ -391,7 +391,7 @@ TEST_F(FootIKTest, SteppedTerrain) {
 }
 
 TEST_F(FootIKTest, UnreachableGround) {
-    using namespace fabric::simulation;
+    using namespace recurse::simulation;
     // Ground surface above ankles. Correction exceeds maxCorrectionDist.
     // Solid voxels at y=2 give surface at Y=3. Ankles at Y=1.
     // correction = |1 - 3| = 2 > maxCorrectionDist = 0.5

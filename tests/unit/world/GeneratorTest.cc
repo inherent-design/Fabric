@@ -1,11 +1,11 @@
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/world/FlatGenerator.hh"
 #include "fabric/world/LayeredGenerator.hh"
 #include "fabric/world/SingleMaterialGenerator.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <gtest/gtest.h>
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 using namespace fabric::world;
 
 class GeneratorTest : public ::testing::Test {

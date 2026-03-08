@@ -9,10 +9,10 @@
 #include <memory>
 #include <unordered_map>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 class ChunkActivityTracker;
 class SimulationGrid;
-} // namespace fabric::simulation
+} // namespace recurse::simulation
 
 namespace recurse {
 class SnapMCMesher;
@@ -49,8 +49,8 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     void render(fabric::AppContext& ctx) override;
     void configureDependencies() override;
 
-    void setSimulationGrid(fabric::simulation::SimulationGrid* grid);
-    void setActivityTracker(fabric::simulation::ChunkActivityTracker* tracker);
+    void setSimulationGrid(recurse::simulation::SimulationGrid* grid);
+    void setActivityTracker(recurse::simulation::ChunkActivityTracker* tracker);
     void setMeshBudget(int budget) { meshBudget_ = budget; }
     int meshBudget() const { return meshBudget_; }
 
@@ -79,8 +79,8 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     std::array<float, 4> materialColor(uint16_t materialId) const;
 
     VoxelSimulationSystem* simSystem_ = nullptr;
-    fabric::simulation::SimulationGrid* simGrid_ = nullptr;
-    fabric::simulation::ChunkActivityTracker* activityTracker_ = nullptr;
+    recurse::simulation::SimulationGrid* simGrid_ = nullptr;
+    recurse::simulation::ChunkActivityTracker* activityTracker_ = nullptr;
     std::unique_ptr<recurse::SnapMCMesher> mesher_;
     std::unique_ptr<recurse::SmoothVertexPool> vertexPool_;
 

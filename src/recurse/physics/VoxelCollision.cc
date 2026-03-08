@@ -1,6 +1,6 @@
 #include "recurse/physics/VoxelCollision.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <cmath>
 
 namespace recurse::physics {
@@ -33,11 +33,11 @@ bool aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float th
     return false;
 }
 
-bool isSolid(int vx, int vy, int vz, const fabric::simulation::SimulationGrid& grid) {
-    return grid.readCell(vx, vy, vz).materialId != fabric::simulation::material_ids::AIR;
+bool isSolid(int vx, int vy, int vz, const recurse::simulation::SimulationGrid& grid) {
+    return grid.readCell(vx, vy, vz).materialId != recurse::simulation::material_ids::AIR;
 }
 
-bool aabbOverlapsSolid(const AABB& box, const fabric::simulation::SimulationGrid& grid, float epsilon) {
+bool aabbOverlapsSolid(const AABB& box, const recurse::simulation::SimulationGrid& grid, float epsilon) {
     int minVX = static_cast<int>(std::floor(box.min.x));
     int minVY = static_cast<int>(std::floor(box.min.y));
     int minVZ = static_cast<int>(std::floor(box.min.z));

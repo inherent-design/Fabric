@@ -1,7 +1,7 @@
-#include "fabric/simulation/SimulationGrid.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 #include "fabric/world/ChunkCoordUtils.hh"
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 // -- ChunkBufferPair ----------------------------------------------------------
 
@@ -176,4 +176,4 @@ std::vector<std::tuple<int, int, int>> SimulationGrid::allChunks() const {
     return result;
 }
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

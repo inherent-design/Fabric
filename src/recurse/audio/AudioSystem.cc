@@ -2,9 +2,9 @@
 #include <miniaudio.h>
 
 #include "fabric/core/Log.hh"
-#include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "recurse/audio/AudioSystem.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 #include <algorithm>
@@ -419,7 +419,7 @@ float AudioSystem::getCategoryVolume(SoundCategory category) const {
 
 // --- Occlusion ---
 
-void AudioSystem::setSimulationGrid(const fabric::simulation::SimulationGrid* grid) {
+void AudioSystem::setSimulationGrid(const recurse::simulation::SimulationGrid* grid) {
     simulationGrid_ = grid;
 }
 

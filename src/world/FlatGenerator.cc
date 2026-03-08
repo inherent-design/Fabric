@@ -3,7 +3,7 @@
 
 namespace fabric::world {
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 
 FlatGenerator::FlatGenerator(int surfaceHeight) : surfaceHeight_(surfaceHeight) {}
 

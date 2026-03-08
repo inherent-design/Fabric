@@ -1,7 +1,7 @@
-#include "fabric/simulation/VoxelSimulationSystem.hh"
+#include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "fabric/utils/Profiler.hh"
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 VoxelSimulationSystem::VoxelSimulationSystem() : sandSystem_(registry_) {}
 
@@ -104,4 +104,4 @@ SimWorkerPool& VoxelSimulationSystem::workerPool() {
     return workerPool_;
 }
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

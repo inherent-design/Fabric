@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 class MaterialRegistry;
 }
 
@@ -29,7 +29,7 @@ class LODMeshManager {
         bool empty() const { return vertices.empty() || indices.empty(); }
     };
 
-    explicit LODMeshManager(LODGrid& grid, const fabric::simulation::MaterialRegistry& materials);
+    explicit LODMeshManager(LODGrid& grid, const recurse::simulation::MaterialRegistry& materials);
     ~LODMeshManager();
 
     /// Generate mesh for a single LOD section.
@@ -51,7 +51,7 @@ class LODMeshManager {
     std::array<float, 4> materialColor(uint16_t materialId) const;
 
     LODGrid& grid_;
-    const fabric::simulation::MaterialRegistry& materials_;
+    const recurse::simulation::MaterialRegistry& materials_;
     std::unique_ptr<SnapMCMesher> mesher_;
 };
 

@@ -1,7 +1,7 @@
-#include "fabric/simulation/FallingSandSystem.hh"
+#include "recurse/simulation/FallingSandSystem.hh"
 #include <algorithm>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 namespace {
 // Directional-alternating sweep: reverses x/z iteration each frame to prevent
@@ -66,8 +66,7 @@ void FallingSandSystem::writeSwap(ChunkPos pos, int srcLx, int srcLy, int srcLz,
     grid.writeCell(srcWx, srcWy, srcWz, dstCell);
 
     // Destination may be out of chunk bounds
-    if (dstLx >= 0 && dstLx < K_CHUNK_SIZE && dstLy >= 0 && dstLy < K_CHUNK_SIZE && dstLz >= 0 &&
-        dstLz < K_CHUNK_SIZE) {
+    if (dstLx >= 0 && dstLx < K_CHUNK_SIZE && dstLy >= 0 && dstLy < K_CHUNK_SIZE && dstLz >= 0 && dstLz < K_CHUNK_SIZE) {
         int dstWx = pos.x * K_CHUNK_SIZE + dstLx;
         int dstWy = pos.y * K_CHUNK_SIZE + dstLy;
         int dstWz = pos.z * K_CHUNK_SIZE + dstLz;
@@ -182,4 +181,4 @@ void FallingSandSystem::simulateChunk(ChunkPos pos, SimulationGrid& grid, const 
         tracker.putToSleep(pos);
 }
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

@@ -1,6 +1,6 @@
-#include "fabric/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 MaterialRegistry::MaterialRegistry() {
     // Air: transparent, no physics
@@ -46,4 +46,4 @@ MaterialRegistry::MaterialRegistry() {
     gravel.baseColor = 0xFF606060;
 }
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

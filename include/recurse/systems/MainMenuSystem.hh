@@ -13,7 +13,7 @@ namespace fabric {
 class AppModeManager;
 }
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 class SimulationGrid;
 }
 

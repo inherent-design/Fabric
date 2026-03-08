@@ -1,8 +1,8 @@
-#include "fabric/simulation/MaterialRegistry.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <gtest/gtest.h>
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 
 TEST(VoxelCellTest, SizeIs4Bytes) {
     EXPECT_EQ(sizeof(VoxelCell), 4u);

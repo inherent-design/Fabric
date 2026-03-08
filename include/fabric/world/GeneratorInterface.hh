@@ -1,6 +1,6 @@
 #pragma once
-#include "fabric/simulation/ChunkActivityTracker.hh"
-#include "fabric/simulation/SimulationGrid.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 #include <string>
 
 namespace fabric::world {

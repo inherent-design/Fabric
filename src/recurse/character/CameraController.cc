@@ -1,6 +1,6 @@
 #include "recurse/character/CameraController.hh"
 #include "fabric/core/Rendering.hh"
-#include "fabric/simulation/SimulationGrid.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 
 #include <algorithm>
 #include <cmath>
@@ -147,14 +147,14 @@ Quaternion<float> CameraController::buildRotation() const {
 }
 
 void CameraController::update(const Vector3<float, Space::World>& targetPos, float dt,
-                              const fabric::simulation::SimulationGrid* grid) {
+                              const recurse::simulation::SimulationGrid* grid) {
     update(Vector3<double, Space::World>(static_cast<double>(targetPos.x), static_cast<double>(targetPos.y),
                                          static_cast<double>(targetPos.z)),
            dt, grid);
 }
 
 void CameraController::update(const Vector3<double, Space::World>& targetPos, float dt,
-                              const fabric::simulation::SimulationGrid* grid) {
+                              const recurse::simulation::SimulationGrid* grid) {
 
     const auto eyePointD = targetPos + Vector3<double, Space::World>(0.0, static_cast<double>(config_.eyeHeight), 0.0);
     auto rot = buildRotation();

@@ -1,9 +1,9 @@
-#include "fabric/simulation/SimWorkerPool.hh"
-#include "fabric/simulation/VoxelSimulationSystem.hh"
+#include "recurse/simulation/SimWorkerPool.hh"
+#include "recurse/simulation/VoxelSimulationSystem.hh"
 #include <chrono>
 #include <gtest/gtest.h>
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 using fabric::K_CHUNK_SIZE;
 
 class ParallelSimulationTest : public ::testing::Test {

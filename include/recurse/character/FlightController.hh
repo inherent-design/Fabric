@@ -5,9 +5,9 @@
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/physics/VoxelCollision.hh"
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 class SimulationGrid;
-} // namespace fabric::simulation
+} // namespace recurse::simulation
 
 namespace recurse {
 
@@ -32,7 +32,7 @@ class FlightController {
                       float densityThreshold = 0.5f);
 
     FlightResult move(const Vec3f& currentPos, const Vec3f& displacement,
-                      const fabric::simulation::SimulationGrid& grid);
+                      const recurse::simulation::SimulationGrid& grid);
 
     // Drag utility: velocity *= (1 - drag * dt), clamps near-zero
     static Vec3f applyDrag(const Vec3f& velocity, float dragCoefficient, float dt);
@@ -51,9 +51,9 @@ class FlightController {
 
     bool aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold) const;
 
-    bool isSolid(int vx, int vy, int vz, const fabric::simulation::SimulationGrid& grid) const;
+    bool isSolid(int vx, int vy, int vz, const recurse::simulation::SimulationGrid& grid) const;
 
-    bool aabbOverlapsSolid(const AABB& box, const fabric::simulation::SimulationGrid& grid) const;
+    bool aabbOverlapsSolid(const AABB& box, const recurse::simulation::SimulationGrid& grid) const;
 };
 
 } // namespace recurse

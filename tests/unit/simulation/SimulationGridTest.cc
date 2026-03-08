@@ -1,8 +1,8 @@
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <gtest/gtest.h>
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 using fabric::K_CHUNK_VOLUME;
 
 class SimulationGridTest : public ::testing::Test {

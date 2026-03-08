@@ -1,12 +1,12 @@
 #pragma once
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/world/GeneratorInterface.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <vector>
 
 namespace fabric::world {
 
 struct LayerDef {
-    fabric::simulation::VoxelCell cell;
+    recurse::simulation::VoxelCell cell;
     int minY;
     int maxY;
 };

@@ -1,8 +1,8 @@
-#include "fabric/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
 #include <algorithm>
 #include <cmath>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 size_t ChunkPosHash::operator()(const ChunkPos& p) const {
     // Combine x, y, z with bit shifts + XOR
@@ -113,4 +113,4 @@ void ChunkActivityTracker::clear() {
     chunks_.clear();
 }
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

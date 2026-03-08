@@ -5,7 +5,7 @@
 #include <random>
 #include <vector>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 /// Thread pool for parallel chunk simulation dispatch.
 /// Each task receives a per-worker std::mt19937 seeded deterministically
@@ -35,4 +35,4 @@ class SimWorkerPool {
     void runInline(const std::vector<std::function<void(std::mt19937&)>>& tasks, uint64_t baseSeed);
 };
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

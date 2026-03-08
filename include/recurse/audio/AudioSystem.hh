@@ -10,9 +10,9 @@
 #include <thread>
 #include <unordered_map>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 class SimulationGrid;
-} // namespace fabric::simulation
+} // namespace recurse::simulation
 
 struct ma_engine;
 struct ma_sound;
@@ -173,7 +173,7 @@ class AudioSystem {
     bool isReverbInitialized() const;
 
     // Occlusion
-    void setSimulationGrid(const fabric::simulation::SimulationGrid* grid);
+    void setSimulationGrid(const recurse::simulation::SimulationGrid* grid);
     OcclusionResult computeOcclusion(const Vec3f& source, const Vec3f& listener) const;
     void setOcclusionEnabled(bool enabled);
     bool isOcclusionEnabled() const;
@@ -221,7 +221,7 @@ class AudioSystem {
 
     AttenuationModel attenuationModel_ = AttenuationModel::Inverse;
 
-    const fabric::simulation::SimulationGrid* simulationGrid_ = nullptr;
+    const recurse::simulation::SimulationGrid* simulationGrid_ = nullptr;
     bool occlusionEnabled_ = false;
 
     // Reverb node graph: sounds -> lpfNode_ -> delayNode_ -> endpoint

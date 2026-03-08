@@ -23,9 +23,9 @@
 #include <unordered_map>
 #include <vector>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 class SimulationGrid;
-} // namespace fabric::simulation
+} // namespace recurse::simulation
 
 namespace recurse {
 
@@ -149,7 +149,7 @@ class PhysicsWorld {
     void removeBody(BodyHandle handle);
 
     void rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx, int cy, int cz, float densityThreshold = 0.5f);
-    void rebuildChunkCollision(const fabric::simulation::SimulationGrid& grid, int cx, int cy, int cz);
+    void rebuildChunkCollision(const recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz);
     void removeChunkCollision(int cx, int cy, int cz);
     void clearChunkBodies(); // Remove all chunk collision bodies (for world reset)
     uint32_t chunkCollisionShapeCount(int cx, int cy, int cz) const;

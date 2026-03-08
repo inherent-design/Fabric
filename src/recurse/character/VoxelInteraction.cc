@@ -13,7 +13,7 @@ InteractionResult VoxelInteraction::createMatter(const VoxelHit& hit, MaterialId
     int y = hit.y + hit.ny;
     int z = hit.z + hit.nz;
 
-    grid_.writeCellImmediate(x, y, z, VoxelCell{materialId, 128, fabric::simulation::voxel_flags::UPDATED});
+    grid_.writeCellImmediate(x, y, z, VoxelCell{materialId, 128, recurse::simulation::voxel_flags::UPDATED});
 
     int cx = x >> K_CHUNK_SHIFT;
     int cy = y >> K_CHUNK_SHIFT;
@@ -29,7 +29,7 @@ InteractionResult VoxelInteraction::destroyMatter(const VoxelHit& hit) {
     int z = hit.z;
 
     grid_.writeCellImmediate(
-        x, y, z, VoxelCell{fabric::simulation::material_ids::AIR, 128, fabric::simulation::voxel_flags::UPDATED});
+        x, y, z, VoxelCell{recurse::simulation::material_ids::AIR, 128, recurse::simulation::voxel_flags::UPDATED});
 
     int cx = x >> K_CHUNK_SHIFT;
     int cy = y >> K_CHUNK_SHIFT;

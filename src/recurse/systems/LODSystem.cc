@@ -3,12 +3,12 @@
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Camera.hh"
 #include "fabric/core/Log.hh"
-#include "fabric/simulation/MaterialRegistry.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/LODGrid.hh"
 #include "recurse/render/LODMeshManager.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 
 #include <algorithm>
@@ -111,7 +111,7 @@ void LODSystem::configureDependencies() {
     // Dependencies resolved in init() or via setters
 }
 
-void LODSystem::setMaterialRegistry(const fabric::simulation::MaterialRegistry* materials) {
+void LODSystem::setMaterialRegistry(const recurse::simulation::MaterialRegistry* materials) {
     materials_ = materials;
     if (materials_ && grid_) {
         meshManager_ = std::make_unique<LODMeshManager>(*grid_, *materials_);

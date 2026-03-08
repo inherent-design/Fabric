@@ -1,6 +1,6 @@
-#include "fabric/simulation/GhostCells.hh"
+#include "recurse/simulation/GhostCells.hh"
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 // -- GhostCellStore -----------------------------------------------------------
 
@@ -109,4 +109,4 @@ void GhostCellManager::remove(ChunkPos pos) {
     stores_.erase(pos);
 }
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

@@ -1,7 +1,7 @@
-#include "fabric/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
 #include <gtest/gtest.h>
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 
 class ChunkActivityTrackerTest : public ::testing::Test {
   protected:

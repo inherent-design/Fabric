@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 
 using namespace fabric;
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 using namespace recurse;
 
 class VoxelInteractionTest : public ::testing::Test {

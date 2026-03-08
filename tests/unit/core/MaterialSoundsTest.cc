@@ -1,6 +1,6 @@
 #include "recurse/audio/MaterialSounds.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
 #include <gtest/gtest.h>
 #include <set>
@@ -172,7 +172,7 @@ TEST(MaterialSoundsTest, UnregisteredMaterialReturnsEmptyString) {
 // ---------------------------------------------------------------------------
 
 TEST(MaterialSoundsTest, DetectSurfaceBelowReturnsMaterial) {
-    using namespace fabric::simulation;
+    using namespace recurse::simulation;
     MaterialSounds ms(42);
 
     SimulationGrid grid;
@@ -185,7 +185,7 @@ TEST(MaterialSoundsTest, DetectSurfaceBelowReturnsMaterial) {
 }
 
 TEST(MaterialSoundsTest, DetectSurfaceBelowReturnsDefaultWhenNoSolid) {
-    using namespace fabric::simulation;
+    using namespace recurse::simulation;
     MaterialSounds ms(42);
 
     SimulationGrid grid;
@@ -195,7 +195,7 @@ TEST(MaterialSoundsTest, DetectSurfaceBelowReturnsDefaultWhenNoSolid) {
 }
 
 TEST(MaterialSoundsTest, DetectSurfaceBelowBeyondMaxDistance) {
-    using namespace fabric::simulation;
+    using namespace recurse::simulation;
     MaterialSounds ms(42);
 
     SimulationGrid grid;

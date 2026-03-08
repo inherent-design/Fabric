@@ -4,12 +4,12 @@
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
-#include "fabric/simulation/ChunkActivityTracker.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/VertexPool.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/systems/ShadowRenderSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/ChunkDensityCache.hh"
@@ -29,7 +29,7 @@ using fabric::K_HORIZONTAL_NEIGHBORS;
 
 namespace {
 
-fabric::ChunkCoord toChunkCoord(const fabric::simulation::ChunkPos& pos) {
+fabric::ChunkCoord toChunkCoord(const recurse::simulation::ChunkPos& pos) {
     return fabric::ChunkCoord{pos.x, pos.y, pos.z};
 }
 
@@ -106,11 +106,11 @@ void VoxelMeshingSystem::configureDependencies() {
     before<ShadowRenderSystem>();
 }
 
-void VoxelMeshingSystem::setSimulationGrid(fabric::simulation::SimulationGrid* grid) {
+void VoxelMeshingSystem::setSimulationGrid(recurse::simulation::SimulationGrid* grid) {
     simGrid_ = grid;
 }
 
-void VoxelMeshingSystem::setActivityTracker(fabric::simulation::ChunkActivityTracker* tracker) {
+void VoxelMeshingSystem::setActivityTracker(recurse::simulation::ChunkActivityTracker* tracker) {
     activityTracker_ = tracker;
 }
 
@@ -123,7 +123,7 @@ void VoxelMeshingSystem::processFrame() {
     if (!activityTracker_ || !simGrid_ || !mesher_)
         return;
 
-    std::vector<fabric::simulation::ActiveChunkEntry> activeChunks;
+    std::vector<recurse::simulation::ActiveChunkEntry> activeChunks;
     {
         FABRIC_ZONE_SCOPED_N("mesh_collect_active");
         activeChunks = activityTracker_->collectActiveChunks(meshBudget_);
@@ -200,7 +200,7 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
                 const int wz = baseZ + lz;
 
                 const auto cell = simGrid_->readCell(wx, wy, wz);
-                const float density = (cell.materialId == fabric::simulation::material_ids::AIR) ? 0.0f : 1.0f;
+                const float density = (cell.materialId == recurse::simulation::material_ids::AIR) ? 0.0f : 1.0f;
                 densityGrid.set(wx, wy, wz, density);
                 materialGrid.set(wx, wy, wz, cell.materialId);
             }
@@ -332,7 +332,7 @@ void VoxelMeshingSystem::destroyChunkMesh(ChunkGPUMesh& gpuMesh) {
 }
 
 std::array<float, 4> VoxelMeshingSystem::materialColor(uint16_t materialId) const {
-    using namespace fabric::simulation;
+    using namespace recurse::simulation;
     switch (materialId) {
         case material_ids::STONE:
             return {0.56f, 0.56f, 0.60f, 1.0f};

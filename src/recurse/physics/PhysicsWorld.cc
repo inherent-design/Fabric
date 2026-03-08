@@ -1,9 +1,9 @@
 #include "recurse/physics/PhysicsWorld.hh"
 #include "fabric/core/Log.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/physics/JoltCharacterController.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 #include <Jolt/Core/Factory.h>
@@ -339,7 +339,7 @@ void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx,
                          cy, cz);
 }
 
-void PhysicsWorld::rebuildChunkCollision(const fabric::simulation::SimulationGrid& grid, int cx, int cy, int cz) {
+void PhysicsWorld::rebuildChunkCollision(const recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) {
     if (!initialized_) {
         FABRIC_LOG_WARN("rebuildChunkCollision: PhysicsWorld not initialized");
         return;
@@ -397,7 +397,7 @@ void PhysicsWorld::rebuildChunkCollision(const fabric::simulation::SimulationGri
                             int wz = tileBaseZ + lz;
 
                             auto cell = grid.readCell(wx, wy, wz);
-                            if (cell.materialId == fabric::simulation::material_ids::AIR)
+                            if (cell.materialId == recurse::simulation::material_ids::AIR)
                                 continue;
 
                             // Only emit thin collision quads for exposed faces
@@ -406,7 +406,7 @@ void PhysicsWorld::rebuildChunkCollision(const fabric::simulation::SimulationGri
                                 int ny = wy + K_NEIGHBOR_OFF[face][1];
                                 int nz = wz + K_NEIGHBOR_OFF[face][2];
 
-                                if (grid.readCell(nx, ny, nz).materialId != fabric::simulation::material_ids::AIR)
+                                if (grid.readCell(nx, ny, nz).materialId != recurse::simulation::material_ids::AIR)
                                     continue;
 
                                 auto* boxSettings = new JPH::BoxShapeSettings(K_FACE_HALF_EXTENT[face], 0.0f);

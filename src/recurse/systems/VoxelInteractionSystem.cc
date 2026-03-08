@@ -9,11 +9,11 @@
 #include "fabric/core/InputManager.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
-#include "fabric/simulation/ChunkActivityTracker.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/character/VoxelInteraction.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
 namespace recurse::systems {
 
@@ -59,7 +59,7 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
             if (r.success) {
                 interactionCooldown_ = K_INTERACTION_RATE;
                 if (voxelSim_) {
-                    using namespace fabric::simulation;
+                    using namespace recurse::simulation;
                     voxelSim_->activityTracker().notifyBoundaryChange(ChunkPos{r.cx, r.cy, r.cz});
                     for (int i = 0; i < 6; ++i) {
                         ChunkPos neighbor{r.cx + K_FACE_NEIGHBORS[i][0], r.cy + K_FACE_NEIGHBORS[i][1],
@@ -75,11 +75,11 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
         }
         if (inputManager->mouseButton(3)) {
             auto r = voxelInteraction_->createMatterAt(camPos.x, camPos.y, camPos.z, camFwd.x, camFwd.y, camFwd.z,
-                                                       fabric::simulation::material_ids::SAND, 10.0f);
+                                                       recurse::simulation::material_ids::SAND, 10.0f);
             if (r.success) {
                 interactionCooldown_ = K_INTERACTION_RATE;
                 if (voxelSim_) {
-                    using namespace fabric::simulation;
+                    using namespace recurse::simulation;
                     voxelSim_->activityTracker().notifyBoundaryChange(ChunkPos{r.cx, r.cy, r.cz});
                     for (int i = 0; i < 6; ++i) {
                         ChunkPos neighbor{r.cx + K_FACE_NEIGHBORS[i][0], r.cy + K_FACE_NEIGHBORS[i][1],

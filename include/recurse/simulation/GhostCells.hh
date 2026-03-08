@@ -1,13 +1,13 @@
 #pragma once
-#include "fabric/simulation/ChunkActivityTracker.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include <array>
 #include <unordered_map>
 #include <vector>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 enum class Face : uint8_t {
     PosX = 0,
@@ -39,4 +39,4 @@ class GhostCellManager {
     std::unordered_map<ChunkPos, GhostCellStore, ChunkPosHash> stores_;
 };
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

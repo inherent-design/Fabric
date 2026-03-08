@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <cstring>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 using MaterialId = uint16_t;
 
@@ -52,4 +52,4 @@ struct MaterialDef {
     uint8_t thermalConductivity{0};
 };
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

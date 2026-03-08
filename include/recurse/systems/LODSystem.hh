@@ -3,10 +3,10 @@
 #include "fabric/core/BgfxHandle.hh"
 #include "fabric/core/Camera.hh"
 #include "fabric/core/SystemBase.hh"
-#include "fabric/simulation/SimulationGrid.hh"
 #include "recurse/render/LODGrid.hh"
 #include "recurse/render/LODMeshManager.hh"
 #include "recurse/render/VoxelRenderer.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 
 #include <bgfx/bgfx.h>
 #include <deque>
@@ -39,8 +39,8 @@ class LODSystem : public fabric::System<LODSystem> {
     void setMaxLODLevel(int level) { maxLODLevel_ = level; }
 
     // Dependency injection (called by FabricAppDesc or parent system)
-    void setSimulationGrid(fabric::simulation::SimulationGrid* grid) { simGrid_ = grid; }
-    void setMaterialRegistry(const fabric::simulation::MaterialRegistry* materials);
+    void setSimulationGrid(recurse::simulation::SimulationGrid* grid) { simGrid_ = grid; }
+    void setMaterialRegistry(const recurse::simulation::MaterialRegistry* materials);
 
     // Statistics
     size_t gpuResidentCount() const { return gpuSections_.size(); }
@@ -78,8 +78,8 @@ class LODSystem : public fabric::System<LODSystem> {
     std::unique_ptr<LODMeshManager> meshManager_;
 
     // References to other systems
-    fabric::simulation::SimulationGrid* simGrid_ = nullptr;
-    const fabric::simulation::MaterialRegistry* materials_ = nullptr;
+    recurse::simulation::SimulationGrid* simGrid_ = nullptr;
+    const recurse::simulation::MaterialRegistry* materials_ = nullptr;
 
     // GPU resources
     std::unordered_map<uint64_t, GPUSection> gpuSections_;

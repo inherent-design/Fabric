@@ -1,6 +1,6 @@
 #include "recurse/world/TestWorldGenerator.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <gtest/gtest.h>
 
 // TerrainSystem tests need AppContext infrastructure
@@ -11,7 +11,7 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "recurse/systems/TerrainSystem.hh"
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 using namespace recurse;
 using fabric::K_CHUNK_SIZE;
 

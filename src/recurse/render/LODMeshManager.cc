@@ -1,7 +1,7 @@
 #include "recurse/render/LODMeshManager.hh"
 
 #include "fabric/core/Log.hh"
-#include "fabric/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/world/ChunkDensityCache.hh"
 #include "recurse/world/SnapMCMesher.hh"
 
@@ -9,7 +9,7 @@
 
 namespace recurse {
 
-LODMeshManager::LODMeshManager(LODGrid& grid, const fabric::simulation::MaterialRegistry& materials)
+LODMeshManager::LODMeshManager(LODGrid& grid, const recurse::simulation::MaterialRegistry& materials)
     : grid_(grid), materials_(materials), mesher_(std::make_unique<SnapMCMesher>()) {}
 
 LODMeshManager::~LODMeshManager() = default;

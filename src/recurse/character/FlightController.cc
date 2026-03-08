@@ -1,5 +1,5 @@
 #include "recurse/character/FlightController.hh"
-#include "fabric/simulation/SimulationGrid.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 #include <algorithm>
 #include <cmath>
 
@@ -78,16 +78,16 @@ FlightController::FlightResult FlightController::move(const Vec3f& currentPos, c
     return result;
 }
 
-bool FlightController::isSolid(int vx, int vy, int vz, const fabric::simulation::SimulationGrid& grid) const {
+bool FlightController::isSolid(int vx, int vy, int vz, const recurse::simulation::SimulationGrid& grid) const {
     return physics::isSolid(vx, vy, vz, grid);
 }
 
-bool FlightController::aabbOverlapsSolid(const AABB& box, const fabric::simulation::SimulationGrid& grid) const {
+bool FlightController::aabbOverlapsSolid(const AABB& box, const recurse::simulation::SimulationGrid& grid) const {
     return physics::aabbOverlapsSolid(box, grid, K_EPSILON);
 }
 
 FlightController::FlightResult FlightController::move(const Vec3f& currentPos, const Vec3f& displacement,
-                                                      const fabric::simulation::SimulationGrid& grid) {
+                                                      const recurse::simulation::SimulationGrid& grid) {
 
     FlightResult result;
     Vec3f pos = currentPos;

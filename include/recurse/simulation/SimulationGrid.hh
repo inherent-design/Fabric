@@ -1,5 +1,5 @@
 #pragma once
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include <array>
 #include <cstdint>
@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 struct ChunkBufferPair {
     using Buffer = std::array<VoxelCell, K_CHUNK_VOLUME>;
@@ -47,4 +47,4 @@ class SimulationGrid {
     int writeIndex() const;
 };
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

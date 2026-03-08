@@ -1,7 +1,7 @@
 #include "recurse/world/TestWorldGenerator.hh"
 
-#include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 
 namespace recurse {
 
@@ -11,8 +11,8 @@ using fabric::K_CHUNK_SIZE;
 
 FlatWorldGenerator::FlatWorldGenerator(int groundLevel) : groundLevel_(groundLevel) {}
 
-void FlatWorldGenerator::generate(fabric::simulation::SimulationGrid& grid, int cx, int cy, int cz) {
-    using namespace fabric::simulation;
+void FlatWorldGenerator::generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) {
+    using namespace recurse::simulation;
 
     int baseY = cy * K_CHUNK_SIZE;
     int topY = baseY + K_CHUNK_SIZE - 1;
@@ -47,8 +47,8 @@ void FlatWorldGenerator::generate(fabric::simulation::SimulationGrid& grid, int 
 LayeredWorldGenerator::LayeredWorldGenerator(int stoneLevel, int sandDepth)
     : stoneLevel_(stoneLevel), sandDepth_(sandDepth) {}
 
-void LayeredWorldGenerator::generate(fabric::simulation::SimulationGrid& grid, int cx, int cy, int cz) {
-    using namespace fabric::simulation;
+void LayeredWorldGenerator::generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) {
+    using namespace recurse::simulation;
 
     int baseY = cy * K_CHUNK_SIZE;
     int topY = baseY + K_CHUNK_SIZE - 1;

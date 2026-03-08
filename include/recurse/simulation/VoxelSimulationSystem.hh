@@ -1,14 +1,14 @@
 #pragma once
-#include "fabric/simulation/ChunkActivityTracker.hh"
-#include "fabric/simulation/FallingSandSystem.hh"
-#include "fabric/simulation/GhostCells.hh"
-#include "fabric/simulation/MaterialRegistry.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/SimWorkerPool.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/FallingSandSystem.hh"
+#include "recurse/simulation/GhostCells.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/SimWorkerPool.hh"
 #include <cstdint>
 #include <random>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 /// Standalone orchestration loop for voxel simulation.
 /// Owns all simulation subsystems and drives the epoch-based tick cycle:
@@ -45,4 +45,4 @@ class VoxelSimulationSystem {
     SimWorkerPool& workerPool();
 };
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

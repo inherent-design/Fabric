@@ -1,19 +1,19 @@
 #include "recurse/systems/VoxelMeshingSystem.hh"
 
-#include "fabric/simulation/ChunkActivityTracker.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
 #include <gtest/gtest.h>
 
 using fabric::ChunkCoord;
 using fabric::K_CHUNK_SIZE;
-using fabric::simulation::ChunkActivityTracker;
-using fabric::simulation::ChunkState;
-using fabric::simulation::SimulationGrid;
-using fabric::simulation::VoxelCell;
-namespace MaterialIds = fabric::simulation::material_ids;
+using recurse::simulation::ChunkActivityTracker;
+using recurse::simulation::ChunkState;
+using recurse::simulation::SimulationGrid;
+using recurse::simulation::VoxelCell;
+namespace MaterialIds = recurse::simulation::material_ids;
 using recurse::systems::VoxelMeshingSystem;
 
 class VoxelMeshingSystemTest : public ::testing::Test {

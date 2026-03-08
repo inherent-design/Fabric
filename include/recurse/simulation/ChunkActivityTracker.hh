@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 enum class ChunkState : uint8_t {
     Sleeping,
@@ -58,4 +58,4 @@ class ChunkActivityTracker {
     SimPriority computePriority(ChunkPos pos) const;
 };
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

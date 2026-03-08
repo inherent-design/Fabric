@@ -2,8 +2,8 @@
 
 #include "fabric/core/Event.hh"
 #include "fabric/core/Rendering.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 namespace recurse {
@@ -23,9 +23,9 @@ inline void emitVoxelChanged(fabric::EventDispatcher& dispatcher, int cx, int cy
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
 using fabric::EventDispatcher;
-using fabric::simulation::MaterialId;
-using fabric::simulation::SimulationGrid;
-using fabric::simulation::VoxelCell;
+using recurse::simulation::MaterialId;
+using recurse::simulation::SimulationGrid;
+using recurse::simulation::VoxelCell;
 
 struct InteractionResult {
     bool success;
@@ -38,14 +38,15 @@ class VoxelInteraction {
     VoxelInteraction(SimulationGrid& grid, EventDispatcher& dispatcher);
 
     // Place voxel adjacent to hit face
-    InteractionResult createMatter(const VoxelHit& hit, MaterialId materialId = fabric::simulation::material_ids::SAND);
+    InteractionResult createMatter(const VoxelHit& hit,
+                                   MaterialId materialId = recurse::simulation::material_ids::SAND);
 
     // Remove voxel at hit position
     InteractionResult destroyMatter(const VoxelHit& hit);
 
     // Raycast + create in one call
     InteractionResult createMatterAt(float ox, float oy, float oz, float dx, float dy, float dz,
-                                     MaterialId materialId = fabric::simulation::material_ids::SAND,
+                                     MaterialId materialId = recurse::simulation::material_ids::SAND,
                                      float maxDistance = 10.0f);
 
     // Raycast + destroy in one call

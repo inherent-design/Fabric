@@ -8,13 +8,13 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/SceneView.hh"
 #include "fabric/core/SystemRegistry.hh"
-#include "fabric/simulation/ChunkActivityTracker.hh"
-#include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/utils/BVH.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/ai/BehaviorAI.hh"
 #include "recurse/character/MovementFSM.hh"
 #include "recurse/physics/PhysicsWorld.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/systems/AIGameSystem.hh"
 #include "recurse/systems/AudioGameSystem.hh"
 #include "recurse/systems/CameraGameSystem.hh"
@@ -238,19 +238,19 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         auto& grid = voxelSim_->simulationGrid();
 
         for (auto [cx, cy, cz] : grid.allChunks()) {
-            fabric::simulation::ChunkPos pos{cx, cy, cz};
+            recurse::simulation::ChunkPos pos{cx, cy, cz};
             auto state = tracker.getState(pos);
 
             // State-based colors (ABGR format)
             uint32_t color;
             switch (state) {
-                case fabric::simulation::ChunkState::Sleeping:
+                case recurse::simulation::ChunkState::Sleeping:
                     color = 0x80666680; // Semi-transparent gray-blue
                     break;
-                case fabric::simulation::ChunkState::Active:
+                case recurse::simulation::ChunkState::Active:
                     color = 0xcc4de666; // Bright green
                     break;
-                case fabric::simulation::ChunkState::BoundaryDirty:
+                case recurse::simulation::ChunkState::BoundaryDirty:
                     color = 0xb3cc33ff; // Yellow-orange
                     break;
                 default:
@@ -357,7 +357,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             waila.normalZ = hit->nz;
             waila.distance = hit->t;
             auto cell = voxelSim_->simulationGrid().readCell(hit->x, hit->y, hit->z);
-            waila.density = (cell.materialId != fabric::simulation::material_ids::AIR) ? 1.0f : 0.0f;
+            waila.density = (cell.materialId != recurse::simulation::material_ids::AIR) ? 1.0f : 0.0f;
             waila.essenceR = 0.0f;
             waila.essenceG = 0.0f;
             waila.essenceB = 0.0f;

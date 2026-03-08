@@ -32,8 +32,8 @@ class MinecraftWorldGenerator : public WorldGenerator {
   public:
     explicit MinecraftWorldGenerator(const fabric::world::NoiseGenConfig& config) : noiseGen_(config) {}
 
-    void generate(fabric::simulation::SimulationGrid& grid, int cx, int cy, int cz) override {
-        noiseGen_.generate(grid, fabric::simulation::ChunkPos{cx, cy, cz});
+    void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override {
+        noiseGen_.generate(grid, recurse::simulation::ChunkPos{cx, cy, cz});
     }
 
     std::string name() const override { return "MinecraftWorldGenerator"; }

@@ -1,11 +1,11 @@
 #pragma once
-#include "fabric/simulation/ChunkActivityTracker.hh"
-#include "fabric/simulation/GhostCells.hh"
-#include "fabric/simulation/MaterialRegistry.hh"
-#include "fabric/simulation/SimulationGrid.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/GhostCells.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 #include <random>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 class FallingSandSystem {
   public:
@@ -32,4 +32,4 @@ class FallingSandSystem {
                    VoxelCell dstCell, SimulationGrid& grid, ChunkActivityTracker& tracker) const;
 };
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

@@ -5,9 +5,9 @@
 #include "fabric/core/Event.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
-#include "fabric/simulation/VoxelSimulationSystem.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/character/VoxelInteraction.hh"
+#include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/world/WorldGenerator.hh"
 
@@ -21,7 +21,7 @@ VoxelSimulationSystem::~VoxelSimulationSystem() = default;
 void VoxelSimulationSystem::doInit(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     dispatcher_ = &ctx.dispatcher;
-    fabSim_ = std::make_unique<fabric::simulation::VoxelSimulationSystem>();
+    fabSim_ = std::make_unique<recurse::simulation::VoxelSimulationSystem>();
 
     // Defer terrain generation until TerrainSystem has generated the world
     // This allows MainMenuSystem to select world type first
@@ -68,7 +68,7 @@ void VoxelSimulationSystem::generateInitialWorld() {
             for (int cx = -2; cx <= 2; ++cx) {
                 gen.generate(grid, cx, cy, cz);
                 // Mark chunk Active so VoxelMeshingSystem will mesh it
-                tracker.setState(fabric::simulation::ChunkPos{cx, cy, cz}, fabric::simulation::ChunkState::Active);
+                tracker.setState(recurse::simulation::ChunkPos{cx, cy, cz}, recurse::simulation::ChunkState::Active);
                 generatedChunks.emplace_back(cx, cy, cz);
             }
         }
@@ -88,19 +88,19 @@ void VoxelSimulationSystem::generateInitialWorld() {
                     grid.allChunks().size());
 }
 
-fabric::simulation::SimulationGrid& VoxelSimulationSystem::simulationGrid() {
+recurse::simulation::SimulationGrid& VoxelSimulationSystem::simulationGrid() {
     return fabSim_->grid();
 }
 
-const fabric::simulation::SimulationGrid& VoxelSimulationSystem::simulationGrid() const {
+const recurse::simulation::SimulationGrid& VoxelSimulationSystem::simulationGrid() const {
     return fabSim_->grid();
 }
 
-fabric::simulation::ChunkActivityTracker& VoxelSimulationSystem::activityTracker() {
+recurse::simulation::ChunkActivityTracker& VoxelSimulationSystem::activityTracker() {
     return fabSim_->activityTracker();
 }
 
-const fabric::simulation::ChunkActivityTracker& VoxelSimulationSystem::activityTracker() const {
+const recurse::simulation::ChunkActivityTracker& VoxelSimulationSystem::activityTracker() const {
     return fabSim_->activityTracker();
 }
 
@@ -110,8 +110,8 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
     auto& gen = terrain_->worldGenerator();
     gen.generate(fabSim_->grid(), cx, cy, cz);
     fabSim_->grid().advanceEpoch();
-    fabSim_->activityTracker().setState(fabric::simulation::ChunkPos{cx, cy, cz},
-                                        fabric::simulation::ChunkState::Active);
+    fabSim_->activityTracker().setState(recurse::simulation::ChunkPos{cx, cy, cz},
+                                        recurse::simulation::ChunkState::Active);
 
     // Initialize Jolt physics collision for this chunk (always dispatch, even for sentinels)
     if (dispatcher_) {
@@ -126,9 +126,9 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
     // Corner vertices sample across diagonal chunks, so diagonal neighbors must also remesh.
     int notifiedCount = 0;
     for (int d = 0; d < 10; ++d) {
-        fabric::simulation::ChunkPos neighbor{cx + K_FACE_DIAGONAL_NEIGHBORS[d][0],
-                                              cy + K_FACE_DIAGONAL_NEIGHBORS[d][1],
-                                              cz + K_FACE_DIAGONAL_NEIGHBORS[d][2]};
+        recurse::simulation::ChunkPos neighbor{cx + K_FACE_DIAGONAL_NEIGHBORS[d][0],
+                                               cy + K_FACE_DIAGONAL_NEIGHBORS[d][1],
+                                               cz + K_FACE_DIAGONAL_NEIGHBORS[d][2]};
         if (fabSim_->grid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
             fabSim_->activityTracker().notifyBoundaryChange(neighbor);
             ++notifiedCount;
@@ -144,7 +144,7 @@ void VoxelSimulationSystem::removeChunk(int cx, int cy, int cz) {
     if (!fabSim_)
         return;
     fabSim_->grid().removeChunk(cx, cy, cz);
-    fabSim_->activityTracker().remove(fabric::simulation::ChunkPos{cx, cy, cz});
+    fabSim_->activityTracker().remove(recurse::simulation::ChunkPos{cx, cy, cz});
 }
 
 void VoxelSimulationSystem::resetWorld() {

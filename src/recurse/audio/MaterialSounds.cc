@@ -1,7 +1,7 @@
 #include "recurse/audio/MaterialSounds.hh"
 
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 #include <algorithm>
@@ -96,14 +96,14 @@ std::string MaterialSounds::getImpactSound(MaterialType type) {
     return pickSound(it->second.impactSounds, type, lastImpact_);
 }
 
-MaterialType MaterialSounds::detectSurfaceBelow(const fabric::simulation::SimulationGrid& grid, float x, float y,
+MaterialType MaterialSounds::detectSurfaceBelow(const recurse::simulation::SimulationGrid& grid, float x, float y,
                                                 float z) {
     auto hit = castRay(grid, x, y, z, 0.0f, -1.0f, 0.0f, 2.0f);
     if (!hit.has_value())
         return MaterialType::Default;
 
     auto cell = grid.readCell(hit->x, hit->y, hit->z);
-    using namespace fabric::simulation;
+    using namespace recurse::simulation;
     switch (cell.materialId) {
         case material_ids::STONE:
             return MaterialType::Stone;

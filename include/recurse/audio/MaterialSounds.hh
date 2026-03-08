@@ -8,9 +8,9 @@
 #include <unordered_map>
 #include <vector>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 class SimulationGrid;
-} // namespace fabric::simulation
+} // namespace recurse::simulation
 
 namespace recurse {
 
@@ -49,7 +49,7 @@ class MaterialSounds {
     std::string getFootstepSound(MaterialType type);
     std::string getImpactSound(MaterialType type);
 
-    MaterialType detectSurfaceBelow(const fabric::simulation::SimulationGrid& grid, float x, float y, float z);
+    MaterialType detectSurfaceBelow(const recurse::simulation::SimulationGrid& grid, float x, float y, float z);
 
   private:
     std::string pickSound(const std::vector<std::string>& sounds, MaterialType type,

@@ -8,11 +8,11 @@ namespace fabric {
 class EventDispatcher;
 }
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 class ChunkActivityTracker;
 class SimulationGrid;
 class VoxelSimulationSystem;
-} // namespace fabric::simulation
+} // namespace recurse::simulation
 
 namespace recurse::systems {
 
@@ -31,10 +31,10 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     void configureDependencies() override;
 
     /// Read-only access for VoxelMeshingSystem and ChunkPipelineSystem
-    fabric::simulation::SimulationGrid& simulationGrid();
-    const fabric::simulation::SimulationGrid& simulationGrid() const;
-    fabric::simulation::ChunkActivityTracker& activityTracker();
-    const fabric::simulation::ChunkActivityTracker& activityTracker() const;
+    recurse::simulation::SimulationGrid& simulationGrid();
+    const recurse::simulation::SimulationGrid& simulationGrid() const;
+    recurse::simulation::ChunkActivityTracker& activityTracker();
+    const recurse::simulation::ChunkActivityTracker& activityTracker() const;
 
     /// Generate terrain for a single chunk into the simulation grid.
     /// Called by ChunkPipelineSystem during streaming load.
@@ -58,7 +58,7 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
   private:
     TerrainSystem* terrain_ = nullptr;
     fabric::EventDispatcher* dispatcher_ = nullptr;
-    std::unique_ptr<fabric::simulation::VoxelSimulationSystem> fabSim_;
+    std::unique_ptr<recurse::simulation::VoxelSimulationSystem> fabSim_;
     size_t lastActiveCount_ = 0;
 };
 

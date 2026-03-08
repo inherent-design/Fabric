@@ -1,7 +1,7 @@
-#include "fabric/simulation/ChunkActivityTracker.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/systems/VoxelMeshingSystem.hh"
 #include "recurse/world/ChunkDensityCache.hh"
 #include "recurse/world/SnapMCMesher.hh"
@@ -11,12 +11,12 @@
 
 using fabric::ChunkCoord;
 using fabric::K_CHUNK_SIZE;
-using fabric::simulation::ChunkActivityTracker;
-using fabric::simulation::ChunkPos;
-using fabric::simulation::ChunkState;
-using fabric::simulation::SimulationGrid;
-using fabric::simulation::VoxelCell;
-namespace MaterialIds = fabric::simulation::material_ids;
+using recurse::simulation::ChunkActivityTracker;
+using recurse::simulation::ChunkPos;
+using recurse::simulation::ChunkState;
+using recurse::simulation::SimulationGrid;
+using recurse::simulation::VoxelCell;
+namespace MaterialIds = recurse::simulation::material_ids;
 using recurse::systems::VoxelMeshingSystem;
 
 // =============================================================================
@@ -27,7 +27,7 @@ class SimulationGridCrossChunkTest : public ::testing::Test {
   protected:
     SimulationGrid grid;
 
-    void fillChunkWithSolid(int cx, int cy, int cz, uint16_t materialId = fabric::simulation::material_ids::STONE) {
+    void fillChunkWithSolid(int cx, int cy, int cz, uint16_t materialId = recurse::simulation::material_ids::STONE) {
         VoxelCell cell{materialId, 0, 0};
         grid.fillChunk(cx, cy, cz, cell);
     }
@@ -36,26 +36,26 @@ class SimulationGridCrossChunkTest : public ::testing::Test {
 TEST_F(SimulationGridCrossChunkTest, ReadCellReturnsAirForMissingChunk) {
     // Reading from a chunk that was never added should return air
     VoxelCell cell = grid.readCell(0, 0, 0);
-    EXPECT_EQ(cell.materialId, fabric::simulation::material_ids::AIR);
+    EXPECT_EQ(cell.materialId, recurse::simulation::material_ids::AIR);
 }
 
 TEST_F(SimulationGridCrossChunkTest, ReadCellReturnsCorrectValueForExistingChunk) {
-    fillChunkWithSolid(0, 0, 0, fabric::simulation::material_ids::STONE);
+    fillChunkWithSolid(0, 0, 0, recurse::simulation::material_ids::STONE);
 
     VoxelCell cell = grid.readCell(0, 0, 0);
-    EXPECT_EQ(cell.materialId, fabric::simulation::material_ids::STONE);
+    EXPECT_EQ(cell.materialId, recurse::simulation::material_ids::STONE);
 }
 
 TEST_F(SimulationGridCrossChunkTest, ReadCellCrossesChunkBoundary) {
     // Fill chunk (0,0,0) with stone
-    fillChunkWithSolid(0, 0, 0, fabric::simulation::material_ids::STONE);
+    fillChunkWithSolid(0, 0, 0, recurse::simulation::material_ids::STONE);
 
     // Reading at local position (31,0,0) in chunk (0,0,0)
     // This is one voxel away from chunk (1,0,0)
-    EXPECT_EQ(grid.readCell(31, 0, 0).materialId, fabric::simulation::material_ids::STONE);
+    EXPECT_EQ(grid.readCell(31, 0, 0).materialId, recurse::simulation::material_ids::STONE);
 
     // Reading at (32,0,0) is in chunk (1,0,0) which doesn't exist -> should return air
-    EXPECT_EQ(grid.readCell(32, 0, 0).materialId, fabric::simulation::material_ids::AIR);
+    EXPECT_EQ(grid.readCell(32, 0, 0).materialId, recurse::simulation::material_ids::AIR);
 }
 
 TEST_F(SimulationGridCrossChunkTest, HasChunkReturnsCorrectStatus) {
@@ -74,8 +74,8 @@ TEST_F(SimulationGridCrossChunkTest, AdjacentChunkCoordinates) {
     fillChunkWithSolid(1, 0, 0);
 
     // Local 31 in chunk 0, local 0 in chunk 1
-    EXPECT_EQ(grid.readCell(31, 0, 0).materialId, fabric::simulation::material_ids::STONE);
-    EXPECT_EQ(grid.readCell(32, 0, 0).materialId, fabric::simulation::material_ids::STONE);
+    EXPECT_EQ(grid.readCell(31, 0, 0).materialId, recurse::simulation::material_ids::STONE);
+    EXPECT_EQ(grid.readCell(32, 0, 0).materialId, recurse::simulation::material_ids::STONE);
 }
 
 // =============================================================================
@@ -96,7 +96,7 @@ class CrossChunkMeshBoundaryTest : public ::testing::Test {
         meshingSystem.setRequireNeighborsForMeshing(false);
     }
 
-    void fillChunkRegion(int cx, int cy, int cz, uint16_t materialId = fabric::simulation::material_ids::STONE) {
+    void fillChunkRegion(int cx, int cy, int cz, uint16_t materialId = recurse::simulation::material_ids::STONE) {
         VoxelCell cell{materialId, 0, 0};
         simGrid.fillChunk(cx, cy, cz, cell);
     }
@@ -107,7 +107,7 @@ class CrossChunkMeshBoundaryTest : public ::testing::Test {
         int baseY = cy * K_CHUNK_SIZE;
         int baseZ = cz * K_CHUNK_SIZE;
 
-        VoxelCell solid{fabric::simulation::material_ids::STONE, 0, 0};
+        VoxelCell solid{recurse::simulation::material_ids::STONE, 0, 0};
         for (int z = 0; z < K_CHUNK_SIZE; ++z) {
             for (int y = 0; y < K_CHUNK_SIZE; ++y) {
                 for (int x = 0; x < K_CHUNK_SIZE; ++x) {
@@ -194,7 +194,7 @@ TEST_F(CrossChunkMeshBoundaryTest, MeshBoundaryDiffersWithAndWithoutNeighbor) {
     systemA.setRequireNeighborsForMeshing(false); // Mesh without full neighbor set
     trackerA.setReferencePoint(0, 0, 0);
 
-    VoxelCell solid{fabric::simulation::material_ids::STONE, 0, 0};
+    VoxelCell solid{recurse::simulation::material_ids::STONE, 0, 0};
     for (int z = 0; z < K_CHUNK_SIZE; ++z) {
         for (int y = 0; y < K_CHUNK_SIZE; ++y) {
             for (int x = 0; x < K_CHUNK_SIZE; ++x) {
@@ -399,7 +399,7 @@ class ChunkLoadingSequenceTest : public ::testing::Test {
         int baseY = cy * K_CHUNK_SIZE;
         int baseZ = cz * K_CHUNK_SIZE;
 
-        VoxelCell solid{fabric::simulation::material_ids::STONE, 0, 0};
+        VoxelCell solid{recurse::simulation::material_ids::STONE, 0, 0};
         for (int z = 0; z < K_CHUNK_SIZE; ++z) {
             for (int y = 0; y < K_CHUNK_SIZE; ++y) {
                 for (int x = 0; x < K_CHUNK_SIZE; ++x) {
@@ -486,7 +486,7 @@ TEST_F(ChunkLoadingSequenceTest, AllSixNeighborsAffectMesh) {
         testTracker.setReferencePoint(0, 0, 0);
 
         // Fill center chunk
-        VoxelCell solid{fabric::simulation::material_ids::STONE, 0, 0};
+        VoxelCell solid{recurse::simulation::material_ids::STONE, 0, 0};
         for (int z = 0; z < K_CHUNK_SIZE; ++z) {
             for (int y = 0; y < K_CHUNK_SIZE; ++y) {
                 for (int x = 0; x < K_CHUNK_SIZE; ++x) {

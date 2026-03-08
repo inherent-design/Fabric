@@ -5,9 +5,9 @@
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 class SimulationGrid;
-} // namespace fabric::simulation
+} // namespace recurse::simulation
 
 namespace recurse {
 
@@ -58,9 +58,9 @@ class CameraController {
                 float densityThreshold = 0.5f);
 
     void update(const Vector3<float, Space::World>& targetPos, float dt,
-                const fabric::simulation::SimulationGrid* grid);
+                const recurse::simulation::SimulationGrid* grid);
     void update(const Vector3<double, Space::World>& targetPos, float dt,
-                const fabric::simulation::SimulationGrid* grid);
+                const recurse::simulation::SimulationGrid* grid);
 
     const Vector3<double, Space::World>& positionD() const;
 

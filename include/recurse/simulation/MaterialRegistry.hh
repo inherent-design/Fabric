@@ -1,9 +1,9 @@
 #pragma once
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <array>
 #include <cassert>
 
-namespace fabric::simulation {
+namespace recurse::simulation {
 
 /// Lookup table from MaterialId to MaterialDef. Fixed-size, no heap allocation.
 class MaterialRegistry {
@@ -21,4 +21,4 @@ class MaterialRegistry {
     std::array<MaterialDef, material_ids::COUNT> materials_{};
 };
 
-} // namespace fabric::simulation
+} // namespace recurse::simulation

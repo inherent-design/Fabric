@@ -1,6 +1,6 @@
 #include "recurse/world/VoxelRaycast.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <gtest/gtest.h>
 
 using namespace recurse;
@@ -84,7 +84,7 @@ TEST_F(VoxelRaycastTest, RayOriginInsideSolid) {
 
 // --- SimulationGrid overload tests ---
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 
 class VoxelRaycastSimGridTest : public ::testing::Test {
   protected:

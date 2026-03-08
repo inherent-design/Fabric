@@ -1,8 +1,8 @@
-#include "fabric/simulation/VoxelSimulationSystem.hh"
-#include "fabric/simulation/ChunkActivityTracker.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/AssetRegistry.hh"
@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace fabric::simulation;
+using namespace recurse::simulation;
 using fabric::K_CHUNK_SIZE;
 
 class VoxelSimulationSystemTest : public ::testing::Test {

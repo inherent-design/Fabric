@@ -1,7 +1,7 @@
 #include "recurse/audio/AudioSystem.hh"
-#include "fabric/simulation/SimulationGrid.hh"
-#include "fabric/simulation/VoxelMaterial.hh"
 #include "recurse/audio/ReverbZone.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
 #include <gtest/gtest.h>
 
@@ -193,12 +193,12 @@ TEST_F(AudioSystemTest, EnableDisableOcclusion) {
 }
 
 TEST_F(AudioSystemTest, SetSimulationGrid) {
-    fabric::simulation::SimulationGrid grid;
+    recurse::simulation::SimulationGrid grid;
     audio.setSimulationGrid(&grid);
 }
 
 TEST_F(AudioSystemTest, ComputeOcclusionClearPath) {
-    fabric::simulation::SimulationGrid grid;
+    recurse::simulation::SimulationGrid grid;
     audio.setSimulationGrid(&grid);
     Vec3f source(2.0f, 5.0f, 5.0f);
     Vec3f listener(8.0f, 5.0f, 5.0f);
@@ -208,7 +208,7 @@ TEST_F(AudioSystemTest, ComputeOcclusionClearPath) {
 }
 
 TEST_F(AudioSystemTest, ComputeOcclusionBlockedPath) {
-    using namespace fabric::simulation;
+    using namespace recurse::simulation;
     SimulationGrid grid;
     for (int y = 0; y < 10; ++y)
         for (int z = 0; z < 10; ++z)
@@ -222,7 +222,7 @@ TEST_F(AudioSystemTest, ComputeOcclusionBlockedPath) {
 }
 
 TEST_F(AudioSystemTest, ComputeOcclusionFullyBlocked) {
-    using namespace fabric::simulation;
+    using namespace recurse::simulation;
     SimulationGrid grid;
     for (int x = 2; x <= 9; ++x)
         for (int y = 0; y < 10; ++y)
@@ -247,7 +247,7 @@ TEST_F(AudioSystemTest, ComputeOcclusionNoGrid) {
 
 TEST_F(AudioSystemTest, OcclusionWithSolidVoxels) {
     // SimulationGrid uses materialId != AIR for solid; no threshold concept
-    using namespace fabric::simulation;
+    using namespace recurse::simulation;
     SimulationGrid grid;
     for (int y = 0; y < 10; ++y)
         for (int z = 0; z < 10; ++z)
@@ -261,7 +261,7 @@ TEST_F(AudioSystemTest, OcclusionWithSolidVoxels) {
 }
 
 TEST_F(AudioSystemTest, UpdateAppliesOcclusion) {
-    using namespace fabric::simulation;
+    using namespace recurse::simulation;
     SimulationGrid grid;
     for (int y = 0; y < 10; ++y)
         for (int z = 0; z < 10; ++z)

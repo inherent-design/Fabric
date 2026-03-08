@@ -10,7 +10,7 @@ class FlatWorldGenerator : public WorldGenerator {
   public:
     explicit FlatWorldGenerator(int groundLevel = 32);
 
-    void generate(fabric::simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
+    void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
     std::string name() const override { return "FlatWorldGenerator"; }
 
   private:
@@ -23,7 +23,7 @@ class LayeredWorldGenerator : public WorldGenerator {
   public:
     LayeredWorldGenerator(int stoneLevel = 28, int sandDepth = 4);
 
-    void generate(fabric::simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
+    void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
     std::string name() const override { return "LayeredWorldGenerator"; }
 
   private:
