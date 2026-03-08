@@ -11,7 +11,8 @@
 
 namespace fabric {
 class AppModeManager;
-}
+class SystemRegistry;
+} // namespace fabric
 
 namespace recurse::simulation {
 class SimulationGrid;
@@ -104,6 +105,10 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     // Reset all world state (meshes, physics, simulation, terrain)
     void resetWorldState();
 
+    // Enable/disable all 16 world-dependent systems via SystemRegistry.
+    // Called at init (disable), world creation (enable), world destruction (disable).
+    void setWorldSystemsEnabled(bool enabled);
+
     // Members
     Rml::Context* rmlContext_ = nullptr;
     Rml::ElementDocument* currentDocument_ = nullptr;
@@ -121,6 +126,7 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     CharacterMovementSystem* characterMovement_ = nullptr;
     PhysicsGameSystem* physics_ = nullptr;
     fabric::AppModeManager* appModeManager_ = nullptr;
+    fabric::SystemRegistry* registry_ = nullptr;
 
     // Data model bindings
     std::string titleText_ = "RECURSE";

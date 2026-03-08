@@ -7,10 +7,21 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/world/MinecraftNoiseGenerator.hh"
+#include "recurse/systems/AIGameSystem.hh"
+#include "recurse/systems/AudioGameSystem.hh"
+#include "recurse/systems/CameraGameSystem.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
+#include "recurse/systems/ChunkPipelineSystem.hh"
+#include "recurse/systems/LODSystem.hh"
+#include "recurse/systems/OITRenderSystem.hh"
+#include "recurse/systems/ParticleGameSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
+#include "recurse/systems/SaveGameSystem.hh"
+#include "recurse/systems/ShadowRenderSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
+#include "recurse/systems/VoxelInteractionSystem.hh"
 #include "recurse/systems/VoxelMeshingSystem.hh"
+#include "recurse/systems/VoxelRenderSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/TestWorldGenerator.hh"
 
@@ -74,6 +85,7 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
     characterMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
     physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
     appModeManager_ = ctx.appModeManager;
+    registry_ = &ctx.systemRegistry;
     rmlContext_ = ctx.rmlContext;
 
     FABRIC_LOG_INFO("MainMenuSystem: rmlContext={}, appModeManager={}", (void*)rmlContext_, (void*)appModeManager_);
@@ -120,7 +132,9 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
                             K_DEFAULT_SPAWN_Z);
         }
 
-        // Transition to Game mode
+        // World is ready; enable world-dependent systems before entering Game mode.
+        setWorldSystemsEnabled(true);
+
         if (appModeManager_) {
             appModeManager_->transition(fabric::AppMode::Game);
         }
@@ -152,6 +166,9 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
     } else {
         transitionTo(MenuState::Splash);
     }
+
+    // No world exists at startup; disable world-dependent systems until world creation.
+    setWorldSystemsEnabled(false);
 
     FABRIC_LOG_INFO("MainMenuSystem initialized");
 }
@@ -185,6 +202,7 @@ void MainMenuSystem::doShutdown() {
     characterMovement_ = nullptr;
     physics_ = nullptr;
     appModeManager_ = nullptr;
+    registry_ = nullptr;
     FABRIC_LOG_INFO("MainMenuSystem shutdown");
 }
 
@@ -470,6 +488,8 @@ void MainMenuSystem::resetWorldState() {
         voxelSim_->resetWorld();
         FABRIC_LOG_DEBUG("MainMenu: Reset voxel simulation");
     }
+
+    setWorldSystemsEnabled(false);
 }
 
 void MainMenuSystem::onExitToDesktopClicked() {
@@ -478,6 +498,31 @@ void MainMenuSystem::onExitToDesktopClicked() {
     SDL_Event quitEvent;
     quitEvent.type = SDL_EVENT_QUIT;
     SDL_PushEvent(&quitEvent);
+}
+
+void MainMenuSystem::setWorldSystemsEnabled(bool enabled) {
+    if (!registry_)
+        return;
+
+    // 16 world-dependent systems. MainMenuSystem and DebugOverlaySystem stay always-enabled.
+    registry_->setEnabled<TerrainSystem>(enabled);
+    registry_->setEnabled<VoxelSimulationSystem>(enabled);
+    registry_->setEnabled<PhysicsGameSystem>(enabled);
+    registry_->setEnabled<CharacterMovementSystem>(enabled);
+    registry_->setEnabled<AIGameSystem>(enabled);
+    registry_->setEnabled<ParticleGameSystem>(enabled);
+    registry_->setEnabled<ChunkPipelineSystem>(enabled);
+    registry_->setEnabled<VoxelInteractionSystem>(enabled);
+    registry_->setEnabled<SaveGameSystem>(enabled);
+    registry_->setEnabled<AudioGameSystem>(enabled);
+    registry_->setEnabled<CameraGameSystem>(enabled);
+    registry_->setEnabled<VoxelMeshingSystem>(enabled);
+    registry_->setEnabled<LODSystem>(enabled);
+    registry_->setEnabled<ShadowRenderSystem>(enabled);
+    registry_->setEnabled<VoxelRenderSystem>(enabled);
+    registry_->setEnabled<OITRenderSystem>(enabled);
+
+    FABRIC_LOG_INFO("World systems {}", enabled ? "enabled" : "disabled");
 }
 
 } // namespace recurse::systems
