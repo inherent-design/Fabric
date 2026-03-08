@@ -75,8 +75,8 @@ void VoxelRenderer::initProgram() {
 
     constexpr float K_LIT_COLOR[4] = {0.85f, 0.85f, 0.85f, 1.0f};    // Neutral white-gray (was warm gold)
     constexpr float K_SHADOW_COLOR[4] = {0.35f, 0.35f, 0.40f, 1.0f}; // Neutral cool-gray (was purple-gray)
-    constexpr float K_RIM_PARAMS[4] = {3.0f, 0.15f, 0.0f, 0.0f};     // Reduced rim strength: 0.6 -> 0.3 -> 0.15
-    constexpr float K_OCEAN_PARAMS[4] = {16.0f, 0.2f, 0.0f, 0.0f};   // Reduced ocean specular: 0.8 -> 0.4 -> 0.2
+    constexpr float K_RIM_PARAMS[4] = {3.0f, 0.0f, 0.0f, 0.0f};      // EXPERIMENT: zeroed to isolate disco bug
+    constexpr float K_OCEAN_PARAMS[4] = {16.0f, 0.0f, 0.0f, 0.0f};   // EXPERIMENT: zeroed to isolate disco bug
 
     std::copy(std::begin(K_LIT_COLOR), std::end(K_LIT_COLOR), litColor_);
     std::copy(std::begin(K_SHADOW_COLOR), std::end(K_SHADOW_COLOR), shadowColor_);
