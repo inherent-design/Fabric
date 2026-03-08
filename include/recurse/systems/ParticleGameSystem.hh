@@ -2,7 +2,7 @@
 
 #include "fabric/core/SystemBase.hh"
 #include "recurse/render/ParticleSystem.hh"
-#include "recurse/ui/DebrisPool.hh"
+#include "recurse/simulation/DebrisPool.hh"
 
 namespace recurse::systems {
 

@@ -1,4 +1,4 @@
-#include "recurse/gameplay/TransitionController.hh"
+#include "recurse/character/TransitionController.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 

@@ -2,7 +2,7 @@
 
 #include "fabric/core/Rendering.hh"
 #include "fabric/world/ChunkedGrid.hh"
-#include "recurse/gameplay/CharacterTypes.hh"
+#include "recurse/character/CharacterTypes.hh"
 
 namespace recurse {
 

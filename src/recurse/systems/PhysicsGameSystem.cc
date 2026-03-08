@@ -7,7 +7,7 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/utils/Profiler.hh"
-#include "recurse/gameplay/VoxelInteraction.hh"
+#include "recurse/character/VoxelInteraction.hh"
 
 namespace recurse::systems {
 

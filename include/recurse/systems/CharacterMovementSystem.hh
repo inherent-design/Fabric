@@ -2,9 +2,9 @@
 
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/SystemBase.hh"
-#include "recurse/gameplay/CharacterTypes.hh"
-#include "recurse/gameplay/GameConstants.hh"
-#include "recurse/gameplay/MovementFSM.hh"
+#include "recurse/character/CharacterTypes.hh"
+#include "recurse/character/GameConstants.hh"
+#include "recurse/character/MovementFSM.hh"
 #include <memory>
 
 namespace recurse {

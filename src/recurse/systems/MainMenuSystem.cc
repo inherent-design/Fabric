@@ -1,5 +1,5 @@
 #include "recurse/systems/MainMenuSystem.hh"
-#include "recurse/gameplay/GameConstants.hh"
+#include "recurse/character/GameConstants.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/AppModeManager.hh"

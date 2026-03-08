@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "fabric/core/FabricAppDesc.hh"
+#include "fabric/platform/FabricAppDesc.hh"
 #include "fabric/utils/ErrorHandling.hh"
 
 namespace fabric {

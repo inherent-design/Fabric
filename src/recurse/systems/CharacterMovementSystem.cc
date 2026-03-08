@@ -10,8 +10,8 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/utils/Profiler.hh"
-#include "recurse/gameplay/CameraController.hh"
-#include "recurse/gameplay/FlightController.hh"
+#include "recurse/character/CameraController.hh"
+#include "recurse/character/FlightController.hh"
 #include "recurse/physics/JoltCharacterController.hh"
 
 #include <cmath>

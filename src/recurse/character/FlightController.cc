@@ -1,4 +1,4 @@
-#include "recurse/gameplay/FlightController.hh"
+#include "recurse/character/FlightController.hh"
 #include "fabric/simulation/SimulationGrid.hh"
 #include <algorithm>
 #include <cmath>

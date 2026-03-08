@@ -1,5 +1,5 @@
 #include "recurse/systems/ChunkPipelineSystem.hh"
-#include "recurse/gameplay/GameConstants.hh"
+#include "recurse/character/GameConstants.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"

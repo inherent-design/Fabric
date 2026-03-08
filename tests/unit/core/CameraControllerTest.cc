@@ -1,4 +1,4 @@
-#include "recurse/gameplay/CameraController.hh"
+#include "recurse/character/CameraController.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 #include <numbers>

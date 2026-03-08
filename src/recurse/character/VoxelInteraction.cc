@@ -1,4 +1,4 @@
-#include "recurse/gameplay/VoxelInteraction.hh"
+#include "recurse/character/VoxelInteraction.hh"
 
 using fabric::K_CHUNK_SHIFT;
 

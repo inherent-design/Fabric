@@ -1,4 +1,4 @@
-#include "fabric/core/FabricApp.hh"
+#include "fabric/platform/FabricApp.hh"
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/AppModeManager.hh"
 #include "fabric/core/AssetRegistry.hh"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/core/FabricAppDesc.hh"
+#include "fabric/platform/FabricAppDesc.hh"
 
 namespace fabric {
 

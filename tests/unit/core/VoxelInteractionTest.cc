@@ -1,4 +1,4 @@
-#include "recurse/gameplay/VoxelInteraction.hh"
+#include "recurse/character/VoxelInteraction.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fabric/core/StateMachine.hh"
-#include "recurse/gameplay/CharacterTypes.hh"
+#include "recurse/character/CharacterTypes.hh"
 #include <memory>
 #include <string>
 

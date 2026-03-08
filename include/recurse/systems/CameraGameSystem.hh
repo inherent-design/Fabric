@@ -2,7 +2,7 @@
 
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/SystemBase.hh"
-#include "recurse/gameplay/CameraController.hh"
+#include "recurse/character/CameraController.hh"
 
 #include <memory>
 

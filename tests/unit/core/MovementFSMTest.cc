@@ -1,4 +1,4 @@
-#include "recurse/gameplay/MovementFSM.hh"
+#include "recurse/character/MovementFSM.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;

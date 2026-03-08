@@ -1,4 +1,4 @@
-#include "recurse/gameplay/MeleeSystem.hh"
+#include "recurse/character/MeleeSystem.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;

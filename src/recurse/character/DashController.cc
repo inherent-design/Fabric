@@ -1,4 +1,4 @@
-#include "recurse/gameplay/DashController.hh"
+#include "recurse/character/DashController.hh"
 #include <algorithm>
 
 using namespace fabric;

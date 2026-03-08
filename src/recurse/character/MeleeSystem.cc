@@ -1,4 +1,4 @@
-#include "recurse/gameplay/MeleeSystem.hh"
+#include "recurse/character/MeleeSystem.hh"
 
 #include <algorithm>
 #include <cmath>

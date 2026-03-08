@@ -1,4 +1,4 @@
-#include "recurse/ui/DebrisPool.hh"
+#include "recurse/simulation/DebrisPool.hh"
 
 #include <gtest/gtest.h>
 

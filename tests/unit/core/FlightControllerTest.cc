@@ -1,4 +1,4 @@
-#include "recurse/gameplay/FlightController.hh"
+#include "recurse/character/FlightController.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 

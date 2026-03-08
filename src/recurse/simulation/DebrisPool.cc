@@ -1,4 +1,4 @@
-#include "recurse/ui/DebrisPool.hh"
+#include "recurse/simulation/DebrisPool.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/utils/Profiler.hh"
 

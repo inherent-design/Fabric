@@ -13,7 +13,7 @@
 #include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/utils/Profiler.hh"
-#include "recurse/gameplay/VoxelInteraction.hh"
+#include "recurse/character/VoxelInteraction.hh"
 
 namespace recurse::systems {
 

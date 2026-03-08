@@ -7,7 +7,7 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/simulation/VoxelSimulationSystem.hh"
 #include "fabric/utils/Profiler.hh"
-#include "recurse/gameplay/VoxelInteraction.hh"
+#include "recurse/character/VoxelInteraction.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/world/WorldGenerator.hh"
 

@@ -13,7 +13,7 @@
 #include "fabric/utils/BVH.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/ai/BehaviorAI.hh"
-#include "recurse/gameplay/MovementFSM.hh"
+#include "recurse/character/MovementFSM.hh"
 #include "recurse/physics/PhysicsWorld.hh"
 #include "recurse/systems/AIGameSystem.hh"
 #include "recurse/systems/AudioGameSystem.hh"

@@ -1,4 +1,4 @@
-#include "recurse/gameplay/CharacterController.hh"
+#include "recurse/character/CharacterController.hh"
 #include "fabric/core/Log.hh"
 #include <algorithm>
 #include <cmath>

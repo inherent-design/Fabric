@@ -7,8 +7,6 @@
 #include "fabric/core/AppModeManager.hh"
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Event.hh"
-#include "fabric/core/FabricApp.hh"
-#include "fabric/core/FabricAppDesc.hh"
 #include "fabric/core/InputManager.hh"
 #include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
@@ -16,13 +14,15 @@
 #include "fabric/core/SystemPhase.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/core/Temporal.hh"
+#include "fabric/platform/FabricApp.hh"
+#include "fabric/platform/FabricAppDesc.hh"
 
 // Complete type headers required by registerSystem<T>() factory instantiation.
 // System headers forward-declare types held in unique_ptr; the factory lambda
 // needs their destructors visible at template instantiation time.
-#include "recurse/gameplay/CharacterController.hh"
-#include "recurse/gameplay/FlightController.hh"
-#include "recurse/gameplay/VoxelInteraction.hh"
+#include "recurse/character/CharacterController.hh"
+#include "recurse/character/FlightController.hh"
+#include "recurse/character/VoxelInteraction.hh"
 #include "recurse/persistence/SaveManager.hh"
 // System includes
 #include "recurse/systems/AIGameSystem.hh"

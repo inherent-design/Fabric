@@ -1,4 +1,4 @@
-#include "recurse/gameplay/CameraController.hh"
+#include "recurse/character/CameraController.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/simulation/SimulationGrid.hh"
 

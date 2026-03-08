@@ -160,7 +160,7 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/InputContext.cc
     src/core/InputSystem.cc
     src/core/AssetRegistry.cc
-    src/core/FabricApp.cc
+    src/fabric/platform/FabricApp.cc
     src/core/FileWatcher.cc
     src/core/FilteredConsoleSink.cc
     src/core/PostProcess.cc
@@ -180,15 +180,15 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/world/LSystemVegetation.cc
     src/recurse/world/WFCGenerator.cc
     src/recurse/world/StructuralIntegrity.cc
-    # gameplay/
-    src/recurse/gameplay/CharacterController.cc
-    src/recurse/gameplay/FlightController.cc
-    src/recurse/gameplay/MovementFSM.cc
-    src/recurse/gameplay/TransitionController.cc
-    src/recurse/gameplay/DashController.cc
-    src/recurse/gameplay/CameraController.cc
-    src/recurse/gameplay/VoxelInteraction.cc
-    src/recurse/gameplay/MeleeSystem.cc
+    # character/
+    src/recurse/character/CharacterController.cc
+    src/recurse/character/FlightController.cc
+    src/recurse/character/MovementFSM.cc
+    src/recurse/character/TransitionController.cc
+    src/recurse/character/DashController.cc
+    src/recurse/character/CameraController.cc
+    src/recurse/character/VoxelInteraction.cc
+    src/recurse/character/MeleeSystem.cc
     # physics/
     src/recurse/physics/PhysicsWorld.cc
     src/recurse/physics/JoltCharacterController.cc
@@ -227,7 +227,7 @@ set(RECURSE_GAME_SOURCE_FILES
     # ui/
     src/recurse/ui/ContentBrowser.cc
     src/recurse/ui/DevConsole.cc
-    src/recurse/ui/DebrisPool.cc
+    src/recurse/simulation/DebrisPool.cc
 
     # components/
     src/recurse/components/EssenceTypes.cc
