@@ -82,6 +82,12 @@ VoxelCell GhostCellManager::readGhost(ChunkPos pos, int lx, int ly, int lz) cons
     if (it == stores_.end())
         return VoxelCell{};
 
+    // Ghost cells store face-adjacent data only (one axis out of bounds).
+    // Diagonal/corner access (2+ axes OOB) has no ghost data; return air.
+    int oob = (lx < 0 || lx >= K_CHUNK_SIZE) + (ly < 0 || ly >= K_CHUNK_SIZE) + (lz < 0 || lz >= K_CHUNK_SIZE);
+    if (oob != 1)
+        return VoxelCell{};
+
     const auto& store = it->second;
 
     if (lx == -1)

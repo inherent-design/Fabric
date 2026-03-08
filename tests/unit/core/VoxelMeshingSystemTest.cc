@@ -45,7 +45,9 @@ TEST_F(VoxelMeshingSystemTest, SystemLifecycle_InitRenderShutdown) {
 TEST_F(VoxelMeshingSystemTest, DirtyChunkConsumed) {
     ChunkCoord coord{0, 0, 0};
     fillChunkSolid(coord);
-    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::Active);
+    // BoundaryDirty: meshing should process and then sleep the chunk.
+    // Active chunks are NOT slept by meshing (FallingSandSystem owns that).
+    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::BoundaryDirty);
 
     system.processFrame();
 
@@ -62,12 +64,13 @@ TEST_F(VoxelMeshingSystemTest, BudgetLimitsChunksPerFrame) {
     for (int i = 0; i < 10; ++i) {
         ChunkCoord coord{i, 0, 0};
         fillChunkSolid(coord);
-        tracker.setState({coord.x, coord.y, coord.z}, ChunkState::Active);
+        tracker.setState({coord.x, coord.y, coord.z}, ChunkState::BoundaryDirty);
     }
 
     system.processFrame();
 
     EXPECT_EQ(system.gpuMeshes().size(), 3u);
+    // 3 meshed chunks slept (BoundaryDirty -> Sleeping), 7 remain
     EXPECT_EQ(tracker.collectActiveChunks().size(), 7u);
 }
 
@@ -96,7 +99,7 @@ TEST_F(VoxelMeshingSystemTest, PriorityOrdering) {
 
 TEST_F(VoxelMeshingSystemTest, EmptyChunkNoMesh) {
     ChunkCoord coord{0, 0, 0};
-    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::Active);
+    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::BoundaryDirty);
 
     system.processFrame();
 

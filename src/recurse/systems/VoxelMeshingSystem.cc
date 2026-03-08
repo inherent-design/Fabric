@@ -143,7 +143,11 @@ void VoxelMeshingSystem::processFrame() {
         if (wasAlreadyMeshed) {
             FABRIC_LOG_DEBUG("Remeshed chunk ({},{},{}) - likely neighbor notification", coord.x, coord.y, coord.z);
         }
-        activityTracker_->putToSleep(entry.pos);
+        // Only sleep BoundaryDirty chunks (remesh-only). Active chunks need
+        // simulation processing; FallingSandSystem will sleep them when settled.
+        if (activityTracker_->getState(entry.pos) != recurse::simulation::ChunkState::Active) {
+            activityTracker_->putToSleep(entry.pos);
+        }
     }
 
     // Log GPU mesh statistics
