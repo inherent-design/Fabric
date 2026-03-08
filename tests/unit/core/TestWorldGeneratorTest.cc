@@ -1,7 +1,6 @@
 #include "recurse/world/TestWorldGenerator.hh"
 #include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/simulation/VoxelMaterial.hh"
-#include "recurse/world/ChunkedGrid.hh"
 #include <gtest/gtest.h>
 
 // TerrainSystem tests need AppContext infrastructure
@@ -117,8 +116,7 @@ TEST(TestWorldGenerator, TerrainSystem_InitCreatesGrid) {
 
     auto* terrain = sysReg.get<recurse::systems::TerrainSystem>();
     ASSERT_NE(terrain, nullptr);
-    // After init, simulationGrid and worldGenerator should be valid
-    EXPECT_NO_THROW(terrain->simulationGrid());
+    // After init, worldGenerator should be valid
     EXPECT_NO_THROW(terrain->worldGenerator());
     EXPECT_EQ(terrain->worldGenerator().name(), "FlatWorldGenerator");
 

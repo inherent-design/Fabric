@@ -107,12 +107,8 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
         }
 
         // Generate the world in VoxelSimulationSystem
-        // This also syncs to TerrainSystem's density grid and dispatches physics events
         if (voxelSim_) {
             voxelSim_->generateInitialWorld();
-        } else {
-            // Fallback: generate directly in TerrainSystem if no VoxelSimulationSystem
-            terrain_->generateInitialWorld();
         }
 
         // Reset player position to spawn point (above generated terrain)
@@ -461,7 +457,7 @@ void MainMenuSystem::onQuitToTitleClicked() {
 
 void MainMenuSystem::resetWorldState() {
     // Reset all world state before returning to title screen
-    // Order: meshes -> physics -> simulation -> terrain
+    // Order: meshes -> physics -> simulation
     if (voxelMesh_) {
         voxelMesh_->clearAllMeshes();
         FABRIC_LOG_DEBUG("MainMenu: Cleared GPU meshes");
@@ -473,10 +469,6 @@ void MainMenuSystem::resetWorldState() {
     if (voxelSim_) {
         voxelSim_->resetWorld();
         FABRIC_LOG_DEBUG("MainMenu: Reset voxel simulation");
-    }
-    if (terrain_) {
-        terrain_->resetWorld();
-        FABRIC_LOG_DEBUG("MainMenu: Reset terrain");
     }
 }
 

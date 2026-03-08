@@ -26,56 +26,26 @@ void SaveGameSystem::doInit(fabric::AppContext& ctx) {
 
     saveManager_ = std::make_unique<SaveManager>("saves");
 
-    auto& ecsWorld = ctx.world;
-    auto& timeline = ctx.timeline;
-
     // F5 = quicksave
-    ctx.inputRouter->registerKeyCallback(SDLK_F5, [this, &ecsWorld, &timeline]() {
-        SceneSerializer qsSerializer;
-        auto& pos = charMovement_->playerPosition();
-        auto& vel = charMovement_->playerVelocity();
-        if (saveManager_->save("quicksave", qsSerializer, ecsWorld, terrain_->density(), terrain_->essence(), timeline,
-                               std::optional<fabric::Position>(fabric::Position{pos.x, pos.y, pos.z}),
-                               std::optional<fabric::Position>(fabric::Position{vel.x, vel.y, vel.z}))) {
-            toastManager_.show("Quick save complete", 2.0f);
-            FABRIC_LOG_INFO("Quick save complete");
-        } else {
-            toastManager_.show("Quick save failed", 3.0f);
-            FABRIC_LOG_ERROR("Quick save failed");
-        }
+    ctx.inputRouter->registerKeyCallback(SDLK_F5, [this]() {
+        // TODO: rewrite for SimulationGrid-based serialization
+        toastManager_.show("Save disabled (pending rewrite)", 2.0f);
+        FABRIC_LOG_WARN("SaveGameSystem: save disabled, pending SimulationGrid serialization rewrite");
     });
 
     // F9 = quickload
-    ctx.inputRouter->registerKeyCallback(SDLK_F9, [this, &ecsWorld, &timeline]() {
-        SceneSerializer qlSerializer;
-        std::optional<fabric::Position> loadedPos;
-        std::optional<fabric::Position> loadedVel;
-        if (saveManager_->load("quicksave", qlSerializer, ecsWorld, terrain_->density(), terrain_->essence(), timeline,
-                               loadedPos, loadedVel)) {
-            if (loadedPos) {
-                charMovement_->setPlayerWorldOffset(loadedPos->x, loadedPos->y, loadedPos->z);
-            }
-            if (loadedVel) {
-                charMovement_->playerVelocity() = Velocity{loadedVel->x, loadedVel->y, loadedVel->z};
-            }
-            toastManager_.show("Quick load complete", 2.0f);
-            FABRIC_LOG_INFO("Quick load complete");
-        } else {
-            toastManager_.show("Quick load failed", 3.0f);
-            FABRIC_LOG_ERROR("Quick load failed");
-        }
+    ctx.inputRouter->registerKeyCallback(SDLK_F9, [this]() {
+        // TODO: rewrite for SimulationGrid-based serialization
+        toastManager_.show("Load disabled (pending rewrite)", 2.0f);
+        FABRIC_LOG_WARN("SaveGameSystem: load disabled, pending SimulationGrid serialization rewrite");
     });
 
     FABRIC_LOG_INFO("SaveGameSystem initialized");
 }
 
-void SaveGameSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
+void SaveGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) {
     FABRIC_ZONE_SCOPED_N("save_game");
-    auto& pos = charMovement_->playerPosition();
-    auto& vel = charMovement_->playerVelocity();
-    saveManager_->tickAutosave(fixedDt, saveSerializer_, ctx.world, terrain_->density(), terrain_->essence(),
-                               ctx.timeline, std::optional<fabric::Position>(fabric::Position{pos.x, pos.y, pos.z}),
-                               std::optional<fabric::Position>(fabric::Position{vel.x, vel.y, vel.z}));
+    // TODO: rewrite autosave for SimulationGrid-based serialization
     toastManager_.update(fixedDt);
 }
 
