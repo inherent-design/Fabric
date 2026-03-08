@@ -63,6 +63,21 @@ void SimulationGrid::writeCell(int wx, int wy, int wz, VoxelCell cell) {
     (*pair.buffers[writeIndex()])[idx] = cell;
 }
 
+bool SimulationGrid::writeCellIfExists(int wx, int wy, int wz, VoxelCell cell) {
+    int cx, cy, cz, lx, ly, lz;
+    ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
+    auto key = packChunkKey(cx, cy, cz);
+    auto it = chunks_.find(key);
+    if (it == chunks_.end())
+        return false;
+    auto& pair = it->second;
+    if (!pair.isMaterialized())
+        return false;
+    int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
+    (*pair.buffers[writeIndex()])[idx] = cell;
+    return true;
+}
+
 void SimulationGrid::writeCellImmediate(int wx, int wy, int wz, VoxelCell cell) {
     int cx, cy, cz, lx, ly, lz;
     ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);

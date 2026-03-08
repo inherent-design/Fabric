@@ -66,17 +66,23 @@ void FallingSandSystem::writeSwap(ChunkPos pos, int srcLx, int srcLy, int srcLz,
     grid.writeCell(srcWx, srcWy, srcWz, dstCell);
 
     // Destination may be out of chunk bounds
-    if (dstLx >= 0 && dstLx < K_CHUNK_SIZE && dstLy >= 0 && dstLy < K_CHUNK_SIZE && dstLz >= 0 && dstLz < K_CHUNK_SIZE) {
+    if (dstLx >= 0 && dstLx < K_CHUNK_SIZE && dstLy >= 0 && dstLy < K_CHUNK_SIZE && dstLz >= 0 &&
+        dstLz < K_CHUNK_SIZE) {
         int dstWx = pos.x * K_CHUNK_SIZE + dstLx;
         int dstWy = pos.y * K_CHUNK_SIZE + dstLy;
         int dstWz = pos.z * K_CHUNK_SIZE + dstLz;
         grid.writeCell(dstWx, dstWy, dstWz, srcCell);
     } else {
-        // Cross-chunk write: compute world coords from chunk + local offset
+        // Cross-chunk write: use writeCellIfExists to avoid operator[]
+        // inserting into chunks_ during parallel dispatch (ARCH-SIM-RACE).
         int dstWx = pos.x * K_CHUNK_SIZE + dstLx;
         int dstWy = pos.y * K_CHUNK_SIZE + dstLy;
         int dstWz = pos.z * K_CHUNK_SIZE + dstLz;
-        grid.writeCell(dstWx, dstWy, dstWz, srcCell);
+        if (!grid.writeCellIfExists(dstWx, dstWy, dstWz, srcCell)) {
+            // Destination chunk absent or unmaterialized; undo source write
+            grid.writeCell(srcWx, srcWy, srcWz, srcCell);
+            return;
+        }
 
         // Wake the neighbor chunk
         int ncx = dstWx >> 5;

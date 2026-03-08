@@ -30,6 +30,7 @@ class SimulationGrid {
     VoxelCell readCell(int wx, int wy, int wz) const;
     VoxelCell readFromWriteBuffer(int wx, int wy, int wz) const;
     void writeCell(int wx, int wy, int wz, VoxelCell cell);
+    bool writeCellIfExists(int wx, int wy, int wz, VoxelCell cell);
     void writeCellImmediate(int wx, int wy, int wz, VoxelCell cell);
     void advanceEpoch();
     uint64_t currentEpoch() const;

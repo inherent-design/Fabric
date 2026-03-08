@@ -34,6 +34,21 @@ void VoxelSimulationSystem::tick() {
         ghosts_.syncAll(positions, grid_);
     }
 
+    // 2b. Pre-materialize face-neighbor chunks so writeCell cannot
+    // insert into chunks_ during parallel dispatch (ARCH-SIM-RACE fix).
+    {
+        FABRIC_ZONE_SCOPED_N("pre_materialize_neighbors");
+        const int offsets[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+        for (const auto& entry : active) {
+            const auto& p = entry.pos;
+            for (const auto& off : offsets) {
+                int nx = p.x + off[0], ny = p.y + off[1], nz = p.z + off[2];
+                if (grid_.hasChunk(nx, ny, nz))
+                    grid_.materializeChunk(nx, ny, nz);
+            }
+        }
+    }
+
     // 3. Simulate chunks via worker pool (parallel or inline)
     {
         FABRIC_ZONE_SCOPED_N("chunk_simulate");
