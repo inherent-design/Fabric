@@ -167,6 +167,7 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/SkyRenderer.cc
     src/core/SimulationThreadPool.cc
     src/core/ChunkDirtyTracker.cc
+    src/core/JobScheduler.cc
 )
 
 #------------------------------------------------------------------------------
@@ -272,7 +273,6 @@ set(FABRIC_SIMULATION_SOURCE_FILES
     src/recurse/simulation/GhostCells.cc
     src/recurse/simulation/FallingSandSystem.cc
     src/recurse/simulation/VoxelSimulationSystem.cc
-    src/recurse/simulation/SimWorkerPool.cc
 )
 
 # World library components (fabric::world namespace)

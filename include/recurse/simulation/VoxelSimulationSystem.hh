@@ -1,10 +1,10 @@
 #pragma once
+#include "fabric/core/JobScheduler.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
-#include "recurse/simulation/SimWorkerPool.hh"
 #include <cstdint>
 #include <random>
 
@@ -34,15 +34,14 @@ class VoxelSimulationSystem {
     ChunkActivityTracker tracker_;
     GhostCellManager ghosts_;
     FallingSandSystem sandSystem_;
-    SimWorkerPool workerPool_;
+    fabric::JobScheduler scheduler_;
     uint64_t frameIndex_ = 0;
     std::mt19937 rng_{42};
 
     void propagateDirty(const std::vector<ActiveChunkEntry>& active);
 
   public:
-    /// Access worker pool (e.g. to call disableForTesting())
-    SimWorkerPool& workerPool();
+    fabric::JobScheduler& scheduler();
 };
 
 } // namespace recurse::simulation

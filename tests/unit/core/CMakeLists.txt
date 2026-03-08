@@ -101,4 +101,5 @@ target_sources(UnitTests
   ChunkDirtyTrackerTest.cc
   BgfxHandleTest.cc
   HandleMapTest.cc
+  JobSchedulerTest.cc
 )

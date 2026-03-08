@@ -1,4 +1,3 @@
-#include "recurse/simulation/SimWorkerPool.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include <chrono>
 #include <gtest/gtest.h>
@@ -75,7 +74,7 @@ TEST_F(ParallelSimulationTest, IdenticalResults1vsN) {
 
     // Run with 1 thread (sequential)
     VoxelSimulationSystem seqSim;
-    seqSim.workerPool().disableForTesting();
+    seqSim.scheduler().disableForTesting();
     setupMultiChunkWorld(seqSim, K_CHUNKS);
     runTicks(seqSim, K_CHUNKS, K_TICKS);
 
@@ -113,7 +112,7 @@ TEST_F(ParallelSimulationTest, PerformanceScaling) {
 
     // Sequential timing
     VoxelSimulationSystem seqSim;
-    seqSim.workerPool().disableForTesting();
+    seqSim.scheduler().disableForTesting();
     setupMultiChunkWorld(seqSim, K_CHUNKS);
 
     auto seqStart = std::chrono::high_resolution_clock::now();
@@ -237,35 +236,27 @@ TEST_F(ParallelSimulationTest, LiquidTestsStillPass) {
 
 // 7. disableForTesting() runs inline, deterministic
 TEST_F(ParallelSimulationTest, DisableForTesting) {
-    SimWorkerPool pool(4);
-    pool.disableForTesting();
-    EXPECT_EQ(pool.threadCount(), 0u);
+    fabric::JobScheduler scheduler(4);
+    scheduler.disableForTesting();
 
-    // Verify tasks run inline
+    // Verify jobs run inline
     int counter = 0;
-    std::vector<std::function<void(std::mt19937&)>> tasks;
-    tasks.push_back([&counter](std::mt19937&) { ++counter; });
-    tasks.push_back([&counter](std::mt19937&) { ++counter; });
-    tasks.push_back([&counter](std::mt19937&) { ++counter; });
-
-    pool.dispatchAndWait(tasks, 42);
+    scheduler.parallelFor(3, [&](size_t /*jobIdx*/, size_t /*workerIdx*/) { ++counter; });
     EXPECT_EQ(counter, 3);
 
-    // Verify deterministic PRNG seeding: same seed produces same sequence
-    std::vector<uint32_t> results1, results2;
-    std::vector<std::function<void(std::mt19937&)>> seedTasks;
-    seedTasks.push_back([&results1](std::mt19937& rng) { results1.push_back(rng()); });
-    seedTasks.push_back([&results1](std::mt19937& rng) { results1.push_back(rng()); });
+    // Verify deterministic PRNG seeding: same jobIdx produces same sequence
+    std::vector<uint32_t> results1(2), results2(2);
 
-    pool.dispatchAndWait(seedTasks, 100);
+    scheduler.parallelFor(2, [&](size_t jobIdx, size_t /*workerIdx*/) {
+        std::mt19937 rng(100 + jobIdx);
+        results1[jobIdx] = rng();
+    });
 
-    std::vector<std::function<void(std::mt19937&)>> seedTasks2;
-    seedTasks2.push_back([&results2](std::mt19937& rng) { results2.push_back(rng()); });
-    seedTasks2.push_back([&results2](std::mt19937& rng) { results2.push_back(rng()); });
+    scheduler.parallelFor(2, [&](size_t jobIdx, size_t /*workerIdx*/) {
+        std::mt19937 rng(100 + jobIdx);
+        results2[jobIdx] = rng();
+    });
 
-    pool.dispatchAndWait(seedTasks2, 100);
-
-    ASSERT_EQ(results1.size(), results2.size());
-    for (size_t i = 0; i < results1.size(); ++i)
+    for (size_t i = 0; i < 2; ++i)
         EXPECT_EQ(results1[i], results2[i]);
 }

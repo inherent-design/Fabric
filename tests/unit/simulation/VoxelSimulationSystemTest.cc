@@ -270,7 +270,7 @@ TEST(RecurseVoxelSimSystemTest, SystemLifecycle_InitUpdateShutdown) {
 // 10. Liquid flows horizontally
 TEST(RecurseVoxelSimSystemTest, LiquidFlowsHorizontally) {
     VoxelSimulationSystem sim;
-    sim.workerPool().disableForTesting();
+    sim.scheduler().disableForTesting();
     auto& grid = sim.grid();
 
     for (int x = 0; x < K_CHUNK_SIZE; ++x)
@@ -307,7 +307,7 @@ TEST(RecurseVoxelSimSystemTest, LiquidFlowsHorizontally) {
 // 11. Wake on neighbor activity
 TEST(RecurseVoxelSimSystemTest, WakeOnNeighborActivity) {
     VoxelSimulationSystem sim;
-    sim.workerPool().disableForTesting();
+    sim.scheduler().disableForTesting();
     auto& grid = sim.grid();
 
     grid.fillChunk(0, 0, 0, VoxelCell{material_ids::STONE});
@@ -333,7 +333,7 @@ TEST(RecurseVoxelSimSystemTest, WakeOnNeighborActivity) {
 // 12. Ghost cell copy correctness
 TEST(RecurseVoxelSimSystemTest, GhostCellCopyCorrectness) {
     VoxelSimulationSystem sim;
-    sim.workerPool().disableForTesting();
+    sim.scheduler().disableForTesting();
     auto& grid = sim.grid();
 
     grid.writeCell(31, 0, 0, VoxelCell{material_ids::STONE});

@@ -49,18 +49,14 @@ void VoxelSimulationSystem::tick() {
         }
     }
 
-    // 3. Simulate chunks via worker pool (parallel or inline)
+    // 3. Simulate chunks via scheduler (parallel or inline)
     {
         FABRIC_ZONE_SCOPED_N("chunk_simulate");
-        std::vector<std::function<void(std::mt19937&)>> tasks;
-        tasks.reserve(active.size());
-        for (const auto& entry : active) {
-            ChunkPos pos = entry.pos;
-            tasks.push_back([this, pos](std::mt19937& rng) {
-                sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, frameIndex_, rng);
-            });
-        }
-        workerPool_.dispatchAndWait(tasks, frameIndex_);
+        scheduler_.parallelFor(active.size(), [&](size_t jobIdx, size_t /*workerIdx*/) {
+            std::mt19937 rng(frameIndex_ + jobIdx);
+            const auto& pos = active[jobIdx].pos;
+            sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, frameIndex_, rng);
+        });
     }
 
     // 4. Advance epoch (swap read/write buffers)
@@ -115,8 +111,8 @@ const ChunkActivityTracker& VoxelSimulationSystem::activityTracker() const {
 uint64_t VoxelSimulationSystem::frameIndex() const {
     return frameIndex_;
 }
-SimWorkerPool& VoxelSimulationSystem::workerPool() {
-    return workerPool_;
+fabric::JobScheduler& VoxelSimulationSystem::scheduler() {
+    return scheduler_;
 }
 
 } // namespace recurse::simulation
