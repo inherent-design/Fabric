@@ -17,7 +17,7 @@ void PhysicsGameSystem::doInit(fabric::AppContext& ctx) {
 
     physicsWorld_.init(4096, 0);
 
-    ctx.dispatcher.addEventListener(kVoxelChangedEvent, [this](fabric::Event& e) {
+    ctx.dispatcher.addEventListener(K_VOXEL_CHANGED_EVENT, [this](fabric::Event& e) {
         int cx = e.getData<int>("cx");
         int cy = e.getData<int>("cy");
         int cz = e.getData<int>("cz");

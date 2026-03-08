@@ -15,13 +15,13 @@ using fabric::Vector4;
 // Max palette size: 65536 (uint16_t range).
 class EssencePalette {
   public:
-    static constexpr uint16_t kMaxPaletteSize = 65535;
-    static constexpr float kDefaultEpsilon = 0.01f;
+    static constexpr uint16_t K_MAX_PALETTE_SIZE = 65535;
+    static constexpr float K_DEFAULT_EPSILON = 0.01f;
 
-    explicit EssencePalette(float epsilon = kDefaultEpsilon);
+    explicit EssencePalette(float epsilon = K_DEFAULT_EPSILON);
 
     // Map continuous essence to palette index. Adds a new entry if no existing
-    // entry is within epsilon distance. Returns kMaxPaletteSize on overflow.
+    // entry is within epsilon distance. Returns K_MAX_PALETTE_SIZE on overflow.
     uint16_t quantize(const Vector4<float, Space::World>& essence);
 
     // Reverse lookup: palette index to essence value.

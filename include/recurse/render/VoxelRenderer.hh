@@ -13,7 +13,7 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::ChunkedGrid;
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 namespace Space = fabric::Space;
 using fabric::Vector3;
 
@@ -95,7 +95,7 @@ class VoxelRenderer {
     float rimParams_[4] = {3.0f, 0.6f, 0.0f, 0.0f};
     float oceanParams_[4] = {16.0f, 0.8f, 0.0f, 0.0f};
 
-    static constexpr uint32_t kMaxIndirectDraws = 1024;
+    static constexpr uint32_t K_MAX_INDIRECT_DRAWS = 1024;
 };
 
 } // namespace recurse

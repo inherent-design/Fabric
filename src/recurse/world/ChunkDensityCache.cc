@@ -1,19 +1,19 @@
 #include "recurse/world/ChunkDensityCache.hh"
 
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 namespace recurse {
 
 // -- ChunkDensityCache --------------------------------------------------------
 
 void ChunkDensityCache::build(int cx, int cy, int cz, const ChunkedGrid<float>& density) {
-    int baseX = cx * kChunkSize;
-    int baseY = cy * kChunkSize;
-    int baseZ = cz * kChunkSize;
+    int baseX = cx * K_CHUNK_SIZE;
+    int baseY = cy * K_CHUNK_SIZE;
+    int baseZ = cz * K_CHUNK_SIZE;
 
-    for (int lz = 0; lz < kCacheSize; ++lz) {
-        for (int ly = 0; ly < kCacheSize; ++ly) {
-            for (int lx = 0; lx < kCacheSize; ++lx) {
+    for (int lz = 0; lz < K_CACHE_SIZE; ++lz) {
+        for (int ly = 0; ly < K_CACHE_SIZE; ++ly) {
+            for (int lx = 0; lx < K_CACHE_SIZE; ++lx) {
                 int wx = baseX + (lx - 1);
                 int wy = baseY + (ly - 1);
                 int wz = baseZ + (lz - 1);
@@ -26,9 +26,9 @@ void ChunkDensityCache::build(int cx, int cy, int cz, const ChunkedGrid<float>& 
 float ChunkDensityCache::at(int lx, int ly, int lz) const {
     // Clamp to valid range to handle boundary queries when neighbor chunks are missing.
     // This prevents the blur from smoothing solid density toward zero (air) at boundaries.
-    lx = std::clamp(lx, 0, kCacheSize - 1);
-    ly = std::clamp(ly, 0, kCacheSize - 1);
-    lz = std::clamp(lz, 0, kCacheSize - 1);
+    lx = std::clamp(lx, 0, K_CACHE_SIZE - 1);
+    ly = std::clamp(ly, 0, K_CACHE_SIZE - 1);
+    lz = std::clamp(lz, 0, K_CACHE_SIZE - 1);
     return data_[idx(lx, ly, lz)];
 }
 
@@ -37,13 +37,13 @@ float ChunkDensityCache::sample(float lx, float ly, float lz) const {
     int y0 = static_cast<int>(std::floor(ly));
     int z0 = static_cast<int>(std::floor(lz));
 
-    x0 = std::clamp(x0, 0, kCacheSize - 1);
-    y0 = std::clamp(y0, 0, kCacheSize - 1);
-    z0 = std::clamp(z0, 0, kCacheSize - 1);
+    x0 = std::clamp(x0, 0, K_CACHE_SIZE - 1);
+    y0 = std::clamp(y0, 0, K_CACHE_SIZE - 1);
+    z0 = std::clamp(z0, 0, K_CACHE_SIZE - 1);
 
-    int x1 = std::min(x0 + 1, kCacheSize - 1);
-    int y1 = std::min(y0 + 1, kCacheSize - 1);
-    int z1 = std::min(z0 + 1, kCacheSize - 1);
+    int x1 = std::min(x0 + 1, K_CACHE_SIZE - 1);
+    int y1 = std::min(y0 + 1, K_CACHE_SIZE - 1);
+    int z1 = std::min(z0 + 1, K_CACHE_SIZE - 1);
 
     float fx = lx - static_cast<float>(x0);
     float fy = ly - static_cast<float>(y0);
@@ -84,13 +84,13 @@ float* ChunkDensityCache::data() {
 // -- ChunkMaterialCache -------------------------------------------------------
 
 void ChunkMaterialCache::build(int cx, int cy, int cz, const ChunkedGrid<uint16_t>& materialGrid) {
-    int baseX = cx * kChunkSize;
-    int baseY = cy * kChunkSize;
-    int baseZ = cz * kChunkSize;
+    int baseX = cx * K_CHUNK_SIZE;
+    int baseY = cy * K_CHUNK_SIZE;
+    int baseZ = cz * K_CHUNK_SIZE;
 
-    for (int lz = 0; lz < kCacheSize; ++lz) {
-        for (int ly = 0; ly < kCacheSize; ++ly) {
-            for (int lx = 0; lx < kCacheSize; ++lx) {
+    for (int lz = 0; lz < K_CACHE_SIZE; ++lz) {
+        for (int ly = 0; ly < K_CACHE_SIZE; ++ly) {
+            for (int lx = 0; lx < K_CACHE_SIZE; ++lx) {
                 int wx = baseX + (lx - 1);
                 int wy = baseY + (ly - 1);
                 int wz = baseZ + (lz - 1);
@@ -102,16 +102,16 @@ void ChunkMaterialCache::build(int cx, int cy, int cz, const ChunkedGrid<uint16_
 
 uint16_t ChunkMaterialCache::at(int lx, int ly, int lz) const {
     // Clamp to valid range for boundary consistency with ChunkDensityCache.
-    lx = std::clamp(lx, 0, kCacheSize - 1);
-    ly = std::clamp(ly, 0, kCacheSize - 1);
-    lz = std::clamp(lz, 0, kCacheSize - 1);
+    lx = std::clamp(lx, 0, K_CACHE_SIZE - 1);
+    ly = std::clamp(ly, 0, K_CACHE_SIZE - 1);
+    lz = std::clamp(lz, 0, K_CACHE_SIZE - 1);
     return data_[idx(lx, ly, lz)];
 }
 
 uint16_t ChunkMaterialCache::sampleNearest(float lx, float ly, float lz) const {
-    int rx = std::clamp(static_cast<int>(std::round(lx)), 0, kCacheSize - 1);
-    int ry = std::clamp(static_cast<int>(std::round(ly)), 0, kCacheSize - 1);
-    int rz = std::clamp(static_cast<int>(std::round(lz)), 0, kCacheSize - 1);
+    int rx = std::clamp(static_cast<int>(std::round(lx)), 0, K_CACHE_SIZE - 1);
+    int ry = std::clamp(static_cast<int>(std::round(ly)), 0, K_CACHE_SIZE - 1);
+    int rz = std::clamp(static_cast<int>(std::round(lz)), 0, K_CACHE_SIZE - 1);
     return data_[idx(rx, ry, rz)];
 }
 

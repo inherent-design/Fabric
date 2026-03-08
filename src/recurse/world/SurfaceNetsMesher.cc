@@ -5,7 +5,7 @@
 #include <cmath>
 #include <unordered_map>
 
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 namespace recurse {
 
@@ -28,7 +28,7 @@ struct CellKeyHash {
 SmoothChunkMeshData SurfaceNetsMesher::meshChunk(const ChunkDensityCache& density, const ChunkMaterialCache& material,
                                                  float isovalue, int lodLevel) {
     const int stride = 1 << lodLevel;
-    const int gridSize = (kChunkSize / stride) + 1;
+    const int gridSize = (K_CHUNK_SIZE / stride) + 1;
 
     SmoothChunkMeshData output;
     output.vertices.reserve(4096);
@@ -45,9 +45,9 @@ SmoothChunkMeshData SurfaceNetsMesher::meshChunk(const ChunkDensityCache& densit
                 bool hasOutside = false;
 
                 for (int i = 0; i < 8; ++i) {
-                    int lx = cx * stride + 1 + kCornerOffsets[i][0] * stride;
-                    int ly = cy * stride + 1 + kCornerOffsets[i][1] * stride;
-                    int lz = cz * stride + 1 + kCornerOffsets[i][2] * stride;
+                    int lx = cx * stride + 1 + K_CORNER_OFFSETS[i][0] * stride;
+                    int ly = cy * stride + 1 + K_CORNER_OFFSETS[i][1] * stride;
+                    int lz = cz * stride + 1 + K_CORNER_OFFSETS[i][2] * stride;
                     corners[i] = density.at(lx, ly, lz);
                     if (corners[i] < isovalue)
                         hasInside = true;
@@ -63,8 +63,8 @@ SmoothChunkMeshData SurfaceNetsMesher::meshChunk(const ChunkDensityCache& densit
                 int crossCount = 0;
 
                 for (int e = 0; e < 12; ++e) {
-                    int c0 = kEdgeEndpoints[e][0];
-                    int c1 = kEdgeEndpoints[e][1];
+                    int c0 = K_EDGE_ENDPOINTS[e][0];
+                    int c1 = K_EDGE_ENDPOINTS[e][1];
                     bool inside0 = corners[c0] < isovalue;
                     bool inside1 = corners[c1] < isovalue;
 
@@ -76,12 +76,12 @@ SmoothChunkMeshData SurfaceNetsMesher::meshChunk(const ChunkDensityCache& densit
                     float t = (v1 != v0) ? (isovalue - v0) / (v1 - v0) : 0.5f;
                     t = std::clamp(t, 0.0f, 1.0f);
 
-                    float p0x = static_cast<float>(cx * stride + 1 + kCornerOffsets[c0][0] * stride);
-                    float p0y = static_cast<float>(cy * stride + 1 + kCornerOffsets[c0][1] * stride);
-                    float p0z = static_cast<float>(cz * stride + 1 + kCornerOffsets[c0][2] * stride);
-                    float p1x = static_cast<float>(cx * stride + 1 + kCornerOffsets[c1][0] * stride);
-                    float p1y = static_cast<float>(cy * stride + 1 + kCornerOffsets[c1][1] * stride);
-                    float p1z = static_cast<float>(cz * stride + 1 + kCornerOffsets[c1][2] * stride);
+                    float p0x = static_cast<float>(cx * stride + 1 + K_CORNER_OFFSETS[c0][0] * stride);
+                    float p0y = static_cast<float>(cy * stride + 1 + K_CORNER_OFFSETS[c0][1] * stride);
+                    float p0z = static_cast<float>(cz * stride + 1 + K_CORNER_OFFSETS[c0][2] * stride);
+                    float p1x = static_cast<float>(cx * stride + 1 + K_CORNER_OFFSETS[c1][0] * stride);
+                    float p1y = static_cast<float>(cy * stride + 1 + K_CORNER_OFFSETS[c1][1] * stride);
+                    float p1z = static_cast<float>(cz * stride + 1 + K_CORNER_OFFSETS[c1][2] * stride);
 
                     sumX += p0x + t * (p1x - p0x);
                     sumY += p0y + t * (p1y - p0y);

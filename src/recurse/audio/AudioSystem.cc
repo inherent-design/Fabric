@@ -445,8 +445,8 @@ OcclusionResult AudioSystem::computeOcclusion(const Vec3f& source, const Vec3f& 
     int solidCount = static_cast<int>(hits.size());
     int totalSteps = static_cast<int>(std::ceil(distance));
 
-    constexpr int kMaxOcclusionVoxels = 8;
-    float factor = std::min(static_cast<float>(solidCount) / static_cast<float>(kMaxOcclusionVoxels), 1.0f);
+    constexpr int K_MAX_OCCLUSION_VOXELS = 8;
+    float factor = std::min(static_cast<float>(solidCount) / static_cast<float>(K_MAX_OCCLUSION_VOXELS), 1.0f);
 
     return {factor, solidCount, totalSteps};
 }
@@ -753,8 +753,8 @@ void AudioSystem::executeSetReverbParams(float decayTime, float damping, float w
     // For a Schroeder-style reverb approximation:
     //   feedback = exp(-3 * delayTime / decayTime)  [from RT60 definition]
     // We use a fixed delay time of ~40ms (typical early reflection spacing).
-    constexpr float kDelaySeconds = 0.04f;
-    float feedback = std::exp(-3.0f * kDelaySeconds / std::max(decayTime, 0.1f));
+    constexpr float K_DELAY_SECONDS = 0.04f;
+    float feedback = std::exp(-3.0f * K_DELAY_SECONDS / std::max(decayTime, 0.1f));
     feedback = std::clamp(feedback, 0.0f, 0.95f);
 
     ma_delay_node_set_decay(asDelayNode(delayNode_), feedback);
@@ -796,9 +796,9 @@ void AudioSystem::initReverbNodes() {
 
     // Create delay node for the reverb tail
     auto* delay = new ma_delay_node;
-    constexpr float kDelaySeconds = 0.04f;
-    ma_uint32 delayFrames = static_cast<ma_uint32>(48000 * kDelaySeconds);
-    float initialFeedback = std::exp(-3.0f * kDelaySeconds / std::max(reverbDecayTime_, 0.1f));
+    constexpr float K_DELAY_SECONDS = 0.04f;
+    ma_uint32 delayFrames = static_cast<ma_uint32>(48000 * K_DELAY_SECONDS);
+    float initialFeedback = std::exp(-3.0f * K_DELAY_SECONDS / std::max(reverbDecayTime_, 0.1f));
     initialFeedback = std::clamp(initialFeedback, 0.0f, 0.95f);
     ma_delay_node_config delayConfig = ma_delay_node_config_init(2, 48000, delayFrames, initialFeedback);
     result = ma_delay_node_init(nodeGraph, &delayConfig, nullptr, delay);
@@ -847,14 +847,14 @@ void AudioSystem::uninitReverbNodes() {
 void AudioSystem::audioThreadLoop() {
     FABRIC_LOG_AUDIO_INFO("Audio thread started");
 
-    constexpr float kThreadUpdateRate = 0.016f;
+    constexpr float K_THREAD_UPDATE_RATE = 0.016f;
     auto lastTime = std::chrono::high_resolution_clock::now();
 
     while (audioThreadRunning_.load(std::memory_order_acquire)) {
         auto now = std::chrono::high_resolution_clock::now();
         double elapsed = std::chrono::duration<double>(now - lastTime).count();
 
-        if (elapsed >= kThreadUpdateRate) {
+        if (elapsed >= K_THREAD_UPDATE_RATE) {
             drainCommandBuffer();
             cleanupFinishedSounds();
 

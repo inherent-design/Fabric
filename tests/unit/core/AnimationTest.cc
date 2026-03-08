@@ -108,7 +108,7 @@ TEST_F(AnimationTest, MatrixConversionRoundTripArbitrary) {
 }
 
 TEST_F(AnimationTest, MaxJointsConstant) {
-    EXPECT_GE(kMaxJoints, 100) << "Must support at least 100 joints for humanoid characters";
+    EXPECT_GE(K_MAX_JOINTS, 100) << "Must support at least 100 joints for humanoid characters";
 }
 
 TEST_F(AnimationTest, SkinningDataDefaultEmpty) {

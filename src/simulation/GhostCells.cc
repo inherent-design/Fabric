@@ -5,17 +5,17 @@ namespace fabric::simulation {
 // -- GhostCellStore -----------------------------------------------------------
 
 VoxelCell GhostCellStore::get(Face face, int u, int v) const {
-    return faces[static_cast<int>(face)][u * kChunkSize + v];
+    return faces[static_cast<int>(face)][u * K_CHUNK_SIZE + v];
 }
 
 void GhostCellStore::set(Face face, int u, int v, VoxelCell cell) {
-    faces[static_cast<int>(face)][u * kChunkSize + v] = cell;
+    faces[static_cast<int>(face)][u * K_CHUNK_SIZE + v] = cell;
 }
 
 // -- GhostCellManager ---------------------------------------------------------
 
 static int localIndex(int lx, int ly, int lz) {
-    return lx + ly * kChunkSize + lz * kChunkSize * kChunkSize;
+    return lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
 }
 
 /// Read a single cell from a neighbor's read buffer, or return Air if missing.
@@ -30,44 +30,44 @@ void GhostCellManager::syncGhostCells(ChunkPos pos, const SimulationGrid& grid) 
     auto& store = stores_[pos];
 
     // +X face: neighbor (cx+1), sample local x=0, u=ly, v=lz
-    for (int ly = 0; ly < kChunkSize; ++ly) {
-        for (int lz = 0; lz < kChunkSize; ++lz) {
+    for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
             store.set(Face::PosX, ly, lz, readNeighborCell(grid, pos.x + 1, pos.y, pos.z, 0, ly, lz));
         }
     }
 
     // -X face: neighbor (cx-1), sample local x=31, u=ly, v=lz
-    for (int ly = 0; ly < kChunkSize; ++ly) {
-        for (int lz = 0; lz < kChunkSize; ++lz) {
-            store.set(Face::NegX, ly, lz, readNeighborCell(grid, pos.x - 1, pos.y, pos.z, kChunkSize - 1, ly, lz));
+    for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+            store.set(Face::NegX, ly, lz, readNeighborCell(grid, pos.x - 1, pos.y, pos.z, K_CHUNK_SIZE - 1, ly, lz));
         }
     }
 
     // +Y face: neighbor (cy+1), sample local y=0, u=lx, v=lz
-    for (int lx = 0; lx < kChunkSize; ++lx) {
-        for (int lz = 0; lz < kChunkSize; ++lz) {
+    for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
             store.set(Face::PosY, lx, lz, readNeighborCell(grid, pos.x, pos.y + 1, pos.z, lx, 0, lz));
         }
     }
 
     // -Y face: neighbor (cy-1), sample local y=31, u=lx, v=lz
-    for (int lx = 0; lx < kChunkSize; ++lx) {
-        for (int lz = 0; lz < kChunkSize; ++lz) {
-            store.set(Face::NegY, lx, lz, readNeighborCell(grid, pos.x, pos.y - 1, pos.z, lx, kChunkSize - 1, lz));
+    for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+            store.set(Face::NegY, lx, lz, readNeighborCell(grid, pos.x, pos.y - 1, pos.z, lx, K_CHUNK_SIZE - 1, lz));
         }
     }
 
     // +Z face: neighbor (cz+1), sample local z=0, u=lx, v=ly
-    for (int lx = 0; lx < kChunkSize; ++lx) {
-        for (int ly = 0; ly < kChunkSize; ++ly) {
+    for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+        for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
             store.set(Face::PosZ, lx, ly, readNeighborCell(grid, pos.x, pos.y, pos.z + 1, lx, ly, 0));
         }
     }
 
     // -Z face: neighbor (cz-1), sample local z=31, u=lx, v=ly
-    for (int lx = 0; lx < kChunkSize; ++lx) {
-        for (int ly = 0; ly < kChunkSize; ++ly) {
-            store.set(Face::NegZ, lx, ly, readNeighborCell(grid, pos.x, pos.y, pos.z - 1, lx, ly, kChunkSize - 1));
+    for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+        for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+            store.set(Face::NegZ, lx, ly, readNeighborCell(grid, pos.x, pos.y, pos.z - 1, lx, ly, K_CHUNK_SIZE - 1));
         }
     }
 }
@@ -86,15 +86,15 @@ VoxelCell GhostCellManager::readGhost(ChunkPos pos, int lx, int ly, int lz) cons
 
     if (lx == -1)
         return store.get(Face::NegX, ly, lz);
-    if (lx == kChunkSize)
+    if (lx == K_CHUNK_SIZE)
         return store.get(Face::PosX, ly, lz);
     if (ly == -1)
         return store.get(Face::NegY, lx, lz);
-    if (ly == kChunkSize)
+    if (ly == K_CHUNK_SIZE)
         return store.get(Face::PosY, lx, lz);
     if (lz == -1)
         return store.get(Face::NegZ, lx, ly);
-    if (lz == kChunkSize)
+    if (lz == K_CHUNK_SIZE)
         return store.get(Face::PosZ, lx, ly);
 
     // Not out-of-bounds -- caller error, return Air

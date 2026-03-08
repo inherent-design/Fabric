@@ -77,7 +77,7 @@ void VoxelSimulationSystem::generateInitialWorld() {
 
     // Initialize Jolt physics collision for each chunk
     for (const auto& [cx, cy, cz] : generatedChunks) {
-        fabric::Event e(kVoxelChangedEvent, "VoxelSimulationSystem");
+        fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelSimulationSystem");
         e.setData("cx", cx);
         e.setData("cy", cy);
         e.setData("cz", cz);
@@ -115,7 +115,7 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
 
     // Initialize Jolt physics collision for this chunk (always dispatch, even for sentinels)
     if (dispatcher_) {
-        fabric::Event e(kVoxelChangedEvent, "VoxelSimulationSystem");
+        fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelSimulationSystem");
         e.setData("cx", cx);
         e.setData("cy", cy);
         e.setData("cz", cz);

@@ -93,7 +93,7 @@ TEST_F(ChunkedGridTest, ForEachCellIteratesFullChunk) {
     grid.set(0, 0, 0, 1.0f); // allocate chunk (0,0,0)
     int count = 0;
     grid.forEachCell(0, 0, 0, [&](int, int, int, float&) { ++count; });
-    EXPECT_EQ(count, kChunkVolume);
+    EXPECT_EQ(count, K_CHUNK_VOLUME);
 }
 
 TEST_F(ChunkedGridTest, NegativeCoordinates) {

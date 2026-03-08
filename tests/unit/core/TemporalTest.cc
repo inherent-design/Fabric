@@ -176,8 +176,8 @@ TEST_F(TemporalTest, TimelineSnapshotHistoryBounds) {
         timeline.update(1.0);
     }
 
-    // TODO: Timeline needs kMaxHistorySize constant
-    // EXPECT_LE(timeline.getHistory().size(), Timeline::kMaxHistorySize);
+    // TODO: Timeline needs K_MAX_HISTORY_SIZE constant
+    // EXPECT_LE(timeline.getHistory().size(), Timeline::K_MAX_HISTORY_SIZE);
     EXPECT_GT(timeline.getHistory().size(), 0u);
 }
 

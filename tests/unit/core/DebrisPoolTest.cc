@@ -8,7 +8,7 @@ using namespace recurse;
 TEST(DebrisPoolTest, ConstructDefault) {
     DebrisPool pool;
     EXPECT_EQ(pool.activeCount(), 0u);
-    EXPECT_EQ(pool.maxActive(), DebrisPool::kDefaultMaxActive);
+    EXPECT_EQ(pool.maxActive(), DebrisPool::K_DEFAULT_MAX_ACTIVE);
 }
 
 TEST(DebrisPoolTest, ConstructWithMaxActive) {

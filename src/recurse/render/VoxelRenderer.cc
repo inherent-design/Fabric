@@ -73,15 +73,15 @@ void VoxelRenderer::initProgram() {
         return;
     }
 
-    constexpr float kLitColor[4] = {0.85f, 0.85f, 0.85f, 1.0f};    // Neutral white-gray (was warm gold)
-    constexpr float kShadowColor[4] = {0.35f, 0.35f, 0.40f, 1.0f}; // Neutral cool-gray (was purple-gray)
-    constexpr float kRimParams[4] = {3.0f, 0.15f, 0.0f, 0.0f};     // Reduced rim strength: 0.6 -> 0.3 -> 0.15
-    constexpr float kOceanParams[4] = {16.0f, 0.2f, 0.0f, 0.0f};   // Reduced ocean specular: 0.8 -> 0.4 -> 0.2
+    constexpr float K_LIT_COLOR[4] = {0.85f, 0.85f, 0.85f, 1.0f};    // Neutral white-gray (was warm gold)
+    constexpr float K_SHADOW_COLOR[4] = {0.35f, 0.35f, 0.40f, 1.0f}; // Neutral cool-gray (was purple-gray)
+    constexpr float K_RIM_PARAMS[4] = {3.0f, 0.15f, 0.0f, 0.0f};     // Reduced rim strength: 0.6 -> 0.3 -> 0.15
+    constexpr float K_OCEAN_PARAMS[4] = {16.0f, 0.2f, 0.0f, 0.0f};   // Reduced ocean specular: 0.8 -> 0.4 -> 0.2
 
-    std::copy(std::begin(kLitColor), std::end(kLitColor), litColor_);
-    std::copy(std::begin(kShadowColor), std::end(kShadowColor), shadowColor_);
-    std::copy(std::begin(kRimParams), std::end(kRimParams), rimParams_);
-    std::copy(std::begin(kOceanParams), std::end(kOceanParams), oceanParams_);
+    std::copy(std::begin(K_LIT_COLOR), std::end(K_LIT_COLOR), litColor_);
+    std::copy(std::begin(K_SHADOW_COLOR), std::end(K_SHADOW_COLOR), shadowColor_);
+    std::copy(std::begin(K_RIM_PARAMS), std::end(K_RIM_PARAMS), rimParams_);
+    std::copy(std::begin(K_OCEAN_PARAMS), std::end(K_OCEAN_PARAMS), oceanParams_);
 
     initialized_ = true;
 
@@ -94,12 +94,12 @@ void VoxelRenderer::initProgram() {
 
     mdiSupported_ = caps.drawIndirect;
     if (mdiSupported_) {
-        indirectBuffer_.reset(bgfx::createIndirectBuffer(kMaxIndirectDraws));
+        indirectBuffer_.reset(bgfx::createIndirectBuffer(K_MAX_INDIRECT_DRAWS));
         if (!indirectBuffer_.isValid()) {
             FABRIC_LOG_RENDER_WARN("VoxelRenderer: indirect buffer allocation failed, MDI disabled");
             mdiSupported_ = false;
         } else {
-            FABRIC_LOG_RENDER_INFO("VoxelRenderer: MDI enabled ({} max draws)", kMaxIndirectDraws);
+            FABRIC_LOG_RENDER_INFO("VoxelRenderer: MDI enabled ({} max draws)", K_MAX_INDIRECT_DRAWS);
         }
     } else {
         FABRIC_LOG_RENDER_INFO("VoxelRenderer: MDI unavailable, per-chunk submit");
@@ -239,7 +239,7 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
                      BGFX_STATE_MSAA | BGFX_STATE_CULL_CCW;
 
     // Discard per-chunk resources; preserve uniforms + render state
-    constexpr uint8_t kGroupDiscard =
+    constexpr uint8_t K_GROUP_DISCARD =
         BGFX_DISCARD_INDEX_BUFFER | BGFX_DISCARD_INSTANCE_DATA | BGFX_DISCARD_TRANSFORM | BGFX_DISCARD_VERTEX_STREAMS;
 
     for (const auto& group : groups) {
@@ -269,7 +269,7 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
             bgfx::setIndexBuffer(ci.mesh->ibh);
 
             bool last = (j + 1 == group.indices.size());
-            bgfx::submit(view, program_.get(), 0, last ? BGFX_DISCARD_ALL : kGroupDiscard);
+            bgfx::submit(view, program_.get(), 0, last ? BGFX_DISCARD_ALL : K_GROUP_DISCARD);
         }
     }
 }

@@ -11,8 +11,8 @@ namespace recurse {
 
 using fabric::ChunkedGrid;
 
-inline constexpr int kCacheSize = 34;
-inline constexpr int kCacheVolume = kCacheSize * kCacheSize * kCacheSize;
+inline constexpr int K_CACHE_SIZE = 34;
+inline constexpr int K_CACHE_VOLUME = K_CACHE_SIZE * K_CACHE_SIZE * K_CACHE_SIZE;
 
 class ChunkDensityCache {
   public:
@@ -23,9 +23,9 @@ class ChunkDensityCache {
     float* data();
 
   private:
-    std::array<float, kCacheVolume> data_{};
+    std::array<float, K_CACHE_VOLUME> data_{};
 
-    static int idx(int lx, int ly, int lz) { return lx + ly * kCacheSize + lz * kCacheSize * kCacheSize; }
+    static int idx(int lx, int ly, int lz) { return lx + ly * K_CACHE_SIZE + lz * K_CACHE_SIZE * K_CACHE_SIZE; }
 };
 
 class ChunkMaterialCache {
@@ -35,9 +35,9 @@ class ChunkMaterialCache {
     uint16_t sampleNearest(float lx, float ly, float lz) const;
 
   private:
-    std::array<uint16_t, kCacheVolume> data_{};
+    std::array<uint16_t, K_CACHE_VOLUME> data_{};
 
-    static int idx(int lx, int ly, int lz) { return lx + ly * kCacheSize + lz * kCacheSize * kCacheSize; }
+    static int idx(int lx, int ly, int lz) { return lx + ly * K_CACHE_SIZE + lz * K_CACHE_SIZE * K_CACHE_SIZE; }
 };
 
 } // namespace recurse

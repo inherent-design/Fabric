@@ -23,10 +23,10 @@ using DensityField = ChunkedGrid<float>;
 using EssenceField = ChunkedGrid<Vector4<float, Space::World>>;
 
 /// Side length (in voxels) of a single WFC tile volume.
-constexpr int kWFCTileSize = 4;
+constexpr int K_WFC_TILE_SIZE = 4;
 
-/// Total number of voxels in a single tile (kWFCTileSize^3).
-constexpr int kWFCTileVolume = kWFCTileSize * kWFCTileSize * kWFCTileSize;
+/// Total number of voxels in a single tile (K_WFC_TILE_SIZE^3).
+constexpr int K_WFC_TILE_VOLUME = K_WFC_TILE_SIZE * K_WFC_TILE_SIZE * K_WFC_TILE_SIZE;
 
 // ---------- Face indexing ----------
 
@@ -47,7 +47,7 @@ constexpr int wfcOppositeFace(int face) {
 }
 
 /// 3D neighbor offset table indexed by WFCFace.
-inline constexpr std::array<std::array<int, 3>, 6> kWFCNeighborOffsets = {{
+inline constexpr std::array<std::array<int, 3>, 6> K_WFC_NEIGHBOR_OFFSETS = {{
     {{1, 0, 0}},  // PosX
     {{-1, 0, 0}}, // NegX
     {{0, 1, 0}},  // PosY
@@ -156,11 +156,11 @@ WFCResult wfcSolve(WFCGrid& grid, const std::vector<WFCTile>& tiles, uint32_t se
 
 /// Extended tile data carrying per-voxel density and essence plus socket and weight metadata.
 struct WFCTileData {
-    std::array<float, kWFCTileVolume> density{}; ///< Per-voxel density [0,1].
-    std::array<float, kWFCTileVolume> essence{}; ///< Per-voxel essence ID.
-    std::array<int, 6> sockets{};                ///< Socket ID per face (+X,-X,+Y,-Y,+Z,-Z).
-    float weight = 1.0f;                         ///< Selection weight during collapse.
-    std::string name;                            ///< Human-readable tile name.
+    std::array<float, K_WFC_TILE_VOLUME> density{}; ///< Per-voxel density [0,1].
+    std::array<float, K_WFC_TILE_VOLUME> essence{}; ///< Per-voxel essence ID.
+    std::array<int, 6> sockets{};                   ///< Socket ID per face (+X,-X,+Y,-Y,+Z,-Z).
+    float weight = 1.0f;                            ///< Selection weight during collapse.
+    std::string name;                               ///< Human-readable tile name.
 };
 
 /// An adjacency pair: indices of two tiles that can sit next to each other on a given face.

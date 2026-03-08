@@ -65,12 +65,12 @@ void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
     physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
-    constexpr float kCharWidth = 0.6f;
-    constexpr float kCharHeight = 1.8f;
-    constexpr float kCharDepth = 0.6f;
+    constexpr float K_CHAR_WIDTH = 0.6f;
+    constexpr float K_CHAR_HEIGHT = 1.8f;
+    constexpr float K_CHAR_DEPTH = 0.6f;
 
     // Flight controller for Flying/Noclip modes
-    flightCtrl_ = std::make_unique<FlightController>(kCharWidth, kCharHeight, kCharDepth);
+    flightCtrl_ = std::make_unique<FlightController>(K_CHAR_WIDTH, K_CHAR_HEIGHT, K_CHAR_DEPTH);
 
     // Jolt-based controller required for ground movement
     if (!physics_ || !physics_->physicsWorld().initialized()) {
@@ -79,8 +79,8 @@ void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
     }
 
     JoltCharacterConfig config;
-    config.width = kCharWidth;
-    config.height = kCharHeight;
+    config.width = K_CHAR_WIDTH;
+    config.height = K_CHAR_HEIGHT;
     config.mass = 70.0f;
     config.maxSlopeAngle = charConfig_.slopeLimit;
 

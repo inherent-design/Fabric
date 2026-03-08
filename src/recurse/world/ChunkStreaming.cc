@@ -1,7 +1,7 @@
 #include "recurse/world/ChunkStreaming.hh"
 #include "fabric/utils/Profiler.hh"
 
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 namespace recurse {
 
@@ -14,9 +14,9 @@ StreamingUpdate ChunkStreamingManager::update(float viewX, float viewY, float vi
         static_cast<int>(static_cast<float>(config_.baseRadius) + speed * config_.speedScale), config_.maxRadius);
     currentRadius_ = effectiveRadius;
 
-    int centerCX = static_cast<int>(std::floor(viewX / static_cast<float>(kChunkSize)));
-    int centerCY = static_cast<int>(std::floor(viewY / static_cast<float>(kChunkSize)));
-    int centerCZ = static_cast<int>(std::floor(viewZ / static_cast<float>(kChunkSize)));
+    int centerCX = static_cast<int>(std::floor(viewX / static_cast<float>(K_CHUNK_SIZE)));
+    int centerCY = static_cast<int>(std::floor(viewY / static_cast<float>(K_CHUNK_SIZE)));
+    int centerCZ = static_cast<int>(std::floor(viewZ / static_cast<float>(K_CHUNK_SIZE)));
 
     std::unordered_set<ChunkCoord, ChunkCoordHash> desired;
     for (int dz = -effectiveRadius; dz <= effectiveRadius; ++dz) {

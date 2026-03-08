@@ -21,7 +21,7 @@ DDAState initDDA(float ox, float oy, float oz, float dx, float dy, float dz) {
     s.vy = static_cast<int>(std::floor(oy));
     s.vz = static_cast<int>(std::floor(oz));
 
-    constexpr float kInf = std::numeric_limits<float>::infinity();
+    constexpr float K_INF = std::numeric_limits<float>::infinity();
 
     s.stepX = (dx > 0) ? 1 : (dx < 0) ? -1 : 0;
     s.stepY = (dy > 0) ? 1 : (dy < 0) ? -1 : 0;
@@ -32,8 +32,8 @@ DDAState initDDA(float ox, float oy, float oz, float dx, float dy, float dz) {
         s.tMaxX = (boundaryX - ox) / dx;
         s.tDeltaX = static_cast<float>(s.stepX) / dx;
     } else {
-        s.tMaxX = kInf;
-        s.tDeltaX = kInf;
+        s.tMaxX = K_INF;
+        s.tDeltaX = K_INF;
     }
 
     if (dy != 0.0f) {
@@ -41,8 +41,8 @@ DDAState initDDA(float ox, float oy, float oz, float dx, float dy, float dz) {
         s.tMaxY = (boundaryY - oy) / dy;
         s.tDeltaY = static_cast<float>(s.stepY) / dy;
     } else {
-        s.tMaxY = kInf;
-        s.tDeltaY = kInf;
+        s.tMaxY = K_INF;
+        s.tDeltaY = K_INF;
     }
 
     if (dz != 0.0f) {
@@ -50,8 +50,8 @@ DDAState initDDA(float ox, float oy, float oz, float dx, float dy, float dz) {
         s.tMaxZ = (boundaryZ - oz) / dz;
         s.tDeltaZ = static_cast<float>(s.stepZ) / dz;
     } else {
-        s.tMaxZ = kInf;
-        s.tDeltaZ = kInf;
+        s.tMaxZ = K_INF;
+        s.tDeltaZ = K_INF;
     }
 
     return s;

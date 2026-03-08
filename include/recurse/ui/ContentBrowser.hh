@@ -47,7 +47,7 @@ class ContentBrowser {
     const std::vector<Entry>& entries() const;
 
     /// Allowed asset file extensions (without leading dot).
-    static const std::vector<std::string> kAllowedExtensions;
+    static const std::vector<std::string> K_ALLOWED_EXTENSIONS;
 
   private:
     /// Re-scan the current directory and rebuild entries_.

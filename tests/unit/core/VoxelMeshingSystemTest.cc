@@ -8,7 +8,7 @@
 #include <gtest/gtest.h>
 
 using fabric::ChunkCoord;
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 using fabric::simulation::ChunkActivityTracker;
 using fabric::simulation::ChunkState;
 using fabric::simulation::SimulationGrid;
@@ -128,9 +128,9 @@ TEST_F(VoxelMeshingSystemTest, KnownDensityFieldMesh) {
     solid.materialId = MaterialIds::STONE;
 
     // Fill bottom half (y < 16) with stone, top half remains air
-    for (int z = 0; z < kChunkSize; ++z)
+    for (int z = 0; z < K_CHUNK_SIZE; ++z)
         for (int y = 0; y < 16; ++y)
-            for (int x = 0; x < kChunkSize; ++x)
+            for (int x = 0; x < K_CHUNK_SIZE; ++x)
                 simGrid.writeCell(x, y, z, solid);
     simGrid.advanceEpoch();
 

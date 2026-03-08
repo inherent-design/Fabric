@@ -116,7 +116,7 @@ template <typename T, size_t N> class SPSCRingBuffer {
 
 class AudioSystem {
   public:
-    static constexpr size_t kCommandBufferSize = 256;
+    static constexpr size_t K_COMMAND_BUFFER_SIZE = 256;
 
     AudioSystem();
     ~AudioSystem();
@@ -233,7 +233,7 @@ class AudioSystem {
     float reverbDamping_ = 0.5f;
     float reverbWetMix_ = 0.3f;
 
-    SPSCRingBuffer<AudioCommand, kCommandBufferSize> commandBuffer_;
+    SPSCRingBuffer<AudioCommand, K_COMMAND_BUFFER_SIZE> commandBuffer_;
 
     std::thread audioThread_;
     std::atomic<bool> audioThreadRunning_{false};

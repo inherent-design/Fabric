@@ -31,41 +31,41 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::ChunkedGrid;
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 class JoltCharacterController;
 struct JoltCharacterConfig;
 
 namespace physics {
 
-inline constexpr JPH::ObjectLayer kLayerStatic = 0;
-inline constexpr JPH::ObjectLayer kLayerDynamic = 1;
-inline constexpr int kNumObjectLayers = 2;
+inline constexpr JPH::ObjectLayer K_LAYER_STATIC = 0;
+inline constexpr JPH::ObjectLayer K_LAYER_DYNAMIC = 1;
+inline constexpr int K_NUM_OBJECT_LAYERS = 2;
 
-inline constexpr JPH::BroadPhaseLayer kBPLayerNonMoving(0);
-inline constexpr JPH::BroadPhaseLayer kBPLayerMoving(1);
-inline constexpr int kNumBroadPhaseLayers = 2;
+inline constexpr JPH::BroadPhaseLayer K_BP_LAYER_NON_MOVING(0);
+inline constexpr JPH::BroadPhaseLayer K_BP_LAYER_MOVING(1);
+inline constexpr int K_NUM_BROAD_PHASE_LAYERS = 2;
 
 // 8^3 sub-chunk tiles for fast partial physics rebuild
-inline constexpr int kPhysTileSize = 8;
-inline constexpr int kTilesPerAxis = kChunkSize / kPhysTileSize;                     // 4
-inline constexpr int kTilesPerChunk = kTilesPerAxis * kTilesPerAxis * kTilesPerAxis; // 64
+inline constexpr int K_PHYS_TILE_SIZE = 8;
+inline constexpr int K_TILES_PER_AXIS = K_CHUNK_SIZE / K_PHYS_TILE_SIZE;                         // 4
+inline constexpr int K_TILES_PER_CHUNK = K_TILES_PER_AXIS * K_TILES_PER_AXIS * K_TILES_PER_AXIS; // 64
 
 class BPLayerInterface final : public JPH::BroadPhaseLayerInterface {
   public:
-    uint GetNumBroadPhaseLayers() const override { return kNumBroadPhaseLayers; }
+    uint GetNumBroadPhaseLayers() const override { return K_NUM_BROAD_PHASE_LAYERS; }
 
     JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer inLayer) const override {
-        if (inLayer == kLayerStatic)
-            return kBPLayerNonMoving;
-        return kBPLayerMoving;
+        if (inLayer == K_LAYER_STATIC)
+            return K_BP_LAYER_NON_MOVING;
+        return K_BP_LAYER_MOVING;
     }
 
 #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
     const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer inLayer) const override {
-        if (inLayer == kBPLayerNonMoving)
+        if (inLayer == K_BP_LAYER_NON_MOVING)
             return "NON_MOVING";
-        if (inLayer == kBPLayerMoving)
+        if (inLayer == K_BP_LAYER_MOVING)
             return "MOVING";
         return "UNKNOWN";
     }
@@ -75,8 +75,8 @@ class BPLayerInterface final : public JPH::BroadPhaseLayerInterface {
 class ObjectVsBPFilter final : public JPH::ObjectVsBroadPhaseLayerFilter {
   public:
     bool ShouldCollide(JPH::ObjectLayer inLayer, JPH::BroadPhaseLayer inBPLayer) const override {
-        if (inLayer == kLayerStatic)
-            return inBPLayer == kBPLayerMoving;
+        if (inLayer == K_LAYER_STATIC)
+            return inBPLayer == K_BP_LAYER_MOVING;
         return true;
     }
 };
@@ -84,7 +84,7 @@ class ObjectVsBPFilter final : public JPH::ObjectVsBroadPhaseLayerFilter {
 class ObjectPairFilter final : public JPH::ObjectLayerPairFilter {
   public:
     bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::ObjectLayer inLayer2) const override {
-        if (inLayer1 == kLayerStatic && inLayer2 == kLayerStatic)
+        if (inLayer1 == K_LAYER_STATIC && inLayer2 == K_LAYER_STATIC)
             return false;
         return true;
     }

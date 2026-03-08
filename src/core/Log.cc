@@ -26,7 +26,7 @@ quill::Logger* g_logger_physics = nullptr;
 quill::Logger* g_logger_audio = nullptr;
 quill::Logger* g_logger_bgfx = nullptr;
 
-const std::string kLogsDir = "logs";
+const std::string K_LOGS_DIR = "logs";
 
 std::shared_ptr<quill::Sink> makeFileSink(const std::string& filename) {
     return quill::Frontend::create_or_get_sink<quill::FileSink>(filename, []() {
@@ -38,7 +38,7 @@ std::shared_ptr<quill::Sink> makeFileSink(const std::string& filename) {
 }
 
 void createLogDirectory() {
-    std::filesystem::create_directories(kLogsDir);
+    std::filesystem::create_directories(K_LOGS_DIR);
 }
 
 void setAllLoggersInfoLevel() {
@@ -210,8 +210,8 @@ void init(const char* log_file_path) {
     pattern.timestamp_pattern = "%H:%M:%S.%Qms";
 
     // Per-subsystem file sinks
-    auto fabric_file = makeFileSink(kLogsDir + "/fabric.log");
-    auto render_file = makeFileSink(kLogsDir + "/render.log");
+    auto fabric_file = makeFileSink(K_LOGS_DIR + "/fabric.log");
+    auto render_file = makeFileSink(K_LOGS_DIR + "/render.log");
 
     // Root logger: console + caller file + fabric.log
     g_logger = quill::Frontend::create_or_get_logger("fabric", {console_sink, file_sink, fabric_file}, pattern);

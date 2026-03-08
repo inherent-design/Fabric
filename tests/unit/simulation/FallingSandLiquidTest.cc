@@ -8,7 +8,7 @@
 #include <random>
 
 using namespace fabric::simulation;
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 class FallingSandLiquidTest : public ::testing::Test {
   protected:
@@ -23,9 +23,9 @@ class FallingSandLiquidTest : public ::testing::Test {
         grid.fillChunk(0, 0, 0, VoxelCell{});
         grid.materializeChunk(0, 0, 0);
         tracker.setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-        for (int lz = 0; lz < kChunkSize; lz += 8)
-            for (int ly = 0; ly < kChunkSize; ly += 8)
-                for (int lx = 0; lx < kChunkSize; lx += 8)
+        for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
+            for (int ly = 0; ly < K_CHUNK_SIZE; ly += 8)
+                for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
                     tracker.markSubRegionActive(ChunkPos{0, 0, 0}, lx, ly, lz);
     }
 
@@ -48,8 +48,8 @@ class FallingSandLiquidTest : public ::testing::Test {
     }
 
     void buildStoneFloor() {
-        for (int x = 0; x < kChunkSize; ++x)
-            for (int z = 0; z < kChunkSize; ++z)
+        for (int x = 0; x < K_CHUNK_SIZE; ++x)
+            for (int z = 0; z < K_CHUNK_SIZE; ++z)
                 grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
         grid.advanceEpoch();
     }
@@ -109,8 +109,8 @@ TEST_F(FallingSandLiquidTest, WaterFlowsHorizontally) {
     EXPECT_NE(grid.readCell(16, 1, 16).materialId, material_ids::WATER) << "Water should have moved from origin";
 
     bool anyWaterAtY1 = false;
-    for (int x = 0; x < kChunkSize && !anyWaterAtY1; ++x)
-        for (int z = 0; z < kChunkSize && !anyWaterAtY1; ++z)
+    for (int x = 0; x < K_CHUNK_SIZE && !anyWaterAtY1; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE && !anyWaterAtY1; ++z)
             if (grid.readCell(x, 1, z).materialId == material_ids::WATER)
                 anyWaterAtY1 = true;
     EXPECT_TRUE(anyWaterAtY1) << "Water should still exist at y=1 level";
@@ -219,7 +219,7 @@ TEST_F(FallingSandLiquidTest, CrossChunkHorizontalFlow) {
 
     // Stone floor in both chunks
     for (int x = -32; x < 32; ++x)
-        for (int z = 0; z < kChunkSize; ++z)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
             grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
@@ -253,8 +253,8 @@ TEST_F(FallingSandLiquidTest, ViscosityLimitsFlowRate) {
 
     // Check that water hasn't moved more than 1 cell from origin
     bool foundFarWater = false;
-    for (int x = 0; x < kChunkSize; ++x) {
-        for (int z = 0; z < kChunkSize; ++z) {
+    for (int x = 0; x < K_CHUNK_SIZE; ++x) {
+        for (int z = 0; z < K_CHUNK_SIZE; ++z) {
             if (grid.readCell(x, 1, z).materialId == material_ids::WATER) {
                 int dist = std::abs(x - 16) + std::abs(z - 16);
                 if (dist > 1)
@@ -315,8 +315,8 @@ TEST_F(FallingSandLiquidTest, PerformanceLiquidSim) {
 
     int placed = 0;
     for (int y = 1; y <= 15 && placed < 10000; ++y)
-        for (int x = 0; x < kChunkSize && placed < 10000; ++x)
-            for (int z = 0; z < kChunkSize && placed < 10000; ++z) {
+        for (int x = 0; x < K_CHUNK_SIZE && placed < 10000; ++x)
+            for (int z = 0; z < K_CHUNK_SIZE && placed < 10000; ++z) {
                 grid.writeCell(x, y, z, makeMaterial(material_ids::WATER));
                 ++placed;
             }

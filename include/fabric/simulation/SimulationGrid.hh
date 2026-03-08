@@ -10,7 +10,7 @@
 namespace fabric::simulation {
 
 struct ChunkBufferPair {
-    using Buffer = std::array<VoxelCell, kChunkVolume>;
+    using Buffer = std::array<VoxelCell, K_CHUNK_VOLUME>;
     std::unique_ptr<Buffer> buffers[2]; // nullptr = homogeneous sentinel
     VoxelCell fillValue{};
     void materialize();
@@ -30,8 +30,8 @@ class SimulationGrid {
     void materializeChunk(int cx, int cy, int cz);
     bool isChunkMaterialized(int cx, int cy, int cz) const;
     size_t materializedChunkCount() const;
-    const std::array<VoxelCell, kChunkVolume>* readBuffer(int cx, int cy, int cz) const;
-    std::array<VoxelCell, kChunkVolume>* writeBuffer(int cx, int cy, int cz);
+    const std::array<VoxelCell, K_CHUNK_VOLUME>* readBuffer(int cx, int cy, int cz) const;
+    std::array<VoxelCell, K_CHUNK_VOLUME>* writeBuffer(int cx, int cy, int cz);
     bool hasChunk(int cx, int cy, int cz) const;
     VoxelCell getChunkFillValue(int cx, int cy, int cz) const;
     void removeChunk(int cx, int cy, int cz);

@@ -176,7 +176,7 @@ BodyHandle PhysicsWorld::createStaticBody(const JPH::Shape* shape, float px, flo
         return BodyHandle{JPH::BodyID()};
 
     JPH::BodyCreationSettings settings(shape, JPH::RVec3(px, py, pz), JPH::Quat::sIdentity(), JPH::EMotionType::Static,
-                                       physics::kLayerStatic);
+                                       physics::K_LAYER_STATIC);
 
     auto& bi = physicsSystem_->GetBodyInterface();
     JPH::Body* body = bi.CreateBody(settings);
@@ -193,7 +193,7 @@ BodyHandle PhysicsWorld::createDynamicBody(const JPH::Shape* shape, float px, fl
         return BodyHandle{JPH::BodyID()};
 
     JPH::BodyCreationSettings settings(shape, JPH::RVec3(px, py, pz), JPH::Quat::sIdentity(), JPH::EMotionType::Dynamic,
-                                       physics::kLayerDynamic);
+                                       physics::K_LAYER_DYNAMIC);
 
     settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
     settings.mMassPropertiesOverride.mMass = mass;
@@ -236,47 +236,47 @@ void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx,
     removeChunkCollision(cx, cy, cz);
 
     // Neighbor offsets for 6 faces: +X, -X, +Y, -Y, +Z, -Z
-    constexpr int kNeighborOff[6][3] = {
+    constexpr int K_NEIGHBOR_OFF[6][3] = {
         {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
     };
     // Thin box half-extents per face direction (face-normal axis gets thin, others full)
-    constexpr float kHalf = 0.5f;
-    constexpr float kSkin = 0.025f;
+    constexpr float K_HALF = 0.5f;
+    constexpr float K_SKIN = 0.025f;
     // halfExtents[face] = {hx, hy, hz}
-    const JPH::Vec3 kFaceHalfExtent[6] = {
-        {kSkin, kHalf, kHalf}, // +X
-        {kSkin, kHalf, kHalf}, // -X
-        {kHalf, kSkin, kHalf}, // +Y
-        {kHalf, kSkin, kHalf}, // -Y
-        {kHalf, kHalf, kSkin}, // +Z
-        {kHalf, kHalf, kSkin}, // -Z
+    const JPH::Vec3 K_FACE_HALF_EXTENT[6] = {
+        {K_SKIN, K_HALF, K_HALF}, // +X
+        {K_SKIN, K_HALF, K_HALF}, // -X
+        {K_HALF, K_SKIN, K_HALF}, // +Y
+        {K_HALF, K_SKIN, K_HALF}, // -Y
+        {K_HALF, K_HALF, K_SKIN}, // +Z
+        {K_HALF, K_HALF, K_SKIN}, // -Z
     };
     // Face center offset from voxel center (0.5 unit along face normal)
-    const float kFaceOffset[6][3] = {
-        {kHalf, 0.0f, 0.0f},  {-kHalf, 0.0f, 0.0f}, {0.0f, kHalf, 0.0f},
-        {0.0f, -kHalf, 0.0f}, {0.0f, 0.0f, kHalf},  {0.0f, 0.0f, -kHalf},
+    const float K_FACE_OFFSET[6][3] = {
+        {K_HALF, 0.0f, 0.0f},  {-K_HALF, 0.0f, 0.0f}, {0.0f, K_HALF, 0.0f},
+        {0.0f, -K_HALF, 0.0f}, {0.0f, 0.0f, K_HALF},  {0.0f, 0.0f, -K_HALF},
     };
 
-    int baseX = cx * kChunkSize;
-    int baseY = cy * kChunkSize;
-    int baseZ = cz * kChunkSize;
+    int baseX = cx * K_CHUNK_SIZE;
+    int baseY = cy * K_CHUNK_SIZE;
+    int baseZ = cz * K_CHUNK_SIZE;
 
     ChunkKey key{cx, cy, cz};
     auto& bodies = chunkBodies_[key];
 
-    for (int tz = 0; tz < physics::kTilesPerAxis; ++tz) {
-        for (int ty = 0; ty < physics::kTilesPerAxis; ++ty) {
-            for (int tx = 0; tx < physics::kTilesPerAxis; ++tx) {
-                int tileBaseX = baseX + tx * physics::kPhysTileSize;
-                int tileBaseY = baseY + ty * physics::kPhysTileSize;
-                int tileBaseZ = baseZ + tz * physics::kPhysTileSize;
+    for (int tz = 0; tz < physics::K_TILES_PER_AXIS; ++tz) {
+        for (int ty = 0; ty < physics::K_TILES_PER_AXIS; ++ty) {
+            for (int tx = 0; tx < physics::K_TILES_PER_AXIS; ++tx) {
+                int tileBaseX = baseX + tx * physics::K_PHYS_TILE_SIZE;
+                int tileBaseY = baseY + ty * physics::K_PHYS_TILE_SIZE;
+                int tileBaseZ = baseZ + tz * physics::K_PHYS_TILE_SIZE;
 
                 JPH::StaticCompoundShapeSettings compound;
                 bool hasShape = false;
 
-                for (int lz = 0; lz < physics::kPhysTileSize; ++lz) {
-                    for (int ly = 0; ly < physics::kPhysTileSize; ++ly) {
-                        for (int lx = 0; lx < physics::kPhysTileSize; ++lx) {
+                for (int lz = 0; lz < physics::K_PHYS_TILE_SIZE; ++lz) {
+                    for (int ly = 0; ly < physics::K_PHYS_TILE_SIZE; ++ly) {
+                        for (int lx = 0; lx < physics::K_PHYS_TILE_SIZE; ++lx) {
                             int wx = tileBaseX + lx;
                             int wy = tileBaseY + ly;
                             int wz = tileBaseZ + lz;
@@ -287,19 +287,19 @@ void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx,
 
                             // Only emit thin collision quads for exposed faces
                             for (int face = 0; face < 6; ++face) {
-                                int nx = wx + kNeighborOff[face][0];
-                                int ny = wy + kNeighborOff[face][1];
-                                int nz = wz + kNeighborOff[face][2];
+                                int nx = wx + K_NEIGHBOR_OFF[face][0];
+                                int ny = wy + K_NEIGHBOR_OFF[face][1];
+                                int nz = wz + K_NEIGHBOR_OFF[face][2];
 
                                 if (grid.get(nx, ny, nz) >= densityThreshold)
                                     continue;
 
-                                auto* boxSettings = new JPH::BoxShapeSettings(kFaceHalfExtent[face], 0.0f);
+                                auto* boxSettings = new JPH::BoxShapeSettings(K_FACE_HALF_EXTENT[face], 0.0f);
 
                                 // Position: voxel center + face offset, relative to tile origin
-                                JPH::Vec3 localPos(static_cast<float>(lx) + 0.5f + kFaceOffset[face][0],
-                                                   static_cast<float>(ly) + 0.5f + kFaceOffset[face][1],
-                                                   static_cast<float>(lz) + 0.5f + kFaceOffset[face][2]);
+                                JPH::Vec3 localPos(static_cast<float>(lx) + 0.5f + K_FACE_OFFSET[face][0],
+                                                   static_cast<float>(ly) + 0.5f + K_FACE_OFFSET[face][1],
+                                                   static_cast<float>(lz) + 0.5f + K_FACE_OFFSET[face][2]);
                                 compound.AddShape(localPos, JPH::Quat::sIdentity(), boxSettings);
                                 hasShape = true;
                             }
@@ -318,7 +318,7 @@ void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx,
                     result.Get(),
                     JPH::RVec3(static_cast<float>(tileBaseX), static_cast<float>(tileBaseY),
                                static_cast<float>(tileBaseZ)),
-                    JPH::Quat::sIdentity(), JPH::EMotionType::Static, physics::kLayerStatic);
+                    JPH::Quat::sIdentity(), JPH::EMotionType::Static, physics::K_LAYER_STATIC);
 
                 auto& bi = physicsSystem_->GetBodyInterface();
                 JPH::Body* body = bi.CreateBody(bodySettings);
@@ -351,47 +351,47 @@ void PhysicsWorld::rebuildChunkCollision(const fabric::simulation::SimulationGri
     removeChunkCollision(cx, cy, cz);
 
     // Neighbor offsets for 6 faces: +X, -X, +Y, -Y, +Z, -Z
-    constexpr int kNeighborOff[6][3] = {
+    constexpr int K_NEIGHBOR_OFF[6][3] = {
         {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
     };
     // Thin box half-extents per face direction (face-normal axis gets thin, others full)
-    constexpr float kHalf = 0.5f;
-    constexpr float kSkin = 0.025f;
+    constexpr float K_HALF = 0.5f;
+    constexpr float K_SKIN = 0.025f;
     // halfExtents[face] = {hx, hy, hz}
-    const JPH::Vec3 kFaceHalfExtent[6] = {
-        {kSkin, kHalf, kHalf}, // +X
-        {kSkin, kHalf, kHalf}, // -X
-        {kHalf, kSkin, kHalf}, // +Y
-        {kHalf, kSkin, kHalf}, // -Y
-        {kHalf, kHalf, kSkin}, // +Z
-        {kHalf, kHalf, kSkin}, // -Z
+    const JPH::Vec3 K_FACE_HALF_EXTENT[6] = {
+        {K_SKIN, K_HALF, K_HALF}, // +X
+        {K_SKIN, K_HALF, K_HALF}, // -X
+        {K_HALF, K_SKIN, K_HALF}, // +Y
+        {K_HALF, K_SKIN, K_HALF}, // -Y
+        {K_HALF, K_HALF, K_SKIN}, // +Z
+        {K_HALF, K_HALF, K_SKIN}, // -Z
     };
     // Face center offset from voxel center (0.5 unit along face normal)
-    const float kFaceOffset[6][3] = {
-        {kHalf, 0.0f, 0.0f},  {-kHalf, 0.0f, 0.0f}, {0.0f, kHalf, 0.0f},
-        {0.0f, -kHalf, 0.0f}, {0.0f, 0.0f, kHalf},  {0.0f, 0.0f, -kHalf},
+    const float K_FACE_OFFSET[6][3] = {
+        {K_HALF, 0.0f, 0.0f},  {-K_HALF, 0.0f, 0.0f}, {0.0f, K_HALF, 0.0f},
+        {0.0f, -K_HALF, 0.0f}, {0.0f, 0.0f, K_HALF},  {0.0f, 0.0f, -K_HALF},
     };
 
-    int baseX = cx * kChunkSize;
-    int baseY = cy * kChunkSize;
-    int baseZ = cz * kChunkSize;
+    int baseX = cx * K_CHUNK_SIZE;
+    int baseY = cy * K_CHUNK_SIZE;
+    int baseZ = cz * K_CHUNK_SIZE;
 
     ChunkKey key{cx, cy, cz};
     auto& bodies = chunkBodies_[key];
 
-    for (int tz = 0; tz < physics::kTilesPerAxis; ++tz) {
-        for (int ty = 0; ty < physics::kTilesPerAxis; ++ty) {
-            for (int tx = 0; tx < physics::kTilesPerAxis; ++tx) {
-                int tileBaseX = baseX + tx * physics::kPhysTileSize;
-                int tileBaseY = baseY + ty * physics::kPhysTileSize;
-                int tileBaseZ = baseZ + tz * physics::kPhysTileSize;
+    for (int tz = 0; tz < physics::K_TILES_PER_AXIS; ++tz) {
+        for (int ty = 0; ty < physics::K_TILES_PER_AXIS; ++ty) {
+            for (int tx = 0; tx < physics::K_TILES_PER_AXIS; ++tx) {
+                int tileBaseX = baseX + tx * physics::K_PHYS_TILE_SIZE;
+                int tileBaseY = baseY + ty * physics::K_PHYS_TILE_SIZE;
+                int tileBaseZ = baseZ + tz * physics::K_PHYS_TILE_SIZE;
 
                 JPH::StaticCompoundShapeSettings compound;
                 bool hasShape = false;
 
-                for (int lz = 0; lz < physics::kPhysTileSize; ++lz) {
-                    for (int ly = 0; ly < physics::kPhysTileSize; ++ly) {
-                        for (int lx = 0; lx < physics::kPhysTileSize; ++lx) {
+                for (int lz = 0; lz < physics::K_PHYS_TILE_SIZE; ++lz) {
+                    for (int ly = 0; ly < physics::K_PHYS_TILE_SIZE; ++ly) {
+                        for (int lx = 0; lx < physics::K_PHYS_TILE_SIZE; ++lx) {
                             int wx = tileBaseX + lx;
                             int wy = tileBaseY + ly;
                             int wz = tileBaseZ + lz;
@@ -402,19 +402,19 @@ void PhysicsWorld::rebuildChunkCollision(const fabric::simulation::SimulationGri
 
                             // Only emit thin collision quads for exposed faces
                             for (int face = 0; face < 6; ++face) {
-                                int nx = wx + kNeighborOff[face][0];
-                                int ny = wy + kNeighborOff[face][1];
-                                int nz = wz + kNeighborOff[face][2];
+                                int nx = wx + K_NEIGHBOR_OFF[face][0];
+                                int ny = wy + K_NEIGHBOR_OFF[face][1];
+                                int nz = wz + K_NEIGHBOR_OFF[face][2];
 
                                 if (grid.readCell(nx, ny, nz).materialId != fabric::simulation::material_ids::AIR)
                                     continue;
 
-                                auto* boxSettings = new JPH::BoxShapeSettings(kFaceHalfExtent[face], 0.0f);
+                                auto* boxSettings = new JPH::BoxShapeSettings(K_FACE_HALF_EXTENT[face], 0.0f);
 
                                 // Position: voxel center + face offset, relative to tile origin
-                                JPH::Vec3 localPos(static_cast<float>(lx) + 0.5f + kFaceOffset[face][0],
-                                                   static_cast<float>(ly) + 0.5f + kFaceOffset[face][1],
-                                                   static_cast<float>(lz) + 0.5f + kFaceOffset[face][2]);
+                                JPH::Vec3 localPos(static_cast<float>(lx) + 0.5f + K_FACE_OFFSET[face][0],
+                                                   static_cast<float>(ly) + 0.5f + K_FACE_OFFSET[face][1],
+                                                   static_cast<float>(lz) + 0.5f + K_FACE_OFFSET[face][2]);
                                 compound.AddShape(localPos, JPH::Quat::sIdentity(), boxSettings);
                                 hasShape = true;
                             }
@@ -433,7 +433,7 @@ void PhysicsWorld::rebuildChunkCollision(const fabric::simulation::SimulationGri
                     result.Get(),
                     JPH::RVec3(static_cast<float>(tileBaseX), static_cast<float>(tileBaseY),
                                static_cast<float>(tileBaseZ)),
-                    JPH::Quat::sIdentity(), JPH::EMotionType::Static, physics::kLayerStatic);
+                    JPH::Quat::sIdentity(), JPH::EMotionType::Static, physics::K_LAYER_STATIC);
 
                 auto& bi = physicsSystem_->GetBodyInterface();
                 JPH::Body* body = bi.CreateBody(bodySettings);
@@ -607,7 +607,7 @@ BodyHandle PhysicsWorld::createDebris(const JPH::Shape* shape, float px, float p
         return BodyHandle{JPH::BodyID()};
 
     JPH::BodyCreationSettings settings(shape, JPH::RVec3(px, py, pz), JPH::Quat::sIdentity(), JPH::EMotionType::Dynamic,
-                                       physics::kLayerDynamic);
+                                       physics::K_LAYER_DYNAMIC);
     settings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
     settings.mMassPropertiesOverride.mMass = 1.0f;
 

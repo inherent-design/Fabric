@@ -11,8 +11,8 @@ namespace recurse {
 
 namespace {
 
-constexpr float kDegToRad = std::numbers::pi_v<float> / 180.0f;
-constexpr float kSpringArmClipOffset = 0.2f;
+constexpr float K_DEG_TO_RAD = std::numbers::pi_v<float> / 180.0f;
+constexpr float K_SPRING_ARM_CLIP_OFFSET = 0.2f;
 
 float wrapAngle(float degrees) {
     degrees = std::fmod(degrees, 360.0f);
@@ -37,8 +37,8 @@ CameraMode CameraController::mode() const {
 }
 
 void CameraController::processMouseInput(float deltaX, float deltaY) {
-    yaw_ += deltaX * config_.mouseSensitivity / kDegToRad;
-    pitch_ += deltaY * config_.mouseSensitivity / kDegToRad;
+    yaw_ += deltaX * config_.mouseSensitivity / K_DEG_TO_RAD;
+    pitch_ += deltaY * config_.mouseSensitivity / K_DEG_TO_RAD;
     wrapYaw();
     clampPitch();
 }
@@ -72,7 +72,7 @@ void CameraController::update(const Vector3<double, Space::World>& targetPos, fl
                                static_cast<float>(eyePointD.z), rayDir.x, rayDir.y, rayDir.z, config_.orbitDistance,
                                densityThreshold);
             if (hit && hit->t < targetDist) {
-                targetDist = std::max(hit->t - kSpringArmClipOffset, config_.orbitMinDistance);
+                targetDist = std::max(hit->t - K_SPRING_ARM_CLIP_OFFSET, config_.orbitMinDistance);
             }
         }
 
@@ -137,8 +137,8 @@ CameraConfig& CameraController::config() {
 
 Quaternion<float> CameraController::buildRotation() const {
     // Yaw around Y axis, then pitch around X axis
-    float yawRad = yaw_ * kDegToRad;
-    float pitchRad = pitch_ * kDegToRad;
+    float yawRad = yaw_ * K_DEG_TO_RAD;
+    float pitchRad = pitch_ * K_DEG_TO_RAD;
 
     auto yawQuat = Quaternion<float>::fromAxisAngle(Vector3<float, Space::World>(0.0f, 1.0f, 0.0f), yawRad);
     auto pitchQuat = Quaternion<float>::fromAxisAngle(Vector3<float, Space::World>(1.0f, 0.0f, 0.0f), pitchRad);
@@ -171,7 +171,7 @@ void CameraController::update(const Vector3<double, Space::World>& targetPos, fl
             auto hit = castRay(*grid, static_cast<float>(eyePointD.x), static_cast<float>(eyePointD.y),
                                static_cast<float>(eyePointD.z), rayDir.x, rayDir.y, rayDir.z, config_.orbitDistance);
             if (hit && hit->t < targetDist) {
-                targetDist = std::max(hit->t - kSpringArmClipOffset, config_.orbitMinDistance);
+                targetDist = std::max(hit->t - K_SPRING_ARM_CLIP_OFFSET, config_.orbitMinDistance);
             }
         }
 

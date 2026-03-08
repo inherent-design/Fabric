@@ -38,14 +38,14 @@ TEST_F(SkinnedRendererTest, VertexLayoutHasWeightAttribute) {
 }
 
 TEST_F(SkinnedRendererTest, MaxGpuJointsConstant) {
-    EXPECT_GE(kMaxGpuJoints, 60) << "Must support at least 60 joints for humanoid characters";
-    EXPECT_LE(kMaxGpuJoints, 128) << "GPU uniform arrays have practical limits";
+    EXPECT_GE(K_MAX_GPU_JOINTS, 60) << "Must support at least 60 joints for humanoid characters";
+    EXPECT_LE(K_MAX_GPU_JOINTS, 128) << "GPU uniform arrays have practical limits";
 }
 
 TEST_F(SkinnedRendererTest, SkinningDataCanHoldMaxJoints) {
     SkinningData data;
-    data.jointMatrices.resize(kMaxGpuJoints);
-    EXPECT_EQ(data.jointMatrices.size(), static_cast<size_t>(kMaxGpuJoints));
+    data.jointMatrices.resize(K_MAX_GPU_JOINTS);
+    EXPECT_EQ(data.jointMatrices.size(), static_cast<size_t>(K_MAX_GPU_JOINTS));
 }
 
 TEST_F(SkinnedRendererTest, MeshDataHasStableId) {

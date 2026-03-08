@@ -66,17 +66,17 @@ TEST(BufferPoolTest, MoveSemantics) {
 }
 
 TEST(BufferPoolTest, ConcurrentBorrowReturn) {
-    constexpr size_t kSlotCount = 8;
-    constexpr size_t kThreadCount = 4;
-    constexpr size_t kIterations = 100;
+    constexpr size_t K_SLOT_COUNT = 8;
+    constexpr size_t K_THREAD_COUNT = 4;
+    constexpr size_t K_ITERATIONS = 100;
 
-    BufferPool pool(64, kSlotCount);
+    BufferPool pool(64, K_SLOT_COUNT);
     std::atomic<size_t> successCount{0};
 
     std::vector<std::thread> threads;
-    for (size_t t = 0; t < kThreadCount; ++t) {
+    for (size_t t = 0; t < K_THREAD_COUNT; ++t) {
         threads.emplace_back([&]() {
-            for (size_t i = 0; i < kIterations; ++i) {
+            for (size_t i = 0; i < K_ITERATIONS; ++i) {
                 auto slot = pool.tryBorrow();
                 if (slot.has_value()) {
                     ++successCount;
@@ -91,7 +91,7 @@ TEST(BufferPoolTest, ConcurrentBorrowReturn) {
     for (auto& t : threads)
         t.join();
 
-    EXPECT_EQ(pool.available(), kSlotCount);
+    EXPECT_EQ(pool.available(), K_SLOT_COUNT);
     EXPECT_GT(successCount.load(), 0u);
 }
 

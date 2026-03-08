@@ -13,7 +13,7 @@
 
 using namespace fabric::simulation;
 using namespace recurse;
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 // -- FlatWorldGenerator -------------------------------------------------------
 
@@ -24,7 +24,7 @@ TEST(TestWorldGenerator, FlatWorldGenerator_BelowGround_Stone) {
     grid.advanceEpoch();
 
     // Chunk (0,0,0) spans y=[0,31], entirely below groundLevel=32
-    for (int y = 0; y < kChunkSize; ++y) {
+    for (int y = 0; y < K_CHUNK_SIZE; ++y) {
         auto cell = grid.readCell(0, y, 0);
         EXPECT_EQ(cell.materialId, material_ids::STONE) << "y=" << y << " should be stone";
     }

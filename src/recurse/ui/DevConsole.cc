@@ -121,7 +121,7 @@ void DevConsole::execute(const std::string& input) {
 
 void DevConsole::print(const std::string& message) {
     output_.push_back(message);
-    while (output_.size() > kMaxOutputLines) {
+    while (output_.size() > K_MAX_OUTPUT_LINES) {
         output_.pop_front();
     }
 }

@@ -63,16 +63,16 @@ TEST(VulkanRegression, SpirvProfileEnabled) {
 
 TEST(VulkanRegression, ViewIdConstantsNoConflicts) {
     // Collect every known view ID into a set; duplicates collapse.
-    constexpr uint8_t kSkyViewId = 0;
-    constexpr uint8_t kGeometryViewId = 1;
-    constexpr uint8_t kTransparentViewId = 2;
-    constexpr uint8_t kUIViewId = 255; // BgfxRenderInterface::kDefaultViewId (private)
+    constexpr uint8_t K_SKY_VIEW_ID = 0;
+    constexpr uint8_t K_GEOMETRY_VIEW_ID = 1;
+    constexpr uint8_t K_TRANSPARENT_VIEW_ID = 2;
+    constexpr uint8_t K_UI_VIEW_ID = 255; // BgfxRenderInterface::K_DEFAULT_VIEW_ID (private)
 
     std::set<uint8_t> ids = {
-        kSkyViewId,
-        kGeometryViewId,
-        kTransparentViewId,
-        ParticleSystem::kViewId, // 10
+        K_SKY_VIEW_ID,
+        K_GEOMETRY_VIEW_ID,
+        K_TRANSPARENT_VIEW_ID,
+        ParticleSystem::K_VIEW_ID, // 10
         200,
         201,
         202,
@@ -80,7 +80,7 @@ TEST(VulkanRegression, ViewIdConstantsNoConflicts) {
         204,                     // PostProcess range
         K_OIT_ACCUM_VIEW_ID,     // 210
         K_OIT_COMPOSITE_VIEW_ID, // 211
-        kUIViewId,               // 255
+        K_UI_VIEW_ID,            // 255
     };
     EXPECT_EQ(ids.size(), 12u) << "Duplicate view IDs detected";
 }
@@ -88,23 +88,23 @@ TEST(VulkanRegression, ViewIdConstantsNoConflicts) {
 TEST(VulkanRegression, ViewIdExecutionOrder) {
     // bgfx renders views in ascending ID order.
     // Sky < Geometry < Transparent < Particles < PostProcess < OIT < UI
-    constexpr uint8_t kSkyViewId = 0;
-    constexpr uint8_t kGeometryViewId = 1;
-    constexpr uint8_t kTransparentViewId = 2;
-    constexpr uint8_t kUIViewId = 255;
+    constexpr uint8_t K_SKY_VIEW_ID = 0;
+    constexpr uint8_t K_GEOMETRY_VIEW_ID = 1;
+    constexpr uint8_t K_TRANSPARENT_VIEW_ID = 2;
+    constexpr uint8_t K_UI_VIEW_ID = 255;
 
-    EXPECT_LT(kSkyViewId, kGeometryViewId);
-    EXPECT_LT(kGeometryViewId, kTransparentViewId);
-    EXPECT_LT(kTransparentViewId, ParticleSystem::kViewId);
+    EXPECT_LT(K_SKY_VIEW_ID, K_GEOMETRY_VIEW_ID);
+    EXPECT_LT(K_GEOMETRY_VIEW_ID, K_TRANSPARENT_VIEW_ID);
+    EXPECT_LT(K_TRANSPARENT_VIEW_ID, ParticleSystem::K_VIEW_ID);
     EXPECT_LT(K_OIT_ACCUM_VIEW_ID, K_OIT_COMPOSITE_VIEW_ID);
 
     // OIT composite (211) must execute AFTER opaque geometry (1).
     // This ordering caused the black screen bug -- the composite overwrites
     // the backbuffer if it writes opaque black.
-    EXPECT_GT(K_OIT_COMPOSITE_VIEW_ID, kGeometryViewId);
+    EXPECT_GT(K_OIT_COMPOSITE_VIEW_ID, K_GEOMETRY_VIEW_ID);
 
     // UI overlay is always last.
-    EXPECT_GT(kUIViewId, K_OIT_COMPOSITE_VIEW_ID);
+    EXPECT_GT(K_UI_VIEW_ID, K_OIT_COMPOSITE_VIEW_ID);
 }
 
 // ---------------------------------------------------------------------------
@@ -131,8 +131,8 @@ TEST(VulkanRegression, OITCompositeViewIdIsAfterAccum) {
 
 TEST(VulkanRegression, OITAccumViewIdDoesNotOverlapPostProcess) {
     // PostProcess uses views 200..204; OIT starts at 210.
-    constexpr uint8_t kPostProcessEndViewId = 204;
-    EXPECT_GT(K_OIT_ACCUM_VIEW_ID, kPostProcessEndViewId);
+    constexpr uint8_t K_POST_PROCESS_END_VIEW_ID = 204;
+    EXPECT_GT(K_OIT_ACCUM_VIEW_ID, K_POST_PROCESS_END_VIEW_ID);
 }
 
 // ---------------------------------------------------------------------------

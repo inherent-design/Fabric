@@ -8,13 +8,13 @@ using namespace fabric::simulation;
 LayeredGenerator::LayeredGenerator(std::vector<LayerDef> layers) : layers_(std::move(layers)) {}
 
 void LayeredGenerator::generate(SimulationGrid& grid, ChunkPos pos) {
-    int baseY = pos.y * kChunkSize;
+    int baseY = pos.y * K_CHUNK_SIZE;
 
     // Default fill is Air
     grid.fillChunk(pos.x, pos.y, pos.z, VoxelCell{});
 
-    for (int lz = 0; lz < kChunkSize; ++lz) {
-        for (int ly = 0; ly < kChunkSize; ++ly) {
+    for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+        for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
             int worldY = baseY + ly;
 
             // Find last matching layer for this worldY
@@ -25,9 +25,9 @@ void LayeredGenerator::generate(SimulationGrid& grid, ChunkPos pos) {
             }
 
             if (match) {
-                for (int lx = 0; lx < kChunkSize; ++lx) {
-                    int wx = pos.x * kChunkSize + lx;
-                    int wz = pos.z * kChunkSize + lz;
+                for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+                    int wx = pos.x * K_CHUNK_SIZE + lx;
+                    int wz = pos.z * K_CHUNK_SIZE + lz;
                     grid.writeCell(wx, worldY, wz, match->cell);
                 }
             }

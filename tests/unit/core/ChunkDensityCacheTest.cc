@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 
 using namespace recurse;
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 class ChunkDensityCacheTest : public ::testing::Test {
   protected:
@@ -12,17 +12,17 @@ class ChunkDensityCacheTest : public ::testing::Test {
 
 TEST_F(ChunkDensityCacheTest, InteriorMatchesGrid) {
     // Fill chunk (0,0,0) with known values
-    for (int lz = 0; lz < kChunkSize; ++lz)
-        for (int ly = 0; ly < kChunkSize; ++ly)
-            for (int lx = 0; lx < kChunkSize; ++lx)
+    for (int lz = 0; lz < K_CHUNK_SIZE; ++lz)
+        for (int ly = 0; ly < K_CHUNK_SIZE; ++ly)
+            for (int lx = 0; lx < K_CHUNK_SIZE; ++lx)
                 density.set(lx, ly, lz, static_cast<float>(lx + ly * 100 + lz * 10000));
 
     cache.build(0, 0, 0, density);
 
     // Cache offset +1 maps to chunk local [0..31]
-    for (int lz = 0; lz < kChunkSize; ++lz)
-        for (int ly = 0; ly < kChunkSize; ++ly)
-            for (int lx = 0; lx < kChunkSize; ++lx)
+    for (int lz = 0; lz < K_CHUNK_SIZE; ++lz)
+        for (int ly = 0; ly < K_CHUNK_SIZE; ++ly)
+            for (int lx = 0; lx < K_CHUNK_SIZE; ++lx)
                 EXPECT_FLOAT_EQ(cache.at(lx + 1, ly + 1, lz + 1), density.get(lx, ly, lz));
 }
 
@@ -47,9 +47,9 @@ TEST_F(ChunkDensityCacheTest, MissingNeighborDefaultsToZero) {
 }
 
 TEST_F(ChunkDensityCacheTest, TrilinearAtIntegerMatchesDirect) {
-    for (int lz = 0; lz < kChunkSize; ++lz)
-        for (int ly = 0; ly < kChunkSize; ++ly)
-            for (int lx = 0; lx < kChunkSize; ++lx)
+    for (int lz = 0; lz < K_CHUNK_SIZE; ++lz)
+        for (int ly = 0; ly < K_CHUNK_SIZE; ++ly)
+            for (int lx = 0; lx < K_CHUNK_SIZE; ++lx)
                 density.set(lx, ly, lz, static_cast<float>(lx * ly + lz));
 
     cache.build(0, 0, 0, density);
@@ -65,9 +65,9 @@ TEST_F(ChunkDensityCacheTest, TrilinearMidpointIsAverage) {
     // corners also set up properly for a clean midpoint test.
 
     // Set a simple linear ramp along X in the cache region
-    for (int lz = 0; lz < kCacheSize; ++lz)
-        for (int ly = 0; ly < kCacheSize; ++ly)
-            for (int lx = 0; lx < kCacheSize; ++lx) {
+    for (int lz = 0; lz < K_CACHE_SIZE; ++lz)
+        for (int ly = 0; ly < K_CACHE_SIZE; ++ly)
+            for (int lx = 0; lx < K_CACHE_SIZE; ++lx) {
                 int wx = lx - 1;
                 int wy = ly - 1;
                 int wz = lz - 1;

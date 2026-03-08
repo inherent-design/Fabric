@@ -44,15 +44,15 @@ TEST(ThreadPoolExecutorTest, SubmitVoidTask) {
 
 TEST(ThreadPoolExecutorTest, SubmitMultipleTasks) {
     ThreadPoolExecutor pool(4);
-    constexpr int kTaskCount = 100;
+    constexpr int K_TASK_COUNT = 100;
     std::vector<std::future<int>> futures;
-    futures.reserve(kTaskCount);
+    futures.reserve(K_TASK_COUNT);
 
-    for (int i = 0; i < kTaskCount; ++i) {
+    for (int i = 0; i < K_TASK_COUNT; ++i) {
         futures.push_back(pool.submit([i]() { return i * 2; }));
     }
 
-    for (int i = 0; i < kTaskCount; ++i) {
+    for (int i = 0; i < K_TASK_COUNT; ++i) {
         EXPECT_EQ(futures[i].get(), i * 2);
     }
 }
@@ -213,12 +213,12 @@ TEST(ThreadPoolExecutorTest, QueuedTaskCountReflectsState) {
 
 TEST(ThreadPoolExecutorTest, ConcurrentSubmitsProduceCorrectResults) {
     ThreadPoolExecutor pool(4);
-    constexpr int kTasks = 200;
+    constexpr int K_TASKS = 200;
     std::atomic<int> sum{0};
     std::vector<std::future<void>> futures;
-    futures.reserve(kTasks);
+    futures.reserve(K_TASKS);
 
-    for (int i = 0; i < kTasks; ++i) {
+    for (int i = 0; i < K_TASKS; ++i) {
         futures.push_back(pool.submit([&sum, i]() { sum += i; }));
     }
 
@@ -226,7 +226,7 @@ TEST(ThreadPoolExecutorTest, ConcurrentSubmitsProduceCorrectResults) {
         f.get();
     }
 
-    int expected = kTasks * (kTasks - 1) / 2;
+    int expected = K_TASKS * (K_TASKS - 1) / 2;
     EXPECT_EQ(sum.load(), expected);
 }
 

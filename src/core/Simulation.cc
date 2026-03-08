@@ -36,12 +36,12 @@ void SimulationHarness::tick(double dt) {
         merged.insert(c);
 
     for (auto [cx, cy, cz] : merged) {
-        int baseX = cx * kChunkSize;
-        int baseY = cy * kChunkSize;
-        int baseZ = cz * kChunkSize;
-        for (int lz = 0; lz < kChunkSize; ++lz) {
-            for (int ly = 0; ly < kChunkSize; ++ly) {
-                for (int lx = 0; lx < kChunkSize; ++lx) {
+        int baseX = cx * K_CHUNK_SIZE;
+        int baseY = cy * K_CHUNK_SIZE;
+        int baseZ = cz * K_CHUNK_SIZE;
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+            for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+                for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
                     int wx = baseX + lx;
                     int wy = baseY + ly;
                     int wz = baseZ + lz;

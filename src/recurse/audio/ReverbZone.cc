@@ -134,10 +134,10 @@ ReverbParams mapToReverbParams(const ZoneEstimate& zone, float voxelSize) {
     float S = static_cast<float>(zone.surfaceArea) * vs2;
 
     // Sabine equation: RT60 = 0.161 * V / (alpha * S)
-    constexpr float kAlphaAvg = 0.3f; // moderate absorption (stone/concrete)
+    constexpr float K_ALPHA_AVG = 0.3f; // moderate absorption (stone/concrete)
     float rt60 = 0.0f;
     if (S > 0.0f) {
-        rt60 = 0.161f * V / (kAlphaAvg * S);
+        rt60 = 0.161f * V / (K_ALPHA_AVG * S);
     }
     rt60 = std::clamp(rt60, 0.1f, 3.0f);
 

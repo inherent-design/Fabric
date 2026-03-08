@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 
 using fabric::ChunkedGrid;
-using fabric::kChunkVolume;
+using fabric::K_CHUNK_VOLUME;
 using namespace recurse;
 
 class StructuralIntegrityTest : public ::testing::Test {
@@ -179,8 +179,8 @@ TEST_F(StructuralIntegrityTest, BudgetLimitsBFSAcrossFrames) {
     si.setDebrisCallback([&](const DebrisEvent&) { ++debrisCount; });
 
     int iterations = 0;
-    constexpr int kMaxIterations = 100000;
-    while (debrisCount == 0 && iterations < kMaxIterations) {
+    constexpr int K_MAX_ITERATIONS = 100000;
+    while (debrisCount == 0 && iterations < K_MAX_ITERATIONS) {
         si.update(grid, 0.016f);
         ++iterations;
     }

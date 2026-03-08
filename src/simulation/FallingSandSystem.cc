@@ -10,13 +10,13 @@ template <typename Fn> bool sweepChunk(uint64_t frameIndex, Fn&& cellFn) {
     bool anyChange = false;
     bool reverseDir = (frameIndex & 1) != 0;
 
-    for (int ly = 0; ly < kChunkSize; ++ly) {
-        int lxStart = reverseDir ? kChunkSize - 1 : 0;
-        int lxEnd = reverseDir ? -1 : kChunkSize;
+    for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+        int lxStart = reverseDir ? K_CHUNK_SIZE - 1 : 0;
+        int lxEnd = reverseDir ? -1 : K_CHUNK_SIZE;
         int lxStep = reverseDir ? -1 : 1;
 
-        int lzStart = reverseDir ? kChunkSize - 1 : 0;
-        int lzEnd = reverseDir ? -1 : kChunkSize;
+        int lzStart = reverseDir ? K_CHUNK_SIZE - 1 : 0;
+        int lzEnd = reverseDir ? -1 : K_CHUNK_SIZE;
         int lzStep = reverseDir ? -1 : 1;
 
         for (int lz = lzStart; lz != lzEnd; lz += lzStep) {
@@ -34,10 +34,10 @@ FallingSandSystem::FallingSandSystem(const MaterialRegistry& registry) : registr
 
 VoxelCell FallingSandSystem::readCell(ChunkPos pos, int lx, int ly, int lz, const SimulationGrid& grid,
                                       const GhostCellManager& ghosts) const {
-    if (lx >= 0 && lx < kChunkSize && ly >= 0 && ly < kChunkSize && lz >= 0 && lz < kChunkSize) {
-        int wx = pos.x * kChunkSize + lx;
-        int wy = pos.y * kChunkSize + ly;
-        int wz = pos.z * kChunkSize + lz;
+    if (lx >= 0 && lx < K_CHUNK_SIZE && ly >= 0 && ly < K_CHUNK_SIZE && lz >= 0 && lz < K_CHUNK_SIZE) {
+        int wx = pos.x * K_CHUNK_SIZE + lx;
+        int wy = pos.y * K_CHUNK_SIZE + ly;
+        int wz = pos.z * K_CHUNK_SIZE + lz;
         // Immediate-mode: read from write buffer so earlier writes in the
         // same sweep are visible (prevents cell collisions/losses).
         return grid.readFromWriteBuffer(wx, wy, wz);
@@ -60,22 +60,23 @@ void FallingSandSystem::writeSwap(ChunkPos pos, int srcLx, int srcLy, int srcLz,
                                   ChunkActivityTracker& tracker) const {
 
     // Source is always in-bounds (we only move cells we own)
-    int srcWx = pos.x * kChunkSize + srcLx;
-    int srcWy = pos.y * kChunkSize + srcLy;
-    int srcWz = pos.z * kChunkSize + srcLz;
+    int srcWx = pos.x * K_CHUNK_SIZE + srcLx;
+    int srcWy = pos.y * K_CHUNK_SIZE + srcLy;
+    int srcWz = pos.z * K_CHUNK_SIZE + srcLz;
     grid.writeCell(srcWx, srcWy, srcWz, dstCell);
 
     // Destination may be out of chunk bounds
-    if (dstLx >= 0 && dstLx < kChunkSize && dstLy >= 0 && dstLy < kChunkSize && dstLz >= 0 && dstLz < kChunkSize) {
-        int dstWx = pos.x * kChunkSize + dstLx;
-        int dstWy = pos.y * kChunkSize + dstLy;
-        int dstWz = pos.z * kChunkSize + dstLz;
+    if (dstLx >= 0 && dstLx < K_CHUNK_SIZE && dstLy >= 0 && dstLy < K_CHUNK_SIZE && dstLz >= 0 &&
+        dstLz < K_CHUNK_SIZE) {
+        int dstWx = pos.x * K_CHUNK_SIZE + dstLx;
+        int dstWy = pos.y * K_CHUNK_SIZE + dstLy;
+        int dstWz = pos.z * K_CHUNK_SIZE + dstLz;
         grid.writeCell(dstWx, dstWy, dstWz, srcCell);
     } else {
         // Cross-chunk write: compute world coords from chunk + local offset
-        int dstWx = pos.x * kChunkSize + dstLx;
-        int dstWy = pos.y * kChunkSize + dstLy;
-        int dstWz = pos.z * kChunkSize + dstLz;
+        int dstWx = pos.x * K_CHUNK_SIZE + dstLx;
+        int dstWy = pos.y * K_CHUNK_SIZE + dstLy;
+        int dstWz = pos.z * K_CHUNK_SIZE + dstLz;
         grid.writeCell(dstWx, dstWy, dstWz, srcCell);
 
         // Wake the neighbor chunk

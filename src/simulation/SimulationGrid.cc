@@ -40,7 +40,7 @@ VoxelCell SimulationGrid::readFromBuffer(int wx, int wy, int wz, int bufferIdx) 
     const auto& pair = it->second;
     if (!pair.isMaterialized())
         return pair.fillValue;
-    int idx = lx + ly * kChunkSize + lz * kChunkSize * kChunkSize;
+    int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
     return (*pair.buffers[bufferIdx])[idx];
 }
 
@@ -59,7 +59,7 @@ void SimulationGrid::writeCell(int wx, int wy, int wz, VoxelCell cell) {
     auto& pair = chunks_[key];
     if (!pair.isMaterialized())
         pair.materialize();
-    int idx = lx + ly * kChunkSize + lz * kChunkSize * kChunkSize;
+    int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
     (*pair.buffers[writeIndex()])[idx] = cell;
 }
 
@@ -70,7 +70,7 @@ void SimulationGrid::writeCellImmediate(int wx, int wy, int wz, VoxelCell cell) 
     auto& pair = chunks_[key];
     if (!pair.isMaterialized())
         pair.materialize();
-    int idx = lx + ly * kChunkSize + lz * kChunkSize * kChunkSize;
+    int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
     (*pair.buffers[readIndex()])[idx] = cell;
     (*pair.buffers[writeIndex()])[idx] = cell;
 }
@@ -120,7 +120,7 @@ size_t SimulationGrid::materializedChunkCount() const {
     return count;
 }
 
-const std::array<VoxelCell, kChunkVolume>* SimulationGrid::readBuffer(int cx, int cy, int cz) const {
+const std::array<VoxelCell, K_CHUNK_VOLUME>* SimulationGrid::readBuffer(int cx, int cy, int cz) const {
     auto key = packChunkKey(cx, cy, cz);
     auto it = chunks_.find(key);
     if (it == chunks_.end())
@@ -131,7 +131,7 @@ const std::array<VoxelCell, kChunkVolume>* SimulationGrid::readBuffer(int cx, in
     return pair.buffers[readIndex()].get();
 }
 
-std::array<VoxelCell, kChunkVolume>* SimulationGrid::writeBuffer(int cx, int cy, int cz) {
+std::array<VoxelCell, K_CHUNK_VOLUME>* SimulationGrid::writeBuffer(int cx, int cy, int cz) {
     auto key = packChunkKey(cx, cy, cz);
     auto it = chunks_.find(key);
     if (it == chunks_.end())

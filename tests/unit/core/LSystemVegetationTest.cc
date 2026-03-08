@@ -88,18 +88,18 @@ TEST(LSystemVegetationTest, ExpandZeroIterations) {
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, PresetsProduceSegments) {
     {
-        auto expanded = expand(kBushRule);
-        auto segments = interpret(expanded, kBushRule);
+        auto expanded = expand(K_BUSH_RULE);
+        auto segments = interpret(expanded, K_BUSH_RULE);
         EXPECT_GT(segments.size(), 0u);
     }
     {
-        auto expanded = expand(kSmallTreeRule);
-        auto segments = interpret(expanded, kSmallTreeRule);
+        auto expanded = expand(K_SMALL_TREE_RULE);
+        auto segments = interpret(expanded, K_SMALL_TREE_RULE);
         EXPECT_GT(segments.size(), 0u);
     }
     {
-        auto expanded = expand(kLargeTreeRule);
-        auto segments = interpret(expanded, kLargeTreeRule);
+        auto expanded = expand(K_LARGE_TREE_RULE);
+        auto segments = interpret(expanded, K_LARGE_TREE_RULE);
         EXPECT_GT(segments.size(), 0u);
     }
 }
@@ -108,9 +108,9 @@ TEST(LSystemVegetationTest, PresetsProduceSegments) {
 // 7. Three presets produce distinct shapes (different segment counts)
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, PresetsProduceDistinctShapes) {
-    auto bushSegments = interpret(expand(kBushRule), kBushRule);
-    auto smallTreeSegments = interpret(expand(kSmallTreeRule), kSmallTreeRule);
-    auto largeTreeSegments = interpret(expand(kLargeTreeRule), kLargeTreeRule);
+    auto bushSegments = interpret(expand(K_BUSH_RULE), K_BUSH_RULE);
+    auto smallTreeSegments = interpret(expand(K_SMALL_TREE_RULE), K_SMALL_TREE_RULE);
+    auto largeTreeSegments = interpret(expand(K_LARGE_TREE_RULE), K_LARGE_TREE_RULE);
 
     std::set<size_t> counts;
     counts.insert(bushSegments.size());
@@ -180,12 +180,12 @@ TEST(LSystemVegetationTest, PushPopRestoresPosition) {
 // 10. Deterministic: same input always produces same output
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, DeterministicOutput) {
-    auto expanded1 = expand(kSmallTreeRule);
-    auto expanded2 = expand(kSmallTreeRule);
+    auto expanded1 = expand(K_SMALL_TREE_RULE);
+    auto expanded2 = expand(K_SMALL_TREE_RULE);
     EXPECT_EQ(expanded1, expanded2);
 
-    auto segments1 = interpret(expanded1, kSmallTreeRule);
-    auto segments2 = interpret(expanded2, kSmallTreeRule);
+    auto segments1 = interpret(expanded1, K_SMALL_TREE_RULE);
+    auto segments2 = interpret(expanded2, K_SMALL_TREE_RULE);
 
     ASSERT_EQ(segments1.size(), segments2.size());
 
@@ -354,10 +354,10 @@ TEST(LSystemVegetationTest, VoxelizeWoodVsLeafDistinctEssence) {
     EXPECT_TRUE(different) << "Wood and leaf essences must be distinct";
 
     // Verify they match the constants.
-    EXPECT_FLOAT_EQ(woodEss.x, kWoodEssence.x);
-    EXPECT_FLOAT_EQ(woodEss.y, kWoodEssence.y);
-    EXPECT_FLOAT_EQ(leafEss.x, kLeafEssence.x);
-    EXPECT_FLOAT_EQ(leafEss.y, kLeafEssence.y);
+    EXPECT_FLOAT_EQ(woodEss.x, K_WOOD_ESSENCE.x);
+    EXPECT_FLOAT_EQ(woodEss.y, K_WOOD_ESSENCE.y);
+    EXPECT_FLOAT_EQ(leafEss.x, K_LEAF_ESSENCE.x);
+    EXPECT_FLOAT_EQ(leafEss.y, K_LEAF_ESSENCE.y);
 }
 
 // ---------------------------------------------------------------------------
@@ -503,7 +503,7 @@ TEST(LSystemVegetationTest, VegetationPlacerGeneratesNonZeroDensity) {
     cfg.seed = 123;
     cfg.surfaceThreshold = 0.5f;
     cfg.spacing = 16.0f;
-    cfg.species = {kBushRule};
+    cfg.species = {K_BUSH_RULE};
 
     VegetationPlacer placer(cfg);
     AABB region(Vec3f(static_cast<float>(minX), 0.0f, static_cast<float>(minZ)),
@@ -540,7 +540,7 @@ TEST(LSystemVegetationTest, VegetationPlacerTreesOnSurface) {
     cfg.seed = 77;
     cfg.surfaceThreshold = 0.5f;
     cfg.spacing = 8.0f;
-    cfg.species = {kBushRule}; // Small to keep voxels close to origin.
+    cfg.species = {K_BUSH_RULE}; // Small to keep voxels close to origin.
 
     VegetationPlacer placer(cfg);
     AABB region(Vec3f(0.0f, 0.0f, 0.0f), Vec3f(32.0f, 30.0f, 32.0f));
@@ -578,7 +578,7 @@ TEST(LSystemVegetationTest, VegetationPlacerDeterministic) {
         cfg.seed = 42;
         cfg.surfaceThreshold = 0.5f;
         cfg.spacing = 8.0f;
-        cfg.species = {kSmallTreeRule};
+        cfg.species = {K_SMALL_TREE_RULE};
 
         VegetationPlacer placer(cfg);
         AABB region(Vec3f(0.0f, 0.0f, 0.0f), Vec3f(32.0f, 25.0f, 32.0f));
@@ -617,7 +617,7 @@ TEST(LSystemVegetationTest, VegetationPlacerMultipleSpecies) {
     cfg.seed = 99;
     cfg.surfaceThreshold = 0.5f;
     cfg.spacing = 8.0f;
-    cfg.species = {kBushRule, kLargeTreeRule};
+    cfg.species = {K_BUSH_RULE, K_LARGE_TREE_RULE};
 
     VegetationPlacer placer(cfg);
     AABB region(Vec3f(0.0f, 0.0f, 0.0f), Vec3f(128.0f, 40.0f, 128.0f));
@@ -658,7 +658,7 @@ TEST(LSystemVegetationTest, VegetationPlacerSpacingConstraint) {
     cfg.seed = 55;
     cfg.surfaceThreshold = 0.5f;
     cfg.spacing = spacing;
-    cfg.species = {kBushRule};
+    cfg.species = {K_BUSH_RULE};
 
     VegetationPlacer placer(cfg);
     AABB region(Vec3f(0.0f, 0.0f, 0.0f), Vec3f(128.0f, 30.0f, 128.0f));
@@ -724,7 +724,7 @@ TEST(LSystemVegetationTest, VegetationPlacerDefaultSpecies) {
     cfg.seed = 42;
     cfg.surfaceThreshold = 0.5f;
     cfg.spacing = 16.0f;
-    // species left empty — should use presets (kBushRule, kSmallTreeRule, kLargeTreeRule).
+    // species left empty — should use presets (K_BUSH_RULE, K_SMALL_TREE_RULE, K_LARGE_TREE_RULE).
 
     VegetationPlacer placer(cfg);
     AABB region(Vec3f(0.0f, 0.0f, 0.0f), Vec3f(64.0f, 30.0f, 64.0f));

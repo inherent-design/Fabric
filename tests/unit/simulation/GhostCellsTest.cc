@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 
 using namespace fabric::simulation;
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 class GhostCellsTest : public ::testing::Test {
   protected:
@@ -167,8 +167,8 @@ TEST_F(GhostCellsTest, ResyncUpdatesValues) {
 
 // 6. Ghost cell count: 6 * 1024 = 6144
 TEST_F(GhostCellsTest, GhostCellCount) {
-    constexpr int kExpected = K_FACE_COUNT * K_FACE_AREA;
-    EXPECT_EQ(kExpected, 6144);
+    constexpr int K_EXPECTED = K_FACE_COUNT * K_FACE_AREA;
+    EXPECT_EQ(K_EXPECTED, 6144);
 
     // Verify storage size
     GhostCellStore store{};

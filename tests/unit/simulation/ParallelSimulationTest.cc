@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 
 using namespace fabric::simulation;
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 class ParallelSimulationTest : public ::testing::Test {
   protected:
@@ -15,9 +15,9 @@ class ParallelSimulationTest : public ::testing::Test {
     }
 
     void markAllSubRegions(ChunkActivityTracker& tracker, ChunkPos pos) {
-        for (int lz = 0; lz < kChunkSize; lz += 8)
-            for (int ly = 0; ly < kChunkSize; ly += 8)
-                for (int lx = 0; lx < kChunkSize; lx += 8)
+        for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
+            for (int ly = 0; ly < K_CHUNK_SIZE; ly += 8)
+                for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
                     tracker.markSubRegionActive(pos, lx, ly, lz);
     }
 
@@ -30,9 +30,9 @@ class ParallelSimulationTest : public ::testing::Test {
             markAllSubRegions(sim.activityTracker(), ChunkPos{cx, 0, 0});
 
             // Stone floor
-            int baseX = cx * kChunkSize;
-            for (int x = baseX; x < baseX + kChunkSize; ++x)
-                for (int z = 0; z < kChunkSize; ++z)
+            int baseX = cx * K_CHUNK_SIZE;
+            for (int x = baseX; x < baseX + K_CHUNK_SIZE; ++x)
+                for (int z = 0; z < K_CHUNK_SIZE; ++z)
                     sim.grid().writeCell(x, 0, z, makeMaterial(material_ids::STONE));
 
             // Sand at y=10
@@ -54,14 +54,14 @@ class ParallelSimulationTest : public ::testing::Test {
 
     /// Snapshot all voxels in a chunk for comparison.
     std::vector<VoxelCell> snapshotChunk(const SimulationGrid& grid, int cx, int cy, int cz) {
-        std::vector<VoxelCell> result(kChunkSize * kChunkSize * kChunkSize);
-        int baseX = cx * kChunkSize;
-        int baseY = cy * kChunkSize;
-        int baseZ = cz * kChunkSize;
-        for (int lz = 0; lz < kChunkSize; ++lz)
-            for (int ly = 0; ly < kChunkSize; ++ly)
-                for (int lx = 0; lx < kChunkSize; ++lx) {
-                    int idx = lx + ly * kChunkSize + lz * kChunkSize * kChunkSize;
+        std::vector<VoxelCell> result(K_CHUNK_SIZE * K_CHUNK_SIZE * K_CHUNK_SIZE);
+        int baseX = cx * K_CHUNK_SIZE;
+        int baseY = cy * K_CHUNK_SIZE;
+        int baseZ = cz * K_CHUNK_SIZE;
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz)
+            for (int ly = 0; ly < K_CHUNK_SIZE; ++ly)
+                for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+                    int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
                     result[idx] = grid.readCell(baseX + lx, baseY + ly, baseZ + lz);
                 }
         return result;
@@ -70,22 +70,22 @@ class ParallelSimulationTest : public ::testing::Test {
 
 // 1. Single-thread and multi-thread produce identical results after 10 ticks
 TEST_F(ParallelSimulationTest, IdenticalResults1vsN) {
-    constexpr int kChunks = 4;
-    constexpr int kTicks = 10;
+    constexpr int K_CHUNKS = 4;
+    constexpr int K_TICKS = 10;
 
     // Run with 1 thread (sequential)
     VoxelSimulationSystem seqSim;
     seqSim.workerPool().disableForTesting();
-    setupMultiChunkWorld(seqSim, kChunks);
-    runTicks(seqSim, kChunks, kTicks);
+    setupMultiChunkWorld(seqSim, K_CHUNKS);
+    runTicks(seqSim, K_CHUNKS, K_TICKS);
 
     // Run with multiple threads
     VoxelSimulationSystem parSim;
-    setupMultiChunkWorld(parSim, kChunks);
-    runTicks(parSim, kChunks, kTicks);
+    setupMultiChunkWorld(parSim, K_CHUNKS);
+    runTicks(parSim, K_CHUNKS, K_TICKS);
 
     // Compare all chunks
-    for (int cx = 0; cx < kChunks; ++cx) {
+    for (int cx = 0; cx < K_CHUNKS; ++cx) {
         auto seqSnap = snapshotChunk(seqSim.grid(), cx, 0, 0);
         auto parSnap = snapshotChunk(parSim.grid(), cx, 0, 0);
         for (size_t i = 0; i < seqSnap.size(); ++i) {
@@ -96,37 +96,37 @@ TEST_F(ParallelSimulationTest, IdenticalResults1vsN) {
 
 // 2. No data race with multiple chunks and threads (TSan validates at runtime)
 TEST_F(ParallelSimulationTest, NoDataRaceTSan) {
-    constexpr int kChunks = 8;
-    constexpr int kTicks = 5;
+    constexpr int K_CHUNKS = 8;
+    constexpr int K_TICKS = 5;
 
     VoxelSimulationSystem sim;
-    setupMultiChunkWorld(sim, kChunks);
+    setupMultiChunkWorld(sim, K_CHUNKS);
 
     // Run ticks -- TSan will flag any races
-    EXPECT_NO_THROW(runTicks(sim, kChunks, kTicks));
+    EXPECT_NO_THROW(runTicks(sim, K_CHUNKS, K_TICKS));
 }
 
 // 3. Parallel is not slower than sequential for 8 chunks
 TEST_F(ParallelSimulationTest, PerformanceScaling) {
-    constexpr int kChunks = 8;
-    constexpr int kTicks = 5;
+    constexpr int K_CHUNKS = 8;
+    constexpr int K_TICKS = 5;
 
     // Sequential timing
     VoxelSimulationSystem seqSim;
     seqSim.workerPool().disableForTesting();
-    setupMultiChunkWorld(seqSim, kChunks);
+    setupMultiChunkWorld(seqSim, K_CHUNKS);
 
     auto seqStart = std::chrono::high_resolution_clock::now();
-    runTicks(seqSim, kChunks, kTicks);
+    runTicks(seqSim, K_CHUNKS, K_TICKS);
     auto seqEnd = std::chrono::high_resolution_clock::now();
     auto seqUs = std::chrono::duration_cast<std::chrono::microseconds>(seqEnd - seqStart).count();
 
     // Parallel timing
     VoxelSimulationSystem parSim;
-    setupMultiChunkWorld(parSim, kChunks);
+    setupMultiChunkWorld(parSim, K_CHUNKS);
 
     auto parStart = std::chrono::high_resolution_clock::now();
-    runTicks(parSim, kChunks, kTicks);
+    runTicks(parSim, K_CHUNKS, K_TICKS);
     auto parEnd = std::chrono::high_resolution_clock::now();
     auto parUs = std::chrono::duration_cast<std::chrono::microseconds>(parEnd - parStart).count();
 
@@ -136,18 +136,18 @@ TEST_F(ParallelSimulationTest, PerformanceScaling) {
 
 // 4. 100 chunks complete within 5 seconds (no deadlock)
 TEST_F(ParallelSimulationTest, NoDeadlock100Chunks) {
-    constexpr int kChunks = 100;
+    constexpr int K_CHUNKS = 100;
     VoxelSimulationSystem sim;
 
-    for (int cx = 0; cx < kChunks; ++cx) {
+    for (int cx = 0; cx < K_CHUNKS; ++cx) {
         sim.grid().fillChunk(cx, 0, 0, VoxelCell{});
         sim.grid().materializeChunk(cx, 0, 0);
         sim.activityTracker().setState(ChunkPos{cx, 0, 0}, ChunkState::Active);
         markAllSubRegions(sim.activityTracker(), ChunkPos{cx, 0, 0});
 
-        int baseX = cx * kChunkSize;
-        for (int x = baseX; x < baseX + kChunkSize; ++x)
-            for (int z = 0; z < kChunkSize; ++z)
+        int baseX = cx * K_CHUNK_SIZE;
+        for (int x = baseX; x < baseX + K_CHUNK_SIZE; ++x)
+            for (int z = 0; z < K_CHUNK_SIZE; ++z)
                 sim.grid().writeCell(x, 0, z, makeMaterial(material_ids::STONE));
         sim.grid().writeCell(baseX + 16, 10, 16, makeMaterial(material_ids::SAND));
     }
@@ -155,7 +155,7 @@ TEST_F(ParallelSimulationTest, NoDeadlock100Chunks) {
 
     auto start = std::chrono::steady_clock::now();
     for (int t = 0; t < 3; ++t) {
-        for (int cx = 0; cx < kChunks; ++cx) {
+        for (int cx = 0; cx < K_CHUNKS; ++cx) {
             sim.activityTracker().setState(ChunkPos{cx, 0, 0}, ChunkState::Active);
             markAllSubRegions(sim.activityTracker(), ChunkPos{cx, 0, 0});
         }
@@ -174,8 +174,8 @@ TEST_F(ParallelSimulationTest, GravityTestsStillPass) {
     sim.grid().materializeChunk(0, 0, 0);
 
     // Stone floor
-    for (int x = 0; x < kChunkSize; ++x)
-        for (int z = 0; z < kChunkSize; ++z)
+    for (int x = 0; x < K_CHUNK_SIZE; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
             sim.grid().writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     // Contained column
     for (int y = 1; y <= 12; ++y) {

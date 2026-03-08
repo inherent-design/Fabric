@@ -24,8 +24,8 @@
 namespace recurse::systems {
 
 using fabric::ChunkedGrid;
+using fabric::K_CHUNK_SIZE;
 using fabric::K_HORIZONTAL_NEIGHBORS;
-using fabric::kChunkSize;
 
 namespace {
 
@@ -187,14 +187,14 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
     ChunkedGrid<float> densityGrid;
     ChunkedGrid<uint16_t> materialGrid;
 
-    const int baseX = coord.x * kChunkSize;
-    const int baseY = coord.y * kChunkSize;
-    const int baseZ = coord.z * kChunkSize;
+    const int baseX = coord.x * K_CHUNK_SIZE;
+    const int baseY = coord.y * K_CHUNK_SIZE;
+    const int baseZ = coord.z * K_CHUNK_SIZE;
 
     constexpr int K_SAMPLE_MARGIN = 1; // 1 for cache boundary
-    for (int lz = -K_SAMPLE_MARGIN; lz <= kChunkSize + K_SAMPLE_MARGIN; ++lz) {
-        for (int ly = -K_SAMPLE_MARGIN; ly <= kChunkSize + K_SAMPLE_MARGIN; ++ly) {
-            for (int lx = -K_SAMPLE_MARGIN; lx <= kChunkSize + K_SAMPLE_MARGIN; ++lx) {
+    for (int lz = -K_SAMPLE_MARGIN; lz <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++lz) {
+        for (int ly = -K_SAMPLE_MARGIN; ly <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++ly) {
+            for (int lx = -K_SAMPLE_MARGIN; lx <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++lx) {
                 const int wx = baseX + lx;
                 const int wy = baseY + ly;
                 const int wz = baseZ + lz;

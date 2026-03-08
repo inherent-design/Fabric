@@ -28,8 +28,8 @@ TEST_F(ParticleSystemTest, EmitAddsParticles) {
 TEST_F(ParticleSystemTest, EmitRespectsPoolLimit) {
     Vector3<float, Space::World> pos(0.0f, 0.0f, 0.0f);
     // Try to emit more than the pool allows
-    ps.emit(pos, 1.0f, static_cast<int>(ParticleSystem::kMaxParticles) + 500, ParticleType::DebrisPuff);
-    EXPECT_EQ(ps.activeCount(), ParticleSystem::kMaxParticles);
+    ps.emit(pos, 1.0f, static_cast<int>(ParticleSystem::K_MAX_PARTICLES) + 500, ParticleType::DebrisPuff);
+    EXPECT_EQ(ps.activeCount(), ParticleSystem::K_MAX_PARTICLES);
 }
 
 TEST_F(ParticleSystemTest, UpdateAgesAndKillsExpired) {

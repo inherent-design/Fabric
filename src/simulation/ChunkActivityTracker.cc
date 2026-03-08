@@ -56,7 +56,7 @@ void ChunkActivityTracker::setReferencePoint(int wx, int wy, int wz) {
 
 SimPriority ChunkActivityTracker::computePriority(ChunkPos pos) const {
     // Convert reference point to chunk coordinates (floor division via shift)
-    int refCx = refX_ >> 5; // kChunkShift = 5
+    int refCx = refX_ >> 5; // K_CHUNK_SHIFT = 5
     int refCy = refY_ >> 5;
     int refCz = refZ_ >> 5;
 

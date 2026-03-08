@@ -5,7 +5,7 @@
 
 namespace recurse {
 
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 // -- FlatWorldGenerator -------------------------------------------------------
 
@@ -14,8 +14,8 @@ FlatWorldGenerator::FlatWorldGenerator(int groundLevel) : groundLevel_(groundLev
 void FlatWorldGenerator::generate(fabric::simulation::SimulationGrid& grid, int cx, int cy, int cz) {
     using namespace fabric::simulation;
 
-    int baseY = cy * kChunkSize;
-    int topY = baseY + kChunkSize - 1;
+    int baseY = cy * K_CHUNK_SIZE;
+    int topY = baseY + K_CHUNK_SIZE - 1;
 
     // Entirely above ground: all air (default), nothing to do
     if (baseY >= groundLevel_)
@@ -28,14 +28,14 @@ void FlatWorldGenerator::generate(fabric::simulation::SimulationGrid& grid, int 
     }
 
     // Mixed chunk: per-voxel
-    int baseX = cx * kChunkSize;
-    int baseZ = cz * kChunkSize;
-    for (int lz = 0; lz < kChunkSize; ++lz) {
-        for (int ly = 0; ly < kChunkSize; ++ly) {
+    int baseX = cx * K_CHUNK_SIZE;
+    int baseZ = cz * K_CHUNK_SIZE;
+    for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+        for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
             int wy = baseY + ly;
             if (wy >= groundLevel_)
                 break;
-            for (int lx = 0; lx < kChunkSize; ++lx) {
+            for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
                 grid.writeCell(baseX + lx, wy, baseZ + lz, VoxelCell{material_ids::STONE});
             }
         }
@@ -50,8 +50,8 @@ LayeredWorldGenerator::LayeredWorldGenerator(int stoneLevel, int sandDepth)
 void LayeredWorldGenerator::generate(fabric::simulation::SimulationGrid& grid, int cx, int cy, int cz) {
     using namespace fabric::simulation;
 
-    int baseY = cy * kChunkSize;
-    int topY = baseY + kChunkSize - 1;
+    int baseY = cy * K_CHUNK_SIZE;
+    int topY = baseY + K_CHUNK_SIZE - 1;
     int totalGround = stoneLevel_ + sandDepth_;
 
     // Entirely above all terrain: air, nothing to do
@@ -65,15 +65,15 @@ void LayeredWorldGenerator::generate(fabric::simulation::SimulationGrid& grid, i
     }
 
     // Mixed or sand-only chunk: per-voxel
-    int baseX = cx * kChunkSize;
-    int baseZ = cz * kChunkSize;
-    for (int lz = 0; lz < kChunkSize; ++lz) {
-        for (int ly = 0; ly < kChunkSize; ++ly) {
+    int baseX = cx * K_CHUNK_SIZE;
+    int baseZ = cz * K_CHUNK_SIZE;
+    for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+        for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
             int wy = baseY + ly;
             if (wy >= totalGround)
                 break;
             MaterialId mat = (wy < stoneLevel_) ? material_ids::STONE : material_ids::SAND;
-            for (int lx = 0; lx < kChunkSize; ++lx) {
+            for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
                 grid.writeCell(baseX + lx, wy, baseZ + lz, VoxelCell{mat});
             }
         }

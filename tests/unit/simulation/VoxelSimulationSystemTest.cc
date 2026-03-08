@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 
 using namespace fabric::simulation;
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 class VoxelSimulationSystemTest : public ::testing::Test {
   protected:
@@ -30,9 +30,9 @@ class VoxelSimulationSystemTest : public ::testing::Test {
     }
 
     void markAllSubRegions(ChunkPos pos) {
-        for (int lz = 0; lz < kChunkSize; lz += 8)
-            for (int ly = 0; ly < kChunkSize; ly += 8)
-                for (int lx = 0; lx < kChunkSize; lx += 8)
+        for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
+            for (int ly = 0; ly < K_CHUNK_SIZE; ly += 8)
+                for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
                     sim.activityTracker().markSubRegionActive(pos, lx, ly, lz);
     }
 
@@ -48,8 +48,8 @@ class VoxelSimulationSystemTest : public ::testing::Test {
     }
 
     void buildStoneFloor() {
-        for (int x = 0; x < kChunkSize; ++x)
-            for (int z = 0; z < kChunkSize; ++z)
+        for (int x = 0; x < K_CHUNK_SIZE; ++x)
+            for (int z = 0; z < K_CHUNK_SIZE; ++z)
                 sim.grid().writeCell(x, 0, z, makeMaterial(material_ids::STONE));
         sim.grid().advanceEpoch();
     }
@@ -69,9 +69,9 @@ class VoxelSimulationSystemTest : public ::testing::Test {
 
     int countMaterial(MaterialId id) {
         int count = 0;
-        for (int z = 0; z < kChunkSize; ++z)
-            for (int y = 0; y < kChunkSize; ++y)
-                for (int x = 0; x < kChunkSize; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
+            for (int y = 0; y < K_CHUNK_SIZE; ++y)
+                for (int x = 0; x < K_CHUNK_SIZE; ++x)
                     if (sim.grid().readCell(x, y, z).materialId == id)
                         ++count;
         return count;
@@ -142,9 +142,9 @@ TEST_F(VoxelSimulationSystemTest, WaterFillsCavity) {
 // 4. Chunk filled with only stone (static) should not remain active
 TEST_F(VoxelSimulationSystemTest, SleepingNotSimulated) {
     // Fill entire chunk with stone
-    for (int z = 0; z < kChunkSize; ++z)
-        for (int y = 0; y < kChunkSize; ++y)
-            for (int x = 0; x < kChunkSize; ++x)
+    for (int z = 0; z < K_CHUNK_SIZE; ++z)
+        for (int y = 0; y < K_CHUNK_SIZE; ++y)
+            for (int x = 0; x < K_CHUNK_SIZE; ++x)
                 sim.grid().writeCell(x, y, z, makeMaterial(material_ids::STONE));
     sim.grid().advanceEpoch();
 
@@ -273,8 +273,8 @@ TEST(RecurseVoxelSimSystemTest, LiquidFlowsHorizontally) {
     sim.workerPool().disableForTesting();
     auto& grid = sim.grid();
 
-    for (int x = 0; x < kChunkSize; ++x)
-        for (int z = 0; z < kChunkSize; ++z)
+    for (int x = 0; x < K_CHUNK_SIZE; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
             grid.writeCell(x, 0, z, VoxelCell{material_ids::STONE});
     grid.advanceEpoch();
 
@@ -285,10 +285,10 @@ TEST(RecurseVoxelSimSystemTest, LiquidFlowsHorizontally) {
     auto countWater = [&]() {
         int count = 0;
         for (auto [cx, cy, cz] : grid.allChunks())
-            for (int lz = 0; lz < kChunkSize; ++lz)
-                for (int ly = 0; ly < kChunkSize; ++ly)
-                    for (int lx = 0; lx < kChunkSize; ++lx)
-                        if (grid.readCell(cx * kChunkSize + lx, cy * kChunkSize + ly, cz * kChunkSize + lz)
+            for (int lz = 0; lz < K_CHUNK_SIZE; ++lz)
+                for (int ly = 0; ly < K_CHUNK_SIZE; ++ly)
+                    for (int lx = 0; lx < K_CHUNK_SIZE; ++lx)
+                        if (grid.readCell(cx * K_CHUNK_SIZE + lx, cy * K_CHUNK_SIZE + ly, cz * K_CHUNK_SIZE + lz)
                                 .materialId == material_ids::WATER)
                             ++count;
         return count;
@@ -314,12 +314,12 @@ TEST(RecurseVoxelSimSystemTest, WakeOnNeighborActivity) {
     grid.advanceEpoch();
     sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Sleeping);
 
-    for (int x = kChunkSize; x < kChunkSize * 2; ++x)
-        for (int z = 0; z < kChunkSize; ++z)
+    for (int x = K_CHUNK_SIZE; x < K_CHUNK_SIZE * 2; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
             grid.writeCell(x, 0, z, VoxelCell{material_ids::STONE});
     grid.advanceEpoch();
 
-    grid.writeCell(kChunkSize, 5, 16, VoxelCell{material_ids::SAND});
+    grid.writeCell(K_CHUNK_SIZE, 5, 16, VoxelCell{material_ids::SAND});
     grid.advanceEpoch();
     sim.activityTracker().setState(ChunkPos{1, 0, 0}, ChunkState::Active);
 

@@ -322,17 +322,17 @@ bool SceneSerializer::deserializeChunks(const nlohmann::json& json, DensityField
         if (chunkJson.contains("density")) {
             const auto& densityArray = chunkJson["density"];
             if (densityArray.is_array()) {
-                const size_t maxCells =
-                    static_cast<size_t>(kChunkSize) * static_cast<size_t>(kChunkSize) * static_cast<size_t>(kChunkSize);
+                const size_t maxCells = static_cast<size_t>(K_CHUNK_SIZE) * static_cast<size_t>(K_CHUNK_SIZE) *
+                                        static_cast<size_t>(K_CHUNK_SIZE);
                 const size_t cellCount = std::min(densityArray.size(), maxCells);
-                const int baseX = cx * kChunkSize;
-                const int baseY = cy * kChunkSize;
-                const int baseZ = cz * kChunkSize;
+                const int baseX = cx * K_CHUNK_SIZE;
+                const int baseY = cy * K_CHUNK_SIZE;
+                const int baseZ = cz * K_CHUNK_SIZE;
 
                 for (size_t i = 0; i < cellCount; ++i) {
-                    const int lx = static_cast<int>(i % kChunkSize);
-                    const int ly = static_cast<int>((i / kChunkSize) % kChunkSize);
-                    const int lz = static_cast<int>(i / (kChunkSize * kChunkSize));
+                    const int lx = static_cast<int>(i % K_CHUNK_SIZE);
+                    const int ly = static_cast<int>((i / K_CHUNK_SIZE) % K_CHUNK_SIZE);
+                    const int lz = static_cast<int>(i / (K_CHUNK_SIZE * K_CHUNK_SIZE));
                     density.set(baseX + lx, baseY + ly, baseZ + lz, densityArray[i]);
                 }
             }
@@ -341,18 +341,18 @@ bool SceneSerializer::deserializeChunks(const nlohmann::json& json, DensityField
         if (chunkJson.contains("essence")) {
             const auto& essenceArray = chunkJson["essence"];
             if (essenceArray.is_array() && essenceArray.size() % 4 == 0) {
-                const size_t maxCells =
-                    static_cast<size_t>(kChunkSize) * static_cast<size_t>(kChunkSize) * static_cast<size_t>(kChunkSize);
+                const size_t maxCells = static_cast<size_t>(K_CHUNK_SIZE) * static_cast<size_t>(K_CHUNK_SIZE) *
+                                        static_cast<size_t>(K_CHUNK_SIZE);
                 const size_t vecCount = std::min(essenceArray.size() / 4, maxCells);
-                const int baseX = cx * kChunkSize;
-                const int baseY = cy * kChunkSize;
-                const int baseZ = cz * kChunkSize;
+                const int baseX = cx * K_CHUNK_SIZE;
+                const int baseY = cy * K_CHUNK_SIZE;
+                const int baseZ = cz * K_CHUNK_SIZE;
 
                 for (size_t i = 0; i < vecCount; ++i) {
                     const size_t index = i * 4;
-                    const int lx = static_cast<int>(i % kChunkSize);
-                    const int ly = static_cast<int>((i / kChunkSize) % kChunkSize);
-                    const int lz = static_cast<int>(i / (kChunkSize * kChunkSize));
+                    const int lx = static_cast<int>(i % K_CHUNK_SIZE);
+                    const int ly = static_cast<int>((i / K_CHUNK_SIZE) % K_CHUNK_SIZE);
+                    const int lz = static_cast<int>(i / (K_CHUNK_SIZE * K_CHUNK_SIZE));
 
                     Vector4<float, Space::World> e{essenceArray[index], essenceArray[index + 1],
                                                    essenceArray[index + 2], essenceArray[index + 3]};

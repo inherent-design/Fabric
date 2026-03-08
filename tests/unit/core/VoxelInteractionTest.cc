@@ -12,7 +12,7 @@ class VoxelInteractionTest : public ::testing::Test {
 
     void SetUp() override {
         eventCount = 0;
-        dispatcher.addEventListener(kVoxelChangedEvent, [this](Event&) { ++eventCount; });
+        dispatcher.addEventListener(K_VOXEL_CHANGED_EVENT, [this](Event&) { ++eventCount; });
         // Ensure chunks exist for voxel operations at origin area and neighbors
         grid.fillChunk(0, 0, 0, VoxelCell{});
         grid.fillChunk(-1, -1, -1, VoxelCell{});

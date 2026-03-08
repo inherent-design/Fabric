@@ -172,7 +172,7 @@ void ShadowSystem::update(const Camera& camera, const Vector3<float, Space::Worl
 
     computeSplits(camera.nearPlane(), camera.farPlane());
 
-    int count = std::min(config_.cascadeCount, kMaxCascades);
+    int count = std::min(config_.cascadeCount, K_MAX_CASCADES);
     for (int i = 0; i < count; ++i) {
         computeLightMatrix(i, camera, lightDir);
     }

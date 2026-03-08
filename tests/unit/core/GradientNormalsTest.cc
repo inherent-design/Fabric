@@ -16,9 +16,9 @@ TEST_F(GradientNormalsTest, FlatPlaneNormalsPointUp) {
     // Terrain convention: density = surfaceY - wy (positive below surface, negative above).
     // For cache-local Y, world Y = ly - 1. Use density = 17.0 - ly so gradient_y < 0,
     // negated gradient_y > 0, giving upward-pointing normals.
-    for (int lz = -1; lz < kCacheSize - 1; ++lz)
-        for (int ly = -1; ly < kCacheSize - 1; ++ly)
-            for (int lx = -1; lx < kCacheSize - 1; ++lx)
+    for (int lz = -1; lz < K_CACHE_SIZE - 1; ++lz)
+        for (int ly = -1; ly < K_CACHE_SIZE - 1; ++ly)
+            for (int lx = -1; lx < K_CACHE_SIZE - 1; ++lx)
                 density.set(lx, ly, lz, 17.0f - static_cast<float>(ly));
 
     fillCache();
@@ -38,9 +38,9 @@ TEST_F(GradientNormalsTest, FlatPlaneNormalsPointUp) {
 TEST_F(GradientNormalsTest, SphereNormalsPointRadially) {
     // Sphere density = R - distance(p, center). Center at cache (17, 17, 17), R = 10.
     float cx = 17.0f, cy = 17.0f, cz = 17.0f, R = 10.0f;
-    for (int lz = -1; lz < kCacheSize - 1; ++lz)
-        for (int ly = -1; ly < kCacheSize - 1; ++ly)
-            for (int lx = -1; lx < kCacheSize - 1; ++lx) {
+    for (int lz = -1; lz < K_CACHE_SIZE - 1; ++lz)
+        for (int ly = -1; ly < K_CACHE_SIZE - 1; ++ly)
+            for (int lx = -1; lx < K_CACHE_SIZE - 1; ++lx) {
                 // Cache-local coordinate is lx+1, ly+1, lz+1
                 float dx = static_cast<float>(lx + 1) - cx;
                 float dy = static_cast<float>(ly + 1) - cy;
@@ -73,9 +73,9 @@ TEST_F(GradientNormalsTest, SphereNormalsPointRadially) {
 
 TEST_F(GradientNormalsTest, NormalsAreUnitLength) {
     // Fill with some non-trivial density field
-    for (int lz = -1; lz < kCacheSize - 1; ++lz)
-        for (int ly = -1; ly < kCacheSize - 1; ++ly)
-            for (int lx = -1; lx < kCacheSize - 1; ++lx) {
+    for (int lz = -1; lz < K_CACHE_SIZE - 1; ++lz)
+        for (int ly = -1; ly < K_CACHE_SIZE - 1; ++ly)
+            for (int lx = -1; lx < K_CACHE_SIZE - 1; ++lx) {
                 float val = std::sin(static_cast<float>(lx) * 0.3f) +
                             std::cos(static_cast<float>(ly) * 0.2f) * static_cast<float>(lz) * 0.1f;
                 density.set(lx, ly, lz, val);
@@ -100,9 +100,9 @@ TEST_F(GradientNormalsTest, NormalsAreUnitLength) {
 
 TEST_F(GradientNormalsTest, DegenerateFlatFieldReturnsUp) {
     // Uniform density -> zero gradient -> fallback to (0, 1, 0)
-    for (int lz = -1; lz < kCacheSize - 1; ++lz)
-        for (int ly = -1; ly < kCacheSize - 1; ++ly)
-            for (int lx = -1; lx < kCacheSize - 1; ++lx)
+    for (int lz = -1; lz < K_CACHE_SIZE - 1; ++lz)
+        for (int ly = -1; ly < K_CACHE_SIZE - 1; ++ly)
+            for (int lx = -1; lx < K_CACHE_SIZE - 1; ++lx)
                 density.set(lx, ly, lz, 5.0f);
 
     fillCache();

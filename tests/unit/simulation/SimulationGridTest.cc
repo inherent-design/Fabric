@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 using namespace fabric::simulation;
-using fabric::kChunkVolume;
+using fabric::K_CHUNK_VOLUME;
 
 class SimulationGridTest : public ::testing::Test {
   protected:
@@ -82,8 +82,8 @@ TEST_F(SimulationGridTest, FirstWritePromotesSentinel) {
 
 // 6. static_assert Buffer size == 131072 bytes
 TEST_F(SimulationGridTest, MaterializedChunkMemory) {
-    static_assert(sizeof(ChunkBufferPair::Buffer) == kChunkVolume * sizeof(VoxelCell));
-    // kChunkVolume = 32768, sizeof(VoxelCell) = 4 -> 131072
+    static_assert(sizeof(ChunkBufferPair::Buffer) == K_CHUNK_VOLUME * sizeof(VoxelCell));
+    // K_CHUNK_VOLUME = 32768, sizeof(VoxelCell) = 4 -> 131072
     EXPECT_EQ(sizeof(ChunkBufferPair::Buffer), 131072u);
 }
 

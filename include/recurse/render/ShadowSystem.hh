@@ -42,8 +42,8 @@ struct CascadeData {
 // bgfx view IDs 240-243 are reserved for shadow cascade rendering passes.
 class ShadowSystem {
   public:
-    static constexpr uint8_t kShadowViewBase = 240;
-    static constexpr int kMaxCascades = 4;
+    static constexpr uint8_t K_SHADOW_VIEW_BASE = 240;
+    static constexpr int K_MAX_CASCADES = 4;
 
     explicit ShadowSystem(const ShadowConfig& config = {});
 

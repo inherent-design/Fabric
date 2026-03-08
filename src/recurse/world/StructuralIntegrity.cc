@@ -42,8 +42,8 @@ void StructuralIntegrity::update(const ChunkedGrid<float>& grid, float dt) {
 }
 
 bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
-    constexpr float kDensityThreshold = 0.5f;
-    constexpr int kBudgetCheckInterval = 256;
+    constexpr float K_DENSITY_THRESHOLD = 0.5f;
+    constexpr int K_BUDGET_CHECK_INTERVAL = 256;
 
     const auto budgetNs = static_cast<int64_t>(perFrameBudgetMs_ * 1'000'000.0f);
     const auto startTime = std::chrono::high_resolution_clock::now();
@@ -54,18 +54,18 @@ bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
 
         const auto active = grid.activeChunks();
         for (const auto& [cx, cy, cz] : active) {
-            const int baseX = cx * kStructuralIntegrityChunkSize;
-            const int baseY = cy * kStructuralIntegrityChunkSize;
-            const int baseZ = cz * kStructuralIntegrityChunkSize;
+            const int baseX = cx * K_STRUCTURAL_INTEGRITY_CHUNK_SIZE;
+            const int baseY = cy * K_STRUCTURAL_INTEGRITY_CHUNK_SIZE;
+            const int baseZ = cz * K_STRUCTURAL_INTEGRITY_CHUNK_SIZE;
 
-            for (int lz = 0; lz < kStructuralIntegrityChunkSize; ++lz) {
-                for (int ly = 0; ly < kStructuralIntegrityChunkSize; ++ly) {
-                    for (int lx = 0; lx < kStructuralIntegrityChunkSize; ++lx) {
+            for (int lz = 0; lz < K_STRUCTURAL_INTEGRITY_CHUNK_SIZE; ++lz) {
+                for (int ly = 0; ly < K_STRUCTURAL_INTEGRITY_CHUNK_SIZE; ++ly) {
+                    for (int lx = 0; lx < K_STRUCTURAL_INTEGRITY_CHUNK_SIZE; ++lx) {
                         const int wx = baseX + lx;
                         const int wy = baseY + ly;
                         const int wz = baseZ + lz;
 
-                        if (grid.get(wx, wy, wz) >= kDensityThreshold) {
+                        if (grid.get(wx, wy, wz) >= K_DENSITY_THRESHOLD) {
                             floodFillState_.allDenseVoxels.push_back({wx, wy, wz});
                             if (wy <= 0) {
                                 const int64_t key = static_cast<int64_t>(packChunkKey(wx, wy, wz));
@@ -99,7 +99,7 @@ bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
             const int ny = current[1] + off[1];
             const int nz = current[2] + off[2];
 
-            if (grid.get(nx, ny, nz) < kDensityThreshold) {
+            if (grid.get(nx, ny, nz) < K_DENSITY_THRESHOLD) {
                 continue;
             }
 
@@ -109,7 +109,7 @@ bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
             }
         }
 
-        if (popsSinceCheck >= kBudgetCheckInterval) {
+        if (popsSinceCheck >= K_BUDGET_CHECK_INTERVAL) {
             popsSinceCheck = 0;
             const auto now = std::chrono::high_resolution_clock::now();
             const auto elapsedNs = std::chrono::duration_cast<std::chrono::nanoseconds>(now - startTime).count();

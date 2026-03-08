@@ -10,8 +10,8 @@ using namespace fabric;
 
 namespace recurse {
 
-static constexpr const char* kSaveVersion = "1.0";
-static constexpr const char* kSaveExtension = ".json";
+static constexpr const char* K_SAVE_VERSION = "1.0";
+static constexpr const char* K_SAVE_EXTENSION = ".json";
 
 SaveManager::SaveManager(const std::string& saveDirectory) : saveDirectory_(saveDirectory) {
     std::error_code ec;
@@ -32,7 +32,7 @@ bool SaveManager::save(const std::string& slotName, SceneSerializer& serializer,
     nlohmann::json sceneData = serializer.serialize(world, density, essence, timeline, playerPos, playerVel);
 
     nlohmann::json envelope;
-    envelope["save_version"] = kSaveVersion;
+    envelope["save_version"] = K_SAVE_VERSION;
     envelope["slot"] = slotName;
     envelope["timestamp"] = currentTimestamp();
     envelope["scene"] = sceneData;
@@ -70,8 +70,8 @@ bool SaveManager::load(const std::string& slotName, SceneSerializer& serializer,
     }
 
     std::string version = envelope["save_version"];
-    if (version != kSaveVersion) {
-        FABRIC_LOG_ERROR("Save version mismatch: expected '{}', got '{}'", kSaveVersion, version);
+    if (version != K_SAVE_VERSION) {
+        FABRIC_LOG_ERROR("Save version mismatch: expected '{}', got '{}'", K_SAVE_VERSION, version);
         return false;
     }
 
@@ -103,7 +103,7 @@ std::vector<SlotInfo> SaveManager::listSlots() const {
             continue;
         }
 
-        if (entry.path().extension() != kSaveExtension) {
+        if (entry.path().extension() != K_SAVE_EXTENSION) {
             continue;
         }
 
@@ -167,7 +167,7 @@ void SaveManager::tickAutosave(float dt, SceneSerializer& serializer, World& wor
 }
 
 std::string SaveManager::slotPath(const std::string& slotName) const {
-    return (std::filesystem::path(saveDirectory_) / (slotName + kSaveExtension)).string();
+    return (std::filesystem::path(saveDirectory_) / (slotName + K_SAVE_EXTENSION)).string();
 }
 
 std::string SaveManager::currentTimestamp() const {

@@ -41,14 +41,14 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
     float* densityData = density.data();
 
     // Initialize to air
-    for (int i = 0; i < kCacheVolume; ++i) {
+    for (int i = 0; i < K_CACHE_VOLUME; ++i) {
         densityData[i] = 0.0f;
     }
 
     // Fill interior (1..32 region in cache = section voxels)
-    for (int lz = 0; lz < LODSection::kSize; ++lz) {
-        for (int ly = 0; ly < LODSection::kSize; ++ly) {
-            for (int lx = 0; lx < LODSection::kSize; ++lx) {
+    for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
+        for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
+            for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
                 int cacheX = lx + 1; // Offset by 1 for border
                 int cacheY = ly + 1;
                 int cacheZ = lz + 1;
@@ -56,7 +56,7 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
                 uint16_t palIdx = section.get(lx, ly, lz);
                 uint16_t matId = section.materialOf(palIdx);
 
-                int idx = cacheX + cacheY * kCacheSize + cacheZ * kCacheSize * kCacheSize;
+                int idx = cacheX + cacheY * K_CACHE_SIZE + cacheZ * K_CACHE_SIZE * K_CACHE_SIZE;
 
                 if (matId != 0) {
                     densityData[idx] = 1.0f;
@@ -74,14 +74,14 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
     // But build() takes a ChunkedGrid which we don't have for LOD sections
 
     // Alternative: Create a temporary 34^3 material array and sample directly
-    std::array<uint16_t, kCacheVolume> materialArray{};
-    for (int lz = 0; lz < LODSection::kSize; ++lz) {
-        for (int ly = 0; ly < LODSection::kSize; ++ly) {
-            for (int lx = 0; lx < LODSection::kSize; ++lx) {
+    std::array<uint16_t, K_CACHE_VOLUME> materialArray{};
+    for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
+        for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
+            for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
                 int cacheX = lx + 1;
                 int cacheY = ly + 1;
                 int cacheZ = lz + 1;
-                int idx = cacheX + cacheY * kCacheSize + cacheZ * kCacheSize * kCacheSize;
+                int idx = cacheX + cacheY * K_CACHE_SIZE + cacheZ * K_CACHE_SIZE * K_CACHE_SIZE;
 
                 uint16_t palIdx = section.get(lx, ly, lz);
                 uint16_t matId = section.materialOf(palIdx);
@@ -95,37 +95,37 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
     }
 
     // Expand borders (clamp to edge)
-    for (int i = 0; i < kCacheSize; ++i) {
-        for (int j = 0; j < kCacheSize; ++j) {
+    for (int i = 0; i < K_CACHE_SIZE; ++i) {
+        for (int j = 0; j < K_CACHE_SIZE; ++j) {
             // X borders
-            densityData[0 + j * kCacheSize + i * kCacheSize * kCacheSize] =
-                densityData[1 + j * kCacheSize + i * kCacheSize * kCacheSize];
-            densityData[(kCacheSize - 1) + j * kCacheSize + i * kCacheSize * kCacheSize] =
-                densityData[(kCacheSize - 2) + j * kCacheSize + i * kCacheSize * kCacheSize];
-            materialArray[0 + j * kCacheSize + i * kCacheSize * kCacheSize] =
-                materialArray[1 + j * kCacheSize + i * kCacheSize * kCacheSize];
-            materialArray[(kCacheSize - 1) + j * kCacheSize + i * kCacheSize * kCacheSize] =
-                materialArray[(kCacheSize - 2) + j * kCacheSize + i * kCacheSize * kCacheSize];
+            densityData[0 + j * K_CACHE_SIZE + i * K_CACHE_SIZE * K_CACHE_SIZE] =
+                densityData[1 + j * K_CACHE_SIZE + i * K_CACHE_SIZE * K_CACHE_SIZE];
+            densityData[(K_CACHE_SIZE - 1) + j * K_CACHE_SIZE + i * K_CACHE_SIZE * K_CACHE_SIZE] =
+                densityData[(K_CACHE_SIZE - 2) + j * K_CACHE_SIZE + i * K_CACHE_SIZE * K_CACHE_SIZE];
+            materialArray[0 + j * K_CACHE_SIZE + i * K_CACHE_SIZE * K_CACHE_SIZE] =
+                materialArray[1 + j * K_CACHE_SIZE + i * K_CACHE_SIZE * K_CACHE_SIZE];
+            materialArray[(K_CACHE_SIZE - 1) + j * K_CACHE_SIZE + i * K_CACHE_SIZE * K_CACHE_SIZE] =
+                materialArray[(K_CACHE_SIZE - 2) + j * K_CACHE_SIZE + i * K_CACHE_SIZE * K_CACHE_SIZE];
 
             // Y borders
-            densityData[i + 0 * kCacheSize + j * kCacheSize * kCacheSize] =
-                densityData[i + 1 * kCacheSize + j * kCacheSize * kCacheSize];
-            densityData[i + (kCacheSize - 1) * kCacheSize + j * kCacheSize * kCacheSize] =
-                densityData[i + (kCacheSize - 2) * kCacheSize + j * kCacheSize * kCacheSize];
-            materialArray[i + 0 * kCacheSize + j * kCacheSize * kCacheSize] =
-                materialArray[i + 1 * kCacheSize + j * kCacheSize * kCacheSize];
-            materialArray[i + (kCacheSize - 1) * kCacheSize + j * kCacheSize * kCacheSize] =
-                materialArray[i + (kCacheSize - 2) * kCacheSize + j * kCacheSize * kCacheSize];
+            densityData[i + 0 * K_CACHE_SIZE + j * K_CACHE_SIZE * K_CACHE_SIZE] =
+                densityData[i + 1 * K_CACHE_SIZE + j * K_CACHE_SIZE * K_CACHE_SIZE];
+            densityData[i + (K_CACHE_SIZE - 1) * K_CACHE_SIZE + j * K_CACHE_SIZE * K_CACHE_SIZE] =
+                densityData[i + (K_CACHE_SIZE - 2) * K_CACHE_SIZE + j * K_CACHE_SIZE * K_CACHE_SIZE];
+            materialArray[i + 0 * K_CACHE_SIZE + j * K_CACHE_SIZE * K_CACHE_SIZE] =
+                materialArray[i + 1 * K_CACHE_SIZE + j * K_CACHE_SIZE * K_CACHE_SIZE];
+            materialArray[i + (K_CACHE_SIZE - 1) * K_CACHE_SIZE + j * K_CACHE_SIZE * K_CACHE_SIZE] =
+                materialArray[i + (K_CACHE_SIZE - 2) * K_CACHE_SIZE + j * K_CACHE_SIZE * K_CACHE_SIZE];
 
             // Z borders
-            densityData[i + j * kCacheSize + 0 * kCacheSize * kCacheSize] =
-                densityData[i + j * kCacheSize + 1 * kCacheSize * kCacheSize];
-            densityData[i + j * kCacheSize + (kCacheSize - 1) * kCacheSize * kCacheSize] =
-                densityData[i + j * kCacheSize + (kCacheSize - 2) * kCacheSize * kCacheSize];
-            materialArray[i + j * kCacheSize + 0 * kCacheSize * kCacheSize] =
-                materialArray[i + j * kCacheSize + 1 * kCacheSize * kCacheSize];
-            materialArray[i + j * kCacheSize + (kCacheSize - 1) * kCacheSize * kCacheSize] =
-                materialArray[i + j * kCacheSize + (kCacheSize - 2) * kCacheSize * kCacheSize];
+            densityData[i + j * K_CACHE_SIZE + 0 * K_CACHE_SIZE * K_CACHE_SIZE] =
+                densityData[i + j * K_CACHE_SIZE + 1 * K_CACHE_SIZE * K_CACHE_SIZE];
+            densityData[i + j * K_CACHE_SIZE + (K_CACHE_SIZE - 1) * K_CACHE_SIZE * K_CACHE_SIZE] =
+                densityData[i + j * K_CACHE_SIZE + (K_CACHE_SIZE - 2) * K_CACHE_SIZE * K_CACHE_SIZE];
+            materialArray[i + j * K_CACHE_SIZE + 0 * K_CACHE_SIZE * K_CACHE_SIZE] =
+                materialArray[i + j * K_CACHE_SIZE + 1 * K_CACHE_SIZE * K_CACHE_SIZE];
+            materialArray[i + j * K_CACHE_SIZE + (K_CACHE_SIZE - 1) * K_CACHE_SIZE * K_CACHE_SIZE] =
+                materialArray[i + j * K_CACHE_SIZE + (K_CACHE_SIZE - 2) * K_CACHE_SIZE * K_CACHE_SIZE];
         }
     }
 
@@ -164,9 +164,9 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
 
     // For LOD, we can use a simpler approach: just create quads for solid-void boundaries
     // This is less accurate but faster for distant terrain
-    for (int lz = 0; lz < LODSection::kSize - 1; ++lz) {
-        for (int ly = 0; ly < LODSection::kSize - 1; ++ly) {
-            for (int lx = 0; lx < LODSection::kSize - 1; ++lx) {
+    for (int lz = 0; lz < LODSection::K_SIZE - 1; ++lz) {
+        for (int ly = 0; ly < LODSection::K_SIZE - 1; ++ly) {
+            for (int lx = 0; lx < LODSection::K_SIZE - 1; ++lx) {
                 uint16_t palIdx = section.get(lx, ly, lz);
                 uint16_t matId = section.materialOf(palIdx);
 
@@ -184,8 +184,8 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
                     int nz = lz + dz[f];
 
                     uint16_t nMat = 0;
-                    if (nx >= 0 && nx < LODSection::kSize && ny >= 0 && ny < LODSection::kSize && nz >= 0 &&
-                        nz < LODSection::kSize) {
+                    if (nx >= 0 && nx < LODSection::K_SIZE && ny >= 0 && ny < LODSection::K_SIZE && nz >= 0 &&
+                        nz < LODSection::K_SIZE) {
                         uint16_t nPal = section.get(nx, ny, nz);
                         nMat = section.materialOf(nPal);
                     }

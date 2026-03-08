@@ -10,7 +10,7 @@
 #include <gtest/gtest.h>
 
 using fabric::ChunkCoord;
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 using fabric::simulation::ChunkActivityTracker;
 using fabric::simulation::ChunkPos;
 using fabric::simulation::ChunkState;
@@ -103,14 +103,14 @@ class CrossChunkMeshBoundaryTest : public ::testing::Test {
 
     void writeSolidBox(int cx, int cy, int cz) {
         // Write actual voxels to the chunk
-        int baseX = cx * kChunkSize;
-        int baseY = cy * kChunkSize;
-        int baseZ = cz * kChunkSize;
+        int baseX = cx * K_CHUNK_SIZE;
+        int baseY = cy * K_CHUNK_SIZE;
+        int baseZ = cz * K_CHUNK_SIZE;
 
         VoxelCell solid{fabric::simulation::material_ids::STONE, 0, 0};
-        for (int z = 0; z < kChunkSize; ++z) {
-            for (int y = 0; y < kChunkSize; ++y) {
-                for (int x = 0; x < kChunkSize; ++x) {
+        for (int z = 0; z < K_CHUNK_SIZE; ++z) {
+            for (int y = 0; y < K_CHUNK_SIZE; ++y) {
+                for (int x = 0; x < K_CHUNK_SIZE; ++x) {
                     simGrid.writeCell(baseX + x, baseY + y, baseZ + z, solid);
                 }
             }
@@ -195,9 +195,9 @@ TEST_F(CrossChunkMeshBoundaryTest, MeshBoundaryDiffersWithAndWithoutNeighbor) {
     trackerA.setReferencePoint(0, 0, 0);
 
     VoxelCell solid{fabric::simulation::material_ids::STONE, 0, 0};
-    for (int z = 0; z < kChunkSize; ++z) {
-        for (int y = 0; y < kChunkSize; ++y) {
-            for (int x = 0; x < kChunkSize; ++x) {
+    for (int z = 0; z < K_CHUNK_SIZE; ++z) {
+        for (int y = 0; y < K_CHUNK_SIZE; ++y) {
+            for (int x = 0; x < K_CHUNK_SIZE; ++x) {
                 gridA.writeCell(x, y, z, solid);
             }
         }
@@ -218,18 +218,18 @@ TEST_F(CrossChunkMeshBoundaryTest, MeshBoundaryDiffersWithAndWithoutNeighbor) {
     trackerB.setReferencePoint(0, 0, 0);
 
     // Fill chunk (0,0,0)
-    for (int z = 0; z < kChunkSize; ++z) {
-        for (int y = 0; y < kChunkSize; ++y) {
-            for (int x = 0; x < kChunkSize; ++x) {
+    for (int z = 0; z < K_CHUNK_SIZE; ++z) {
+        for (int y = 0; y < K_CHUNK_SIZE; ++y) {
+            for (int x = 0; x < K_CHUNK_SIZE; ++x) {
                 gridB.writeCell(x, y, z, solid);
             }
         }
     }
     // Fill chunk (1,0,0) - the adjacent chunk
-    for (int z = 0; z < kChunkSize; ++z) {
-        for (int y = 0; y < kChunkSize; ++y) {
-            for (int x = 0; x < kChunkSize; ++x) {
-                gridB.writeCell(kChunkSize + x, y, z, solid);
+    for (int z = 0; z < K_CHUNK_SIZE; ++z) {
+        for (int y = 0; y < K_CHUNK_SIZE; ++y) {
+            for (int x = 0; x < K_CHUNK_SIZE; ++x) {
+                gridB.writeCell(K_CHUNK_SIZE + x, y, z, solid);
             }
         }
     }
@@ -395,14 +395,14 @@ class ChunkLoadingSequenceTest : public ::testing::Test {
     }
 
     void fillChunkWithVoxels(int cx, int cy, int cz) {
-        int baseX = cx * kChunkSize;
-        int baseY = cy * kChunkSize;
-        int baseZ = cz * kChunkSize;
+        int baseX = cx * K_CHUNK_SIZE;
+        int baseY = cy * K_CHUNK_SIZE;
+        int baseZ = cz * K_CHUNK_SIZE;
 
         VoxelCell solid{fabric::simulation::material_ids::STONE, 0, 0};
-        for (int z = 0; z < kChunkSize; ++z) {
-            for (int y = 0; y < kChunkSize; ++y) {
-                for (int x = 0; x < kChunkSize; ++x) {
+        for (int z = 0; z < K_CHUNK_SIZE; ++z) {
+            for (int y = 0; y < K_CHUNK_SIZE; ++y) {
+                for (int x = 0; x < K_CHUNK_SIZE; ++x) {
                     simGrid.writeCell(baseX + x, baseY + y, baseZ + z, solid);
                 }
             }
@@ -487,9 +487,9 @@ TEST_F(ChunkLoadingSequenceTest, AllSixNeighborsAffectMesh) {
 
         // Fill center chunk
         VoxelCell solid{fabric::simulation::material_ids::STONE, 0, 0};
-        for (int z = 0; z < kChunkSize; ++z) {
-            for (int y = 0; y < kChunkSize; ++y) {
-                for (int x = 0; x < kChunkSize; ++x) {
+        for (int z = 0; z < K_CHUNK_SIZE; ++z) {
+            for (int y = 0; y < K_CHUNK_SIZE; ++y) {
+                for (int x = 0; x < K_CHUNK_SIZE; ++x) {
                     testGrid.writeCell(x, y, z, solid);
                 }
             }
@@ -502,10 +502,10 @@ TEST_F(ChunkLoadingSequenceTest, AllSixNeighborsAffectMesh) {
 
         // Fill neighbor chunk
         int ncx = n.dx, ncy = n.dy, ncz = n.dz;
-        for (int z = 0; z < kChunkSize; ++z) {
-            for (int y = 0; y < kChunkSize; ++y) {
-                for (int x = 0; x < kChunkSize; ++x) {
-                    testGrid.writeCell(ncx * kChunkSize + x, ncy * kChunkSize + y, ncz * kChunkSize + z, solid);
+        for (int z = 0; z < K_CHUNK_SIZE; ++z) {
+            for (int y = 0; y < K_CHUNK_SIZE; ++y) {
+                for (int x = 0; x < K_CHUNK_SIZE; ++x) {
+                    testGrid.writeCell(ncx * K_CHUNK_SIZE + x, ncy * K_CHUNK_SIZE + y, ncz * K_CHUNK_SIZE + z, solid);
                 }
             }
         }

@@ -21,6 +21,10 @@ EXTENSIONS = {".hh", ".cc", ".h", ".cpp", ".inl"}
 # Matches: kChunkSize, kMaxParticles, kWFCTileSize, etc.
 K_CAMEL_RE = re.compile(r"\bk([A-Z][a-zA-Z0-9]*)\b")
 
+# Constants from third-party libraries; must not be renamed.
+# Store full name including 'k' prefix.
+EXTERNAL_CONSTANTS = {"kInvalidHandle"}  # bgfx::kInvalidHandle
+
 # Regex to split camelCase into words
 # Handles: "ChunkSize" -> ["Chunk", "Size"]
 #          "WFCTileSize" -> ["WFC", "Tile", "Size"]
@@ -81,7 +85,9 @@ def discover_constants(files: list[Path]) -> dict[str, str]:
         except OSError:
             continue
         for m in K_CAMEL_RE.finditer(text):
-            found.add(m.group(0))  # full match including 'k' prefix
+            name = m.group(0)
+            if name not in EXTERNAL_CONSTANTS:
+                found.add(name)
 
     # Build mapping
     mapping: dict[str, str] = {}

@@ -41,7 +41,7 @@ class CharacterController {
     float depth_;
     float stepHeight_ = 1.0f;
 
-    static constexpr float kGroundEpsilon = 0.01f;
+    static constexpr float K_GROUND_EPSILON = 0.01f;
 
     bool isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid, float threshold) const;
 

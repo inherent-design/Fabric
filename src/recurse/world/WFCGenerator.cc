@@ -213,9 +213,9 @@ bool wfcPropagate(WFCGrid& grid, int startX, int startY, int startZ, const std::
 
         // For each face/neighbor direction...
         for (int face = 0; face < 6; ++face) {
-            int nx = cx + kWFCNeighborOffsets[face][0];
-            int ny = cy + kWFCNeighborOffsets[face][1];
-            int nz = cz + kWFCNeighborOffsets[face][2];
+            int nx = cx + K_WFC_NEIGHBOR_OFFSETS[face][0];
+            int ny = cy + K_WFC_NEIGHBOR_OFFSETS[face][1];
+            int nz = cz + K_WFC_NEIGHBOR_OFFSETS[face][2];
 
             if (nx < 0 || nx >= grid.width() || ny < 0 || ny >= grid.height() || nz < 0 || nz >= grid.depth())
                 continue;
@@ -462,14 +462,14 @@ void WFCTerrainGenerator::generate(DensityField& density, EssenceField& essence,
                 const auto& tileData = tileDataVec[tileIdx];
 
                 // World position of this tile's origin.
-                int tileWorldX = minX + tx * kWFCTileSize;
-                int tileWorldY = minY + ty * kWFCTileSize;
-                int tileWorldZ = minZ + tz * kWFCTileSize;
+                int tileWorldX = minX + tx * K_WFC_TILE_SIZE;
+                int tileWorldY = minY + ty * K_WFC_TILE_SIZE;
+                int tileWorldZ = minZ + tz * K_WFC_TILE_SIZE;
 
                 // Iterate each voxel in the tile (4x4x4).
-                for (int lz = 0; lz < kWFCTileSize; ++lz) {
-                    for (int ly = 0; ly < kWFCTileSize; ++ly) {
-                        for (int lx = 0; lx < kWFCTileSize; ++lx) {
+                for (int lz = 0; lz < K_WFC_TILE_SIZE; ++lz) {
+                    for (int ly = 0; ly < K_WFC_TILE_SIZE; ++ly) {
+                        for (int lx = 0; lx < K_WFC_TILE_SIZE; ++lx) {
                             int wx = tileWorldX + lx;
                             int wy = tileWorldY + ly;
                             int wz = tileWorldZ + lz;
@@ -478,7 +478,7 @@ void WFCTerrainGenerator::generate(DensityField& density, EssenceField& essence,
                             if (wx < minX || wx >= maxX || wy < minY || wy >= maxY || wz < minZ || wz >= maxZ)
                                 continue;
 
-                            int flatIdx = lx + ly * kWFCTileSize + lz * kWFCTileSize * kWFCTileSize;
+                            int flatIdx = lx + ly * K_WFC_TILE_SIZE + lz * K_WFC_TILE_SIZE * K_WFC_TILE_SIZE;
 
                             // Blending: max(existing, tile) for density.
                             float existing = density.get(wx, wy, wz);

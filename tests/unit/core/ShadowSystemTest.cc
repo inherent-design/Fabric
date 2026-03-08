@@ -166,8 +166,8 @@ TEST_F(ShadowSystemTest, PSSMLambdaZeroGivesLinearSplits) {
 }
 
 TEST_F(ShadowSystemTest, ViewIdReservation) {
-    EXPECT_EQ(ShadowSystem::kShadowViewBase, 240);
-    EXPECT_EQ(ShadowSystem::kMaxCascades, 4);
+    EXPECT_EQ(ShadowSystem::K_SHADOW_VIEW_BASE, 240);
+    EXPECT_EQ(ShadowSystem::K_MAX_CASCADES, 4);
 }
 
 TEST_F(ShadowSystemTest, TexelSnapping) {

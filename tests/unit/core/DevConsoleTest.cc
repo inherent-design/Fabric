@@ -127,10 +127,10 @@ TEST(DevConsoleTest, PrintAddsToOutput) {
 
 TEST(DevConsoleTest, RingBufferOverflow) {
     DevConsole console;
-    for (size_t i = 0; i < DevConsole::kMaxOutputLines + 100; ++i) {
+    for (size_t i = 0; i < DevConsole::K_MAX_OUTPUT_LINES + 100; ++i) {
         console.print("line " + std::to_string(i));
     }
-    EXPECT_EQ(console.output().size(), DevConsole::kMaxOutputLines);
+    EXPECT_EQ(console.output().size(), DevConsole::K_MAX_OUTPUT_LINES);
     // Oldest lines should have been evicted
     EXPECT_EQ(console.output().front(), "line 100");
 }

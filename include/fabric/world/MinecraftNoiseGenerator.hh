@@ -31,11 +31,11 @@ class MinecraftNoiseGenerator : public GeneratorInterface {
     FastNoise::SmartNode<FastNoise::Simplex> temperatureNode_;
     FastNoise::SmartNode<FastNoise::Simplex> humidityNode_;
 
-    static constexpr int kSize = 32;
+    static constexpr int K_SIZE = 32;
 
     // Batch-generate a 32x32 2D noise grid at given frequency and base offsets
     void batchNoise2D(const FastNoise::SmartNode<FastNoise::Simplex>& node, float freq, float baseX, float baseZ,
-                      std::array<float, kSize * kSize>& out, int seed) const;
+                      std::array<float, K_SIZE * K_SIZE>& out, int seed) const;
 
     float computeBaseHeight(float continental, float erosion, float peaks) const;
 

@@ -8,7 +8,7 @@
 using namespace fabric::simulation;
 using namespace fabric::world;
 
-static constexpr int kChunk = 32;
+static constexpr int K_CHUNK = 32;
 
 class MinecraftNoiseGenTest : public ::testing::Test {
   protected:
@@ -82,10 +82,10 @@ TEST_F(MinecraftNoiseGenTest, SeaLevelProducesWater) {
     for (int cy = 0; cy <= 1; ++cy) {
         for (int cx = 0; cx < 2; ++cx) {
             for (int cz = 0; cz < 2; ++cz) {
-                int bx = cx * kChunk, by = cy * kChunk, bz = cz * kChunk;
-                for (int ly = 0; ly < kChunk; ++ly)
-                    for (int lx = 0; lx < kChunk; lx += 4)
-                        for (int lz = 0; lz < kChunk; lz += 4)
+                int bx = cx * K_CHUNK, by = cy * K_CHUNK, bz = cz * K_CHUNK;
+                for (int ly = 0; ly < K_CHUNK; ++ly)
+                    for (int lx = 0; lx < K_CHUNK; lx += 4)
+                        for (int lz = 0; lz < K_CHUNK; lz += 4)
                             if (grid.readCell(bx + lx, by + ly, bz + lz).materialId == material_ids::WATER)
                                 ++waterCount;
             }
@@ -118,10 +118,10 @@ TEST_F(MinecraftNoiseGenTest, SurfaceMaterialVaries) {
     std::set<MaterialId> surfaceMats;
     for (int cx = 0; cx < 2; ++cx) {
         for (int cz = 0; cz < 2; ++cz) {
-            int bx = cx * kChunk;
-            int bz = cz * kChunk;
-            for (int lx = 0; lx < kChunk; lx += 4) {
-                for (int lz = 0; lz < kChunk; lz += 4) {
+            int bx = cx * K_CHUNK;
+            int bz = cz * K_CHUNK;
+            for (int lx = 0; lx < K_CHUNK; lx += 4) {
+                for (int lz = 0; lz < K_CHUNK; lz += 4) {
                     int sy = surfaceY(grid, bx + lx, bz + lz, 0, 63);
                     if (sy >= 0) {
                         auto mat = grid.readCell(bx + lx, sy, bz + lz).materialId;
@@ -169,13 +169,13 @@ TEST_F(MinecraftNoiseGenTest, DeterministicSameSeed) {
     grid1.advanceEpoch();
     grid2.advanceEpoch();
 
-    int bx = pos.x * kChunk;
-    int by = pos.y * kChunk;
-    int bz = pos.z * kChunk;
+    int bx = pos.x * K_CHUNK;
+    int by = pos.y * K_CHUNK;
+    int bz = pos.z * K_CHUNK;
 
-    for (int lz = 0; lz < kChunk; ++lz) {
-        for (int ly = 0; ly < kChunk; ++ly) {
-            for (int lx = 0; lx < kChunk; ++lx) {
+    for (int lz = 0; lz < K_CHUNK; ++lz) {
+        for (int ly = 0; ly < K_CHUNK; ++ly) {
+            for (int lx = 0; lx < K_CHUNK; ++lx) {
                 auto c1 = grid1.readCell(bx + lx, by + ly, bz + lz);
                 auto c2 = grid2.readCell(bx + lx, by + ly, bz + lz);
                 EXPECT_EQ(c1.materialId, c2.materialId) << "Mismatch at (" << lx << "," << ly << "," << lz << ")";
@@ -202,14 +202,14 @@ TEST_F(MinecraftNoiseGenTest, DifferentSeeds) {
     grid1.advanceEpoch();
     grid2.advanceEpoch();
 
-    int bx = pos.x * kChunk;
-    int by = pos.y * kChunk;
-    int bz = pos.z * kChunk;
+    int bx = pos.x * K_CHUNK;
+    int by = pos.y * K_CHUNK;
+    int bz = pos.z * K_CHUNK;
 
     int differences = 0;
-    for (int lz = 0; lz < kChunk; ++lz) {
-        for (int ly = 0; ly < kChunk; ++ly) {
-            for (int lx = 0; lx < kChunk; ++lx) {
+    for (int lz = 0; lz < K_CHUNK; ++lz) {
+        for (int ly = 0; ly < K_CHUNK; ++ly) {
+            for (int lx = 0; lx < K_CHUNK; ++lx) {
                 auto c1 = grid1.readCell(bx + lx, by + ly, bz + lz);
                 auto c2 = grid2.readCell(bx + lx, by + ly, bz + lz);
                 if (c1.materialId != c2.materialId) {
@@ -234,7 +234,7 @@ TEST_F(MinecraftNoiseGenTest, CrossChunkContinuity) {
 
     // Check boundary: last column of chunk 0 vs first column of chunk 1
     int maxDiff = 0;
-    for (int z = 0; z < kChunk; z += 4) {
+    for (int z = 0; z < K_CHUNK; z += 4) {
         int h0 = surfaceY(grid, 31, z, 32, 63); // Last X of chunk 0
         int h1 = surfaceY(grid, 32, z, 32, 63); // First X of chunk 1
         if (h0 >= 32 && h1 >= 32) {

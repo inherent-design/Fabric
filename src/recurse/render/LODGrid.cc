@@ -25,8 +25,8 @@ LODSection* LODGrid::getOrCreate(int level, int sx, int sy, int sz) {
 
     auto section = std::make_unique<LODSection>();
     section->level = level;
-    section->origin = Vec3i(sx * kSectionWorldSize, sy * kSectionWorldSize, sz * kSectionWorldSize);
-    section->blockIndices.assign(LODSection::kVolume, 0);
+    section->origin = Vec3i(sx * K_SECTION_WORLD_SIZE, sy * K_SECTION_WORLD_SIZE, sz * K_SECTION_WORLD_SIZE);
+    section->blockIndices.assign(LODSection::K_VOLUME, 0);
     section->palette.clear();
     section->palette.push_back(0); // Index 0 = air (materialId 1)
     section->dirty = true;
@@ -96,9 +96,9 @@ void LODGrid::downsample(LODSection& parent, const std::array<LODSection*, 8>& c
 
     // For each voxel in the parent (16^3 at half resolution),
     // sample from 2x2x2 group in children
-    for (int lz = 0; lz < LODSection::kSize / 2; ++lz) {
-        for (int ly = 0; ly < LODSection::kSize / 2; ++ly) {
-            for (int lx = 0; lx < LODSection::kSize / 2; ++lx) {
+    for (int lz = 0; lz < LODSection::K_SIZE / 2; ++lz) {
+        for (int ly = 0; ly < LODSection::K_SIZE / 2; ++ly) {
+            for (int lx = 0; lx < LODSection::K_SIZE / 2; ++lx) {
                 // Which child section? (based on high bit of local coord)
                 int childIdx = ((lx >> 4) & 1) | (((ly >> 4) & 1) << 1) | (((lz >> 4) & 1) << 2);
                 auto* child = children[childIdx];

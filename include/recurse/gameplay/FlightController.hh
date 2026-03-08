@@ -44,8 +44,8 @@ class FlightController {
     float height_;
     float depth_;
 
-    static constexpr float kEpsilon = 0.01f;
-    static constexpr float kDragFloor = 0.01f;
+    static constexpr float K_EPSILON = 0.01f;
+    static constexpr float K_DRAG_FLOOR = 0.01f;
 
     bool isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid, float threshold) const;
 

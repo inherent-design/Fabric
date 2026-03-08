@@ -8,7 +8,7 @@
 #include <random>
 
 using namespace fabric::simulation;
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 class FallingSandGravityTest : public ::testing::Test {
   protected:
@@ -24,9 +24,9 @@ class FallingSandGravityTest : public ::testing::Test {
         grid.materializeChunk(0, 0, 0);
         tracker.setState(ChunkPos{0, 0, 0}, ChunkState::Active);
         // Mark all sub-regions active
-        for (int lz = 0; lz < kChunkSize; lz += 8)
-            for (int ly = 0; ly < kChunkSize; ly += 8)
-                for (int lx = 0; lx < kChunkSize; lx += 8)
+        for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
+            for (int ly = 0; ly < K_CHUNK_SIZE; ly += 8)
+                for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
                     tracker.markSubRegionActive(ChunkPos{0, 0, 0}, lx, ly, lz);
     }
 
@@ -61,8 +61,8 @@ TEST_F(FallingSandGravityTest, SandFallsOnePerTick) {
 // 2. Sand falls to ground (stone floor)
 TEST_F(FallingSandGravityTest, SandFallsToGround) {
     // Stone floor at y=0
-    for (int x = 0; x < kChunkSize; ++x)
-        for (int z = 0; z < kChunkSize; ++z)
+    for (int x = 0; x < K_CHUNK_SIZE; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
             grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
@@ -80,8 +80,8 @@ TEST_F(FallingSandGravityTest, SandFallsToGround) {
 // 3. Two sand grains stack (contained column prevents diagonal cascade)
 TEST_F(FallingSandGravityTest, SandStacksOnSand) {
     // Stone floor
-    for (int x = 0; x < kChunkSize; ++x)
-        for (int z = 0; z < kChunkSize; ++z)
+    for (int x = 0; x < K_CHUNK_SIZE; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
             grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     // Stone walls around column (16,_,16) to prevent diagonal cascade
     for (int y = 1; y <= 12; ++y) {
@@ -134,8 +134,8 @@ TEST_F(FallingSandGravityTest, StoneDoesNotFall) {
 // 6. Density ordering: gravel sinks below sand (contained column)
 TEST_F(FallingSandGravityTest, DensityOrdering) {
     // Stone floor
-    for (int x = 0; x < kChunkSize; ++x)
-        for (int z = 0; z < kChunkSize; ++z)
+    for (int x = 0; x < K_CHUNK_SIZE; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
             grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     // Stone walls around column (16,_,16) to prevent diagonal cascade after swap
     for (int y = 1; y <= 4; ++y) {
@@ -162,8 +162,8 @@ TEST_F(FallingSandGravityTest, DensityOrdering) {
 // 7. Direction alternation produces roughly symmetric piles
 TEST_F(FallingSandGravityTest, DirectionAlternationSymmetry) {
     // Stone floor
-    for (int x = 0; x < kChunkSize; ++x)
-        for (int z = 0; z < kChunkSize; ++z)
+    for (int x = 0; x < K_CHUNK_SIZE; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
             grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
@@ -178,13 +178,13 @@ TEST_F(FallingSandGravityTest, DirectionAlternationSymmetry) {
     // Count sand on each side of x=16
     int leftCount = 0, rightCount = 0;
     for (int x = 0; x < 16; ++x)
-        for (int y = 0; y < kChunkSize; ++y)
-            for (int z = 0; z < kChunkSize; ++z)
+        for (int y = 0; y < K_CHUNK_SIZE; ++y)
+            for (int z = 0; z < K_CHUNK_SIZE; ++z)
                 if (grid.readCell(x, y, z).materialId == material_ids::SAND)
                     ++leftCount;
-    for (int x = 17; x < kChunkSize; ++x)
-        for (int y = 0; y < kChunkSize; ++y)
-            for (int z = 0; z < kChunkSize; ++z)
+    for (int x = 17; x < K_CHUNK_SIZE; ++x)
+        for (int y = 0; y < K_CHUNK_SIZE; ++y)
+            for (int z = 0; z < K_CHUNK_SIZE; ++z)
                 if (grid.readCell(x, y, z).materialId == material_ids::SAND)
                     ++rightCount;
 
@@ -203,9 +203,9 @@ TEST_F(FallingSandGravityTest, CrossChunkFalling) {
     grid.fillChunk(0, 1, 0, VoxelCell{});
     grid.materializeChunk(0, 1, 0);
     tracker.setState(ChunkPos{0, 1, 0}, ChunkState::Active);
-    for (int lz = 0; lz < kChunkSize; lz += 8)
-        for (int ly = 0; ly < kChunkSize; ly += 8)
-            for (int lx = 0; lx < kChunkSize; lx += 8)
+    for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
+        for (int ly = 0; ly < K_CHUNK_SIZE; ly += 8)
+            for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
                 tracker.markSubRegionActive(ChunkPos{0, 1, 0}, lx, ly, lz);
 
     // Sand at chunk(0,1,0) local y=0 = world y=32
@@ -224,9 +224,9 @@ TEST_F(FallingSandGravityTest, CrossChunkFalling) {
 // 9. No movement -> simulateGravity returns false (caller handles sleep)
 TEST_F(FallingSandGravityTest, NoMovementSleepsChunk) {
     // Fill chunk with stone (all static)
-    for (int z = 0; z < kChunkSize; ++z)
-        for (int y = 0; y < kChunkSize; ++y)
-            for (int x = 0; x < kChunkSize; ++x)
+    for (int z = 0; z < K_CHUNK_SIZE; ++z)
+        for (int y = 0; y < K_CHUNK_SIZE; ++y)
+            for (int x = 0; x < K_CHUNK_SIZE; ++x)
                 grid.writeCell(x, y, z, makeMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
@@ -242,9 +242,9 @@ TEST_F(FallingSandGravityTest, NoMovementSleepsChunk) {
 // 10. Performance: 50% powder chunk simulates in < 2ms
 TEST_F(FallingSandGravityTest, PerformanceSingleChunk) {
     // Fill 50% of chunk with sand (checkerboard)
-    for (int z = 0; z < kChunkSize; ++z)
-        for (int y = 0; y < kChunkSize; ++y)
-            for (int x = 0; x < kChunkSize; ++x)
+    for (int z = 0; z < K_CHUNK_SIZE; ++z)
+        for (int y = 0; y < K_CHUNK_SIZE; ++y)
+            for (int x = 0; x < K_CHUNK_SIZE; ++x)
                 if ((x + y + z) % 2 == 0)
                     grid.writeCell(x, y, z, makeMaterial(material_ids::SAND));
     grid.advanceEpoch();

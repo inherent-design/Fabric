@@ -19,7 +19,7 @@ class DevConsole {
     using CommandCallback = std::function<void(const std::vector<std::string>& args)>;
     using CVarRef = std::variant<int*, float*, bool*, std::string*>;
 
-    static constexpr size_t kMaxOutputLines = 500;
+    static constexpr size_t K_MAX_OUTPUT_LINES = 500;
 
     DevConsole() = default;
     ~DevConsole() = default;

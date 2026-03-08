@@ -1,6 +1,6 @@
 #include "recurse/gameplay/VoxelInteraction.hh"
 
-using fabric::kChunkShift;
+using fabric::K_CHUNK_SHIFT;
 
 namespace recurse {
 
@@ -15,9 +15,9 @@ InteractionResult VoxelInteraction::createMatter(const VoxelHit& hit, MaterialId
 
     grid_.writeCellImmediate(x, y, z, VoxelCell{materialId, 128, fabric::simulation::voxel_flags::UPDATED});
 
-    int cx = x >> kChunkShift;
-    int cy = y >> kChunkShift;
-    int cz = z >> kChunkShift;
+    int cx = x >> K_CHUNK_SHIFT;
+    int cy = y >> K_CHUNK_SHIFT;
+    int cz = z >> K_CHUNK_SHIFT;
     emitVoxelChanged(dispatcher_, cx, cy, cz);
 
     return {true, x, y, z, cx, cy, cz};
@@ -31,9 +31,9 @@ InteractionResult VoxelInteraction::destroyMatter(const VoxelHit& hit) {
     grid_.writeCellImmediate(
         x, y, z, VoxelCell{fabric::simulation::material_ids::AIR, 128, fabric::simulation::voxel_flags::UPDATED});
 
-    int cx = x >> kChunkShift;
-    int cy = y >> kChunkShift;
-    int cz = z >> kChunkShift;
+    int cx = x >> K_CHUNK_SHIFT;
+    int cy = y >> K_CHUNK_SHIFT;
+    int cz = z >> K_CHUNK_SHIFT;
     emitVoxelChanged(dispatcher_, cx, cy, cz);
 
     return {true, x, y, z, cx, cy, cz};

@@ -13,21 +13,21 @@
 
 namespace fabric {
 
-inline constexpr int kChunkSize = 32;
-inline constexpr int kChunkShift = 5;
-inline constexpr int kChunkMask = kChunkSize - 1;
-inline constexpr int kChunkVolume = kChunkSize * kChunkSize * kChunkSize;
+inline constexpr int K_CHUNK_SIZE = 32;
+inline constexpr int K_CHUNK_SHIFT = 5;
+inline constexpr int K_CHUNK_MASK = K_CHUNK_SIZE - 1;
+inline constexpr int K_CHUNK_VOLUME = K_CHUNK_SIZE * K_CHUNK_SIZE * K_CHUNK_SIZE;
 
 template <typename T> class ChunkedGrid {
   public:
     // C++20 arithmetic right shift gives floor division for power-of-2
     static void worldToChunk(int wx, int wy, int wz, int& cx, int& cy, int& cz, int& lx, int& ly, int& lz) {
-        cx = wx >> kChunkShift;
-        cy = wy >> kChunkShift;
-        cz = wz >> kChunkShift;
-        lx = wx & kChunkMask;
-        ly = wy & kChunkMask;
-        lz = wz & kChunkMask;
+        cx = wx >> K_CHUNK_SHIFT;
+        cy = wy >> K_CHUNK_SHIFT;
+        cz = wz >> K_CHUNK_SHIFT;
+        lx = wx & K_CHUNK_MASK;
+        ly = wy & K_CHUNK_MASK;
+        lz = wz & K_CHUNK_MASK;
     }
 
     T get(int x, int y, int z) const {
@@ -46,7 +46,7 @@ template <typename T> class ChunkedGrid {
         auto key = packChunkKey(cx, cy, cz);
         auto& chunk = chunks_[key];
         if (!chunk) {
-            chunk = std::make_unique<std::array<T, kChunkVolume>>();
+            chunk = std::make_unique<std::array<T, K_CHUNK_VOLUME>>();
             chunk->fill(T{});
         }
         (*chunk)[localIndex(lx, ly, lz)] = value;
@@ -74,12 +74,12 @@ template <typename T> class ChunkedGrid {
         if (it == chunks_.end())
             return;
         auto& data = *it->second;
-        int baseX = cx * kChunkSize;
-        int baseY = cy * kChunkSize;
-        int baseZ = cz * kChunkSize;
-        for (int lz = 0; lz < kChunkSize; ++lz) {
-            for (int ly = 0; ly < kChunkSize; ++ly) {
-                for (int lx = 0; lx < kChunkSize; ++lx) {
+        int baseX = cx * K_CHUNK_SIZE;
+        int baseY = cy * K_CHUNK_SIZE;
+        int baseZ = cz * K_CHUNK_SIZE;
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+            for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+                for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
                     fn(baseX + lx, baseY + ly, baseZ + lz, data[localIndex(lx, ly, lz)]);
                 }
             }
@@ -92,12 +92,12 @@ template <typename T> class ChunkedGrid {
         if (it == chunks_.end())
             return;
         const auto& data = *it->second;
-        int baseX = cx * kChunkSize;
-        int baseY = cy * kChunkSize;
-        int baseZ = cz * kChunkSize;
-        for (int lz = 0; lz < kChunkSize; ++lz) {
-            for (int ly = 0; ly < kChunkSize; ++ly) {
-                for (int lx = 0; lx < kChunkSize; ++lx) {
+        int baseX = cx * K_CHUNK_SIZE;
+        int baseY = cy * K_CHUNK_SIZE;
+        int baseZ = cz * K_CHUNK_SIZE;
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+            for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+                for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
                     fn(baseX + lx, baseY + ly, baseZ + lz, data[localIndex(lx, ly, lz)]);
                 }
             }
@@ -152,9 +152,9 @@ template <typename T> class ChunkedGrid {
     }
 
   private:
-    std::map<int64_t, std::unique_ptr<std::array<T, kChunkVolume>>> chunks_;
+    std::map<int64_t, std::unique_ptr<std::array<T, K_CHUNK_VOLUME>>> chunks_;
 
-    static int localIndex(int lx, int ly, int lz) { return lx + ly * kChunkSize + lz * kChunkSize * kChunkSize; }
+    static int localIndex(int lx, int ly, int lz) { return lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE; }
 };
 
 } // namespace fabric

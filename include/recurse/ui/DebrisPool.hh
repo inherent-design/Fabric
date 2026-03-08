@@ -28,9 +28,9 @@ using ParticleEmitter = std::function<void(const Vector3<float, Space::World>&, 
 
 class DebrisPool {
   public:
-    static constexpr size_t kDefaultMaxActive = 500;
+    static constexpr size_t K_DEFAULT_MAX_ACTIVE = 500;
 
-    explicit DebrisPool(size_t maxActive = kDefaultMaxActive);
+    explicit DebrisPool(size_t maxActive = K_DEFAULT_MAX_ACTIVE);
     ~DebrisPool() = default;
 
     void add(int x, int y, int z, float density);

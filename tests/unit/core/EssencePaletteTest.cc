@@ -59,15 +59,15 @@ TEST_F(EssencePaletteTest, EpsilonBoundaryDistinguishes) {
 
 TEST_F(EssencePaletteTest, PaletteRespectsMaxSize) {
     EssencePalette small(0.0f); // zero epsilon = no dedup
-    for (int i = 0; i < static_cast<int>(EssencePalette::kMaxPaletteSize); ++i) {
+    for (int i = 0; i < static_cast<int>(EssencePalette::K_MAX_PALETTE_SIZE); ++i) {
         float v = static_cast<float>(i) / 100000.0f;
         small.quantize(Vec4(v, 0.0f, 0.0f, 0.0f));
     }
-    EXPECT_EQ(small.paletteSize(), EssencePalette::kMaxPaletteSize);
+    EXPECT_EQ(small.paletteSize(), EssencePalette::K_MAX_PALETTE_SIZE);
     // Next entry should return overflow sentinel
     uint16_t overflow = small.quantize(Vec4(999.0f, 999.0f, 999.0f, 999.0f));
-    EXPECT_EQ(overflow, EssencePalette::kMaxPaletteSize);
-    EXPECT_EQ(small.paletteSize(), EssencePalette::kMaxPaletteSize);
+    EXPECT_EQ(overflow, EssencePalette::K_MAX_PALETTE_SIZE);
+    EXPECT_EQ(small.paletteSize(), EssencePalette::K_MAX_PALETTE_SIZE);
 }
 
 TEST_F(EssencePaletteTest, LookupOutOfRangeThrows) {

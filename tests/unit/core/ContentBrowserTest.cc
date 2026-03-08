@@ -151,7 +151,7 @@ TEST(ContentBrowserTest, FileTypeFiltering) {
 
     for (const auto& e : entries) {
         bool found = false;
-        for (const auto& ext : ContentBrowser::kAllowedExtensions) {
+        for (const auto& ext : ContentBrowser::K_ALLOWED_EXTENSIONS) {
             if (e.extension == ext) {
                 found = true;
                 break;

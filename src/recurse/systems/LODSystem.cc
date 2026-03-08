@@ -75,9 +75,9 @@ void LODSystem::render(fabric::AppContext& /*ctx*/) {
             return;
         }
 
-        auto key = LODSectionKey::make(section.level, section.origin.x / LODGrid::kSectionWorldSize,
-                                       section.origin.y / LODGrid::kSectionWorldSize,
-                                       section.origin.z / LODGrid::kSectionWorldSize);
+        auto key = LODSectionKey::make(section.level, section.origin.x / LODGrid::K_SECTION_WORLD_SIZE,
+                                       section.origin.y / LODGrid::K_SECTION_WORLD_SIZE,
+                                       section.origin.z / LODGrid::K_SECTION_WORLD_SIZE);
 
         // Skip if already uploaded and resident
         auto it = gpuSections_.find(key.value);
@@ -100,9 +100,9 @@ void LODSystem::render(fabric::AppContext& /*ctx*/) {
         section.dirty = false;
 
         // Try to build parent LOD section
-        int sx = section.origin.x / LODGrid::kSectionWorldSize;
-        int sy = section.origin.y / LODGrid::kSectionWorldSize;
-        int sz = section.origin.z / LODGrid::kSectionWorldSize;
+        int sx = section.origin.x / LODGrid::K_SECTION_WORLD_SIZE;
+        int sy = section.origin.y / LODGrid::K_SECTION_WORLD_SIZE;
+        int sz = section.origin.z / LODGrid::K_SECTION_WORLD_SIZE;
         grid_->tryBuildParent(section.level, sx, sy, sz);
     });
 }
@@ -129,17 +129,17 @@ void LODSystem::buildLOD0Section(int cx, int cy, int cz) {
     int sy = cy;
     int sz = cz;
     auto* section = grid_->getOrCreate(0, sx, sy, sz);
-    section->origin =
-        Vec3i(cx * LODGrid::kSectionWorldSize, cy * LODGrid::kSectionWorldSize, cz * LODGrid::kSectionWorldSize);
+    section->origin = Vec3i(cx * LODGrid::K_SECTION_WORLD_SIZE, cy * LODGrid::K_SECTION_WORLD_SIZE,
+                            cz * LODGrid::K_SECTION_WORLD_SIZE);
     section->palette.clear();
     section->palette.push_back(1); // Index 0 = air (materialId 1)
-    section->blockIndices.assign(LODSection::kVolume, 0);
+    section->blockIndices.assign(LODSection::K_VOLUME, 0);
     section->dirty = true;
 
     // Fill section data from SimulationGrid
-    for (int lz = 0; lz < LODSection::kSize; ++lz) {
-        for (int ly = 0; ly < LODSection::kSize; ++ly) {
-            for (int lx = 0; lx < LODSection::kSize; ++lx) {
+    for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
+        for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
+            for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
                 int wx = section->origin.x + lx;
                 int wy = section->origin.y + ly;
                 int wz = section->origin.z + lz;
@@ -180,7 +180,7 @@ void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRa
     grid_->forEach([this, &camPos, baseRadius](const LODSection& section) {
         // Compute world-space center of section
         int scale = 1 << section.level;
-        float worldSize = static_cast<float>(LODSection::kSize * scale);
+        float worldSize = static_cast<float>(LODSection::K_SIZE * scale);
         Vec3f center{static_cast<float>(section.origin.x) + worldSize * 0.5f,
                      static_cast<float>(section.origin.y) + worldSize * 0.5f,
                      static_cast<float>(section.origin.z) + worldSize * 0.5f};
@@ -191,9 +191,9 @@ void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRa
         float dz = center.z - camPos.z;
         float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-        // LOD selection: level = floor(log2(distance / (baseRadius * LODSection::kSize)))
+        // LOD selection: level = floor(log2(distance / (baseRadius * LODSection::K_SIZE)))
         int desiredLevel = 1;
-        float threshold = baseRadius * LODSection::kSize;
+        float threshold = baseRadius * LODSection::K_SIZE;
         while (distance > threshold && desiredLevel < maxLODLevel_) {
             threshold *= 2.0f;
             ++desiredLevel;
@@ -205,9 +205,9 @@ void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRa
         }
 
         // Check if section has GPU mesh
-        auto key = LODSectionKey::make(section.level, section.origin.x / LODGrid::kSectionWorldSize,
-                                       section.origin.y / LODGrid::kSectionWorldSize,
-                                       section.origin.z / LODGrid::kSectionWorldSize);
+        auto key = LODSectionKey::make(section.level, section.origin.x / LODGrid::K_SECTION_WORLD_SIZE,
+                                       section.origin.y / LODGrid::K_SECTION_WORLD_SIZE,
+                                       section.origin.z / LODGrid::K_SECTION_WORLD_SIZE);
         auto it = gpuSections_.find(key.value);
         if (it == gpuSections_.end() || !it->second.resident) {
             return;

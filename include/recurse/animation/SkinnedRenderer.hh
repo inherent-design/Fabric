@@ -14,8 +14,8 @@ namespace recurse {
 using fabric::Matrix4x4;
 
 // Maximum joints uploadable to the GPU skinning shader uniform array.
-// Derived from kMaxJoints in Animation.hh to keep a single source of truth.
-inline constexpr int kMaxGpuJoints = kMaxJoints;
+// Derived from K_MAX_JOINTS in Animation.hh to keep a single source of truth.
+inline constexpr int K_MAX_GPU_JOINTS = K_MAX_JOINTS;
 
 // bgfx vertex layout for skinned meshes:
 // pos(float3) + normal(float3) + uv(float2) + joints(uint8x4) + weights(float4)

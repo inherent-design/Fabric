@@ -19,7 +19,7 @@ bool CharacterController::isSolid(int vx, int vy, int vz, const ChunkedGrid<floa
 }
 
 bool CharacterController::aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold) const {
-    return physics::aabbOverlapsSolid(box, grid, threshold, kGroundEpsilon);
+    return physics::aabbOverlapsSolid(box, grid, threshold, K_GROUND_EPSILON);
 }
 
 float CharacterController::tryStepUp(const Vec3f& pos, float dx, float dz, const ChunkedGrid<float>& grid,
@@ -55,9 +55,9 @@ CharacterController::CollisionResult CharacterController::move(const Vec3f& curr
                 int footVY = static_cast<int>(std::floor(candidate.y));
                 AABB footBox = getAABB(candidate);
                 int minVX = static_cast<int>(std::floor(footBox.min.x));
-                int maxVX = static_cast<int>(std::floor(footBox.max.x - kGroundEpsilon));
+                int maxVX = static_cast<int>(std::floor(footBox.max.x - K_GROUND_EPSILON));
                 int minVZ = static_cast<int>(std::floor(footBox.min.z));
-                int maxVZ = static_cast<int>(std::floor(footBox.max.z - kGroundEpsilon));
+                int maxVZ = static_cast<int>(std::floor(footBox.max.z - K_GROUND_EPSILON));
                 float highestTop = candidate.y;
                 for (int vz = minVZ; vz <= maxVZ; ++vz) {
                     for (int vx = minVX; vx <= maxVX; ++vx) {
@@ -124,15 +124,15 @@ CharacterController::CollisionResult CharacterController::move(const Vec3f& curr
 bool CharacterController::checkOnGround(const Vec3f& pos, const ChunkedGrid<float>& grid,
                                         float densityThreshold) const {
     // Check voxels directly below feet
-    float checkY = pos.y - kGroundEpsilon;
+    float checkY = pos.y - K_GROUND_EPSILON;
     int vy = static_cast<int>(std::floor(checkY));
 
     float hw = width_ * 0.5f;
     float hd = depth_ * 0.5f;
     int minVX = static_cast<int>(std::floor(pos.x - hw));
-    int maxVX = static_cast<int>(std::floor(pos.x + hw - kGroundEpsilon));
+    int maxVX = static_cast<int>(std::floor(pos.x + hw - K_GROUND_EPSILON));
     int minVZ = static_cast<int>(std::floor(pos.z - hd));
-    int maxVZ = static_cast<int>(std::floor(pos.z + hd - kGroundEpsilon));
+    int maxVZ = static_cast<int>(std::floor(pos.z + hd - K_GROUND_EPSILON));
 
     for (int vz = minVZ; vz <= maxVZ; ++vz)
         for (int vx = minVX; vx <= maxVX; ++vx)

@@ -19,7 +19,7 @@ bool FlightController::isSolid(int vx, int vy, int vz, const ChunkedGrid<float>&
 }
 
 bool FlightController::aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold) const {
-    return physics::aabbOverlapsSolid(box, grid, threshold, kEpsilon);
+    return physics::aabbOverlapsSolid(box, grid, threshold, K_EPSILON);
 }
 
 Vec3f FlightController::applyDrag(const Vec3f& velocity, float dragCoefficient, float dt) {
@@ -28,7 +28,7 @@ Vec3f FlightController::applyDrag(const Vec3f& velocity, float dragCoefficient, 
 
     // Clamp near-zero to zero
     float speed = std::sqrt(result.x * result.x + result.y * result.y + result.z * result.z);
-    if (speed < kDragFloor) {
+    if (speed < K_DRAG_FLOOR) {
         return Vec3f(0.0f, 0.0f, 0.0f);
     }
     return result;
@@ -83,7 +83,7 @@ bool FlightController::isSolid(int vx, int vy, int vz, const fabric::simulation:
 }
 
 bool FlightController::aabbOverlapsSolid(const AABB& box, const fabric::simulation::SimulationGrid& grid) const {
-    return physics::aabbOverlapsSolid(box, grid, kEpsilon);
+    return physics::aabbOverlapsSolid(box, grid, K_EPSILON);
 }
 
 FlightController::FlightResult FlightController::move(const Vec3f& currentPos, const Vec3f& displacement,

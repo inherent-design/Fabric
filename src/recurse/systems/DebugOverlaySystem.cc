@@ -172,18 +172,18 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         for (const auto& [coord, ent] : chunks_->chunkEntities()) {
             if (physics_->physicsWorld().chunkCollisionShapeCount(coord.cx, coord.cy, coord.cz) > 0) {
                 // Convert to camera-relative coordinates
-                auto worldOrigin =
-                    fabric::Vector3<double, fabric::Space::World>(static_cast<double>(coord.cx * recurse::kChunkSize),
-                                                                  static_cast<double>(coord.cy * recurse::kChunkSize),
-                                                                  static_cast<double>(coord.cz * recurse::kChunkSize));
+                auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
+                    static_cast<double>(coord.cx * recurse::K_CHUNK_SIZE),
+                    static_cast<double>(coord.cy * recurse::K_CHUNK_SIZE),
+                    static_cast<double>(coord.cz * recurse::K_CHUNK_SIZE));
                 auto relOrigin = ctx.camera->cameraRelative(worldOrigin);
 
                 float x0 = relOrigin.x;
                 float y0 = relOrigin.y;
                 float z0 = relOrigin.z;
-                float x1 = x0 + static_cast<float>(recurse::kChunkSize);
-                float y1 = y0 + static_cast<float>(recurse::kChunkSize);
-                float z1 = z0 + static_cast<float>(recurse::kChunkSize);
+                float x1 = x0 + static_cast<float>(recurse::K_CHUNK_SIZE);
+                float y1 = y0 + static_cast<float>(recurse::K_CHUNK_SIZE);
+                float z1 = z0 + static_cast<float>(recurse::K_CHUNK_SIZE);
                 debugDraw_.drawWireBox(x0, y0, z0, x1, y1, z1);
             }
         }
@@ -196,12 +196,12 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         int idx = 0;
         for (const auto& [coord, ent] : chunks_->chunkEntities()) {
             // Use world coordinates for BVH construction
-            float x0 = static_cast<float>(coord.cx * recurse::kChunkSize);
-            float y0 = static_cast<float>(coord.cy * recurse::kChunkSize);
-            float z0 = static_cast<float>(coord.cz * recurse::kChunkSize);
-            float x1 = x0 + static_cast<float>(recurse::kChunkSize);
-            float y1 = y0 + static_cast<float>(recurse::kChunkSize);
-            float z1 = z0 + static_cast<float>(recurse::kChunkSize);
+            float x0 = static_cast<float>(coord.cx * recurse::K_CHUNK_SIZE);
+            float y0 = static_cast<float>(coord.cy * recurse::K_CHUNK_SIZE);
+            float z0 = static_cast<float>(coord.cz * recurse::K_CHUNK_SIZE);
+            float x1 = x0 + static_cast<float>(recurse::K_CHUNK_SIZE);
+            float y1 = y0 + static_cast<float>(recurse::K_CHUNK_SIZE);
+            float z1 = z0 + static_cast<float>(recurse::K_CHUNK_SIZE);
             chunkBVH.insert(fabric::AABB(fabric::Vec3f(x0, y0, z0), fabric::Vec3f(x1, y1, z1)), idx++);
         }
         chunkBVH.commitBatch();
@@ -260,16 +260,16 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
 
             // Convert world coordinates to camera-relative (same as VoxelRenderSystem)
             auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
-                static_cast<double>(cx * recurse::kChunkSize), static_cast<double>(cy * recurse::kChunkSize),
-                static_cast<double>(cz * recurse::kChunkSize));
+                static_cast<double>(cx * recurse::K_CHUNK_SIZE), static_cast<double>(cy * recurse::K_CHUNK_SIZE),
+                static_cast<double>(cz * recurse::K_CHUNK_SIZE));
             auto relOrigin = ctx.camera->cameraRelative(worldOrigin);
 
             float x0 = relOrigin.x;
             float y0 = relOrigin.y;
             float z0 = relOrigin.z;
-            float x1 = x0 + static_cast<float>(recurse::kChunkSize);
-            float y1 = y0 + static_cast<float>(recurse::kChunkSize);
-            float z1 = z0 + static_cast<float>(recurse::kChunkSize);
+            float x1 = x0 + static_cast<float>(recurse::K_CHUNK_SIZE);
+            float y1 = y0 + static_cast<float>(recurse::K_CHUNK_SIZE);
+            float z1 = z0 + static_cast<float>(recurse::K_CHUNK_SIZE);
 
             debugDraw_.setColor(color);
             debugDraw_.drawWireBox(x0, y0, z0, x1, y1, z1);
@@ -349,9 +349,9 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             waila.voxelX = hit->x;
             waila.voxelY = hit->y;
             waila.voxelZ = hit->z;
-            waila.chunkX = hit->x >> fabric::kChunkShift;
-            waila.chunkY = hit->y >> fabric::kChunkShift;
-            waila.chunkZ = hit->z >> fabric::kChunkShift;
+            waila.chunkX = hit->x >> fabric::K_CHUNK_SHIFT;
+            waila.chunkY = hit->y >> fabric::K_CHUNK_SHIFT;
+            waila.chunkZ = hit->z >> fabric::K_CHUNK_SHIFT;
             waila.normalX = hit->nx;
             waila.normalY = hit->ny;
             waila.normalZ = hit->nz;

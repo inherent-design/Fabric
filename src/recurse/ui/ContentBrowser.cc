@@ -11,7 +11,7 @@ using namespace fabric;
 
 namespace recurse {
 
-const std::vector<std::string> ContentBrowser::kAllowedExtensions = {
+const std::vector<std::string> ContentBrowser::K_ALLOWED_EXTENSIONS = {
     "json", "xml", "rml", "rcss", "sc", "toml",
 };
 
@@ -135,7 +135,7 @@ void ContentBrowser::refresh() {
 
             // Filter by allowed extensions
             bool allowed = false;
-            for (const auto& ae : kAllowedExtensions) {
+            for (const auto& ae : K_ALLOWED_EXTENSIONS) {
                 if (ae == ext) {
                     allowed = true;
                     break;

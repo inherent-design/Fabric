@@ -34,26 +34,26 @@ struct LODSectionKey {
 
 // 32^3 section at a specific LOD level
 struct LODSection {
-    static constexpr int kSize = 32;
-    static constexpr int kVolume = kSize * kSize * kSize;
+    static constexpr int K_SIZE = 32;
+    static constexpr int K_VOLUME = K_SIZE * K_SIZE * K_SIZE;
 
     int level = 0;
     Vec3i origin{0, 0, 0};              // World-space origin in LOD0 coords
-    std::vector<uint16_t> blockIndices; // kVolume entries, palette-indexed
+    std::vector<uint16_t> blockIndices; // K_VOLUME entries, palette-indexed
     std::vector<uint16_t> palette;      // materialId list (index 0 = air)
     bool dirty = true;
 
     void set(int lx, int ly, int lz, uint16_t palIdx) {
-        if (blockIndices.size() != kVolume) {
-            blockIndices.assign(kVolume, 0);
+        if (blockIndices.size() != K_VOLUME) {
+            blockIndices.assign(K_VOLUME, 0);
         }
-        blockIndices[lx + ly * kSize + lz * kSize * kSize] = palIdx;
+        blockIndices[lx + ly * K_SIZE + lz * K_SIZE * K_SIZE] = palIdx;
     }
 
     uint16_t get(int lx, int ly, int lz) const {
         if (blockIndices.empty())
             return 0;
-        return blockIndices[lx + ly * kSize + lz * kSize * kSize];
+        return blockIndices[lx + ly * K_SIZE + lz * K_SIZE * K_SIZE];
     }
 
     uint16_t materialOf(uint16_t palIdx) const {
@@ -65,7 +65,7 @@ struct LODSection {
 
 class LODGrid {
   public:
-    static constexpr int kSectionWorldSize = LODSection::kSize;
+    static constexpr int K_SECTION_WORLD_SIZE = LODSection::K_SIZE;
 
     LODSection* get(LODSectionKey key);
     LODSection* getOrCreate(int level, int sx, int sy, int sz);

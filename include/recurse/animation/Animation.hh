@@ -26,8 +26,8 @@ using fabric::Vector3;
 using fabric::Matrix4x4;
 
 // Maximum joints supported for humanoid characters (60-100 bones).
-// Aligned with GPU uniform array limit (kMaxGpuJoints in SkinnedRenderer.hh).
-inline constexpr int kMaxJoints = 100;
+// Aligned with GPU uniform array limit (K_MAX_GPU_JOINTS in SkinnedRenderer.hh).
+inline constexpr int K_MAX_JOINTS = 100;
 
 // ECS component: shared skeleton reference
 struct Skeleton {

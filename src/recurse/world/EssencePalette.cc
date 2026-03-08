@@ -39,9 +39,9 @@ uint16_t EssencePalette::addEntry(const Vector4<float, Space::World>& essence) {
         }
     }
 
-    if (entries_.size() >= kMaxPaletteSize) {
+    if (entries_.size() >= K_MAX_PALETTE_SIZE) {
         FABRIC_LOG_WARN("EssencePalette overflow: {} entries at max", entries_.size());
-        return kMaxPaletteSize;
+        return K_MAX_PALETTE_SIZE;
     }
 
     auto idx = static_cast<uint16_t>(entries_.size());

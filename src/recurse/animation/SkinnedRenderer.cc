@@ -57,7 +57,7 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
         program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_skinnedShaders, type, "vs_skinned"),
                                            bgfx::createEmbeddedShader(s_skinnedShaders, type, "fs_skinned"), true));
 
-        uniformJointMatrices_.reset(bgfx::createUniform("u_jointMatrices", bgfx::UniformType::Mat4, kMaxGpuJoints));
+        uniformJointMatrices_.reset(bgfx::createUniform("u_jointMatrices", bgfx::UniformType::Mat4, K_MAX_GPU_JOINTS));
 
         FABRIC_LOG_INFO("SkinnedRenderer shader program initialized");
     }
@@ -141,7 +141,7 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
     const auto& cache = it->second;
 
     // Upload joint matrices (clamp to max GPU joints)
-    const size_t jointCount = std::min(skinning.jointMatrices.size(), static_cast<size_t>(kMaxGpuJoints));
+    const size_t jointCount = std::min(skinning.jointMatrices.size(), static_cast<size_t>(K_MAX_GPU_JOINTS));
     if (jointCount > 0) {
         bgfx::setUniform(uniformJointMatrices_.get(), skinning.jointMatrices[0].data(),
                          static_cast<uint16_t>(jointCount));

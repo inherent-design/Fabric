@@ -4,16 +4,16 @@ namespace recurse {
 
 // -- Standard Marching Cubes lookup tables (Bloyd / Bourke, public domain) -----
 
-const uint8_t kCornerOffsets[8][3] = {
+const uint8_t K_CORNER_OFFSETS[8][3] = {
     {0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0}, {0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1},
 };
 
-const uint8_t kEdgeEndpoints[12][2] = {
+const uint8_t K_EDGE_ENDPOINTS[12][2] = {
     {0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7},
 };
 
 // clang-format off
-const uint16_t kMCEdgeTable[256] = {
+const uint16_t K_MC_EDGE_TABLE[256] = {
     0x000, 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
     0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
     0x190, 0x099, 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
@@ -48,7 +48,7 @@ const uint16_t kMCEdgeTable[256] = {
     0x70c, 0x605, 0x50f, 0x406, 0x30a, 0x203, 0x109, 0x000,
 };
 
-const int8_t kMCTriTable[256][16] = {
+const int8_t K_MC_TRI_TABLE[256][16] = {
     {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
     { 0, 8, 3,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},
     { 0, 1, 9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1},

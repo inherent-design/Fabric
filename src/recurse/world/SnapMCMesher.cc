@@ -6,7 +6,7 @@
 #include <cmath>
 #include <unordered_map>
 
-using fabric::kChunkSize;
+using fabric::K_CHUNK_SIZE;
 
 namespace recurse {
 
@@ -79,7 +79,7 @@ SnapMCMesher::SnapMCMesher(const Config& config) : config_(config) {}
 SmoothChunkMeshData SnapMCMesher::meshChunk(const ChunkDensityCache& density, const ChunkMaterialCache& material,
                                             float isovalue, int lodLevel) {
     const int stride = 1 << lodLevel;
-    const int gridSize = (kChunkSize / stride) + 1;
+    const int gridSize = (K_CHUNK_SIZE / stride) + 1;
 
     SmoothChunkMeshData output;
     output.vertices.reserve(4096);
@@ -96,16 +96,16 @@ SmoothChunkMeshData SnapMCMesher::meshChunk(const ChunkDensityCache& density, co
                 float cornerVals[8];
 
                 for (int i = 0; i < 8; ++i) {
-                    int lx = cx * stride + 1 + kCornerOffsets[i][0] * stride;
-                    int ly = cy * stride + 1 + kCornerOffsets[i][1] * stride;
-                    int lz = cz * stride + 1 + kCornerOffsets[i][2] * stride;
+                    int lx = cx * stride + 1 + K_CORNER_OFFSETS[i][0] * stride;
+                    int ly = cy * stride + 1 + K_CORNER_OFFSETS[i][1] * stride;
+                    int lz = cz * stride + 1 + K_CORNER_OFFSETS[i][2] * stride;
                     cornerVals[i] = density.at(lx, ly, lz);
                     if (cornerVals[i] < isovalue) {
                         cubeIndex |= static_cast<uint8_t>(1 << i);
                     }
                 }
 
-                if (kMCEdgeTable[cubeIndex] == 0)
+                if (K_MC_EDGE_TABLE[cubeIndex] == 0)
                     continue;
 
                 // Reset edge vertex cache
@@ -113,12 +113,12 @@ SmoothChunkMeshData SnapMCMesher::meshChunk(const ChunkDensityCache& density, co
                     edgeVerts[i] = UINT32_MAX;
 
                 // Walk triangle list for this cube configuration
-                for (int k = 0; kMCTriTable[cubeIndex][k] != -1; ++k) {
-                    int edgeIdx = kMCTriTable[cubeIndex][k];
+                for (int k = 0; K_MC_TRI_TABLE[cubeIndex][k] != -1; ++k) {
+                    int edgeIdx = K_MC_TRI_TABLE[cubeIndex][k];
 
                     if (edgeVerts[edgeIdx] == UINT32_MAX) {
-                        int c0 = kEdgeEndpoints[edgeIdx][0];
-                        int c1 = kEdgeEndpoints[edgeIdx][1];
+                        int c0 = K_EDGE_ENDPOINTS[edgeIdx][0];
+                        int c1 = K_EDGE_ENDPOINTS[edgeIdx][1];
                         float v0 = cornerVals[c0];
                         float v1 = cornerVals[c1];
 
@@ -126,12 +126,12 @@ SmoothChunkMeshData SnapMCMesher::meshChunk(const ChunkDensityCache& density, co
                         t = std::clamp(t, 0.0f, 1.0f);
 
                         // Corner positions in cache coordinates
-                        float p0x = static_cast<float>(cx * stride + 1 + kCornerOffsets[c0][0] * stride);
-                        float p0y = static_cast<float>(cy * stride + 1 + kCornerOffsets[c0][1] * stride);
-                        float p0z = static_cast<float>(cz * stride + 1 + kCornerOffsets[c0][2] * stride);
-                        float p1x = static_cast<float>(cx * stride + 1 + kCornerOffsets[c1][0] * stride);
-                        float p1y = static_cast<float>(cy * stride + 1 + kCornerOffsets[c1][1] * stride);
-                        float p1z = static_cast<float>(cz * stride + 1 + kCornerOffsets[c1][2] * stride);
+                        float p0x = static_cast<float>(cx * stride + 1 + K_CORNER_OFFSETS[c0][0] * stride);
+                        float p0y = static_cast<float>(cy * stride + 1 + K_CORNER_OFFSETS[c0][1] * stride);
+                        float p0z = static_cast<float>(cz * stride + 1 + K_CORNER_OFFSETS[c0][2] * stride);
+                        float p1x = static_cast<float>(cx * stride + 1 + K_CORNER_OFFSETS[c1][0] * stride);
+                        float p1y = static_cast<float>(cy * stride + 1 + K_CORNER_OFFSETS[c1][1] * stride);
+                        float p1z = static_cast<float>(cz * stride + 1 + K_CORNER_OFFSETS[c1][2] * stride);
 
                         // Snap: if vertex is near either endpoint, snap to it
                         if (t < config_.snapEpsilon) {
@@ -154,7 +154,7 @@ SmoothChunkMeshData SnapMCMesher::meshChunk(const ChunkDensityCache& density, co
                         // eliminating floating-point precision differences that cause seams.
                         auto clampBoundary = [](float pos) -> float {
                             const float epsilon = 0.001f;
-                            const float chunkEnd = static_cast<float>(kChunkSize);
+                            const float chunkEnd = static_cast<float>(K_CHUNK_SIZE);
                             if (pos >= -epsilon && pos <= epsilon) {
                                 return 0.0f;
                             }

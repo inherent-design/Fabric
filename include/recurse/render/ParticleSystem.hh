@@ -38,9 +38,9 @@ struct Particle {
 // Fixed pool (swap-and-pop), transient instance buffers, billboard quads.
 class ParticleSystem {
   public:
-    static constexpr size_t kMaxParticles = 10000;
-    static constexpr uint8_t kViewId = 10;
-    static constexpr size_t kInstanceStride = 48; // 3 x vec4
+    static constexpr size_t K_MAX_PARTICLES = 10000;
+    static constexpr uint8_t K_VIEW_ID = 10;
+    static constexpr size_t K_INSTANCE_STRIDE = 48; // 3 x vec4
 
     ParticleSystem();
     ~ParticleSystem();
@@ -70,7 +70,7 @@ class ParticleSystem {
     void killParticle(size_t index);
     void initPreset(Particle& p, const Vector3<float, Space::World>& pos, float radius, ParticleType type);
 
-    std::array<Particle, kMaxParticles> particles_;
+    std::array<Particle, K_MAX_PARTICLES> particles_;
     size_t activeCount_ = 0;
 
     fabric::BgfxHandle<bgfx::ProgramHandle> program_;

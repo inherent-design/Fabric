@@ -270,7 +270,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
 
     // ── Phase 8: Main Loop ──────────────────────────────────────
     if (!desc.headless) {
-        constexpr double kFixedDt = 1.0 / 60.0;
+        constexpr double K_FIXED_DT = 1.0 / 60.0;
         double accumulator = 0.0;
         auto lastTime = std::chrono::high_resolution_clock::now();
         bool running = true;
@@ -352,12 +352,12 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
             systemRegistry.runPreUpdate(ctx, static_cast<float>(frameTime));
 
             // Fixed timestep simulation
-            constexpr int kMaxFixedStepsPerFrame = 3;
+            constexpr int K_MAX_FIXED_STEPS_PER_FRAME = 3;
             int fixedIter = 0;
-            while (accumulator >= kFixedDt && fixedIter < kMaxFixedStepsPerFrame) {
+            while (accumulator >= K_FIXED_DT && fixedIter < K_MAX_FIXED_STEPS_PER_FRAME) {
                 ++fixedIter;
                 FABRIC_ZONE_SCOPED_N("fixed_timestep");
-                float dt = static_cast<float>(kFixedDt);
+                float dt = static_cast<float>(K_FIXED_DT);
 
                 {
                     FABRIC_ZONE_SCOPED_N("async_poll");
@@ -365,16 +365,16 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
                 }
                 {
                     FABRIC_ZONE_SCOPED_N("timeline_update");
-                    timeline.update(kFixedDt);
+                    timeline.update(K_FIXED_DT);
                 }
 
                 systemRegistry.runFixedUpdate(ctx, dt);
 
-                accumulator -= kFixedDt;
+                accumulator -= K_FIXED_DT;
             }
 
             // Drain excess accumulator if we hit the iteration cap
-            if (fixedIter >= kMaxFixedStepsPerFrame && accumulator > kFixedDt) {
+            if (fixedIter >= K_MAX_FIXED_STEPS_PER_FRAME && accumulator > K_FIXED_DT) {
                 FABRIC_ZONE_SCOPED_N("accumulator_drain");
                 accumulator = 0.0;
             }

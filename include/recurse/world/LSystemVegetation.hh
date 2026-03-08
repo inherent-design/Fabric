@@ -27,10 +27,10 @@ using Vec3i = Vector3<int, Space::World>;
 // ---- Essence constants for voxelization ----
 
 /// Wood essence: brown channel encoding (x=0.6, y=0.3, z=0.1, w=1.0).
-inline const Vector4<float, Space::World> kWoodEssence{0.6f, 0.3f, 0.1f, 1.0f};
+inline const Vector4<float, Space::World> K_WOOD_ESSENCE{0.6f, 0.3f, 0.1f, 1.0f};
 
 /// Leaf essence: green channel encoding (x=0.2, y=0.7, z=0.1, w=1.0).
-inline const Vector4<float, Space::World> kLeafEssence{0.2f, 0.7f, 0.1f, 1.0f};
+inline const Vector4<float, Space::World> K_LEAF_ESSENCE{0.2f, 0.7f, 0.1f, 1.0f};
 
 /// Rule set defining an L-system grammar and turtle interpretation parameters.
 struct LSystemRule {
@@ -53,7 +53,7 @@ struct TurtleSegment {
 // ---- Built-in presets ----
 
 /// Bushy shrub: short segments, wide branching angle, 3 iterations.
-inline const LSystemRule kBushRule = {
+inline const LSystemRule K_BUSH_RULE = {
     "F",                             // axiom
     {{'F', "FF+[+F-F-F]-[-F+F+F]"}}, // rules
     3,                               // iterations
@@ -63,7 +63,7 @@ inline const LSystemRule kBushRule = {
 };
 
 /// Small deciduous tree: medium segments, moderate angle, 4 iterations.
-inline const LSystemRule kSmallTreeRule = {
+inline const LSystemRule K_SMALL_TREE_RULE = {
     "X",                                 // axiom
     {{'X', "F[+X][-X]FX"}, {'F', "FF"}}, // rules
     4,                                   // iterations
@@ -73,7 +73,7 @@ inline const LSystemRule kSmallTreeRule = {
 };
 
 /// Large tree: longer segments, narrow angle, 5 iterations.
-inline const LSystemRule kLargeTreeRule = {
+inline const LSystemRule K_LARGE_TREE_RULE = {
     "X",                                  // axiom
     {{'X', "F[+X]F[-X]+X"}, {'F', "FF"}}, // rules
     5,                                    // iterations
@@ -106,7 +106,7 @@ std::vector<TurtleSegment> interpret(const std::string& expanded, const LSystemR
 // ---- Voxelization ----
 
 /// Rasterize a single turtle segment into density and essence fields using 3D DDA
-/// thick-line traversal. Maps materialTag 0 -> kWoodEssence, 1 -> kLeafEssence.
+/// thick-line traversal. Maps materialTag 0 -> K_WOOD_ESSENCE, 1 -> K_LEAF_ESSENCE.
 /// Density is clamped to [0, 1].
 void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceField& essence);
 

@@ -40,9 +40,9 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
 
         for (const auto& coord : initLoad.toLoad) {
             auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
-                {static_cast<float>(coord.cx * kChunkSize), static_cast<float>(coord.cy * kChunkSize),
-                 static_cast<float>(coord.cz * kChunkSize), static_cast<float>((coord.cx + 1) * kChunkSize),
-                 static_cast<float>((coord.cy + 1) * kChunkSize), static_cast<float>((coord.cz + 1) * kChunkSize)});
+                {static_cast<float>(coord.cx * K_CHUNK_SIZE), static_cast<float>(coord.cy * K_CHUNK_SIZE),
+                 static_cast<float>(coord.cz * K_CHUNK_SIZE), static_cast<float>((coord.cx + 1) * K_CHUNK_SIZE),
+                 static_cast<float>((coord.cy + 1) * K_CHUNK_SIZE), static_cast<float>((coord.cz + 1) * K_CHUNK_SIZE)});
             chunkEntities_[coord] = ent;
         }
 
@@ -84,9 +84,9 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
                 simSystem_->generateChunk(coord.cx, coord.cy, coord.cz);
 
             auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
-                {static_cast<float>(coord.cx * kChunkSize), static_cast<float>(coord.cy * kChunkSize),
-                 static_cast<float>(coord.cz * kChunkSize), static_cast<float>((coord.cx + 1) * kChunkSize),
-                 static_cast<float>((coord.cy + 1) * kChunkSize), static_cast<float>((coord.cz + 1) * kChunkSize)});
+                {static_cast<float>(coord.cx * K_CHUNK_SIZE), static_cast<float>(coord.cy * K_CHUNK_SIZE),
+                 static_cast<float>(coord.cz * K_CHUNK_SIZE), static_cast<float>((coord.cx + 1) * K_CHUNK_SIZE),
+                 static_cast<float>((coord.cy + 1) * K_CHUNK_SIZE), static_cast<float>((coord.cz + 1) * K_CHUNK_SIZE)});
             chunkEntities_[coord] = ent;
         }
     }

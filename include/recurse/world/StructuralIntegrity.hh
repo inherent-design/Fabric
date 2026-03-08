@@ -16,7 +16,7 @@ using fabric::ChunkedGrid;
 using fabric::K_FACE_NEIGHBORS;
 using fabric::packChunkKey;
 
-inline constexpr int kStructuralIntegrityChunkSize = 32;
+inline constexpr int K_STRUCTURAL_INTEGRITY_CHUNK_SIZE = 32;
 
 struct DebrisEvent {
     int x, y, z;

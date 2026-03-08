@@ -83,7 +83,7 @@ void ParticleSystem::init() {
     }
 
     initialized_ = true;
-    FABRIC_LOG_INFO("ParticleSystem initialized: pool={}, view={}", kMaxParticles, kViewId);
+    FABRIC_LOG_INFO("ParticleSystem initialized: pool={}, view={}", K_MAX_PARTICLES, K_VIEW_ID);
 }
 
 void ParticleSystem::shutdown() {
@@ -151,7 +151,7 @@ void ParticleSystem::initPreset(Particle& p, const Vector3<float, Space::World>&
 }
 
 void ParticleSystem::emit(const Vector3<float, Space::World>& pos, float radius, int count, ParticleType type) {
-    for (int i = 0; i < count && activeCount_ < kMaxParticles; ++i) {
+    for (int i = 0; i < count && activeCount_ < K_MAX_PARTICLES; ++i) {
         initPreset(particles_[activeCount_], pos, radius, type);
         ++activeCount_;
     }
@@ -169,7 +169,7 @@ void ParticleSystem::killParticle(size_t index) {
 void ParticleSystem::update(float dt) {
     FABRIC_ZONE_SCOPED_N("ParticleSystem::update");
 
-    constexpr float kGravity = 9.81f;
+    constexpr float K_GRAVITY = 9.81f;
 
     size_t i = 0;
     while (i < activeCount_) {
@@ -182,7 +182,7 @@ void ParticleSystem::update(float dt) {
         }
 
         // Gravity
-        p.velocity.y -= kGravity * p.gravityScale * dt;
+        p.velocity.y -= K_GRAVITY * p.gravityScale * dt;
 
         // Drag (exponential decay)
         float dragFactor = std::max(0.0f, 1.0f - p.drag * dt);
@@ -209,13 +209,13 @@ void ParticleSystem::render(const float* viewMtx, const float* projMtx, uint16_t
         return;
 
     // Check instancing support (need at least 3 vec4s = 48 bytes)
-    const uint16_t instanceStride = static_cast<uint16_t>(kInstanceStride);
+    const uint16_t instanceStride = static_cast<uint16_t>(K_INSTANCE_STRIDE);
     if (bgfx::getAvailInstanceDataBuffer(static_cast<uint32_t>(activeCount_), instanceStride) == 0)
         return;
 
     // Configure particle view
-    bgfx::setViewRect(kViewId, 0, 0, width, height);
-    bgfx::setViewTransform(kViewId, viewMtx, projMtx);
+    bgfx::setViewRect(K_VIEW_ID, 0, 0, width, height);
+    bgfx::setViewTransform(K_VIEW_ID, viewMtx, projMtx);
 
     // Allocate transient instance data buffer
     bgfx::InstanceDataBuffer idb;
@@ -264,7 +264,7 @@ void ParticleSystem::render(const float* viewMtx, const float* projMtx, uint16_t
                      BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA);
 
     bgfx::setState(state);
-    bgfx::submit(kViewId, program_.get());
+    bgfx::submit(K_VIEW_ID, program_.get());
 }
 
 size_t ParticleSystem::activeCount() const {

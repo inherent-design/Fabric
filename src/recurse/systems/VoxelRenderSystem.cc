@@ -66,16 +66,16 @@ void VoxelRenderSystem::render(fabric::AppContext& ctx) {
         frustum.extractFromVP(vpMatrix.data());
 
         // Pre-compute chunk AABB size
-        constexpr float chunkSize = static_cast<float>(recurse::kChunkSize);
+        constexpr float chunkSize = static_cast<float>(recurse::K_CHUNK_SIZE);
 
         for (const auto& [coord, gpuMesh] : meshSystem_->gpuMeshes()) {
             if (!gpuMesh.valid || gpuMesh.vertexCount == 0 || gpuMesh.indexCount == 0)
                 continue;
 
             // Build chunk AABB for frustum test
-            fabric::Vec3f chunkMin(static_cast<float>(coord.x * recurse::kChunkSize),
-                                   static_cast<float>(coord.y * recurse::kChunkSize),
-                                   static_cast<float>(coord.z * recurse::kChunkSize));
+            fabric::Vec3f chunkMin(static_cast<float>(coord.x * recurse::K_CHUNK_SIZE),
+                                   static_cast<float>(coord.y * recurse::K_CHUNK_SIZE),
+                                   static_cast<float>(coord.z * recurse::K_CHUNK_SIZE));
             fabric::Vec3f chunkMax(chunkMin.x + chunkSize, chunkMin.y + chunkSize, chunkMin.z + chunkSize);
             fabric::AABB chunkAABB(chunkMin, chunkMax);
 
@@ -83,9 +83,10 @@ void VoxelRenderSystem::render(fabric::AppContext& ctx) {
             if (frustum.testAABB(chunkAABB) == fabric::CullResult::Outside)
                 continue;
 
-            const auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
-                static_cast<double>(coord.x * recurse::kChunkSize), static_cast<double>(coord.y * recurse::kChunkSize),
-                static_cast<double>(coord.z * recurse::kChunkSize));
+            const auto worldOrigin =
+                fabric::Vector3<double, fabric::Space::World>(static_cast<double>(coord.x * recurse::K_CHUNK_SIZE),
+                                                              static_cast<double>(coord.y * recurse::K_CHUNK_SIZE),
+                                                              static_cast<double>(coord.z * recurse::K_CHUNK_SIZE));
             const auto relOrigin = camera->cameraRelative(worldOrigin);
 
             renderBatch.push_back(recurse::ChunkRenderInfo{

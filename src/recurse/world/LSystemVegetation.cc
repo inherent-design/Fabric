@@ -171,7 +171,7 @@ std::vector<TurtleSegment> interpret(const std::string& expanded, const LSystemR
 
 void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceField& essence) {
     // Choose essence by material tag.
-    auto ess = (seg.materialTag == 0) ? kWoodEssence : kLeafEssence;
+    auto ess = (seg.materialTag == 0) ? K_WOOD_ESSENCE : K_LEAF_ESSENCE;
 
     Vec3f delta = seg.end - seg.start;
     float length = delta.length();
@@ -254,7 +254,7 @@ void VegetationPlacer::generate(DensityField& density, EssenceField& essence, co
     // Resolve species list: use presets if none specified.
     std::vector<LSystemRule> species = config_.species;
     if (species.empty()) {
-        species = {kBushRule, kSmallTreeRule, kLargeTreeRule};
+        species = {K_BUSH_RULE, K_SMALL_TREE_RULE, K_LARGE_TREE_RULE};
     }
 
     // Compute integer bounds from AABB (same as TerrainGenerator: floor min, ceil max).

@@ -200,17 +200,17 @@ TEST(WFCGeneratorTest, SolverTerminates) {
 // ---------------------------------------------------------------------------
 TEST(WFCGeneratorTest, DeterministicWithSameSeed) {
     auto tiles = makeThreeTilePalette();
-    constexpr uint32_t kSeed = 7777;
+    constexpr uint32_t K_SEED = 7777;
 
     // Run 1.
     WFCGrid grid1;
     grid1.init(4, 4, 2, tiles);
-    wfcSolve(grid1, tiles, kSeed);
+    wfcSolve(grid1, tiles, K_SEED);
 
     // Run 2.
     WFCGrid grid2;
     grid2.init(4, 4, 2, tiles);
-    wfcSolve(grid2, tiles, kSeed);
+    wfcSolve(grid2, tiles, K_SEED);
 
     // Every cell must match.
     for (int z = 0; z < 2; ++z) {
@@ -350,9 +350,9 @@ TEST(WFCGeneratorTest, ThreeDimensionalSolve) {
             for (int x = 0; x < 2; ++x) {
                 int tileIdx = grid.cellAt(x, y, z).collapsedIndex;
                 for (int face = 0; face < 6; ++face) {
-                    int nx = x + kWFCNeighborOffsets[face][0];
-                    int ny = y + kWFCNeighborOffsets[face][1];
-                    int nz = z + kWFCNeighborOffsets[face][2];
+                    int nx = x + K_WFC_NEIGHBOR_OFFSETS[face][0];
+                    int ny = y + K_WFC_NEIGHBOR_OFFSETS[face][1];
+                    int nz = z + K_WFC_NEIGHBOR_OFFSETS[face][2];
                     if (nx < 0 || nx >= 2 || ny < 0 || ny >= 2 || nz < 0 || nz >= 2)
                         continue;
 
@@ -401,9 +401,9 @@ TEST(WFCGeneratorTest, WeightedSelectionBias) {
     std::vector<WFCTile> tiles = {light, heavy};
 
     int heavyCount = 0;
-    constexpr int kTrials = 200;
+    constexpr int K_TRIALS = 200;
 
-    for (int i = 0; i < kTrials; ++i) {
+    for (int i = 0; i < K_TRIALS; ++i) {
         WFCGrid grid;
         grid.init(1, 1, 1, tiles);
         wfcSolve(grid, tiles, static_cast<uint32_t>(i));
@@ -412,7 +412,7 @@ TEST(WFCGeneratorTest, WeightedSelectionBias) {
     }
 
     // With 99:1 weight ratio, we expect ~99% heavy. Allow generous margin.
-    EXPECT_GT(heavyCount, kTrials * 80 / 100) << "Heavy tile (weight 99) should be chosen most of the time";
+    EXPECT_GT(heavyCount, K_TRIALS * 80 / 100) << "Heavy tile (weight 99) should be chosen most of the time";
 }
 
 // ===========================================================================
@@ -463,7 +463,7 @@ TEST(WFCGeneratorTest, NoOrphanSockets) {
 TEST(WFCGeneratorTest, TileDataDensityValid) {
     auto check = [](const WFCTileSet& ts, const std::string& label) {
         for (const auto& tile : ts.tiles) {
-            for (int i = 0; i < kWFCTileVolume; ++i) {
+            for (int i = 0; i < K_WFC_TILE_VOLUME; ++i) {
                 EXPECT_GE(tile.density[i], 0.0f)
                     << label << ": tile \"" << tile.name << "\" density[" << i << "] below 0";
                 EXPECT_LE(tile.density[i], 1.0f)
@@ -507,11 +507,11 @@ TEST(WFCGeneratorTest, AdjacencyDerivedCorrectly) {
 }
 
 // ---------------------------------------------------------------------------
-// 17. kWFCTileSize constant is correct
+// 17. K_WFC_TILE_SIZE constant is correct
 // ---------------------------------------------------------------------------
 TEST(WFCGeneratorTest, TileSizeConstant) {
-    EXPECT_EQ(kWFCTileSize, 4);
-    EXPECT_EQ(kWFCTileVolume, 64);
+    EXPECT_EQ(K_WFC_TILE_SIZE, 4);
+    EXPECT_EQ(K_WFC_TILE_VOLUME, 64);
 }
 
 // ===========================================================================
@@ -532,12 +532,12 @@ static WFCTerrainConfig makeDefaultTerrainConfig() {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: create an AABB that covers the full tile grid (tilesN * kWFCTileSize).
+// Helper: create an AABB that covers the full tile grid (tilesN * K_WFC_TILE_SIZE).
 // ---------------------------------------------------------------------------
 static AABB makeFullRegion(const WFCTerrainConfig& cfg) {
     Vec3f minPt(0.0f, 0.0f, 0.0f);
-    Vec3f maxPt(static_cast<float>(cfg.tilesX * kWFCTileSize), static_cast<float>(cfg.tilesY * kWFCTileSize),
-                static_cast<float>(cfg.tilesZ * kWFCTileSize));
+    Vec3f maxPt(static_cast<float>(cfg.tilesX * K_WFC_TILE_SIZE), static_cast<float>(cfg.tilesY * K_WFC_TILE_SIZE),
+                static_cast<float>(cfg.tilesZ * K_WFC_TILE_SIZE));
     return AABB(minPt, maxPt);
 }
 
@@ -557,9 +557,9 @@ TEST(WFCGeneratorTest, TerrainGeneratorProducesNonZeroDensity) {
     // At least some voxels should have non-zero density (dungeon tileset
     // has wall, corridor, room tiles with density > 0).
     int nonZeroCount = 0;
-    int maxX = cfg.tilesX * kWFCTileSize;
-    int maxY = cfg.tilesY * kWFCTileSize;
-    int maxZ = cfg.tilesZ * kWFCTileSize;
+    int maxX = cfg.tilesX * K_WFC_TILE_SIZE;
+    int maxY = cfg.tilesY * K_WFC_TILE_SIZE;
+    int maxZ = cfg.tilesZ * K_WFC_TILE_SIZE;
     for (int z = 0; z < maxZ; ++z) {
         for (int y = 0; y < maxY; ++y) {
             for (int x = 0; x < maxX; ++x) {
@@ -590,9 +590,9 @@ TEST(WFCGeneratorTest, TerrainOutputWithinBounds) {
     AABB region = makeFullRegion(cfg);
     gen.generate(density, essence, region);
 
-    int maxX = cfg.tilesX * kWFCTileSize;
-    int maxY = cfg.tilesY * kWFCTileSize;
-    int maxZ = cfg.tilesZ * kWFCTileSize;
+    int maxX = cfg.tilesX * K_WFC_TILE_SIZE;
+    int maxY = cfg.tilesY * K_WFC_TILE_SIZE;
+    int maxZ = cfg.tilesZ * K_WFC_TILE_SIZE;
 
     // Check voxels just outside the region in each direction.
     // They should remain at default (0).
@@ -638,9 +638,9 @@ TEST(WFCGeneratorTest, TerrainDeterministic) {
     gen2.generate(density2, essence2, region);
 
     // Every voxel must match.
-    int maxX = cfg.tilesX * kWFCTileSize;
-    int maxY = cfg.tilesY * kWFCTileSize;
-    int maxZ = cfg.tilesZ * kWFCTileSize;
+    int maxX = cfg.tilesX * K_WFC_TILE_SIZE;
+    int maxY = cfg.tilesY * K_WFC_TILE_SIZE;
+    int maxZ = cfg.tilesZ * K_WFC_TILE_SIZE;
     for (int z = 0; z < maxZ; ++z) {
         for (int y = 0; y < maxY; ++y) {
             for (int x = 0; x < maxX; ++x) {
@@ -672,9 +672,9 @@ TEST(WFCGeneratorTest, TerrainBlendingPreservesExisting) {
     EssenceGrid essence;
     AABB region = makeFullRegion(cfg);
 
-    int maxX = cfg.tilesX * kWFCTileSize;
-    int maxY = cfg.tilesY * kWFCTileSize;
-    int maxZ = cfg.tilesZ * kWFCTileSize;
+    int maxX = cfg.tilesX * K_WFC_TILE_SIZE;
+    int maxY = cfg.tilesY * K_WFC_TILE_SIZE;
+    int maxZ = cfg.tilesZ * K_WFC_TILE_SIZE;
 
     // Pre-fill density with a high value (0.95).
     for (int z = 0; z <= maxZ - 1; ++z)
@@ -713,9 +713,9 @@ TEST(WFCGeneratorTest, TerrainEssenceOnlyWhereNonZeroDensity) {
 
     gen.generate(density, essence, region);
 
-    int maxX = cfg.tilesX * kWFCTileSize;
-    int maxY = cfg.tilesY * kWFCTileSize;
-    int maxZ = cfg.tilesZ * kWFCTileSize;
+    int maxX = cfg.tilesX * K_WFC_TILE_SIZE;
+    int maxY = cfg.tilesY * K_WFC_TILE_SIZE;
+    int maxZ = cfg.tilesZ * K_WFC_TILE_SIZE;
 
     // Run a second pass to verify: generate with a fresh field, then check
     // that wherever density is 0 (from a tile with zero density), essence
@@ -796,7 +796,7 @@ TEST(WFCGeneratorTest, TerrainRegionClipping) {
     gen.generate(density, essence, region);
 
     // Voxels at x/y/z >= clipMax should not have been written.
-    int fullMax = cfg.tilesX * kWFCTileSize; // 8
+    int fullMax = cfg.tilesX * K_WFC_TILE_SIZE; // 8
     for (int z = clipMax; z < fullMax; ++z) {
         for (int y = clipMax; y < fullMax; ++y) {
             for (int x = clipMax; x < fullMax; ++x) {

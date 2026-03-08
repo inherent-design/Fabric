@@ -8,8 +8,8 @@ using namespace fabric::simulation;
 FlatGenerator::FlatGenerator(int surfaceHeight) : surfaceHeight_(surfaceHeight) {}
 
 void FlatGenerator::generate(SimulationGrid& grid, ChunkPos pos) {
-    int baseY = pos.y * kChunkSize;
-    int topY = baseY + kChunkSize - 1;
+    int baseY = pos.y * K_CHUNK_SIZE;
+    int topY = baseY + K_CHUNK_SIZE - 1;
 
     // Entire chunk above surface -- leave as Air (default sentinel)
     if (baseY > surfaceHeight_) {
@@ -31,24 +31,24 @@ void FlatGenerator::generate(SimulationGrid& grid, ChunkPos pos) {
     stone.materialId = material_ids::STONE;
     grid.fillChunk(pos.x, pos.y, pos.z, stone);
 
-    for (int lz = 0; lz < kChunkSize; ++lz) {
-        for (int ly = 0; ly < kChunkSize; ++ly) {
+    for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+        for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
             int worldY = baseY + ly;
             if (worldY == surfaceHeight_) {
                 // Surface layer = Dirt
                 VoxelCell dirt;
                 dirt.materialId = material_ids::DIRT;
-                for (int lx = 0; lx < kChunkSize; ++lx) {
-                    int wx = pos.x * kChunkSize + lx;
-                    int wz = pos.z * kChunkSize + lz;
+                for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+                    int wx = pos.x * K_CHUNK_SIZE + lx;
+                    int wz = pos.z * K_CHUNK_SIZE + lz;
                     grid.writeCell(wx, worldY, wz, dirt);
                 }
             } else if (worldY > surfaceHeight_) {
                 // Above surface = Air
                 VoxelCell air;
-                for (int lx = 0; lx < kChunkSize; ++lx) {
-                    int wx = pos.x * kChunkSize + lx;
-                    int wz = pos.z * kChunkSize + lz;
+                for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+                    int wx = pos.x * K_CHUNK_SIZE + lx;
+                    int wz = pos.z * K_CHUNK_SIZE + lz;
                     grid.writeCell(wx, worldY, wz, air);
                 }
             }
