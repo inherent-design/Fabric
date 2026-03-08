@@ -1,6 +1,7 @@
 #include "recurse/audio/AudioSystem.hh"
+#include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/simulation/VoxelMaterial.hh"
 #include "recurse/audio/ReverbZone.hh"
-#include "recurse/world/ChunkedGrid.hh"
 
 #include <gtest/gtest.h>
 
@@ -191,14 +192,14 @@ TEST_F(AudioSystemTest, EnableDisableOcclusion) {
     EXPECT_FALSE(audio.isOcclusionEnabled());
 }
 
-TEST_F(AudioSystemTest, SetDensityGrid) {
-    ChunkedGrid<float> grid;
-    audio.setDensityGrid(&grid);
+TEST_F(AudioSystemTest, SetSimulationGrid) {
+    fabric::simulation::SimulationGrid grid;
+    audio.setSimulationGrid(&grid);
 }
 
 TEST_F(AudioSystemTest, ComputeOcclusionClearPath) {
-    ChunkedGrid<float> grid;
-    audio.setDensityGrid(&grid);
+    fabric::simulation::SimulationGrid grid;
+    audio.setSimulationGrid(&grid);
     Vec3f source(2.0f, 5.0f, 5.0f);
     Vec3f listener(8.0f, 5.0f, 5.0f);
     auto result = audio.computeOcclusion(source, listener);
@@ -207,11 +208,12 @@ TEST_F(AudioSystemTest, ComputeOcclusionClearPath) {
 }
 
 TEST_F(AudioSystemTest, ComputeOcclusionBlockedPath) {
-    ChunkedGrid<float> grid;
+    using namespace fabric::simulation;
+    SimulationGrid grid;
     for (int y = 0; y < 10; ++y)
         for (int z = 0; z < 10; ++z)
-            grid.set(5, y, z, 1.0f);
-    audio.setDensityGrid(&grid);
+            grid.writeCellImmediate(5, y, z, VoxelCell{material_ids::STONE, 128, 0});
+    audio.setSimulationGrid(&grid);
     Vec3f source(2.0f, 5.0f, 5.0f);
     Vec3f listener(8.0f, 5.0f, 5.0f);
     auto result = audio.computeOcclusion(source, listener);
@@ -220,12 +222,13 @@ TEST_F(AudioSystemTest, ComputeOcclusionBlockedPath) {
 }
 
 TEST_F(AudioSystemTest, ComputeOcclusionFullyBlocked) {
-    ChunkedGrid<float> grid;
+    using namespace fabric::simulation;
+    SimulationGrid grid;
     for (int x = 2; x <= 9; ++x)
         for (int y = 0; y < 10; ++y)
             for (int z = 0; z < 10; ++z)
-                grid.set(x, y, z, 1.0f);
-    audio.setDensityGrid(&grid);
+                grid.writeCellImmediate(x, y, z, VoxelCell{material_ids::STONE, 128, 0});
+    audio.setSimulationGrid(&grid);
     Vec3f source(0.0f, 5.0f, 5.0f);
     Vec3f listener(12.0f, 5.0f, 5.0f);
     auto result = audio.computeOcclusion(source, listener);
@@ -242,26 +245,28 @@ TEST_F(AudioSystemTest, ComputeOcclusionNoGrid) {
     EXPECT_EQ(result.totalSteps, 0);
 }
 
-TEST_F(AudioSystemTest, OcclusionThreshold) {
-    ChunkedGrid<float> grid;
+TEST_F(AudioSystemTest, OcclusionWithSolidVoxels) {
+    // SimulationGrid uses materialId != AIR for solid; no threshold concept
+    using namespace fabric::simulation;
+    SimulationGrid grid;
     for (int y = 0; y < 10; ++y)
         for (int z = 0; z < 10; ++z)
-            grid.set(5, y, z, 0.3f);
-    audio.setDensityGrid(&grid);
+            grid.writeCellImmediate(5, y, z, VoxelCell{material_ids::STONE, 128, 0});
+    audio.setSimulationGrid(&grid);
     Vec3f source(2.0f, 5.0f, 5.0f);
     Vec3f listener(8.0f, 5.0f, 5.0f);
-    auto clear = audio.computeOcclusion(source, listener, 0.5f);
-    EXPECT_FLOAT_EQ(clear.factor, 0.0f);
-    auto blocked = audio.computeOcclusion(source, listener, 0.2f);
-    EXPECT_GT(blocked.factor, 0.0f);
+    auto result = audio.computeOcclusion(source, listener);
+    EXPECT_GT(result.factor, 0.0f);
+    EXPECT_GT(result.solidCount, 0);
 }
 
 TEST_F(AudioSystemTest, UpdateAppliesOcclusion) {
-    ChunkedGrid<float> grid;
+    using namespace fabric::simulation;
+    SimulationGrid grid;
     for (int y = 0; y < 10; ++y)
         for (int z = 0; z < 10; ++z)
-            grid.set(5, y, z, 1.0f);
-    audio.setDensityGrid(&grid);
+            grid.writeCellImmediate(5, y, z, VoxelCell{material_ids::STONE, 128, 0});
+    audio.setSimulationGrid(&grid);
     audio.setOcclusionEnabled(true);
     audio.setListenerPosition(Vec3f(8.0f, 5.0f, 5.0f));
     audio.update(0.016f);

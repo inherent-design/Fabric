@@ -4,6 +4,10 @@
 #include "fabric/core/Spatial.hh"
 #include "recurse/world/ChunkedGrid.hh"
 
+namespace fabric::simulation {
+class SimulationGrid;
+} // namespace fabric::simulation
+
 namespace recurse::physics {
 
 using fabric::AABB;
@@ -18,5 +22,9 @@ bool isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid, float thres
 /// Check if an AABB overlaps any solid voxel in the density grid.
 /// epsilon is subtracted from max bounds for edge-case floor calculations.
 bool aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold, float epsilon);
+
+bool isSolid(int vx, int vy, int vz, const fabric::simulation::SimulationGrid& grid);
+
+bool aabbOverlapsSolid(const AABB& box, const fabric::simulation::SimulationGrid& grid, float epsilon);
 
 } // namespace recurse::physics

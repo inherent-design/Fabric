@@ -216,7 +216,7 @@ TEST_F(CameraControllerTest, NullGridSkipsCollision) {
     Vector3<float, Space::World> target(0.0f, 0.0f, 0.0f);
     // Should not crash with nullptr grid
     for (int i = 0; i < 50; ++i)
-        ctrl.update(target, 0.016f, nullptr);
+        ctrl.update(target, 0.016f, static_cast<const ChunkedGrid<float>*>(nullptr));
 
     auto pos = ctrl.position();
     // Camera should approach full orbit distance

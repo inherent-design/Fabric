@@ -166,6 +166,10 @@ void SimulationGrid::clear() {
     epoch_ = 0;
 }
 
+size_t SimulationGrid::chunkCount() const {
+    return chunks_.size();
+}
+
 std::vector<std::tuple<int, int, int>> SimulationGrid::allChunks() const {
     std::vector<std::tuple<int, int, int>> result;
     result.reserve(chunks_.size());

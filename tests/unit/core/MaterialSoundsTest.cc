@@ -1,4 +1,6 @@
 #include "recurse/audio/MaterialSounds.hh"
+#include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/simulation/VoxelMaterial.hh"
 
 #include <gtest/gtest.h>
 #include <set>
@@ -170,42 +172,36 @@ TEST(MaterialSoundsTest, UnregisteredMaterialReturnsEmptyString) {
 // ---------------------------------------------------------------------------
 
 TEST(MaterialSoundsTest, DetectSurfaceBelowReturnsMaterial) {
+    using namespace fabric::simulation;
     MaterialSounds ms(42);
 
-    ChunkedGrid<float> density;
-    ChunkedGrid<Ess> essence;
-
-    // Place a solid voxel one unit below the query point
+    SimulationGrid grid;
+    // Place a stone voxel one unit below the query point
     // Query at (5.5, 10.5, 5.5), solid at y=9
-    density.set(5, 9, 5, 1.0f);
-    // Green essence -> Grass
-    essence.set(5, 9, 5, Ess(0.2f, 0.8f, 0.1f, 1.0f));
+    grid.writeCellImmediate(5, 9, 5, VoxelCell{material_ids::STONE, 128, 0});
 
-    MaterialType result = ms.detectSurfaceBelow(density, essence, 5.5f, 10.5f, 5.5f);
-    EXPECT_EQ(result, MaterialType::Grass);
+    MaterialType result = ms.detectSurfaceBelow(grid, 5.5f, 10.5f, 5.5f);
+    EXPECT_EQ(result, MaterialType::Stone);
 }
 
 TEST(MaterialSoundsTest, DetectSurfaceBelowReturnsDefaultWhenNoSolid) {
+    using namespace fabric::simulation;
     MaterialSounds ms(42);
 
-    ChunkedGrid<float> density;
-    ChunkedGrid<Ess> essence;
-
+    SimulationGrid grid;
     // No solid voxels anywhere (air column)
-    MaterialType result = ms.detectSurfaceBelow(density, essence, 5.5f, 10.5f, 5.5f);
+    MaterialType result = ms.detectSurfaceBelow(grid, 5.5f, 10.5f, 5.5f);
     EXPECT_EQ(result, MaterialType::Default);
 }
 
 TEST(MaterialSoundsTest, DetectSurfaceBelowBeyondMaxDistance) {
+    using namespace fabric::simulation;
     MaterialSounds ms(42);
 
-    ChunkedGrid<float> density;
-    ChunkedGrid<Ess> essence;
-
+    SimulationGrid grid;
     // Place solid voxel 5 units below (beyond maxDistance of 2.0)
-    density.set(5, 5, 5, 1.0f);
-    essence.set(5, 5, 5, Ess(0.3f, 0.3f, 0.3f, 0.5f));
+    grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 128, 0});
 
-    MaterialType result = ms.detectSurfaceBelow(density, essence, 5.5f, 10.5f, 5.5f);
+    MaterialType result = ms.detectSurfaceBelow(grid, 5.5f, 10.5f, 5.5f);
     EXPECT_EQ(result, MaterialType::Default);
 }

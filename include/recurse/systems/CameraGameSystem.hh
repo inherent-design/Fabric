@@ -10,6 +10,7 @@ namespace recurse::systems {
 
 class CharacterMovementSystem;
 class TerrainSystem;
+class VoxelSimulationSystem;
 
 /// Camera controller wrapper. Processes mouse input once per frame,
 /// then tracks the player position with spring arm collision.
@@ -32,6 +33,7 @@ class CameraGameSystem : public fabric::System<CameraGameSystem> {
 
     CharacterMovementSystem* charMovement_ = nullptr;
     TerrainSystem* terrain_ = nullptr;
+    VoxelSimulationSystem* voxelSim_ = nullptr;
 };
 
 } // namespace recurse::systems

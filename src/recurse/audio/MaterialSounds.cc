@@ -1,5 +1,9 @@
 #include "recurse/audio/MaterialSounds.hh"
 
+#include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/simulation/VoxelMaterial.hh"
+#include "recurse/world/VoxelRaycast.hh"
+
 #include <algorithm>
 #include <cmath>
 
@@ -92,16 +96,28 @@ std::string MaterialSounds::getImpactSound(MaterialType type) {
     return pickSound(it->second.impactSounds, type, lastImpact_);
 }
 
-MaterialType MaterialSounds::detectSurfaceBelow(const ChunkedGrid<float>& density,
-                                                const ChunkedGrid<EssenceColor>& essence, float x, float y, float z) {
-    // Cast a short downward ray (maxDistance = 2.0 voxels)
-    auto hit = castRay(density, x, y, z, 0.0f, -1.0f, 0.0f, 2.0f);
-    if (!hit.has_value()) {
+MaterialType MaterialSounds::detectSurfaceBelow(const fabric::simulation::SimulationGrid& grid, float x, float y,
+                                                float z) {
+    auto hit = castRay(grid, x, y, z, 0.0f, -1.0f, 0.0f, 2.0f);
+    if (!hit.has_value())
         return MaterialType::Default;
-    }
 
-    EssenceColor voxelEssence = essence.get(hit->x, hit->y, hit->z);
-    return mapEssenceToMaterial(voxelEssence);
+    auto cell = grid.readCell(hit->x, hit->y, hit->z);
+    using namespace fabric::simulation;
+    switch (cell.materialId) {
+        case material_ids::STONE:
+            return MaterialType::Stone;
+        case material_ids::DIRT:
+            return MaterialType::Dirt;
+        case material_ids::SAND:
+            return MaterialType::Sand;
+        case material_ids::WATER:
+            return MaterialType::Water;
+        case material_ids::GRAVEL:
+            return MaterialType::Stone;
+        default:
+            return MaterialType::Default;
+    }
 }
 
 std::string MaterialSounds::pickSound(const std::vector<std::string>& sounds, MaterialType type,

@@ -19,6 +19,7 @@ namespace recurse::systems {
 class TerrainSystem;
 class CameraGameSystem;
 class PhysicsGameSystem;
+class VoxelSimulationSystem;
 
 /// Owns player movement state: controllers, FSM, position, velocity.
 /// Reads camera direction for movement input and resolves character
@@ -51,6 +52,7 @@ class CharacterMovementSystem : public fabric::System<CharacterMovementSystem> {
     TerrainSystem* terrain_ = nullptr;
     CameraGameSystem* camera_ = nullptr;
     PhysicsGameSystem* physics_ = nullptr;
+    VoxelSimulationSystem* voxelSim_ = nullptr;
 
     std::unique_ptr<FlightController> flightCtrl_;
     JoltCharacterController* joltCharCtrl_ = nullptr; // Owned by PhysicsWorld, required

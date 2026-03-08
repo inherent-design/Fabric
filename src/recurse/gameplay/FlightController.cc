@@ -1,4 +1,5 @@
 #include "recurse/gameplay/FlightController.hh"
+#include "fabric/simulation/SimulationGrid.hh"
 #include <algorithm>
 #include <cmath>
 
@@ -67,6 +68,57 @@ FlightController::FlightResult FlightController::move(const Vec3f& currentPos, c
         Vec3f candidate(pos.x, pos.y, pos.z + displacement.z);
         AABB box = getAABB(candidate);
         if (aabbOverlapsSolid(box, grid, densityThreshold)) {
+            result.hitZ = true;
+        } else {
+            pos.z = candidate.z;
+        }
+    }
+
+    result.resolvedPosition = pos;
+    return result;
+}
+
+bool FlightController::isSolid(int vx, int vy, int vz, const fabric::simulation::SimulationGrid& grid) const {
+    return physics::isSolid(vx, vy, vz, grid);
+}
+
+bool FlightController::aabbOverlapsSolid(const AABB& box, const fabric::simulation::SimulationGrid& grid) const {
+    return physics::aabbOverlapsSolid(box, grid, kEpsilon);
+}
+
+FlightController::FlightResult FlightController::move(const Vec3f& currentPos, const Vec3f& displacement,
+                                                      const fabric::simulation::SimulationGrid& grid) {
+
+    FlightResult result;
+    Vec3f pos = currentPos;
+
+    // X axis
+    {
+        Vec3f candidate(pos.x + displacement.x, pos.y, pos.z);
+        AABB box = getAABB(candidate);
+        if (aabbOverlapsSolid(box, grid)) {
+            result.hitX = true;
+        } else {
+            pos.x = candidate.x;
+        }
+    }
+
+    // Y axis
+    {
+        Vec3f candidate(pos.x, pos.y + displacement.y, pos.z);
+        AABB box = getAABB(candidate);
+        if (aabbOverlapsSolid(box, grid)) {
+            result.hitY = true;
+        } else {
+            pos.y = candidate.y;
+        }
+    }
+
+    // Z axis
+    {
+        Vec3f candidate(pos.x, pos.y, pos.z + displacement.z);
+        AABB box = getAABB(candidate);
+        if (aabbOverlapsSolid(box, grid)) {
             result.hitZ = true;
         } else {
             pos.z = candidate.z;

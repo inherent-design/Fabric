@@ -1,4 +1,6 @@
 #include "recurse/physics/VoxelCollision.hh"
+#include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/simulation/VoxelMaterial.hh"
 #include <cmath>
 
 namespace recurse::physics {
@@ -27,6 +29,26 @@ bool aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float th
         for (int vz = minVZ; vz <= maxVZ; ++vz)
             for (int vx = minVX; vx <= maxVX; ++vx)
                 if (isSolid(vx, vy, vz, grid, threshold))
+                    return true;
+    return false;
+}
+
+bool isSolid(int vx, int vy, int vz, const fabric::simulation::SimulationGrid& grid) {
+    return grid.readCell(vx, vy, vz).materialId != fabric::simulation::material_ids::AIR;
+}
+
+bool aabbOverlapsSolid(const AABB& box, const fabric::simulation::SimulationGrid& grid, float epsilon) {
+    int minVX = static_cast<int>(std::floor(box.min.x));
+    int minVY = static_cast<int>(std::floor(box.min.y));
+    int minVZ = static_cast<int>(std::floor(box.min.z));
+    int maxVX = static_cast<int>(std::floor(box.max.x - epsilon));
+    int maxVY = static_cast<int>(std::floor(box.max.y - epsilon));
+    int maxVZ = static_cast<int>(std::floor(box.max.z - epsilon));
+
+    for (int vy = minVY; vy <= maxVY; ++vy)
+        for (int vz = minVZ; vz <= maxVZ; ++vz)
+            for (int vx = minVX; vx <= maxVX; ++vx)
+                if (isSolid(vx, vy, vz, grid))
                     return true;
     return false;
 }

@@ -7,6 +7,7 @@ namespace recurse::systems {
 
 class CameraGameSystem;
 class TerrainSystem;
+class VoxelSimulationSystem;
 
 /// Spatial audio system. Tracks the camera as the listener and updates
 /// the audio engine each frame.
@@ -25,6 +26,7 @@ class AudioGameSystem : public fabric::System<AudioGameSystem> {
 
     CameraGameSystem* camera_ = nullptr;
     TerrainSystem* terrain_ = nullptr;
+    VoxelSimulationSystem* voxelSim_ = nullptr;
 };
 
 } // namespace recurse::systems

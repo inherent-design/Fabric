@@ -1,7 +1,6 @@
 #pragma once
 
 #include "fabric/core/Spatial.hh"
-#include "recurse/world/ChunkedGrid.hh"
 #include <array>
 #include <atomic>
 #include <condition_variable>
@@ -10,6 +9,10 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+
+namespace fabric::simulation {
+class SimulationGrid;
+} // namespace fabric::simulation
 
 struct ma_engine;
 struct ma_sound;
@@ -170,8 +173,8 @@ class AudioSystem {
     bool isReverbInitialized() const;
 
     // Occlusion
-    void setDensityGrid(const ChunkedGrid<float>* grid);
-    OcclusionResult computeOcclusion(const Vec3f& source, const Vec3f& listener, float threshold = 0.5f) const;
+    void setSimulationGrid(const fabric::simulation::SimulationGrid* grid);
+    OcclusionResult computeOcclusion(const Vec3f& source, const Vec3f& listener) const;
     void setOcclusionEnabled(bool enabled);
     bool isOcclusionEnabled() const;
 
@@ -218,7 +221,7 @@ class AudioSystem {
 
     AttenuationModel attenuationModel_ = AttenuationModel::Inverse;
 
-    const ChunkedGrid<float>* densityGrid_ = nullptr;
+    const fabric::simulation::SimulationGrid* simulationGrid_ = nullptr;
     bool occlusionEnabled_ = false;
 
     // Reverb node graph: sounds -> lpfNode_ -> delayNode_ -> endpoint

@@ -1,6 +1,7 @@
 #include "recurse/ai/BehaviorAI.hh"
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/simulation/SimulationGrid.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 #include <cmath>
@@ -311,6 +312,16 @@ bool BehaviorAI::hasLineOfSight(const ChunkedGrid<float>& grid, const Vec3f& fro
     if (dist < 1e-6f)
         return true;
 
+    Vec3f d = dir / dist;
+    auto hit = castRay(grid, from.x, from.y, from.z, d.x, d.y, d.z, dist);
+    return !hit.has_value();
+}
+
+bool BehaviorAI::hasLineOfSight(const fabric::simulation::SimulationGrid& grid, const Vec3f& from, const Vec3f& to) {
+    Vec3f dir = to - from;
+    float dist = dir.length();
+    if (dist < 1e-6f)
+        return true;
     Vec3f d = dir / dist;
     auto hit = castRay(grid, from.x, from.y, from.z, d.x, d.y, d.z, dist);
     return !hit.has_value();

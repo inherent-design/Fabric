@@ -2,6 +2,7 @@
 #include <miniaudio.h>
 
 #include "fabric/core/Log.hh"
+#include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "recurse/audio/AudioSystem.hh"
 #include "recurse/world/VoxelRaycast.hh"
@@ -142,7 +143,7 @@ void AudioSystem::shutdown() {
     soundPositions_.clear();
     baseVolumes_.clear();
     soundCategories_.clear();
-    densityGrid_ = nullptr;
+    simulationGrid_ = nullptr;
     occlusionEnabled_ = false;
     reverbDecayTime_ = 0.5f;
     reverbDamping_ = 0.5f;
@@ -163,7 +164,7 @@ void AudioSystem::update(float dt) {
         drainCommandBuffer();
         cleanupFinishedSounds();
 
-        if (occlusionEnabled_ && densityGrid_) {
+        if (occlusionEnabled_ && simulationGrid_) {
             std::lock_guard<std::mutex> lock(soundsMutex_);
             for (auto& [handle, sound] : activeSounds_) {
                 auto posIt = soundPositions_.find(handle);
@@ -418,12 +419,12 @@ float AudioSystem::getCategoryVolume(SoundCategory category) const {
 
 // --- Occlusion ---
 
-void AudioSystem::setDensityGrid(const ChunkedGrid<float>* grid) {
-    densityGrid_ = grid;
+void AudioSystem::setSimulationGrid(const fabric::simulation::SimulationGrid* grid) {
+    simulationGrid_ = grid;
 }
 
-OcclusionResult AudioSystem::computeOcclusion(const Vec3f& source, const Vec3f& listener, float threshold) const {
-    if (!densityGrid_) {
+OcclusionResult AudioSystem::computeOcclusion(const Vec3f& source, const Vec3f& listener) const {
+    if (!simulationGrid_) {
         return {0.0f, 0, 0};
     }
 
@@ -439,7 +440,7 @@ OcclusionResult AudioSystem::computeOcclusion(const Vec3f& source, const Vec3f& 
     // Direction is unnormalized (source-to-listener). With t in [0,1],
     // t=1.0 reaches the listener exactly, so maxDistance=1.0 traces
     // the full source-to-listener segment.
-    auto hits = castRayAll(*densityGrid_, source.x, source.y, source.z, dx, dy, dz, 1.0f, threshold);
+    auto hits = castRayAll(*simulationGrid_, source.x, source.y, source.z, dx, dy, dz, 1.0f);
 
     int solidCount = static_cast<int>(hits.size());
     int totalSteps = static_cast<int>(std::ceil(distance));
@@ -857,7 +858,7 @@ void AudioSystem::audioThreadLoop() {
             drainCommandBuffer();
             cleanupFinishedSounds();
 
-            if (occlusionEnabled_ && densityGrid_) {
+            if (occlusionEnabled_ && simulationGrid_) {
                 std::lock_guard<std::mutex> lock(soundsMutex_);
                 std::lock_guard<std::mutex> listenerLock(listenerMutex_);
 

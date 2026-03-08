@@ -1,6 +1,5 @@
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/ChunkCoordUtils.hh"
-#include "recurse/world/DensitySync.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Event.hh"
@@ -74,9 +73,6 @@ void VoxelSimulationSystem::generateInitialWorld() {
     }
     grid.advanceEpoch();
 
-    // Sync density field from simulation grid for collision detection
-    terrain_->syncDensityFromGrid(grid);
-
     // Initialize Jolt physics collision for each chunk
     for (const auto& [cx, cy, cz] : generatedChunks) {
         fabric::Event e(kVoxelChangedEvent, "VoxelSimulationSystem");
@@ -114,9 +110,6 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
     fabSim_->grid().advanceEpoch();
     fabSim_->activityTracker().setState(fabric::simulation::ChunkPos{cx, cy, cz},
                                         fabric::simulation::ChunkState::Active);
-
-    // Sync density for this chunk to TerrainSystem's density field
-    syncChunkDensity(fabSim_->grid(), terrain_->densityGrid(), cx, cy, cz);
 
     // Initialize Jolt physics collision for this chunk (always dispatch, even for sentinels)
     if (dispatcher_) {

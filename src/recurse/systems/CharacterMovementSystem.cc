@@ -2,6 +2,7 @@
 #include "recurse/systems/CameraGameSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
+#include "recurse/systems/VoxelSimulationSystem.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Event.hh"
@@ -25,6 +26,7 @@ void CharacterMovementSystem::doShutdown() {
     terrain_ = nullptr;
     camera_ = nullptr;
     physics_ = nullptr;
+    voxelSim_ = nullptr;
     FABRIC_LOG_INFO("CharacterMovementSystem shut down");
 }
 
@@ -61,6 +63,7 @@ void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
     physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
+    voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
     constexpr float kCharWidth = 0.6f;
     constexpr float kCharHeight = 1.8f;
@@ -171,7 +174,7 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
             syncPlayerPositionViews(playerPosD_, playerPos_, playerPos_);
         } else {
             // Flying: with collision
-            auto result = flightCtrl_->move(playerPos_, displacement, terrain_->densityGrid());
+            auto result = flightCtrl_->move(playerPos_, displacement, voxelSim_->simulationGrid());
             syncPlayerPositionViews(playerPosD_, playerPos_, result.resolvedPosition);
         }
 
@@ -244,6 +247,7 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
 void CharacterMovementSystem::configureDependencies() {
     after<PhysicsGameSystem>();
     after<TerrainSystem>();
+    after<VoxelSimulationSystem>();
 }
 
 } // namespace recurse::systems

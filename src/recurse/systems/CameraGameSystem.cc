@@ -8,6 +8,7 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
+#include "recurse/systems/VoxelSimulationSystem.hh"
 
 namespace recurse::systems {
 
@@ -16,6 +17,7 @@ void CameraGameSystem::doInit(fabric::AppContext& ctx) {
 
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
+    voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
     // Toggle between first/third person camera
     ctx.dispatcher.addEventListener("toggle_camera", [this](fabric::Event&) {
@@ -36,17 +38,19 @@ void CameraGameSystem::update(fabric::AppContext& ctx, float dt) {
 
     // Track player position with spring arm collision for third-person mode
     auto playerPosD = charMovement_->playerWorldPositionD();
-    cameraCtrl_->update(playerPosD, dt, &terrain_->densityGrid());
+    cameraCtrl_->update(playerPosD, dt, &voxelSim_->simulationGrid());
 }
 
 void CameraGameSystem::doShutdown() {
     cameraCtrl_.reset();
+    voxelSim_ = nullptr;
     FABRIC_LOG_INFO("CameraGameSystem shut down");
 }
 
 void CameraGameSystem::configureDependencies() {
     after<CharacterMovementSystem>();
     after<TerrainSystem>();
+    after<VoxelSimulationSystem>();
 }
 
 fabric::Vector3<float, fabric::Space::World> CameraGameSystem::position() const {

@@ -6,16 +6,18 @@
 #include "fabric/utils/Profiler.hh"
 #include "recurse/systems/CameraGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
+#include "recurse/systems/VoxelSimulationSystem.hh"
 
 namespace recurse::systems {
 
 void AudioGameSystem::doInit(fabric::AppContext& ctx) {
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
+    voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
     audioSystem_.setThreadedMode(true);
     audioSystem_.init();
-    audioSystem_.setDensityGrid(&terrain_->densityGrid());
+    audioSystem_.setSimulationGrid(&voxelSim_->simulationGrid());
 
     FABRIC_LOG_INFO("AudioGameSystem initialized");
 }
@@ -30,12 +32,14 @@ void AudioGameSystem::update(fabric::AppContext& /*ctx*/, float dt) {
 
 void AudioGameSystem::doShutdown() {
     audioSystem_.shutdown();
+    voxelSim_ = nullptr;
     FABRIC_LOG_INFO("AudioGameSystem shut down");
 }
 
 void AudioGameSystem::configureDependencies() {
     after<CameraGameSystem>();
     after<TerrainSystem>();
+    after<VoxelSimulationSystem>();
 }
 
 } // namespace recurse::systems

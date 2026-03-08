@@ -1,6 +1,7 @@
 #include "recurse/animation/IKSolver.hh"
+#include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/simulation/VoxelMaterial.hh"
 #include "recurse/animation/Animation.hh"
-#include "recurse/world/ChunkedGrid.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 #include <ozz/animation/offline/raw_skeleton.h>
@@ -309,7 +310,7 @@ class FootIKTest : public ::testing::Test {
         return Vec3f(col3[0], col3[1], col3[2]);
     }
 
-    FootIKConfig makeConfig(const ChunkedGrid<float>* grid) {
+    FootIKConfig makeConfig(const fabric::simulation::SimulationGrid* grid) {
         FootIKConfig config;
         config.leftLeg = {leftHipIdx_, leftKneeIdx_, leftAnkleIdx_};
         config.rightLeg = {rightHipIdx_, rightKneeIdx_, rightAnkleIdx_};
@@ -322,11 +323,12 @@ class FootIKTest : public ::testing::Test {
         return config;
     }
 
-    ChunkedGrid<float> makeFlatGround(int groundVoxelY) {
-        ChunkedGrid<float> grid;
+    fabric::simulation::SimulationGrid makeFlatGround(int groundVoxelY) {
+        using namespace fabric::simulation;
+        SimulationGrid grid;
         for (int x = -5; x <= 5; ++x) {
             for (int z = -5; z <= 5; ++z) {
-                grid.set(x, groundVoxelY, z, 1.0f);
+                grid.writeCellImmediate(x, groundVoxelY, z, VoxelCell{material_ids::STONE, 128, 0});
             }
         }
         return grid;
@@ -356,16 +358,17 @@ TEST_F(FootIKTest, FlatTerrainContact) {
 }
 
 TEST_F(FootIKTest, SteppedTerrain) {
+    using namespace fabric::simulation;
     // Left ground at Y=0 (voxel y=-1), right ground at Y=1 (voxel y=0)
-    ChunkedGrid<float> grid;
+    SimulationGrid grid;
     for (int x = -5; x < 0; ++x) {
         for (int z = -5; z <= 5; ++z) {
-            grid.set(x, -1, z, 1.0f);
+            grid.writeCellImmediate(x, -1, z, VoxelCell{material_ids::STONE, 128, 0});
         }
     }
     for (int x = 0; x <= 5; ++x) {
         for (int z = -5; z <= 5; ++z) {
-            grid.set(x, 0, z, 1.0f);
+            grid.writeCellImmediate(x, 0, z, VoxelCell{material_ids::STONE, 128, 0});
         }
     }
 
@@ -388,13 +391,14 @@ TEST_F(FootIKTest, SteppedTerrain) {
 }
 
 TEST_F(FootIKTest, UnreachableGround) {
+    using namespace fabric::simulation;
     // Ground surface above ankles. Correction exceeds maxCorrectionDist.
     // Solid voxels at y=2 give surface at Y=3. Ankles at Y=1.
     // correction = |1 - 3| = 2 > maxCorrectionDist = 0.5
-    ChunkedGrid<float> grid;
+    SimulationGrid grid;
     for (int x = -5; x <= 5; ++x) {
         for (int z = -5; z <= 5; ++z) {
-            grid.set(x, 2, z, 1.0f);
+            grid.writeCellImmediate(x, 2, z, VoxelCell{material_ids::STONE, 128, 0});
         }
     }
 

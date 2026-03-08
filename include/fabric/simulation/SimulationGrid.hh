@@ -39,6 +39,7 @@ class SimulationGrid {
     VoxelCell getChunkFillValue(int cx, int cy, int cz) const;
     void removeChunk(int cx, int cy, int cz);
     std::vector<std::tuple<int, int, int>> allChunks() const;
+    size_t chunkCount() const;
     void clear(); // Remove all chunks (for world reset)
 
   private:

@@ -1,14 +1,16 @@
 #pragma once
 
 #include "fabric/core/Spatial.hh"
-#include "recurse/world/ChunkedGrid.hh"
-#include "recurse/world/VoxelRaycast.hh"
 
 #include <cstdint>
 #include <random>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+namespace fabric::simulation {
+class SimulationGrid;
+} // namespace fabric::simulation
 
 namespace recurse {
 
@@ -47,8 +49,7 @@ class MaterialSounds {
     std::string getFootstepSound(MaterialType type);
     std::string getImpactSound(MaterialType type);
 
-    MaterialType detectSurfaceBelow(const ChunkedGrid<float>& density, const ChunkedGrid<EssenceColor>& essence,
-                                    float x, float y, float z);
+    MaterialType detectSurfaceBelow(const fabric::simulation::SimulationGrid& grid, float x, float y, float z);
 
   private:
     std::string pickSound(const std::vector<std::string>& sounds, MaterialType type,

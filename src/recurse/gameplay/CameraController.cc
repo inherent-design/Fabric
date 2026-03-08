@@ -1,4 +1,5 @@
 #include "recurse/gameplay/CameraController.hh"
+#include "fabric/simulation/SimulationGrid.hh"
 
 #include <algorithm>
 #include <cmath>
@@ -143,6 +144,46 @@ Quaternion<float> CameraController::buildRotation() const {
     auto pitchQuat = Quaternion<float>::fromAxisAngle(Vector3<float, Space::World>(1.0f, 0.0f, 0.0f), pitchRad);
 
     return yawQuat * pitchQuat;
+}
+
+void CameraController::update(const Vector3<float, Space::World>& targetPos, float dt,
+                              const fabric::simulation::SimulationGrid* grid) {
+    update(Vector3<double, Space::World>(static_cast<double>(targetPos.x), static_cast<double>(targetPos.y),
+                                         static_cast<double>(targetPos.z)),
+           dt, grid);
+}
+
+void CameraController::update(const Vector3<double, Space::World>& targetPos, float dt,
+                              const fabric::simulation::SimulationGrid* grid) {
+    using Vec3f = Vector3<float, Space::World>;
+
+    const auto eyePointD = targetPos + Vector3<double, Space::World>(0.0, static_cast<double>(config_.eyeHeight), 0.0);
+    auto rot = buildRotation();
+    Vec3f fwd = rot.rotateVector(Vec3f(0.0f, 0.0f, 1.0f));
+
+    if (mode_ == CameraMode::FirstPerson) {
+        cachedPositionD_ = eyePointD;
+    } else {
+        float targetDist = config_.orbitDistance;
+
+        if (grid) {
+            Vec3f rayDir = Vec3f(0.0f, 0.0f, 0.0f) - fwd;
+            auto hit = castRay(*grid, static_cast<float>(eyePointD.x), static_cast<float>(eyePointD.y),
+                               static_cast<float>(eyePointD.z), rayDir.x, rayDir.y, rayDir.z, config_.orbitDistance);
+            if (hit && hit->t < targetDist) {
+                targetDist = std::max(hit->t - kSpringArmClipOffset, config_.orbitMinDistance);
+            }
+        }
+
+        actualDistance_ += (targetDist - actualDistance_) * std::min(config_.springArmSmoothing * dt, 1.0f);
+        actualDistance_ = std::max(actualDistance_, config_.orbitMinDistance);
+
+        cachedPositionD_ = eyePointD - Vector3<double, Space::World>(static_cast<double>(fwd.x) * actualDistance_,
+                                                                     static_cast<double>(fwd.y) * actualDistance_,
+                                                                     static_cast<double>(fwd.z) * actualDistance_);
+    }
+
+    camera_.updateView(cachedPositionD_, rot);
 }
 
 void CameraController::clampPitch() {

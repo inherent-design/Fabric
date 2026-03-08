@@ -102,8 +102,13 @@ struct SkinningData {
     std::vector<std::array<float, 16>> jointMatrices;
 };
 
-// Forward declaration for foot IK voxel raycasting
-template <typename T> class ChunkedGrid;
+} // namespace recurse
+
+namespace fabric::simulation {
+class SimulationGrid;
+} // namespace fabric::simulation
+
+namespace recurse {
 
 // Per-leg joint indices for two-bone IK chain (hip-knee-ankle)
 struct FootIKLeg {
@@ -124,7 +129,7 @@ struct FootIKConfig {
     float maxCorrectionDist = 0.5f;
     float raycastHeight = 2.0f;
     bool grounded = true;
-    const ChunkedGrid<float>* grid = nullptr;
+    const fabric::simulation::SimulationGrid* grid = nullptr;
     Vector3<float, Space::World> worldOffset{0.0f, 0.0f, 0.0f};
 };
 

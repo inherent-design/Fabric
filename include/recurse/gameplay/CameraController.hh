@@ -5,6 +5,10 @@
 #include "recurse/world/ChunkedGrid.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
+namespace fabric::simulation {
+class SimulationGrid;
+} // namespace fabric::simulation
+
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
@@ -51,6 +55,11 @@ class CameraController {
                 float densityThreshold = 0.5f);
     void update(const Vector3<double, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid = nullptr,
                 float densityThreshold = 0.5f);
+
+    void update(const Vector3<float, Space::World>& targetPos, float dt,
+                const fabric::simulation::SimulationGrid* grid);
+    void update(const Vector3<double, Space::World>& targetPos, float dt,
+                const fabric::simulation::SimulationGrid* grid);
 
     const Vector3<double, Space::World>& positionD() const;
 

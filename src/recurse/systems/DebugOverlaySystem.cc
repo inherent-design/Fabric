@@ -293,7 +293,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         debugData.fps = (cpuMs > 0.0f) ? 1000.0f / cpuMs : 0.0f;
         debugData.frameTimeMs = cpuMs;
         debugData.visibleChunks = meshSystem_ ? static_cast<int>(meshSystem_->gpuMeshes().size()) : 0;
-        debugData.totalChunks = static_cast<int>(terrain_->densityGrid().chunkCount());
+        debugData.totalChunks = static_cast<int>(voxelSim_->simulationGrid().chunkCount());
         debugData.cameraPosition = camera_->position();
         debugData.currentRadius = chunks_->streaming().currentRadius();
         debugData.currentState = recurse::MovementFSM::stateToString(charMovement_->movementFSM().currentState());
@@ -342,8 +342,8 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         fabric::WAILAData waila;
         auto camPos = camera_->position();
         auto camFwd = camera_->forward();
-        auto hit = recurse::castRay(terrain_->densityGrid(), camPos.x, camPos.y, camPos.z, camFwd.x, camFwd.y, camFwd.z,
-                                    20.0f);
+        auto hit = recurse::castRay(voxelSim_->simulationGrid(), camPos.x, camPos.y, camPos.z, camFwd.x, camFwd.y,
+                                    camFwd.z, 20.0f);
         if (hit.has_value()) {
             waila.hasHit = true;
             waila.voxelX = hit->x;
@@ -356,11 +356,11 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             waila.normalY = hit->ny;
             waila.normalZ = hit->nz;
             waila.distance = hit->t;
-            waila.density = terrain_->densityGrid().get(hit->x, hit->y, hit->z);
-            auto ess = terrain_->essenceGrid().get(hit->x, hit->y, hit->z);
-            waila.essenceR = ess.x;
-            waila.essenceG = ess.y;
-            waila.essenceB = ess.z;
+            auto cell = voxelSim_->simulationGrid().readCell(hit->x, hit->y, hit->z);
+            waila.density = (cell.materialId != fabric::simulation::material_ids::AIR) ? 1.0f : 0.0f;
+            waila.essenceR = 0.0f;
+            waila.essenceG = 0.0f;
+            waila.essenceB = 0.0f;
         }
         wailaPanel_.update(waila);
     }
