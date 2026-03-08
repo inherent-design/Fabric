@@ -1,10 +1,9 @@
 #include "fabric/world/FlatGenerator.hh"
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 namespace fabric::world {
 
 using namespace fabric::simulation;
-using recurse::kChunkSize;
 
 FlatGenerator::FlatGenerator(int surfaceHeight) : surfaceHeight_(surfaceHeight) {}
 

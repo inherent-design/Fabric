@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fabric/core/Spatial.hh"
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 #include <array>
 #include <bgfx/bgfx.h>
@@ -11,6 +11,8 @@
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
+using fabric::ChunkedGrid;
+using fabric::kChunkSize;
 namespace Space = fabric::Space;
 using fabric::Vector3;
 

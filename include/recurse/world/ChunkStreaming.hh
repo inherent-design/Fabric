@@ -1,6 +1,6 @@
 #pragma once
 
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 #include <algorithm>
 #include <cmath>
@@ -8,6 +8,8 @@
 #include <vector>
 
 namespace recurse {
+
+using fabric::ChunkedGrid;
 
 struct StreamingConfig {
     int baseRadius = 8;

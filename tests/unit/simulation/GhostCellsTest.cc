@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 
 using namespace fabric::simulation;
-using recurse::kChunkSize;
+using fabric::kChunkSize;
 
 class GhostCellsTest : public ::testing::Test {
   protected:

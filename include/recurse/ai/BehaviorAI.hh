@@ -13,8 +13,8 @@
 
 #include "fabric/core/Rendering.hh"
 #include "fabric/utils/BVH.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/animation/Animation.hh"
-#include "recurse/world/ChunkedGrid.hh"
 
 namespace fabric::simulation {
 class SimulationGrid;
@@ -23,6 +23,7 @@ class SimulationGrid;
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
+using fabric::ChunkedGrid;
 using fabric::Vec3f;
 
 using fabric::BVH;

@@ -1,7 +1,7 @@
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include <gtest/gtest.h>
 
-using namespace recurse;
+using namespace fabric;
 
 class ChunkedGridInterpolationTest : public ::testing::Test {
   protected:

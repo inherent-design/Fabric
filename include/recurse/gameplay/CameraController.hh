@@ -2,7 +2,7 @@
 
 #include "fabric/core/Camera.hh"
 #include "fabric/core/Spatial.hh"
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 namespace fabric::simulation {
@@ -14,6 +14,7 @@ namespace recurse {
 // Engine types imported from fabric:: namespace
 namespace Space = fabric::Space;
 using fabric::Camera;
+using fabric::ChunkedGrid;
 using fabric::Quaternion;
 using fabric::Vector3;
 

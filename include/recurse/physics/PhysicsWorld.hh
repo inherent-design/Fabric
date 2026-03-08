@@ -14,7 +14,7 @@
 #include <Jolt/Physics/Constraints/FixedConstraint.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 #include <cstdint>
@@ -28,6 +28,10 @@ class SimulationGrid;
 } // namespace fabric::simulation
 
 namespace recurse {
+
+// Engine types imported from fabric:: namespace
+using fabric::ChunkedGrid;
+using fabric::kChunkSize;
 
 class JoltCharacterController;
 struct JoltCharacterConfig;

@@ -1,15 +1,29 @@
 #pragma once
 
 #include <cstdint>
+#include <tuple>
 
-namespace recurse {
+namespace fabric {
 
 /// Pack three chunk/voxel coordinates into a single 64-bit key.
 /// Uses 21 bits per Y/Z component, remaining upper bits for X.
-/// Shared across ChunkedGrid, Pathfinding, ReverbZone, StructuralIntegrity.
+/// Shared across ChunkedGrid, SimulationGrid, Pathfinding, ReverbZone, StructuralIntegrity.
 inline uint64_t packChunkKey(int cx, int cy, int cz) {
     return (static_cast<uint64_t>(cx) << 42) | (static_cast<uint64_t>(cy & 0x1FFFFF)) << 21 |
            static_cast<uint64_t>(cz & 0x1FFFFF);
+}
+
+/// Unpack a 64-bit key into three chunk coordinates.
+/// Inverse of packChunkKey; sign-extends 21-bit Y/Z components.
+inline std::tuple<int, int, int> unpackChunkKey(uint64_t key) {
+    int cx = static_cast<int>(key >> 42);
+    int cy = static_cast<int>((key >> 21) & 0x1FFFFF);
+    int cz = static_cast<int>(key & 0x1FFFFF);
+    if (cy & 0x100000)
+        cy |= ~0x1FFFFF;
+    if (cz & 0x100000)
+        cz |= ~0x1FFFFF;
+    return {cx, cy, cz};
 }
 
 /// 6-connected face neighbor offsets: +X, -X, +Y, -Y, +Z, -Z
@@ -41,4 +55,4 @@ inline constexpr int K_HORIZONTAL_NEIGHBORS[4][3] = {
     {0, 0, -1},
 };
 
-} // namespace recurse
+} // namespace fabric

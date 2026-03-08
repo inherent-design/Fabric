@@ -3,8 +3,6 @@
 
 namespace fabric::simulation {
 
-using recurse::kChunkSize;
-
 namespace {
 // Directional-alternating sweep: reverses x/z iteration each frame to prevent
 // systematic bias in cellular automata. cellFn returns true if it moved a cell.

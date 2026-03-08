@@ -1,7 +1,8 @@
 #pragma once
 
-#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Rendering.hh"
+#include "fabric/core/Spatial.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 #include <array>
 #include <cstdint>
@@ -14,8 +15,12 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
-using fabric::DensityField;
-using fabric::EssenceField;
+using fabric::ChunkedGrid;
+namespace Space = fabric::Space;
+using fabric::Vector4;
+
+using DensityField = ChunkedGrid<float>;
+using EssenceField = ChunkedGrid<Vector4<float, Space::World>>;
 
 /// Side length (in voxels) of a single WFC tile volume.
 constexpr int kWFCTileSize = 4;

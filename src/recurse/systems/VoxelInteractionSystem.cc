@@ -1,9 +1,9 @@
 #include "recurse/systems/VoxelInteractionSystem.hh"
+#include "fabric/world/ChunkCoordUtils.hh"
 #include "recurse/systems/CameraGameSystem.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
-#include "recurse/world/ChunkCoordUtils.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/InputManager.hh"
@@ -16,6 +16,8 @@
 #include "recurse/gameplay/VoxelInteraction.hh"
 
 namespace recurse::systems {
+
+using fabric::K_FACE_NEIGHBORS;
 
 VoxelInteractionSystem::~VoxelInteractionSystem() = default;
 

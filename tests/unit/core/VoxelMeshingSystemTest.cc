@@ -3,17 +3,17 @@
 #include "fabric/simulation/ChunkActivityTracker.hh"
 #include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/simulation/VoxelMaterial.hh"
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 #include <gtest/gtest.h>
 
 using fabric::ChunkCoord;
+using fabric::kChunkSize;
 using fabric::simulation::ChunkActivityTracker;
 using fabric::simulation::ChunkState;
 using fabric::simulation::SimulationGrid;
 using fabric::simulation::VoxelCell;
 namespace MaterialIds = fabric::simulation::material_ids;
-using recurse::kChunkSize;
 using recurse::systems::VoxelMeshingSystem;
 
 class VoxelMeshingSystemTest : public ::testing::Test {

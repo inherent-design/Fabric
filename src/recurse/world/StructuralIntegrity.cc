@@ -1,6 +1,6 @@
 #include "recurse/world/StructuralIntegrity.hh"
 
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 #include <chrono>
 

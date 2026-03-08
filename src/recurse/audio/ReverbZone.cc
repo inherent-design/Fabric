@@ -1,11 +1,14 @@
 #include "recurse/audio/ReverbZone.hh"
-#include "recurse/world/ChunkCoordUtils.hh"
+#include "fabric/world/ChunkCoordUtils.hh"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 
 namespace recurse {
+
+using fabric::K_FACE_NEIGHBORS;
+using fabric::packChunkKey;
 
 // ---------- Coordinate packing ----------
 

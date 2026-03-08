@@ -8,7 +8,7 @@
 #include <random>
 
 using namespace fabric::simulation;
-using recurse::kChunkSize;
+using fabric::kChunkSize;
 
 class FallingSandGravityTest : public ::testing::Test {
   protected:

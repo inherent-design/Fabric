@@ -1,13 +1,14 @@
 #pragma once
 
 #include "fabric/core/Rendering.hh"
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 #include <vector>
 
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
+using fabric::ChunkedGrid;
 using fabric::Vec3f;
 
 struct PathNode {

@@ -6,9 +6,9 @@
 #include "fabric/simulation/MaterialRegistry.hh"
 #include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/simulation/VoxelMaterial.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/LODGrid.hh"
 #include "recurse/render/LODMeshManager.hh"
-#include "recurse/world/ChunkedGrid.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 
 #include <algorithm>

@@ -2,7 +2,7 @@
 #include "fabric/simulation/ChunkActivityTracker.hh"
 #include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/simulation/VoxelMaterial.hh"
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include <array>
 #include <unordered_map>
 #include <vector>
@@ -18,7 +18,7 @@ enum class Face : uint8_t {
     NegZ
 };
 inline constexpr int K_FACE_COUNT = 6;
-inline constexpr int K_FACE_AREA = recurse::kChunkSize * recurse::kChunkSize; // 1024
+inline constexpr int K_FACE_AREA = kChunkSize * kChunkSize; // 1024
 
 struct GhostCellStore {
     std::array<std::array<VoxelCell, K_FACE_AREA>, K_FACE_COUNT> faces{};

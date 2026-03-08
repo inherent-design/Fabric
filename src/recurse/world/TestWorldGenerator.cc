@@ -1,9 +1,11 @@
 #include "recurse/world/TestWorldGenerator.hh"
 
 #include "fabric/simulation/SimulationGrid.hh"
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 namespace recurse {
+
+using fabric::kChunkSize;
 
 // -- FlatWorldGenerator -------------------------------------------------------
 

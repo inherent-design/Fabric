@@ -23,7 +23,6 @@ target_sources(UnitTests
   ECSTest.cc
   ECSRestTest.cc
   ChunkedGridTest.cc
-  FieldLayerTest.cc
   SimulationTest.cc
   VoxelRendererTest.cc
   VoxelRaycastTest.cc

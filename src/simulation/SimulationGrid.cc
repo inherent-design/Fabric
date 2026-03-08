@@ -1,4 +1,5 @@
 #include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/world/ChunkCoordUtils.hh"
 
 namespace fabric::simulation {
 
@@ -21,11 +22,6 @@ bool ChunkBufferPair::isMaterialized() const {
 
 SimulationGrid::SimulationGrid() = default;
 
-int64_t SimulationGrid::packKey(int cx, int cy, int cz) {
-    return (static_cast<int64_t>(cx) << 42) | (static_cast<int64_t>(cy & 0x1FFFFF) << 21) |
-           static_cast<int64_t>(cz & 0x1FFFFF);
-}
-
 int SimulationGrid::readIndex() const {
     return static_cast<int>(epoch_ & 1);
 }
@@ -36,8 +32,8 @@ int SimulationGrid::writeIndex() const {
 
 VoxelCell SimulationGrid::readFromBuffer(int wx, int wy, int wz, int bufferIdx) const {
     int cx, cy, cz, lx, ly, lz;
-    recurse::ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
-    auto key = packKey(cx, cy, cz);
+    ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
+    auto key = packChunkKey(cx, cy, cz);
     auto it = chunks_.find(key);
     if (it == chunks_.end())
         return VoxelCell{};
@@ -58,8 +54,8 @@ VoxelCell SimulationGrid::readFromWriteBuffer(int wx, int wy, int wz) const {
 
 void SimulationGrid::writeCell(int wx, int wy, int wz, VoxelCell cell) {
     int cx, cy, cz, lx, ly, lz;
-    recurse::ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
-    auto key = packKey(cx, cy, cz);
+    ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
+    auto key = packChunkKey(cx, cy, cz);
     auto& pair = chunks_[key];
     if (!pair.isMaterialized())
         pair.materialize();
@@ -69,8 +65,8 @@ void SimulationGrid::writeCell(int wx, int wy, int wz, VoxelCell cell) {
 
 void SimulationGrid::writeCellImmediate(int wx, int wy, int wz, VoxelCell cell) {
     int cx, cy, cz, lx, ly, lz;
-    recurse::ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
-    auto key = packKey(cx, cy, cz);
+    ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
+    auto key = packChunkKey(cx, cy, cz);
     auto& pair = chunks_[key];
     if (!pair.isMaterialized())
         pair.materialize();
@@ -95,20 +91,20 @@ uint64_t SimulationGrid::currentEpoch() const {
 }
 
 void SimulationGrid::fillChunk(int cx, int cy, int cz, VoxelCell fill) {
-    auto key = packKey(cx, cy, cz);
+    auto key = packChunkKey(cx, cy, cz);
     auto& pair = chunks_[key];
     pair.fillValue = fill;
     // Keep as sentinel -- do not allocate buffers
 }
 
 void SimulationGrid::materializeChunk(int cx, int cy, int cz) {
-    auto key = packKey(cx, cy, cz);
+    auto key = packChunkKey(cx, cy, cz);
     auto& pair = chunks_[key];
     pair.materialize();
 }
 
 bool SimulationGrid::isChunkMaterialized(int cx, int cy, int cz) const {
-    auto key = packKey(cx, cy, cz);
+    auto key = packChunkKey(cx, cy, cz);
     auto it = chunks_.find(key);
     if (it == chunks_.end())
         return false;
@@ -125,7 +121,7 @@ size_t SimulationGrid::materializedChunkCount() const {
 }
 
 const std::array<VoxelCell, kChunkVolume>* SimulationGrid::readBuffer(int cx, int cy, int cz) const {
-    auto key = packKey(cx, cy, cz);
+    auto key = packChunkKey(cx, cy, cz);
     auto it = chunks_.find(key);
     if (it == chunks_.end())
         return nullptr;
@@ -136,7 +132,7 @@ const std::array<VoxelCell, kChunkVolume>* SimulationGrid::readBuffer(int cx, in
 }
 
 std::array<VoxelCell, kChunkVolume>* SimulationGrid::writeBuffer(int cx, int cy, int cz) {
-    auto key = packKey(cx, cy, cz);
+    auto key = packChunkKey(cx, cy, cz);
     auto it = chunks_.find(key);
     if (it == chunks_.end())
         return nullptr;
@@ -147,18 +143,18 @@ std::array<VoxelCell, kChunkVolume>* SimulationGrid::writeBuffer(int cx, int cy,
 }
 
 bool SimulationGrid::hasChunk(int cx, int cy, int cz) const {
-    return chunks_.find(packKey(cx, cy, cz)) != chunks_.end();
+    return chunks_.find(packChunkKey(cx, cy, cz)) != chunks_.end();
 }
 
 VoxelCell SimulationGrid::getChunkFillValue(int cx, int cy, int cz) const {
-    auto it = chunks_.find(packKey(cx, cy, cz));
+    auto it = chunks_.find(packChunkKey(cx, cy, cz));
     if (it == chunks_.end())
         return VoxelCell{}; // Return default (Air)
     return it->second.fillValue;
 }
 
 void SimulationGrid::removeChunk(int cx, int cy, int cz) {
-    chunks_.erase(packKey(cx, cy, cz));
+    chunks_.erase(packChunkKey(cx, cy, cz));
 }
 
 void SimulationGrid::clear() {
@@ -174,15 +170,7 @@ std::vector<std::tuple<int, int, int>> SimulationGrid::allChunks() const {
     std::vector<std::tuple<int, int, int>> result;
     result.reserve(chunks_.size());
     for (const auto& [key, _] : chunks_) {
-        // Unpack key back to chunk coordinates
-        int cx = static_cast<int>(key >> 42);
-        int cy = static_cast<int>((key >> 21) & 0x1FFFFF);
-        int cz = static_cast<int>(key & 0x1FFFFF);
-        // Sign-extend 21-bit values
-        if (cy & 0x100000)
-            cy |= ~0x1FFFFF;
-        if (cz & 0x100000)
-            cz |= ~0x1FFFFF;
+        auto [cx, cy, cz] = unpackChunkKey(key);
         result.emplace_back(cx, cy, cz);
     }
     return result;

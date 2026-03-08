@@ -1,12 +1,16 @@
 #include "recurse/persistence/SceneSerializer.hh"
-#include "fabric/core/FieldLayer.hh"
+#include "fabric/core/Spatial.hh"
 #include "fabric/core/Temporal.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 
 using namespace fabric;
 using namespace recurse;
+
+using DensityGrid = fabric::ChunkedGrid<float>;
+using EssenceGrid = fabric::ChunkedGrid<Vector4<float, Space::World>>;
 
 class SceneSerializerTest : public ::testing::Test {
   protected:
@@ -18,8 +22,8 @@ class SceneSerializerTest : public ::testing::Test {
     void TearDown() override { std::filesystem::remove(testFile); }
 
     World world;
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
     Timeline timeline;
     SceneSerializer serializer;
     std::string testFile;
@@ -119,12 +123,12 @@ TEST_F(SceneSerializerTest, EntityRoundTrip) {
 }
 
 TEST_F(SceneSerializerTest, ChunkSerialization) {
-    density.write(0, 0, 0, 1.0f);
-    density.write(1, 0, 0, 2.0f);
-    density.write(0, 1, 0, 3.0f);
+    density.set(0, 0, 0, 1.0f);
+    density.set(1, 0, 0, 2.0f);
+    density.set(0, 1, 0, 3.0f);
 
-    essence.write(0, 0, 0, Vector4<float, Space::World>{1.0f, 0.0f, 0.0f, 1.0f});
-    essence.write(1, 0, 0, Vector4<float, Space::World>{0.0f, 1.0f, 0.0f, 1.0f});
+    essence.set(0, 0, 0, Vector4<float, Space::World>{1.0f, 0.0f, 0.0f, 1.0f});
+    essence.set(1, 0, 0, Vector4<float, Space::World>{0.0f, 1.0f, 0.0f, 1.0f});
 
     nlohmann::json json = serializer.serializeChunks(density, essence);
 
@@ -135,17 +139,17 @@ TEST_F(SceneSerializerTest, ChunkRoundTrip) {
     float originalDensity = 0.75f;
     Vector4<float, Space::World> originalEssence{0.5f, 0.6f, 0.7f, 0.8f};
 
-    density.write(5, 5, 5, originalDensity);
-    essence.write(5, 5, 5, originalEssence);
+    density.set(5, 5, 5, originalDensity);
+    essence.set(5, 5, 5, originalEssence);
 
     nlohmann::json chunksJson = serializer.serializeChunks(density, essence);
 
     ASSERT_TRUE(serializer.deserializeChunks(chunksJson, density, essence));
 
-    float restoredDensity = density.read(5, 5, 5);
+    float restoredDensity = density.get(5, 5, 5);
     EXPECT_FLOAT_EQ(restoredDensity, originalDensity);
 
-    auto restoredEssence = essence.read(5, 5, 5);
+    auto restoredEssence = essence.get(5, 5, 5);
     EXPECT_FLOAT_EQ(restoredEssence.x, originalEssence.x);
     EXPECT_FLOAT_EQ(restoredEssence.y, originalEssence.y);
     EXPECT_FLOAT_EQ(restoredEssence.z, originalEssence.z);
@@ -221,7 +225,7 @@ TEST_F(SceneSerializerTest, PlayerStateRoundTrip) {
 TEST_F(SceneSerializerTest, FullSceneRoundTrip) {
     auto entity = world.createSceneEntity("test");
     entity.set<Position>(Position{1.0f, 2.0f, 3.0f});
-    density.write(0, 0, 0, 0.5f);
+    density.set(0, 0, 0, 0.5f);
     timeline.setGlobalTimeScale(1.5);
 
     world.progress(0.0f);
@@ -229,8 +233,8 @@ TEST_F(SceneSerializerTest, FullSceneRoundTrip) {
 
     World newWorld;
     newWorld.registerCoreComponents();
-    DensityField newDensity;
-    EssenceField newEssence;
+    DensityGrid newDensity;
+    EssenceGrid newEssence;
     Timeline newTimeline;
     std::optional<Position> newPlayerPos;
     std::optional<Position> newPlayerVel;
@@ -238,7 +242,7 @@ TEST_F(SceneSerializerTest, FullSceneRoundTrip) {
     ASSERT_TRUE(
         serializer.deserialize(json, newWorld, newDensity, newEssence, newTimeline, newPlayerPos, newPlayerVel));
 
-    EXPECT_FLOAT_EQ(newDensity.read(0, 0, 0), 0.5f);
+    EXPECT_FLOAT_EQ(newDensity.get(0, 0, 0), 0.5f);
     EXPECT_FLOAT_EQ(newTimeline.getGlobalTimeScale(), 1.5f);
 }
 

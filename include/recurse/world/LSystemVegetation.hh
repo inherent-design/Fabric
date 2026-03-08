@@ -5,19 +5,21 @@
 #include <string>
 #include <vector>
 
-#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
-using fabric::DensityField;
-using fabric::EssenceField;
+using fabric::ChunkedGrid;
 namespace Space = fabric::Space;
 using fabric::Vector3;
 using fabric::Vector4;
+
+using DensityField = ChunkedGrid<float>;
+using EssenceField = ChunkedGrid<Vector4<float, Space::World>>;
 
 using Vec3f = Vector3<float, Space::World>;
 using Vec3i = Vector3<int, Space::World>;

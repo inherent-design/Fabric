@@ -1,5 +1,5 @@
+#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/physics/PhysicsWorld.hh"
-#include "recurse/world/ChunkedGrid.hh"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 
+using fabric::ChunkedGrid;
 using namespace recurse;
 
 // Grid-based projectile raycast (DDA)

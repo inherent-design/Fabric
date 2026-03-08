@@ -1,6 +1,6 @@
 #pragma once
 
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 #include <algorithm>
 #include <cstdint>
@@ -8,6 +8,8 @@
 #include <unordered_set>
 
 namespace recurse {
+
+using fabric::ChunkedGrid;
 
 /// Result of BFS flood-fill zone estimation.
 struct ZoneEstimate {

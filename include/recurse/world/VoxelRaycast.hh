@@ -1,6 +1,6 @@
 #pragma once
 
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 #include <cmath>
 #include <limits>
@@ -12,6 +12,8 @@ class SimulationGrid;
 } // namespace fabric::simulation
 
 namespace recurse {
+
+using fabric::ChunkedGrid;
 
 struct VoxelHit {
     int x, y, z;

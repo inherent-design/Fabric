@@ -8,6 +8,9 @@
 using namespace fabric;
 using namespace recurse;
 
+using DensityGrid = fabric::ChunkedGrid<float>;
+using EssenceGrid = fabric::ChunkedGrid<Vector4<float, Space::World>>;
+
 // ---------------------------------------------------------------------------
 // Helper: build a simple 2-tile palette for basic tests.
 //
@@ -545,8 +548,8 @@ TEST(WFCGeneratorTest, TerrainGeneratorProducesNonZeroDensity) {
     auto cfg = makeDefaultTerrainConfig();
     WFCTerrainGenerator gen(cfg);
 
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
     AABB region = makeFullRegion(cfg);
 
     gen.generate(density, essence, region);
@@ -560,7 +563,7 @@ TEST(WFCGeneratorTest, TerrainGeneratorProducesNonZeroDensity) {
     for (int z = 0; z < maxZ; ++z) {
         for (int y = 0; y < maxY; ++y) {
             for (int x = 0; x < maxX; ++x) {
-                if (density.read(x, y, z) > 0.0f)
+                if (density.get(x, y, z) > 0.0f)
                     ++nonZeroCount;
             }
         }
@@ -580,8 +583,8 @@ TEST(WFCGeneratorTest, TerrainOutputWithinBounds) {
 
     WFCTerrainGenerator gen(cfg);
 
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
 
     // Use a region that exactly fits the tile grid.
     AABB region = makeFullRegion(cfg);
@@ -595,20 +598,20 @@ TEST(WFCGeneratorTest, TerrainOutputWithinBounds) {
     // They should remain at default (0).
     for (int z = 0; z < maxZ; ++z) {
         for (int y = 0; y < maxY; ++y) {
-            EXPECT_EQ(density.read(-1, y, z), 0.0f) << "No writes expected at x=-1";
-            EXPECT_EQ(density.read(maxX, y, z), 0.0f) << "No writes expected at x=" << maxX;
+            EXPECT_EQ(density.get(-1, y, z), 0.0f) << "No writes expected at x=-1";
+            EXPECT_EQ(density.get(maxX, y, z), 0.0f) << "No writes expected at x=" << maxX;
         }
     }
     for (int z = 0; z < maxZ; ++z) {
         for (int x = 0; x < maxX; ++x) {
-            EXPECT_EQ(density.read(x, -1, z), 0.0f) << "No writes expected at y=-1";
-            EXPECT_EQ(density.read(x, maxY, z), 0.0f) << "No writes expected at y=" << maxY;
+            EXPECT_EQ(density.get(x, -1, z), 0.0f) << "No writes expected at y=-1";
+            EXPECT_EQ(density.get(x, maxY, z), 0.0f) << "No writes expected at y=" << maxY;
         }
     }
     for (int y = 0; y < maxY; ++y) {
         for (int x = 0; x < maxX; ++x) {
-            EXPECT_EQ(density.read(x, y, -1), 0.0f) << "No writes expected at z=-1";
-            EXPECT_EQ(density.read(x, y, maxZ), 0.0f) << "No writes expected at z=" << maxZ;
+            EXPECT_EQ(density.get(x, y, -1), 0.0f) << "No writes expected at z=-1";
+            EXPECT_EQ(density.get(x, y, maxZ), 0.0f) << "No writes expected at z=" << maxZ;
         }
     }
 }
@@ -623,14 +626,14 @@ TEST(WFCGeneratorTest, TerrainDeterministic) {
     AABB region = makeFullRegion(cfg);
 
     // Run 1.
-    DensityField density1;
-    EssenceField essence1;
+    DensityGrid density1;
+    EssenceGrid essence1;
     WFCTerrainGenerator gen1(cfg);
     gen1.generate(density1, essence1, region);
 
     // Run 2.
-    DensityField density2;
-    EssenceField essence2;
+    DensityGrid density2;
+    EssenceGrid essence2;
     WFCTerrainGenerator gen2(cfg);
     gen2.generate(density2, essence2, region);
 
@@ -641,10 +644,10 @@ TEST(WFCGeneratorTest, TerrainDeterministic) {
     for (int z = 0; z < maxZ; ++z) {
         for (int y = 0; y < maxY; ++y) {
             for (int x = 0; x < maxX; ++x) {
-                EXPECT_EQ(density1.read(x, y, z), density2.read(x, y, z))
+                EXPECT_EQ(density1.get(x, y, z), density2.get(x, y, z))
                     << "Density mismatch at (" << x << "," << y << "," << z << ")";
-                auto e1 = essence1.read(x, y, z);
-                auto e2 = essence2.read(x, y, z);
+                auto e1 = essence1.get(x, y, z);
+                auto e2 = essence2.get(x, y, z);
                 EXPECT_EQ(e1.x, e2.x) << "Essence.x mismatch at (" << x << "," << y << "," << z << ")";
                 EXPECT_EQ(e1.y, e2.y) << "Essence.y mismatch at (" << x << "," << y << "," << z << ")";
                 EXPECT_EQ(e1.z, e2.z) << "Essence.z mismatch at (" << x << "," << y << "," << z << ")";
@@ -665,8 +668,8 @@ TEST(WFCGeneratorTest, TerrainBlendingPreservesExisting) {
 
     WFCTerrainGenerator gen(cfg);
 
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
     AABB region = makeFullRegion(cfg);
 
     int maxX = cfg.tilesX * kWFCTileSize;
@@ -674,7 +677,10 @@ TEST(WFCGeneratorTest, TerrainBlendingPreservesExisting) {
     int maxZ = cfg.tilesZ * kWFCTileSize;
 
     // Pre-fill density with a high value (0.95).
-    density.fill(0, 0, 0, maxX - 1, maxY - 1, maxZ - 1, 0.95f);
+    for (int z = 0; z <= maxZ - 1; ++z)
+        for (int y = 0; y <= maxY - 1; ++y)
+            for (int x = 0; x <= maxX - 1; ++x)
+                density.set(x, y, z, 0.95f);
 
     gen.generate(density, essence, region);
 
@@ -683,7 +689,7 @@ TEST(WFCGeneratorTest, TerrainBlendingPreservesExisting) {
     for (int z = 0; z < maxZ; ++z) {
         for (int y = 0; y < maxY; ++y) {
             for (int x = 0; x < maxX; ++x) {
-                EXPECT_GE(density.read(x, y, z), 0.95f)
+                EXPECT_GE(density.get(x, y, z), 0.95f)
                     << "Blending should preserve existing density at (" << x << "," << y << "," << z << ")";
             }
         }
@@ -701,8 +707,8 @@ TEST(WFCGeneratorTest, TerrainEssenceOnlyWhereNonZeroDensity) {
 
     WFCTerrainGenerator gen(cfg);
 
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
     AABB region = makeFullRegion(cfg);
 
     gen.generate(density, essence, region);
@@ -716,17 +722,17 @@ TEST(WFCGeneratorTest, TerrainEssenceOnlyWhereNonZeroDensity) {
     // is also the default (0,0,0,0).
     // We need to check carefully: density uses max blending, so we need
     // to start with zero density to see which tiles wrote zero.
-    DensityField densityCheck;
-    EssenceField essenceCheck;
+    DensityGrid densityCheck;
+    EssenceGrid essenceCheck;
     WFCTerrainGenerator gen2(cfg);
     gen2.generate(densityCheck, essenceCheck, region);
 
     for (int z = 0; z < maxZ; ++z) {
         for (int y = 0; y < maxY; ++y) {
             for (int x = 0; x < maxX; ++x) {
-                if (densityCheck.read(x, y, z) == 0.0f) {
+                if (densityCheck.get(x, y, z) == 0.0f) {
                     // If density is zero, essence should be default (0,0,0,0).
-                    auto e = essenceCheck.read(x, y, z);
+                    auto e = essenceCheck.get(x, y, z);
                     EXPECT_EQ(e.x, 0.0f) << "Essence.x should be 0 at zero-density voxel (" << x << "," << y << "," << z
                                          << ")";
                     EXPECT_EQ(e.y, 0.0f) << "Essence.y should be 0 at zero-density voxel";
@@ -747,8 +753,8 @@ TEST(WFCGeneratorTest, TerrainDefaultConfigEndToEnd) {
 
     WFCTerrainGenerator gen(cfg);
 
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
     AABB region = makeFullRegion(cfg);
 
     // Should not crash or infinite loop.
@@ -778,8 +784,8 @@ TEST(WFCGeneratorTest, TerrainRegionClipping) {
 
     WFCTerrainGenerator gen(cfg);
 
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
 
     // Create a region smaller than the full tile grid.
     // Full grid would be 8x8x8, but we clip to 0..5 on each axis.
@@ -794,7 +800,7 @@ TEST(WFCGeneratorTest, TerrainRegionClipping) {
     for (int z = clipMax; z < fullMax; ++z) {
         for (int y = clipMax; y < fullMax; ++y) {
             for (int x = clipMax; x < fullMax; ++x) {
-                EXPECT_EQ(density.read(x, y, z), 0.0f)
+                EXPECT_EQ(density.get(x, y, z), 0.0f)
                     << "Voxel at (" << x << "," << y << "," << z << ") should be clipped (outside region)";
             }
         }
@@ -805,7 +811,7 @@ TEST(WFCGeneratorTest, TerrainRegionClipping) {
     for (int z = 0; z < clipMax; ++z) {
         for (int y = 0; y < clipMax; ++y) {
             for (int x = 0; x < clipMax; ++x) {
-                if (density.read(x, y, z) > 0.0f)
+                if (density.get(x, y, z) > 0.0f)
                     ++nonZero;
             }
         }

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "fabric/core/FieldLayer.hh"
+#include "fabric/core/Spatial.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 #include <functional>
 #include <string>
@@ -8,6 +9,9 @@
 #include <vector>
 
 namespace fabric {
+
+using DensityField = ChunkedGrid<float>;
+using EssenceField = ChunkedGrid<Vector4<float, Space::World>>;
 
 using SimRule = std::function<void(DensityField&, EssenceField&, int x, int y, int z, double dt)>;
 

@@ -1,5 +1,5 @@
 #include "recurse/systems/VoxelSimulationSystem.hh"
-#include "recurse/world/ChunkCoordUtils.hh"
+#include "fabric/world/ChunkCoordUtils.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Event.hh"
@@ -12,6 +12,8 @@
 #include "recurse/world/WorldGenerator.hh"
 
 namespace recurse::systems {
+
+using fabric::K_FACE_DIAGONAL_NEIGHBORS;
 
 VoxelSimulationSystem::VoxelSimulationSystem() = default;
 VoxelSimulationSystem::~VoxelSimulationSystem() = default;

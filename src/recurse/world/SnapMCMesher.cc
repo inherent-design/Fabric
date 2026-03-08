@@ -6,6 +6,8 @@
 #include <cmath>
 #include <unordered_map>
 
+using fabric::kChunkSize;
+
 namespace recurse {
 
 // -- Merge helper -------------------------------------------------------------

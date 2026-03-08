@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 using namespace fabric::simulation;
+using fabric::kChunkVolume;
 
 class SimulationGridTest : public ::testing::Test {
   protected:

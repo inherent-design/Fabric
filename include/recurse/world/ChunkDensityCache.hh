@@ -1,6 +1,6 @@
 #pragma once
 
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 #include <algorithm>
 #include <array>
@@ -8,6 +8,8 @@
 #include <cstdint>
 
 namespace recurse {
+
+using fabric::ChunkedGrid;
 
 inline constexpr int kCacheSize = 34;
 inline constexpr int kCacheVolume = kCacheSize * kCacheSize * kCacheSize;

@@ -481,15 +481,15 @@ void WFCTerrainGenerator::generate(DensityField& density, EssenceField& essence,
                             int flatIdx = lx + ly * kWFCTileSize + lz * kWFCTileSize * kWFCTileSize;
 
                             // Blending: max(existing, tile) for density.
-                            float existing = density.read(wx, wy, wz);
+                            float existing = density.get(wx, wy, wz);
                             float tileDensity = tileData.density[flatIdx];
-                            density.write(wx, wy, wz, std::max(existing, tileDensity));
+                            density.set(wx, wy, wz, std::max(existing, tileDensity));
 
                             // Essence: only write where tile has non-zero density.
                             if (tileDensity > 0.0f) {
                                 float essenceVal = tileData.essence[flatIdx];
-                                essence.write(wx, wy, wz,
-                                              Vector4<float, Space::World>(essenceVal, essenceVal, essenceVal, 1.0f));
+                                essence.set(wx, wy, wz,
+                                            Vector4<float, Space::World>(essenceVal, essenceVal, essenceVal, 1.0f));
                             }
                         }
                     }

@@ -1,8 +1,9 @@
 #pragma once
 
 #include "fabric/core/ECS.hh"
-#include "fabric/core/FieldLayer.hh"
+#include "fabric/core/Spatial.hh"
 #include "fabric/core/Temporal.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/persistence/SceneSerializer.hh"
 #include <optional>
 #include <string>
@@ -11,11 +12,15 @@
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
-using fabric::DensityField;
-using fabric::EssenceField;
+using fabric::ChunkedGrid;
 using fabric::Position;
+namespace Space = fabric::Space;
 using fabric::Timeline;
+using fabric::Vector4;
 using fabric::World;
+
+using DensityField = ChunkedGrid<float>;
+using EssenceField = ChunkedGrid<Vector4<float, Space::World>>;
 
 /// Metadata for a save slot on disk
 struct SlotInfo {

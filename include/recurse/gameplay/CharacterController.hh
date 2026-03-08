@@ -2,14 +2,15 @@
 
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/physics/VoxelCollision.hh"
-#include "recurse/world/ChunkedGrid.hh"
 #include <cmath>
 
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
+using fabric::ChunkedGrid;
 using fabric::Vec3f;
 
 class CharacterController {

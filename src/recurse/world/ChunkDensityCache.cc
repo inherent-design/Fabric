@@ -1,5 +1,7 @@
 #include "recurse/world/ChunkDensityCache.hh"
 
+using fabric::kChunkSize;
+
 namespace recurse {
 
 // -- ChunkDensityCache --------------------------------------------------------

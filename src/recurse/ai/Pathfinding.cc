@@ -1,5 +1,5 @@
 #include "recurse/ai/Pathfinding.hh"
-#include "recurse/world/ChunkCoordUtils.hh"
+#include "fabric/world/ChunkCoordUtils.hh"
 
 #include "fabric/core/Log.hh"
 
@@ -14,6 +14,9 @@
 using namespace fabric;
 
 namespace recurse {
+
+using fabric::K_FACE_NEIGHBORS;
+using fabric::packChunkKey;
 
 void Pathfinding::init() {}
 

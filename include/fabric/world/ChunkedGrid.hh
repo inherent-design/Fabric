@@ -1,6 +1,6 @@
 #pragma once
 
-#include "recurse/world/ChunkCoordUtils.hh"
+#include "fabric/world/ChunkCoordUtils.hh"
 
 #include <array>
 #include <cmath>
@@ -11,7 +11,7 @@
 #include <tuple>
 #include <vector>
 
-namespace recurse {
+namespace fabric {
 
 inline constexpr int kChunkSize = 32;
 inline constexpr int kChunkShift = 5;
@@ -154,19 +154,7 @@ template <typename T> class ChunkedGrid {
   private:
     std::map<int64_t, std::unique_ptr<std::array<T, kChunkVolume>>> chunks_;
 
-    static std::tuple<int, int, int> unpackChunkKey(int64_t key) {
-        int cx = static_cast<int>(key >> 42);
-        int cy = static_cast<int>((key >> 21) & 0x1FFFFF);
-        int cz = static_cast<int>(key & 0x1FFFFF);
-        // Sign-extend 21-bit values
-        if (cy & 0x100000)
-            cy |= ~0x1FFFFF;
-        if (cz & 0x100000)
-            cz |= ~0x1FFFFF;
-        return {cx, cy, cz};
-    }
-
     static int localIndex(int lx, int ly, int lz) { return lx + ly * kChunkSize + lz * kChunkSize * kChunkSize; }
 };
 
-} // namespace recurse
+} // namespace fabric

@@ -6,8 +6,6 @@
 
 namespace fabric {
 
-using recurse::kChunkSize;
-
 void SimulationHarness::registerRule(const std::string& name, SimRule rule) {
     rules_.emplace_back(name, std::move(rule));
 }
@@ -32,9 +30,9 @@ void SimulationHarness::tick(double dt) {
 
     // Merge active chunks from both fields, deduplicated and sorted
     std::set<std::tuple<int, int, int>> merged;
-    for (auto& c : density_.grid().activeChunks())
+    for (auto& c : density_.activeChunks())
         merged.insert(c);
-    for (auto& c : essence_.grid().activeChunks())
+    for (auto& c : essence_.activeChunks())
         merged.insert(c);
 
     for (auto [cx, cy, cz] : merged) {

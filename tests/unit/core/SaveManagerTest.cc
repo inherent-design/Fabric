@@ -1,6 +1,7 @@
 #include "recurse/persistence/SaveManager.hh"
-#include "fabric/core/FieldLayer.hh"
+#include "fabric/core/Spatial.hh"
 #include "fabric/core/Temporal.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/persistence/SceneSerializer.hh"
 #include <filesystem>
 #include <fstream>
@@ -8,6 +9,9 @@
 
 using namespace fabric;
 using namespace recurse;
+
+using DensityGrid = fabric::ChunkedGrid<float>;
+using EssenceGrid = fabric::ChunkedGrid<Vector4<float, Space::World>>;
 
 class SaveManagerTest : public ::testing::Test {
   protected:
@@ -27,8 +31,8 @@ class SaveManagerTest : public ::testing::Test {
 
     std::filesystem::path testDir_;
     World world_;
-    DensityField density_;
-    EssenceField essence_;
+    DensityGrid density_;
+    EssenceGrid essence_;
     Timeline timeline_;
     SceneSerializer serializer_;
 };
@@ -49,8 +53,8 @@ TEST_F(SaveManagerTest, SaveAndLoadRoundTrip) {
 
     World newWorld;
     newWorld.registerCoreComponents();
-    DensityField newDensity;
-    EssenceField newEssence;
+    DensityGrid newDensity;
+    EssenceGrid newEssence;
     Timeline newTimeline;
     std::optional<Position> loadedPos;
     std::optional<Position> loadedVel;

@@ -181,9 +181,9 @@ void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceFie
         int ix = static_cast<int>(std::floor(seg.start.x));
         int iy = static_cast<int>(std::floor(seg.start.y));
         int iz = static_cast<int>(std::floor(seg.start.z));
-        float d = density.read(ix, iy, iz);
-        density.write(ix, iy, iz, std::clamp(d + 1.0f, 0.0f, 1.0f));
-        essence.write(ix, iy, iz, ess);
+        float d = density.get(ix, iy, iz);
+        density.set(ix, iy, iz, std::clamp(d + 1.0f, 0.0f, 1.0f));
+        essence.set(ix, iy, iz, ess);
         return;
     }
 
@@ -215,9 +215,9 @@ void voxelizeSegment(const TurtleSegment& seg, DensityField& density, EssenceFie
                         // Distance-based falloff for density.
                         float dist = std::sqrt(dist2);
                         float contribution = 1.0f - (dist / (seg.radius + 1.0f));
-                        float d = density.read(vx, vy, vz);
-                        density.write(vx, vy, vz, std::clamp(d + contribution, 0.0f, 1.0f));
-                        essence.write(vx, vy, vz, ess);
+                        float d = density.get(vx, vy, vz);
+                        density.set(vx, vy, vz, std::clamp(d + contribution, 0.0f, 1.0f));
+                        essence.set(vx, vy, vz, ess);
                     }
                 }
             }
@@ -300,10 +300,10 @@ void VegetationPlacer::generate(DensityField& density, EssenceField& essence, co
             // Surface detection: scan Y from top to bottom in this column.
             int surfaceY = -1;
             for (int y = maxY - 1; y >= minY; --y) {
-                float d = density.read(x, y, z);
+                float d = density.get(x, y, z);
                 if (d >= config_.surfaceThreshold) {
                     // Check if this is the surface: y+1 is either above region or below threshold.
-                    if (y + 1 >= maxY || density.read(x, y + 1, z) < config_.surfaceThreshold) {
+                    if (y + 1 >= maxY || density.get(x, y + 1, z) < config_.surfaceThreshold) {
                         surfaceY = y;
                         break;
                     }

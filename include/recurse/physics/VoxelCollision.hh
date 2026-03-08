@@ -2,7 +2,7 @@
 
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/Spatial.hh"
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 namespace fabric::simulation {
 class SimulationGrid;
@@ -11,6 +11,7 @@ class SimulationGrid;
 namespace recurse::physics {
 
 using fabric::AABB;
+using fabric::ChunkedGrid;
 using fabric::Vec3f;
 
 /// Build an AABB from a position (feet origin) and dimensions.

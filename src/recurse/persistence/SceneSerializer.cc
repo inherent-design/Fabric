@@ -49,7 +49,7 @@ nlohmann::json SceneSerializer::serializeEntities(World& world) {
 nlohmann::json SceneSerializer::serializeChunks(DensityField& density, EssenceField& essence) {
     std::vector<nlohmann::json> chunksJson;
 
-    auto activeChunks = density.grid().activeChunks();
+    auto activeChunks = density.activeChunks();
     for (const auto& [cx, cy, cz] : activeChunks) {
         nlohmann::json chunkJson;
         chunkJson["x"] = cx;
@@ -59,10 +59,10 @@ nlohmann::json SceneSerializer::serializeChunks(DensityField& density, EssenceFi
         std::vector<float> densityData;
         std::vector<float> essenceData;
 
-        const auto& densityGrid = density.grid();
+        const auto& densityGrid = density;
         densityGrid.forEachCell(cx, cy, cz, [&](int wx, int wy, int wz, const float& d) { densityData.push_back(d); });
 
-        const auto& essenceGrid = essence.grid();
+        const auto& essenceGrid = essence;
         essenceGrid.forEachCell(cx, cy, cz, [&](int wx, int wy, int wz, const Vector4<float, Space::World>& e) {
             essenceData.push_back(e.x);
             essenceData.push_back(e.y);
@@ -333,7 +333,7 @@ bool SceneSerializer::deserializeChunks(const nlohmann::json& json, DensityField
                     const int lx = static_cast<int>(i % kChunkSize);
                     const int ly = static_cast<int>((i / kChunkSize) % kChunkSize);
                     const int lz = static_cast<int>(i / (kChunkSize * kChunkSize));
-                    density.write(baseX + lx, baseY + ly, baseZ + lz, densityArray[i]);
+                    density.set(baseX + lx, baseY + ly, baseZ + lz, densityArray[i]);
                 }
             }
         }
@@ -356,7 +356,7 @@ bool SceneSerializer::deserializeChunks(const nlohmann::json& json, DensityField
 
                     Vector4<float, Space::World> e{essenceArray[index], essenceArray[index + 1],
                                                    essenceArray[index + 2], essenceArray[index + 3]};
-                    essence.write(baseX + lx, baseY + ly, baseZ + lz, e);
+                    essence.set(baseX + lx, baseY + ly, baseZ + lz, e);
                 }
             }
         }

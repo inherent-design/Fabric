@@ -1,8 +1,9 @@
 #include "recurse/audio/ReverbZone.hh"
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 #include <gtest/gtest.h>
 
+using fabric::ChunkedGrid;
 using namespace recurse;
 
 // ---------------------------------------------------------------------------

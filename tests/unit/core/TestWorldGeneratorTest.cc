@@ -13,6 +13,7 @@
 
 using namespace fabric::simulation;
 using namespace recurse;
+using fabric::kChunkSize;
 
 // -- FlatWorldGenerator -------------------------------------------------------
 

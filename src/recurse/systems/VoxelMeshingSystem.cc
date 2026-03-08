@@ -1,5 +1,5 @@
 #include "recurse/systems/VoxelMeshingSystem.hh"
-#include "recurse/world/ChunkCoordUtils.hh"
+#include "fabric/world/ChunkCoordUtils.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Log.hh"
@@ -8,11 +8,11 @@
 #include "fabric/simulation/SimulationGrid.hh"
 #include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/utils/Profiler.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/VertexPool.hh"
 #include "recurse/systems/ShadowRenderSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/ChunkDensityCache.hh"
-#include "recurse/world/ChunkedGrid.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 #include "recurse/world/SnapMCMesher.hh"
 
@@ -22,6 +22,11 @@
 #include <vector>
 
 namespace recurse::systems {
+
+using fabric::ChunkedGrid;
+using fabric::K_HORIZONTAL_NEIGHBORS;
+using fabric::kChunkSize;
+
 namespace {
 
 fabric::ChunkCoord toChunkCoord(const fabric::simulation::ChunkPos& pos) {

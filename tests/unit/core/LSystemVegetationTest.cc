@@ -10,6 +10,9 @@
 using namespace fabric;
 using namespace recurse;
 
+using DensityGrid = fabric::ChunkedGrid<float>;
+using EssenceGrid = fabric::ChunkedGrid<Vector4<float, Space::World>>;
+
 // ---------------------------------------------------------------------------
 // 1. expand() produces correct string for 1 iteration
 // ---------------------------------------------------------------------------
@@ -298,8 +301,8 @@ TEST(LSystemVegetationTest, PushPopRestoresRadius) {
 // 15. Single segment produces non-zero density
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VoxelizeSingleSegmentNonZeroDensity) {
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
 
     TurtleSegment seg;
     seg.start = Vec3f(0.0f, 0.0f, 0.0f);
@@ -312,7 +315,7 @@ TEST(LSystemVegetationTest, VoxelizeSingleSegmentNonZeroDensity) {
     // At least one voxel along the segment should have non-zero density.
     bool foundNonZero = false;
     for (int x = 0; x <= 5; ++x) {
-        if (density.read(x, 0, 0) > 0.0f) {
+        if (density.get(x, 0, 0) > 0.0f) {
             foundNonZero = true;
             break;
         }
@@ -324,8 +327,8 @@ TEST(LSystemVegetationTest, VoxelizeSingleSegmentNonZeroDensity) {
 // 16. Wood vs leaf produce distinct essence values
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VoxelizeWoodVsLeafDistinctEssence) {
-    DensityField densityW, densityL;
-    EssenceField essenceW, essenceL;
+    DensityGrid densityW, densityL;
+    EssenceGrid essenceW, essenceL;
 
     TurtleSegment wood;
     wood.start = Vec3f(0.0f, 0.0f, 0.0f);
@@ -342,8 +345,8 @@ TEST(LSystemVegetationTest, VoxelizeWoodVsLeafDistinctEssence) {
     voxelizeSegment(wood, densityW, essenceW);
     voxelizeSegment(leaf, densityL, essenceL);
 
-    auto woodEss = essenceW.read(1, 0, 0);
-    auto leafEss = essenceL.read(1, 0, 0);
+    auto woodEss = essenceW.get(1, 0, 0);
+    auto leafEss = essenceL.get(1, 0, 0);
 
     // Wood and leaf should map to different essence values.
     bool different =
@@ -361,8 +364,8 @@ TEST(LSystemVegetationTest, VoxelizeWoodVsLeafDistinctEssence) {
 // 17. Radius controls voxel width
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VoxelizeRadiusControlsWidth) {
-    DensityField densityNarrow, densityWide;
-    EssenceField essenceNarrow, essenceWide;
+    DensityGrid densityNarrow, densityWide;
+    EssenceGrid essenceNarrow, essenceWide;
 
     TurtleSegment narrow;
     narrow.start = Vec3f(0.0f, 0.0f, 0.0f);
@@ -384,9 +387,9 @@ TEST(LSystemVegetationTest, VoxelizeRadiusControlsWidth) {
     int wideCount = 0;
     for (int dy = -4; dy <= 4; ++dy) {
         for (int dz = -4; dz <= 4; ++dz) {
-            if (densityNarrow.read(5, dy, dz) > 0.0f)
+            if (densityNarrow.get(5, dy, dz) > 0.0f)
                 ++narrowCount;
-            if (densityWide.read(5, dy, dz) > 0.0f)
+            if (densityWide.get(5, dy, dz) > 0.0f)
                 ++wideCount;
         }
     }
@@ -398,8 +401,8 @@ TEST(LSystemVegetationTest, VoxelizeRadiusControlsWidth) {
 // 18. Density stays clamped to [0, 1]
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VoxelizeDensityClamped) {
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
 
     // Voxelize many overlapping segments to try to exceed 1.0.
     for (int i = 0; i < 10; ++i) {
@@ -413,7 +416,7 @@ TEST(LSystemVegetationTest, VoxelizeDensityClamped) {
 
     // Check all voxels along the segment are within [0, 1].
     for (int x = 0; x <= 3; ++x) {
-        float d = density.read(x, 0, 0);
+        float d = density.get(x, 0, 0);
         EXPECT_GE(d, 0.0f) << "Density must be >= 0 at x=" << x;
         EXPECT_LE(d, 1.0f) << "Density must be <= 1 at x=" << x;
     }
@@ -423,8 +426,8 @@ TEST(LSystemVegetationTest, VoxelizeDensityClamped) {
 // 19. voxelizeTree origin offset works
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VoxelizeTreeOriginOffset) {
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
 
     TurtleSegment seg;
     seg.start = Vec3f(0.0f, 0.0f, 0.0f);
@@ -438,7 +441,7 @@ TEST(LSystemVegetationTest, VoxelizeTreeOriginOffset) {
     // Density at the origin-shifted location should be non-zero.
     bool foundAtOffset = false;
     for (int y = 200; y <= 205; ++y) {
-        if (density.read(100, y, 300) > 0.0f) {
+        if (density.get(100, y, 300) > 0.0f) {
             foundAtOffset = true;
             break;
         }
@@ -446,7 +449,7 @@ TEST(LSystemVegetationTest, VoxelizeTreeOriginOffset) {
     EXPECT_TRUE(foundAtOffset) << "Voxelized tree should appear at origin offset";
 
     // Original location should remain zero.
-    float atZero = density.read(0, 2, 0);
+    float atZero = density.get(0, 2, 0);
     EXPECT_FLOAT_EQ(atZero, 0.0f) << "Original (un-offset) location should be empty";
 }
 
@@ -454,16 +457,16 @@ TEST(LSystemVegetationTest, VoxelizeTreeOriginOffset) {
 // 20. Empty segments produce no changes
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VoxelizeEmptySegmentsNoChange) {
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
 
     std::vector<TurtleSegment> empty;
     Vec3i origin(0, 0, 0);
     voxelizeTree(empty, density, essence, origin);
 
     // Grid should have no allocated chunks.
-    EXPECT_EQ(density.grid().chunkCount(), 0u) << "Empty segments should allocate no chunks";
-    EXPECT_EQ(essence.grid().chunkCount(), 0u) << "Empty segments should allocate no chunks";
+    EXPECT_EQ(density.chunkCount(), 0u) << "Empty segments should allocate no chunks";
+    EXPECT_EQ(essence.chunkCount(), 0u) << "Empty segments should allocate no chunks";
 }
 
 // ===========================================================================
@@ -474,9 +477,12 @@ namespace {
 
 /// Helper: create a flat terrain surface at the given Y level within an AABB.
 /// Fills density to 1.0 for all voxels at y <= surfaceY and 0.0 above.
-void fillFlatTerrain(DensityField& density, int minX, int maxX, int minZ, int maxZ, int surfaceY) {
+void fillFlatTerrain(DensityGrid& density, int minX, int maxX, int minZ, int maxZ, int surfaceY) {
     // Below and at surface: solid (density = 1.0).
-    density.fill(minX, surfaceY - 5, minZ, maxX - 1, surfaceY, maxZ - 1, 1.0f);
+    for (int z = minZ; z <= maxZ - 1; ++z)
+        for (int y = surfaceY - 5; y <= surfaceY; ++y)
+            for (int x = minX; x <= maxX - 1; ++x)
+                density.set(x, y, z, 1.0f);
 }
 
 } // anonymous namespace
@@ -485,8 +491,8 @@ void fillFlatTerrain(DensityField& density, int minX, int maxX, int minZ, int ma
 // 21. VegetationPlacer generates non-zero density on a pre-filled terrain
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VegetationPlacerGeneratesNonZeroDensity) {
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
 
     // Create flat terrain at y=10 within a 64x64 region.
     int minX = 0, maxX = 64, minZ = 0, maxZ = 64;
@@ -509,7 +515,7 @@ TEST(LSystemVegetationTest, VegetationPlacerGeneratesNonZeroDensity) {
     for (int x = minX; x < maxX && !foundTreeDensity; x += 4) {
         for (int z = minZ; z < maxZ && !foundTreeDensity; z += 4) {
             for (int y = surfaceY + 1; y < 30; ++y) {
-                if (density.read(x, y, z) > 0.0f) {
+                if (density.get(x, y, z) > 0.0f) {
                     foundTreeDensity = true;
                     break;
                 }
@@ -523,8 +529,8 @@ TEST(LSystemVegetationTest, VegetationPlacerGeneratesNonZeroDensity) {
 // 22. Trees placed only on surface (not in air, not underground)
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VegetationPlacerTreesOnSurface) {
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
 
     // Create flat terrain at y=10, region only 32x32.
     int surfaceY = 10;
@@ -549,7 +555,7 @@ TEST(LSystemVegetationTest, VegetationPlacerTreesOnSurface) {
     for (int x = 0; x < 32 && !foundEssenceBelowSurface; x += 2) {
         for (int z = 0; z < 32 && !foundEssenceBelowSurface; z += 2) {
             for (int y = 0; y < surfaceY; ++y) {
-                auto e = essence.read(x, y, z);
+                auto e = essence.get(x, y, z);
                 if (e.x != 0.0f || e.y != 0.0f || e.z != 0.0f || e.w != 0.0f) {
                     foundEssenceBelowSurface = true;
                 }
@@ -564,8 +570,8 @@ TEST(LSystemVegetationTest, VegetationPlacerTreesOnSurface) {
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VegetationPlacerDeterministic) {
     auto runPlacement = []() {
-        DensityField density;
-        EssenceField essence;
+        DensityGrid density;
+        EssenceGrid essence;
         fillFlatTerrain(density, 0, 32, 0, 32, 10);
 
         VegetationConfig cfg;
@@ -588,7 +594,7 @@ TEST(LSystemVegetationTest, VegetationPlacerDeterministic) {
     for (int x = 0; x < 32 && identical; x += 2) {
         for (int z = 0; z < 32 && identical; z += 2) {
             for (int y = 11; y < 25; ++y) {
-                if (d1.read(x, y, z) != d2.read(x, y, z)) {
+                if (d1.get(x, y, z) != d2.get(x, y, z)) {
                     identical = false;
                 }
             }
@@ -601,8 +607,8 @@ TEST(LSystemVegetationTest, VegetationPlacerDeterministic) {
 // 24. Multiple species are distributed (at least 2 different species placed)
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VegetationPlacerMultipleSpecies) {
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
 
     // Large region to guarantee multiple placements.
     fillFlatTerrain(density, 0, 128, 0, 128, 10);
@@ -627,7 +633,7 @@ TEST(LSystemVegetationTest, VegetationPlacerMultipleSpecies) {
     for (int x = 0; x < 128; x += 4) {
         for (int z = 0; z < 128; z += 4) {
             for (int y = 11; y < 40; ++y) {
-                auto e = essence.read(x, y, z);
+                auto e = essence.get(x, y, z);
                 if (e.x != 0.0f || e.y != 0.0f || e.z != 0.0f || e.w != 0.0f) {
                     ++essenceCount;
                 }
@@ -642,8 +648,8 @@ TEST(LSystemVegetationTest, VegetationPlacerMultipleSpecies) {
 // 25. Spacing constraint: no two tree origins closer than spacing
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VegetationPlacerSpacingConstraint) {
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
 
     float spacing = 16.0f;
     fillFlatTerrain(density, 0, 128, 0, 128, 10);
@@ -658,7 +664,7 @@ TEST(LSystemVegetationTest, VegetationPlacerSpacingConstraint) {
     AABB region(Vec3f(0.0f, 0.0f, 0.0f), Vec3f(128.0f, 30.0f, 128.0f));
 
     // Snapshot density before placement to find tree origins.
-    DensityField densityBefore;
+    DensityGrid densityBefore;
     fillFlatTerrain(densityBefore, 0, 128, 0, 128, 10);
 
     placer.generate(density, essence, region);
@@ -667,7 +673,7 @@ TEST(LSystemVegetationTest, VegetationPlacerSpacingConstraint) {
     std::vector<std::pair<int, int>> origins;
     for (int x = 0; x < 128; ++x) {
         for (int z = 0; z < 128; ++z) {
-            auto e = essence.read(x, 11, z);
+            auto e = essence.get(x, 11, z);
             if (e.x != 0.0f || e.y != 0.0f || e.z != 0.0f || e.w != 0.0f) {
                 // Check this is actually a new tree origin, not just a branch extending over.
                 // We accept any column with essence at y=11.
@@ -689,8 +695,8 @@ TEST(LSystemVegetationTest, VegetationPlacerSpacingConstraint) {
 // 26. Empty region (no density) produces no vegetation
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VegetationPlacerEmptyRegionNoVegetation) {
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
 
     // Don't fill any terrain — density is all zero (default).
     VegetationConfig cfg;
@@ -703,15 +709,15 @@ TEST(LSystemVegetationTest, VegetationPlacerEmptyRegionNoVegetation) {
     placer.generate(density, essence, region);
 
     // No surface means no trees, so essence should remain untouched.
-    EXPECT_EQ(essence.grid().chunkCount(), 0u) << "No surface should produce no tree essence";
+    EXPECT_EQ(essence.chunkCount(), 0u) << "No surface should produce no tree essence";
 }
 
 // ---------------------------------------------------------------------------
 // 27. VegetationConfig default species list works (empty species vector uses presets)
 // ---------------------------------------------------------------------------
 TEST(LSystemVegetationTest, VegetationPlacerDefaultSpecies) {
-    DensityField density;
-    EssenceField essence;
+    DensityGrid density;
+    EssenceGrid essence;
     fillFlatTerrain(density, 0, 64, 0, 64, 10);
 
     VegetationConfig cfg;
@@ -729,7 +735,7 @@ TEST(LSystemVegetationTest, VegetationPlacerDefaultSpecies) {
     for (int x = 0; x < 64 && !foundTreeEssence; x += 4) {
         for (int z = 0; z < 64 && !foundTreeEssence; z += 4) {
             for (int y = 11; y < 30; ++y) {
-                auto e = essence.read(x, y, z);
+                auto e = essence.get(x, y, z);
                 if (e.x != 0.0f || e.y != 0.0f || e.z != 0.0f || e.w != 0.0f) {
                     foundTreeEssence = true;
                 }

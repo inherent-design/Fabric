@@ -1,5 +1,7 @@
 #include "recurse/gameplay/VoxelInteraction.hh"
 
+using fabric::kChunkShift;
+
 namespace recurse {
 
 VoxelInteraction::VoxelInteraction(SimulationGrid& grid, EventDispatcher& dispatcher)

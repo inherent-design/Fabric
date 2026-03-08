@@ -2,8 +2,6 @@
 
 namespace fabric::simulation {
 
-using recurse::kChunkSize;
-
 // -- GhostCellStore -----------------------------------------------------------
 
 VoxelCell GhostCellStore::get(Face face, int u, int v) const {

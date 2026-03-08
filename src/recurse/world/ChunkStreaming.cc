@@ -1,6 +1,8 @@
 #include "recurse/world/ChunkStreaming.hh"
 #include "fabric/utils/Profiler.hh"
 
+using fabric::kChunkSize;
+
 namespace recurse {
 
 ChunkStreamingManager::ChunkStreamingManager(const StreamingConfig& config) : config_(config) {}

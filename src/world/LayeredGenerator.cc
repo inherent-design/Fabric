@@ -1,10 +1,9 @@
 #include "fabric/world/LayeredGenerator.hh"
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 namespace fabric::world {
 
 using namespace fabric::simulation;
-using recurse::kChunkSize;
 
 LayeredGenerator::LayeredGenerator(std::vector<LayerDef> layers) : layers_(std::move(layers)) {}
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "fabric/simulation/VoxelMaterial.hh"
-#include "recurse/world/ChunkedGrid.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -8,9 +8,6 @@
 #include <vector>
 
 namespace fabric::simulation {
-
-using recurse::kChunkSize;
-using recurse::kChunkVolume;
 
 struct ChunkBufferPair {
     using Buffer = std::array<VoxelCell, kChunkVolume>;
@@ -44,8 +41,7 @@ class SimulationGrid {
 
   private:
     uint64_t epoch_ = 0;
-    std::unordered_map<int64_t, ChunkBufferPair> chunks_;
-    static int64_t packKey(int cx, int cy, int cz);
+    std::unordered_map<uint64_t, ChunkBufferPair> chunks_;
     VoxelCell readFromBuffer(int wx, int wy, int wz, int bufferIdx) const;
     int readIndex() const;
     int writeIndex() const;

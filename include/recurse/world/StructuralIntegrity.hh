@@ -1,6 +1,7 @@
 #pragma once
 
-#include "recurse/world/ChunkCoordUtils.hh"
+#include "fabric/world/ChunkCoordUtils.hh"
+#include "fabric/world/ChunkedGrid.hh"
 
 #include <array>
 #include <cstdint>
@@ -11,7 +12,9 @@
 
 namespace recurse {
 
-template <typename T> class ChunkedGrid;
+using fabric::ChunkedGrid;
+using fabric::K_FACE_NEIGHBORS;
+using fabric::packChunkKey;
 
 inline constexpr int kStructuralIntegrityChunkSize = 32;
 

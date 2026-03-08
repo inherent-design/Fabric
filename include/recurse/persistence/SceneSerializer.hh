@@ -1,8 +1,9 @@
 #pragma once
 
 #include "fabric/core/ECS.hh"
-#include "fabric/core/FieldLayer.hh"
+#include "fabric/core/Spatial.hh"
 #include "fabric/core/Temporal.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include <array>
 #include <cstdint>
 #include <nlohmann/json.hpp>
@@ -13,12 +14,16 @@
 namespace recurse {
 
 // Engine types imported from fabric:: namespace
-using fabric::DensityField;
-using fabric::EssenceField;
+using fabric::ChunkedGrid;
 using fabric::Position;
+namespace Space = fabric::Space;
 using fabric::Timeline;
 using fabric::TimeState;
+using fabric::Vector4;
 using fabric::World;
+
+using DensityField = ChunkedGrid<float>;
+using EssenceField = ChunkedGrid<Vector4<float, Space::World>>;
 
 /// Physics shape type for serialization (mirrors Jolt shape kinds)
 enum class PhysicsShapeType : uint8_t {

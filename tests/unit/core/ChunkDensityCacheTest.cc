@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 using namespace recurse;
+using fabric::kChunkSize;
 
 class ChunkDensityCacheTest : public ::testing::Test {
   protected:
