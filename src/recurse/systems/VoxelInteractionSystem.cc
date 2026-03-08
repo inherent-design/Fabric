@@ -32,7 +32,7 @@ void VoxelInteractionSystem::doInit(fabric::AppContext& ctx) {
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
-    voxelInteraction_ = std::make_unique<VoxelInteraction>(terrain_->density(), terrain_->essence(), ctx.dispatcher);
+    voxelInteraction_ = std::make_unique<VoxelInteraction>(voxelSim_->simulationGrid(), ctx.dispatcher);
 
     FABRIC_LOG_INFO("VoxelInteractionSystem initialized");
 }
@@ -52,17 +52,13 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
         fabric::Vec3f camFwd = camera_->forward();
 
         if (inputManager->mouseButton(1)) {
-            auto r = voxelInteraction_->destroyMatterAt(terrain_->densityGrid(), camPos.x, camPos.y, camPos.z, camFwd.x,
-                                                        camFwd.y, camFwd.z, 10.0f);
+            auto r =
+                voxelInteraction_->destroyMatterAt(camPos.x, camPos.y, camPos.z, camFwd.x, camFwd.y, camFwd.z, 10.0f);
             if (r.success) {
                 interactionCooldown_ = K_INTERACTION_RATE;
-                // Sync to SimulationGrid for rendering and notify tracker for remesh
                 if (voxelSim_) {
                     using namespace fabric::simulation;
-                    voxelSim_->simulationGrid().writeCell(r.x, r.y, r.z,
-                                                          VoxelCell{material_ids::AIR, 128, voxel_flags::UPDATED});
                     voxelSim_->activityTracker().notifyBoundaryChange(ChunkPos{r.cx, r.cy, r.cz});
-                    // Notify face-adjacent neighbors (they share boundary vertices)
                     for (int i = 0; i < 6; ++i) {
                         ChunkPos neighbor{r.cx + K_FACE_NEIGHBORS[i][0], r.cy + K_FACE_NEIGHBORS[i][1],
                                           r.cz + K_FACE_NEIGHBORS[i][2]};
@@ -76,19 +72,13 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
             }
         }
         if (inputManager->mouseButton(3)) {
-            auto r = voxelInteraction_->createMatterAt(
-                terrain_->densityGrid(), camPos.x, camPos.y, camPos.z, camFwd.x, camFwd.y, camFwd.z, 1.0f,
-                fabric::Vector4<float, fabric::Space::World>(0.4f, 0.7f, 0.3f, 1.0f), 10.0f);
+            auto r = voxelInteraction_->createMatterAt(camPos.x, camPos.y, camPos.z, camFwd.x, camFwd.y, camFwd.z,
+                                                       fabric::simulation::material_ids::SAND, 10.0f);
             if (r.success) {
                 interactionCooldown_ = K_INTERACTION_RATE;
-                // Sync to SimulationGrid for rendering and notify tracker for remesh
                 if (voxelSim_) {
                     using namespace fabric::simulation;
-                    // Use Sand as default placed material (visible, interacts with physics)
-                    voxelSim_->simulationGrid().writeCell(r.x, r.y, r.z,
-                                                          VoxelCell{material_ids::SAND, 128, voxel_flags::UPDATED});
                     voxelSim_->activityTracker().notifyBoundaryChange(ChunkPos{r.cx, r.cy, r.cz});
-                    // Notify face-adjacent neighbors
                     for (int i = 0; i < 6; ++i) {
                         ChunkPos neighbor{r.cx + K_FACE_NEIGHBORS[i][0], r.cy + K_FACE_NEIGHBORS[i][1],
                                           r.cz + K_FACE_NEIGHBORS[i][2]};

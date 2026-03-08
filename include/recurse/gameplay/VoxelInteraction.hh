@@ -1,8 +1,9 @@
 #pragma once
 
 #include "fabric/core/Event.hh"
-#include "fabric/core/FieldLayer.hh"
 #include "fabric/core/Rendering.hh"
+#include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/simulation/VoxelMaterial.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 namespace recurse {
@@ -21,11 +22,10 @@ inline void emitVoxelChanged(fabric::EventDispatcher& dispatcher, int cx, int cy
 
 // Engine types imported from fabric:: namespace
 using fabric::AABB;
-using fabric::DensityField;
-using fabric::EssenceField;
 using fabric::EventDispatcher;
-namespace Space = fabric::Space;
-using fabric::Vector4;
+using fabric::simulation::MaterialId;
+using fabric::simulation::SimulationGrid;
+using fabric::simulation::VoxelCell;
 
 struct InteractionResult {
     bool success;
@@ -35,31 +35,28 @@ struct InteractionResult {
 
 class VoxelInteraction {
   public:
-    VoxelInteraction(DensityField& density, EssenceField& essence, EventDispatcher& dispatcher);
+    VoxelInteraction(SimulationGrid& grid, EventDispatcher& dispatcher);
 
     // Place voxel adjacent to hit face
-    InteractionResult createMatter(const VoxelHit& hit, float density = 1.0f,
-                                   const Vector4<float, Space::World>& essenceColor = {0.5f, 0.5f, 0.5f, 1.0f});
+    InteractionResult createMatter(const VoxelHit& hit, MaterialId materialId = fabric::simulation::material_ids::SAND);
 
     // Remove voxel at hit position
     InteractionResult destroyMatter(const VoxelHit& hit);
 
     // Raycast + create in one call
-    InteractionResult createMatterAt(const ChunkedGrid<float>& grid, float ox, float oy, float oz, float dx, float dy,
-                                     float dz, float density = 1.0f,
-                                     const Vector4<float, Space::World>& essenceColor = {0.5f, 0.5f, 0.5f, 1.0f},
+    InteractionResult createMatterAt(float ox, float oy, float oz, float dx, float dy, float dz,
+                                     MaterialId materialId = fabric::simulation::material_ids::SAND,
                                      float maxDistance = 10.0f);
 
     // Raycast + destroy in one call
-    InteractionResult destroyMatterAt(const ChunkedGrid<float>& grid, float ox, float oy, float oz, float dx, float dy,
-                                      float dz, float maxDistance = 10.0f);
+    InteractionResult destroyMatterAt(float ox, float oy, float oz, float dx, float dy, float dz,
+                                      float maxDistance = 10.0f);
 
     // Check if placing at position would overlap an AABB (player push-out check)
     static bool wouldOverlap(int vx, int vy, int vz, const AABB& playerBounds);
 
   private:
-    DensityField& density_;
-    EssenceField& essence_;
+    SimulationGrid& grid_;
     EventDispatcher& dispatcher_;
 };
 

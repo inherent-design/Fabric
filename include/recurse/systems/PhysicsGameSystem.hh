@@ -7,6 +7,7 @@
 namespace recurse::systems {
 
 class TerrainSystem;
+class VoxelSimulationSystem;
 
 /// Owns the Jolt PhysicsWorld and Ragdoll subsystem.
 /// Steps physics at fixed rate and rebuilds chunk collision
@@ -31,6 +32,7 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
 
   private:
     TerrainSystem* terrain_ = nullptr;
+    VoxelSimulationSystem* voxelSim_ = nullptr;
     PhysicsWorld physicsWorld_;
     Ragdoll ragdoll_;
 };
