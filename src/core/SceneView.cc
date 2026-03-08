@@ -3,7 +3,6 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/utils/Profiler.hh"
-#include "recurse/render/PaniniPass.hh"
 #include <bgfx/bgfx.h>
 
 namespace fabric {

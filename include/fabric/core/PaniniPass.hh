@@ -3,7 +3,7 @@
 #include <bgfx/bgfx.h>
 #include <cstdint>
 
-namespace recurse {
+namespace fabric {
 
 // Panini projection post-processing pass.
 // Reads scene color texture and applies cylindrical projection correction
@@ -79,4 +79,4 @@ class PaniniPass {
     bool initialized_ = false;
 };
 
-} // namespace recurse
+} // namespace fabric

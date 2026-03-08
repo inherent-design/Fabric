@@ -1,4 +1,4 @@
-#include "recurse/render/PaniniPass.hh"
+#include "fabric/core/PaniniPass.hh"
 
 #include "fabric/core/Log.hh"
 #include "fabric/core/Rendering.hh"
@@ -32,7 +32,7 @@ static const float s_fullscreenVertices[] = {
     -1.0f, 3.0f,  0.0f, // vertex 2
 };
 
-namespace recurse {
+namespace fabric {
 
 PaniniPass::PaniniPass()
     : program_(BGFX_INVALID_HANDLE),
@@ -248,4 +248,4 @@ void PaniniPass::createVertexBuffer() {
         bgfx::createVertexBuffer(bgfx::makeRef(s_fullscreenVertices, sizeof(s_fullscreenVertices)), layout);
 }
 
-} // namespace recurse
+} // namespace fabric

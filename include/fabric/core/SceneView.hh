@@ -1,10 +1,10 @@
 #pragma once
 
 #include "fabric/core/Camera.hh"
+#include "fabric/core/PaniniPass.hh"
 #include "fabric/core/PostProcess.hh"
 #include "fabric/core/Rendering.hh"
 #include "fabric/core/SkyRenderer.hh"
-#include "recurse/render/PaniniPass.hh"
 #include <cstdint>
 #include <flecs.h>
 #include <vector>
@@ -92,7 +92,7 @@ class SceneView {
     uint16_t viewHeight_ = 0;
 
     // Projection correction pass (Panini/Equirect)
-    recurse::PaniniPass paniniPass_;
+    PaniniPass paniniPass_;
     ProjectionMode projectionMode_ = ProjectionMode::Panini; // Default to Panini
 
     // Build a DrawCall for an entity and add it to the given render list with the given view ID

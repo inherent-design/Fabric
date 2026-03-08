@@ -260,7 +260,7 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/systems/LODSystem.cc
 
     # Panini projection post-processing
-    src/recurse/render/PaniniPass.cc
+    src/core/PaniniPass.cc
 )
 
 # Simulation library components (fabric::simulation namespace)
