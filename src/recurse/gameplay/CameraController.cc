@@ -1,4 +1,5 @@
 #include "recurse/gameplay/CameraController.hh"
+#include "fabric/core/Rendering.hh"
 #include "fabric/simulation/SimulationGrid.hh"
 
 #include <algorithm>
@@ -52,7 +53,6 @@ void CameraController::update(const Vector3<float, Space::World>& targetPos, flo
 
 void CameraController::update(const Vector3<double, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid,
                               float densityThreshold) {
-    using Vec3f = Vector3<float, Space::World>;
 
     const auto eyePointD = targetPos + Vector3<double, Space::World>(0.0, static_cast<double>(config_.eyeHeight), 0.0);
     auto rot = buildRotation();
@@ -155,7 +155,6 @@ void CameraController::update(const Vector3<float, Space::World>& targetPos, flo
 
 void CameraController::update(const Vector3<double, Space::World>& targetPos, float dt,
                               const fabric::simulation::SimulationGrid* grid) {
-    using Vec3f = Vector3<float, Space::World>;
 
     const auto eyePointD = targetPos + Vector3<double, Space::World>(0.0, static_cast<double>(config_.eyeHeight), 0.0);
     auto rot = buildRotation();

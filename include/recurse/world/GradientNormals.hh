@@ -1,11 +1,11 @@
 #pragma once
 
-#include "fabric/core/Spatial.hh"
+#include "fabric/core/Rendering.hh"
 #include "recurse/world/ChunkDensityCache.hh"
 
 namespace recurse {
 
-using Vec3f = fabric::Vector3<float, fabric::Space::World>;
+using fabric::Vec3f;
 
 inline Vec3f computeNormal(const ChunkDensityCache& cache, float lx, float ly, float lz, float h = 0.5f) {
     float dx = cache.sample(lx + h, ly, lz) - cache.sample(lx - h, ly, lz);

@@ -3,11 +3,11 @@
 #include "fabric/core/SystemBase.hh"
 #include "fabric/core/SystemPhase.hh"
 #include "fabric/platform/WindowDesc.hh"
+#include "fabric/utils/ErrorHandling.hh"
 
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <typeindex>
@@ -34,7 +34,7 @@ struct FabricAppDesc {
         auto tid = std::type_index(typeid(T));
         for (const auto& reg : systemRegistrations_) {
             if (reg.typeId == tid) {
-                throw std::runtime_error("Duplicate system type registration in FabricAppDesc");
+                throwError("Duplicate system type registration in FabricAppDesc");
             }
         }
         systemRegistrations_.push_back(

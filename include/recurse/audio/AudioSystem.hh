@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/core/Spatial.hh"
+#include "fabric/core/Rendering.hh"
 #include <array>
 #include <atomic>
 #include <condition_variable>
@@ -26,7 +26,7 @@ using fabric::Vector3;
 using SoundHandle = uint32_t;
 constexpr SoundHandle InvalidSoundHandle = 0;
 
-using Vec3f = Vector3<float, Space::World>;
+using fabric::Vec3f;
 
 enum class AttenuationModel : uint8_t {
     Inverse,

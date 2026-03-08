@@ -301,8 +301,6 @@ void processFootIK(AnimationSampler& sampler, const ozz::animation::Skeleton& sk
     ozz::vector<ozz::math::Float4x4> models;
     sampler.localToModel(skeleton, locals, models);
 
-    using Vec3f = Vector3<float, Space::World>;
-
     auto extractPos = [](const ozz::math::Float4x4& m) -> Vec3f {
         alignas(16) float col3[4];
         ozz::math::StorePtrU(m.cols[3], col3);
@@ -428,8 +426,6 @@ void processSpineIK(AnimationSampler& sampler, const ozz::animation::Skeleton& s
     // Build model-space transforms to extract spine joint positions
     ozz::vector<ozz::math::Float4x4> models;
     sampler.localToModel(skeleton, locals, models);
-
-    using Vec3f = Vector3<float, Space::World>;
 
     auto extractPos = [](const ozz::math::Float4x4& m) -> Vec3f {
         alignas(16) float col3[4];

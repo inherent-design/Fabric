@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/core/Spatial.hh"
+#include "fabric/core/Rendering.hh"
 
 #include <cstdint>
 #include <functional>
@@ -11,7 +11,7 @@
 namespace recurse {
 
 using Vec3i = fabric::Vector3<int, fabric::Space::World>;
-using Vec3f = fabric::Vector3<float, fabric::Space::World>;
+using fabric::Vec3f;
 
 // 64-bit packed section key: [level:4][sx:20][sy:20][sz:20]
 struct LODSectionKey {

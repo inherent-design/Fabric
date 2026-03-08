@@ -21,7 +21,7 @@ using fabric::Vector4;
 using DensityField = ChunkedGrid<float>;
 using EssenceField = ChunkedGrid<Vector4<float, Space::World>>;
 
-using Vec3f = Vector3<float, Space::World>;
+using fabric::Vec3f;
 using Vec3i = Vector3<int, Space::World>;
 
 // ---- Essence constants for voxelization ----

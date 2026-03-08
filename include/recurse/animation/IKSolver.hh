@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/core/Spatial.hh"
+#include "fabric/core/Rendering.hh"
 #include <cstdint>
 #include <vector>
 
@@ -14,7 +14,7 @@ namespace Space = fabric::Space;
 using fabric::Quaternion;
 using fabric::Vector3;
 
-using Vec3f = Vector3<float, Space::World>;
+using fabric::Vec3f;
 using Quatf = Quaternion<float>;
 
 // Result of a two-bone IK solve (root-mid-tip chain).

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "fabric/core/FabricAppDesc.hh"
+#include "fabric/utils/ErrorHandling.hh"
 
 namespace fabric {
 
@@ -90,7 +91,7 @@ TEST(FabricAppDescTest, DuplicateTypeRegistrationThrows) {
     desc.registerSystem<TestSystemA>(SystemPhase::Update);
 
     // Second registration of the same type must be rejected
-    EXPECT_THROW(desc.registerSystem<TestSystemA>(SystemPhase::FixedUpdate), std::runtime_error);
+    EXPECT_THROW(desc.registerSystem<TestSystemA>(SystemPhase::FixedUpdate), FabricException);
     EXPECT_EQ(desc.systemRegistrations_.size(), 1u);
 }
 
