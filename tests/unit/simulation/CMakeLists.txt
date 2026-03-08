@@ -1,5 +1,6 @@
 target_sources(UnitTests
   PRIVATE
+  ChunkRegistryTest.cc
   MaterialRegistryTest.cc
   SimulationGridTest.cc
   ChunkActivityTrackerTest.cc

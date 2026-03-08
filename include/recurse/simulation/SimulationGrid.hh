@@ -1,32 +1,16 @@
 #pragma once
-#include "fabric/world/ChunkedGrid.hh"
-#include "recurse/simulation/VoxelMaterial.hh"
-#include <array>
+#include "recurse/simulation/ChunkRegistry.hh"
 #include <cstdint>
-#include <memory>
-#include <unordered_map>
+#include <tuple>
 #include <vector>
 
 namespace recurse::simulation {
 
-// Import chunk primitives from fabric:: (defined in ChunkedGrid.hh, ChunkCoordUtils.hh)
-using fabric::ChunkedGrid;
-using fabric::K_CHUNK_SIZE;
-using fabric::K_CHUNK_VOLUME;
-using fabric::packChunkKey;
-using fabric::unpackChunkKey;
-
-struct ChunkBufferPair {
-    using Buffer = std::array<VoxelCell, K_CHUNK_VOLUME>;
-    std::unique_ptr<Buffer> buffers[2]; // nullptr = homogeneous sentinel
-    VoxelCell fillValue{};
-    void materialize();
-    bool isMaterialized() const;
-};
-
 class SimulationGrid {
   public:
     SimulationGrid();
+
+    // Cell-level API (unchanged signatures)
     VoxelCell readCell(int wx, int wy, int wz) const;
     VoxelCell readFromWriteBuffer(int wx, int wy, int wz) const;
     void writeCell(int wx, int wy, int wz, VoxelCell cell);
@@ -34,6 +18,8 @@ class SimulationGrid {
     void writeCellImmediate(int wx, int wy, int wz, VoxelCell cell);
     void advanceEpoch();
     uint64_t currentEpoch() const;
+
+    // Chunk-level API (unchanged signatures, delegates to registry_)
     void fillChunk(int cx, int cy, int cz, VoxelCell fill);
     void materializeChunk(int cx, int cy, int cz);
     bool isChunkMaterialized(int cx, int cy, int cz) const;
@@ -45,11 +31,15 @@ class SimulationGrid {
     void removeChunk(int cx, int cy, int cz);
     std::vector<std::tuple<int, int, int>> allChunks() const;
     size_t chunkCount() const;
-    void clear(); // Remove all chunks (for world reset)
+    void clear();
+
+    // Direct registry access (for systems needing structural control)
+    ChunkRegistry& registry();
+    const ChunkRegistry& registry() const;
 
   private:
     uint64_t epoch_ = 0;
-    std::unordered_map<uint64_t, ChunkBufferPair> chunks_;
+    ChunkRegistry registry_;
     VoxelCell readFromBuffer(int wx, int wy, int wz, int bufferIdx) const;
     int readIndex() const;
     int writeIndex() const;

@@ -265,6 +265,7 @@ set(RECURSE_GAME_SOURCE_FILES
 
 # Simulation library components (recurse::simulation namespace)
 set(FABRIC_SIMULATION_SOURCE_FILES
+    src/recurse/simulation/ChunkRegistry.cc
     src/recurse/simulation/MaterialRegistry.cc
     src/recurse/simulation/SimulationGrid.cc
     src/recurse/simulation/ChunkActivityTracker.cc
