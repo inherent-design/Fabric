@@ -12,18 +12,3 @@ target_sources(UnitTests
   TimeoutLockTest.cc
   AsyncTest.cc
 )
-
-set_source_files_properties(
-  UtilsTest.cc
-  ErrorHandlingTest.cc
-  LoggingTest.cc
-  CoordinatedGraphTest.cc
-  BufferPoolTest.cc
-  ImmutableDAGTest.cc
-  BVHTest.cc
-  ThreadPoolExecutorTest.cc
-  TimeoutLockTest.cc
-  AsyncTest.cc
-  PROPERTIES
-  COMPILE_DEFINITIONS "FABRIC_TEST"
-)

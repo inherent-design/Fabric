@@ -102,16 +102,3 @@ target_sources(UnitTests
   BgfxHandleTest.cc
   HandleMapTest.cc
 )
-
-set_source_files_properties(
-  CommandTest.cc
-  LifecycleTest.cc
-  PluginTest.cc
-  ResourceHubTest.cc
-  ResourceTest.cc
-  SpatialTest.cc
-  TemporalTest.cc
-  PipelineTest.cc
-  PROPERTIES
-  COMPILE_DEFINITIONS "FABRIC_TEST"
-)

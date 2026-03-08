@@ -73,7 +73,7 @@
         },
         {
             "name": "ci-linux-clang",
-            "displayName": "CI: Linux Clang",
+            "displayName": "CI: Linux Clang (lint)",
             "inherits": "base",
             "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
             "cacheVariables": {
@@ -156,6 +156,10 @@
         { "name": "dev-profile-debug", "configurePreset": "dev-profile-debug" },
         { "name": "dev-profile-release", "configurePreset": "dev-profile-release" },
         { "name": "dev-windows", "configurePreset": "dev-windows" },
+        { "name": "ci-linux-gcc", "configurePreset": "ci-linux-gcc" },
+        { "name": "ci-linux-clang", "configurePreset": "ci-linux-clang" },
+        { "name": "ci-macos", "configurePreset": "ci-macos" },
+        { "name": "ci-windows", "configurePreset": "ci-windows" },
         { "name": "ci-sanitize", "configurePreset": "ci-sanitize" },
         { "name": "ci-tsan", "configurePreset": "ci-tsan" },
         { "name": "ci-coverage", "configurePreset": "ci-coverage" }
@@ -167,8 +171,43 @@
             "output": { "outputOnFailure": true }
         },
         {
+            "name": "dev-release",
+            "configurePreset": "dev-release",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "dev-profile-debug",
+            "configurePreset": "dev-profile-debug",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "dev-profile-release",
+            "configurePreset": "dev-profile-release",
+            "output": { "outputOnFailure": true }
+        },
+        {
             "name": "dev-windows",
             "configurePreset": "dev-windows",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "ci-linux-gcc",
+            "configurePreset": "ci-linux-gcc",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "ci-linux-clang",
+            "configurePreset": "ci-linux-clang",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "ci-macos",
+            "configurePreset": "ci-macos",
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "ci-windows",
+            "configurePreset": "ci-windows",
             "output": { "outputOnFailure": true }
         },
         {
