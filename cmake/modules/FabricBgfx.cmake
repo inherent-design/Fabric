@@ -65,6 +65,13 @@ if(APPLE AND TARGET bgfx)
     )
 endif()
 
+# Fabric targets Vulkan/SPIR-V exclusively; DXIL compilation is unnecessary.
+# Disabling avoids a build failure on Windows SDK 10.0.19041.0 whose dxcapi.h
+# lacks the IDxcCompiler3 API that bgfx's shaderc_dxil.cpp expects.
+if(TARGET shaderc)
+    target_compile_definitions(shaderc PRIVATE SHADERC_CONFIG_HAS_DXC=0)
+endif()
+
 # Homebrew LLVM rpath fix for shaderc
 include(FabricHomebrew)
 if(TARGET shaderc)
