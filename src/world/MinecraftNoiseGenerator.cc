@@ -4,9 +4,9 @@
 
 namespace fabric::world {
 
-using simulation::MaterialId;
-namespace material_ids = simulation::material_ids;
-using simulation::VoxelCell;
+using recurse::simulation::MaterialId;
+namespace material_ids = recurse::simulation::material_ids;
+using recurse::simulation::VoxelCell;
 
 MinecraftNoiseGenerator::MinecraftNoiseGenerator(const NoiseGenConfig& config)
     : config_(config),
@@ -42,7 +42,7 @@ MaterialId MinecraftNoiseGenerator::selectSurfaceMaterial(float temp, float humi
     return material_ids::DIRT;
 }
 
-void MinecraftNoiseGenerator::generate(simulation::SimulationGrid& grid, simulation::ChunkPos pos) {
+void MinecraftNoiseGenerator::generate(recurse::simulation::SimulationGrid& grid, recurse::simulation::ChunkPos pos) {
     grid.materializeChunk(pos.x, pos.y, pos.z);
 
     int baseX = pos.x * K_SIZE;

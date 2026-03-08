@@ -1,6 +1,6 @@
 #pragma once
-#include "recurse/simulation/VoxelMaterial.hh"
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -8,6 +8,13 @@
 #include <vector>
 
 namespace recurse::simulation {
+
+// Import chunk primitives from fabric:: (defined in ChunkedGrid.hh, ChunkCoordUtils.hh)
+using fabric::ChunkedGrid;
+using fabric::K_CHUNK_SIZE;
+using fabric::K_CHUNK_VOLUME;
+using fabric::packChunkKey;
+using fabric::unpackChunkKey;
 
 struct ChunkBufferPair {
     using Buffer = std::array<VoxelCell, K_CHUNK_VOLUME>;

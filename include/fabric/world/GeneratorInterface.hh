@@ -5,8 +5,8 @@
 
 namespace fabric::world {
 
-using simulation::ChunkPos;
-using simulation::SimulationGrid;
+using recurse::simulation::ChunkPos;
+using recurse::simulation::SimulationGrid;
 
 class GeneratorInterface {
   public:

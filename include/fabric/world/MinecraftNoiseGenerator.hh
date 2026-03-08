@@ -20,7 +20,7 @@ struct NoiseGenConfig {
 class MinecraftNoiseGenerator : public GeneratorInterface {
   public:
     explicit MinecraftNoiseGenerator(const NoiseGenConfig& config = {});
-    void generate(simulation::SimulationGrid& grid, simulation::ChunkPos pos) override;
+    void generate(recurse::simulation::SimulationGrid& grid, recurse::simulation::ChunkPos pos) override;
     std::string name() const override { return "MinecraftNoise"; }
 
   private:
@@ -39,7 +39,7 @@ class MinecraftNoiseGenerator : public GeneratorInterface {
 
     float computeBaseHeight(float continental, float erosion, float peaks) const;
 
-    simulation::MaterialId selectSurfaceMaterial(float temp, float humid, float wy) const;
+    recurse::simulation::MaterialId selectSurfaceMaterial(float temp, float humid, float wy) const;
 };
 
 } // namespace fabric::world
