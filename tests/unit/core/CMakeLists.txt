@@ -99,6 +99,8 @@ target_sources(UnitTests
   CrossChunkBoundaryTest.cc
   EssenceTypesTest.cc
   ChunkDirtyTrackerTest.cc
+  BgfxHandleTest.cc
+  HandleMapTest.cc
 )
 
 set_source_files_properties(
