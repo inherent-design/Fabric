@@ -157,3 +157,31 @@ TEST_F(SimulationGridTest, RawBufferMatchesReadWrite) {
     // Should match readCell
     EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::STONE);
 }
+
+// 11. writeCellImmediate visible in read buffer without advanceEpoch
+TEST_F(SimulationGridTest, WriteCellImmediateVisibleWithoutEpochAdvance) {
+    VoxelCell sand;
+    sand.materialId = material_ids::SAND;
+
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.writeCellImmediate(0, 0, 0, sand);
+
+    // Read buffer sees the value immediately -- no advanceEpoch needed
+    EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::SAND);
+
+    // Write buffer also has the value
+    EXPECT_EQ(grid.readFromWriteBuffer(0, 0, 0).materialId, material_ids::SAND);
+}
+
+// 12. writeCellImmediate value preserved across advanceEpoch
+TEST_F(SimulationGridTest, WriteCellImmediatePreservedAcrossEpoch) {
+    VoxelCell sand;
+    sand.materialId = material_ids::SAND;
+
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.writeCellImmediate(0, 0, 0, sand);
+    grid.advanceEpoch();
+
+    // Value survives the epoch swap
+    EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::SAND);
+}

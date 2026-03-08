@@ -1,4 +1,6 @@
 #include "recurse/world/VoxelRaycast.hh"
+#include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/simulation/VoxelMaterial.hh"
 #include "fabric/utils/Profiler.hh"
 
 namespace recurse {
@@ -154,6 +156,110 @@ std::vector<VoxelHit> castRayAll(const ChunkedGrid<float>& grid, float ox, float
             break;
 
         if (grid.get(s.vx, s.vy, s.vz) > threshold) {
+            hits.push_back({s.vx, s.vy, s.vz, normalX, normalY, normalZ, t});
+        }
+    }
+
+    return hits;
+}
+
+std::optional<VoxelHit> castRay(const fabric::simulation::SimulationGrid& grid, float ox, float oy, float oz, float dx,
+                                float dy, float dz, float maxDistance) {
+    FABRIC_ZONE_SCOPED_N("castRay(SimGrid)");
+
+    auto s = initDDA(ox, oy, oz, dx, dy, dz);
+
+    // Check starting voxel
+    if (grid.readCell(s.vx, s.vy, s.vz).materialId != fabric::simulation::material_ids::AIR) {
+        return VoxelHit{s.vx, s.vy, s.vz, 0, 0, 0, 0.0f};
+    }
+
+    while (true) {
+        int normalX = 0, normalY = 0, normalZ = 0;
+        float t;
+
+        if (s.tMaxX < s.tMaxY) {
+            if (s.tMaxX < s.tMaxZ) {
+                t = s.tMaxX;
+                s.vx += s.stepX;
+                s.tMaxX += s.tDeltaX;
+                normalX = -s.stepX;
+            } else {
+                t = s.tMaxZ;
+                s.vz += s.stepZ;
+                s.tMaxZ += s.tDeltaZ;
+                normalZ = -s.stepZ;
+            }
+        } else {
+            if (s.tMaxY < s.tMaxZ) {
+                t = s.tMaxY;
+                s.vy += s.stepY;
+                s.tMaxY += s.tDeltaY;
+                normalY = -s.stepY;
+            } else {
+                t = s.tMaxZ;
+                s.vz += s.stepZ;
+                s.tMaxZ += s.tDeltaZ;
+                normalZ = -s.stepZ;
+            }
+        }
+
+        if (t > maxDistance)
+            break;
+
+        if (grid.readCell(s.vx, s.vy, s.vz).materialId != fabric::simulation::material_ids::AIR) {
+            return VoxelHit{s.vx, s.vy, s.vz, normalX, normalY, normalZ, t};
+        }
+    }
+
+    return std::nullopt;
+}
+
+std::vector<VoxelHit> castRayAll(const fabric::simulation::SimulationGrid& grid, float ox, float oy, float oz, float dx,
+                                 float dy, float dz, float maxDistance) {
+    FABRIC_ZONE_SCOPED_N("castRayAll(SimGrid)");
+
+    std::vector<VoxelHit> hits;
+    auto s = initDDA(ox, oy, oz, dx, dy, dz);
+
+    if (grid.readCell(s.vx, s.vy, s.vz).materialId != fabric::simulation::material_ids::AIR) {
+        hits.push_back({s.vx, s.vy, s.vz, 0, 0, 0, 0.0f});
+    }
+
+    while (true) {
+        int normalX = 0, normalY = 0, normalZ = 0;
+        float t;
+
+        if (s.tMaxX < s.tMaxY) {
+            if (s.tMaxX < s.tMaxZ) {
+                t = s.tMaxX;
+                s.vx += s.stepX;
+                s.tMaxX += s.tDeltaX;
+                normalX = -s.stepX;
+            } else {
+                t = s.tMaxZ;
+                s.vz += s.stepZ;
+                s.tMaxZ += s.tDeltaZ;
+                normalZ = -s.stepZ;
+            }
+        } else {
+            if (s.tMaxY < s.tMaxZ) {
+                t = s.tMaxY;
+                s.vy += s.stepY;
+                s.tMaxY += s.tDeltaY;
+                normalY = -s.stepY;
+            } else {
+                t = s.tMaxZ;
+                s.vz += s.stepZ;
+                s.tMaxZ += s.tDeltaZ;
+                normalZ = -s.stepZ;
+            }
+        }
+
+        if (t > maxDistance)
+            break;
+
+        if (grid.readCell(s.vx, s.vy, s.vz).materialId != fabric::simulation::material_ids::AIR) {
             hits.push_back({s.vx, s.vy, s.vz, normalX, normalY, normalZ, t});
         }
     }

@@ -1,4 +1,6 @@
 #include "recurse/world/VoxelRaycast.hh"
+#include "fabric/simulation/SimulationGrid.hh"
+#include "fabric/simulation/VoxelMaterial.hh"
 #include <gtest/gtest.h>
 
 using namespace recurse;
@@ -78,4 +80,56 @@ TEST_F(VoxelRaycastTest, RayOriginInsideSolid) {
     EXPECT_EQ(hit->y, 5);
     EXPECT_EQ(hit->z, 5);
     EXPECT_NEAR(hit->t, 0.0f, 0.001f);
+}
+
+// --- SimulationGrid overload tests ---
+
+using namespace fabric::simulation;
+
+class VoxelRaycastSimGridTest : public ::testing::Test {
+  protected:
+    SimulationGrid grid;
+};
+
+TEST_F(VoxelRaycastSimGridTest, RayHitsSolidVoxelInSimGrid) {
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+
+    VoxelCell stoneCell{};
+    stoneCell.materialId = material_ids::STONE;
+    grid.writeCell(5, 5, 5, stoneCell);
+    grid.advanceEpoch();
+
+    auto hit = castRay(grid, 5.5f, 5.5f, 0.5f, 0.0f, 0.0f, 1.0f);
+    ASSERT_TRUE(hit.has_value());
+    EXPECT_EQ(hit->x, 5);
+    EXPECT_EQ(hit->y, 5);
+    EXPECT_EQ(hit->z, 5);
+    EXPECT_EQ(hit->nx, 0);
+    EXPECT_EQ(hit->ny, 0);
+    EXPECT_EQ(hit->nz, -1);
+}
+
+TEST_F(VoxelRaycastSimGridTest, RayMissesEmptySimGrid) {
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.advanceEpoch();
+
+    auto hit = castRay(grid, 0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f);
+    EXPECT_FALSE(hit.has_value());
+}
+
+TEST_F(VoxelRaycastSimGridTest, CastRayAllSimGridReturnsMultipleHits) {
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+
+    VoxelCell stoneCell{};
+    stoneCell.materialId = material_ids::STONE;
+    grid.writeCell(5, 5, 3, stoneCell);
+    grid.writeCell(5, 5, 6, stoneCell);
+    grid.writeCell(5, 5, 9, stoneCell);
+    grid.advanceEpoch();
+
+    auto hits = castRayAll(grid, 5.5f, 5.5f, 0.5f, 0.0f, 0.0f, 1.0f, 256.0f);
+    ASSERT_EQ(hits.size(), 3u);
+    EXPECT_EQ(hits[0].z, 3);
+    EXPECT_EQ(hits[1].z, 6);
+    EXPECT_EQ(hits[2].z, 9);
 }

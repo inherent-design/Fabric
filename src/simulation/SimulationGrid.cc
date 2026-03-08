@@ -67,6 +67,18 @@ void SimulationGrid::writeCell(int wx, int wy, int wz, VoxelCell cell) {
     (*pair.buffers[writeIndex()])[idx] = cell;
 }
 
+void SimulationGrid::writeCellImmediate(int wx, int wy, int wz, VoxelCell cell) {
+    int cx, cy, cz, lx, ly, lz;
+    recurse::ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
+    auto key = packKey(cx, cy, cz);
+    auto& pair = chunks_[key];
+    if (!pair.isMaterialized())
+        pair.materialize();
+    int idx = lx + ly * kChunkSize + lz * kChunkSize * kChunkSize;
+    (*pair.buffers[readIndex()])[idx] = cell;
+    (*pair.buffers[writeIndex()])[idx] = cell;
+}
+
 void SimulationGrid::advanceEpoch() {
     // Propagate latest state: copy write buffer → read buffer so the next
     // epoch's write buffer (which is the current read buffer after swap)

@@ -7,6 +7,10 @@
 #include <optional>
 #include <vector>
 
+namespace fabric::simulation {
+class SimulationGrid;
+} // namespace fabric::simulation
+
 namespace recurse {
 
 struct VoxelHit {
@@ -20,5 +24,11 @@ std::optional<VoxelHit> castRay(const ChunkedGrid<float>& grid, float ox, float 
 
 std::vector<VoxelHit> castRayAll(const ChunkedGrid<float>& grid, float ox, float oy, float oz, float dx, float dy,
                                  float dz, float maxDistance = 256.0f, float threshold = 0.5f);
+
+std::optional<VoxelHit> castRay(const fabric::simulation::SimulationGrid& grid, float ox, float oy, float oz, float dx,
+                                float dy, float dz, float maxDistance = 256.0f);
+
+std::vector<VoxelHit> castRayAll(const fabric::simulation::SimulationGrid& grid, float ox, float oy, float oz, float dx,
+                                 float dy, float dz, float maxDistance = 256.0f);
 
 } // namespace recurse
