@@ -56,8 +56,7 @@ using namespace fabric;
 
 namespace recurse {
 
-ParticleSystem::ParticleSystem()
-    : program_(BGFX_INVALID_HANDLE), vbh_(BGFX_INVALID_HANDLE), ibh_(BGFX_INVALID_HANDLE), particles_{} {}
+ParticleSystem::ParticleSystem() : particles_{} {}
 
 ParticleSystem::~ParticleSystem() {
     shutdown();
@@ -68,16 +67,16 @@ void ParticleSystem::init() {
         return;
 
     bgfx::RendererType::Enum type = bgfx::getRendererType();
-    program_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_particleShaders, type, "vs_particle"),
-                                   bgfx::createEmbeddedShader(s_particleShaders, type, "fs_particle"), true);
+    program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_particleShaders, type, "vs_particle"),
+                                       bgfx::createEmbeddedShader(s_particleShaders, type, "fs_particle"), true));
 
     bgfx::VertexLayout layout;
     layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
 
-    vbh_ = bgfx::createVertexBuffer(bgfx::makeRef(s_quadVertices, sizeof(s_quadVertices)), layout);
-    ibh_ = bgfx::createIndexBuffer(bgfx::makeRef(s_quadIndices, sizeof(s_quadIndices)));
+    vbh_.reset(bgfx::createVertexBuffer(bgfx::makeRef(s_quadVertices, sizeof(s_quadVertices)), layout));
+    ibh_.reset(bgfx::createIndexBuffer(bgfx::makeRef(s_quadIndices, sizeof(s_quadIndices))));
 
-    if (!bgfx::isValid(program_) || !bgfx::isValid(vbh_) || !bgfx::isValid(ibh_)) {
+    if (!program_.isValid() || !vbh_.isValid() || !ibh_.isValid()) {
         FABRIC_LOG_ERROR("ParticleSystem shader/buffer init failed for renderer {}", bgfx::getRendererName(type));
         shutdown();
         return;
@@ -88,16 +87,9 @@ void ParticleSystem::init() {
 }
 
 void ParticleSystem::shutdown() {
-    if (bgfx::isValid(ibh_))
-        bgfx::destroy(ibh_);
-    if (bgfx::isValid(vbh_))
-        bgfx::destroy(vbh_);
-    if (bgfx::isValid(program_))
-        bgfx::destroy(program_);
-
-    ibh_ = BGFX_INVALID_HANDLE;
-    vbh_ = BGFX_INVALID_HANDLE;
-    program_ = BGFX_INVALID_HANDLE;
+    ibh_.reset();
+    vbh_.reset();
+    program_.reset();
     initialized_ = false;
     activeCount_ = 0;
 }
@@ -263,8 +255,8 @@ void ParticleSystem::render(const float* viewMtx, const float* projMtx, uint16_t
         data += instanceStride;
     }
 
-    bgfx::setVertexBuffer(0, vbh_);
-    bgfx::setIndexBuffer(ibh_);
+    bgfx::setVertexBuffer(0, vbh_.get());
+    bgfx::setIndexBuffer(ibh_.get());
     bgfx::setInstanceDataBuffer(&idb);
 
     // Alpha blend, depth test but no depth write (particles render behind opaque)
@@ -272,7 +264,7 @@ void ParticleSystem::render(const float* viewMtx, const float* projMtx, uint16_t
                      BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA);
 
     bgfx::setState(state);
-    bgfx::submit(kViewId, program_);
+    bgfx::submit(kViewId, program_.get());
 }
 
 size_t ParticleSystem::activeCount() const {
@@ -280,7 +272,7 @@ size_t ParticleSystem::activeCount() const {
 }
 
 bool ParticleSystem::isValid() const {
-    return bgfx::isValid(program_);
+    return program_.isValid();
 }
 
 } // namespace recurse

@@ -34,13 +34,7 @@ static const float s_fullscreenVertices[] = {
 
 namespace fabric {
 
-PaniniPass::PaniniPass()
-    : program_(BGFX_INVALID_HANDLE),
-      u_sceneTex_(BGFX_INVALID_HANDLE),
-      u_params_(BGFX_INVALID_HANDLE),
-      u_viewportSize_(BGFX_INVALID_HANDLE),
-      u_paniniExtra_(BGFX_INVALID_HANDLE),
-      fullscreenQuad_(BGFX_INVALID_HANDLE) {}
+PaniniPass::PaniniPass() = default;
 
 PaniniPass::~PaniniPass() {
     shutdown();
@@ -62,7 +56,7 @@ void PaniniPass::init(uint16_t width, uint16_t height) {
     initPrograms();
     createVertexBuffer();
 
-    if (!bgfx::isValid(program_)) {
+    if (!program_.isValid()) {
         FABRIC_LOG_ERROR("PaniniPass shader init failed");
         shutdown();
         return;
@@ -73,31 +67,12 @@ void PaniniPass::init(uint16_t width, uint16_t height) {
 }
 
 void PaniniPass::shutdown() {
-    if (bgfx::isValid(fullscreenQuad_)) {
-        bgfx::destroy(fullscreenQuad_);
-    }
-    if (bgfx::isValid(u_paniniExtra_)) {
-        bgfx::destroy(u_paniniExtra_);
-    }
-    if (bgfx::isValid(u_viewportSize_)) {
-        bgfx::destroy(u_viewportSize_);
-    }
-    if (bgfx::isValid(u_params_)) {
-        bgfx::destroy(u_params_);
-    }
-    if (bgfx::isValid(u_sceneTex_)) {
-        bgfx::destroy(u_sceneTex_);
-    }
-    if (bgfx::isValid(program_)) {
-        bgfx::destroy(program_);
-    }
-
-    program_ = BGFX_INVALID_HANDLE;
-    u_sceneTex_ = BGFX_INVALID_HANDLE;
-    u_params_ = BGFX_INVALID_HANDLE;
-    u_viewportSize_ = BGFX_INVALID_HANDLE;
-    u_paniniExtra_ = BGFX_INVALID_HANDLE;
-    fullscreenQuad_ = BGFX_INVALID_HANDLE;
+    fullscreenQuad_.reset();
+    u_paniniExtra_.reset();
+    u_viewportSize_.reset();
+    u_params_.reset();
+    u_sceneTex_.reset();
+    program_.reset();
 
     width_ = 0;
     height_ = 0;
@@ -113,13 +88,13 @@ void PaniniPass::resize(uint16_t width, uint16_t height) {
 }
 
 bool PaniniPass::isValid() const {
-    return initialized_ && bgfx::isValid(program_);
+    return initialized_ && program_.isValid();
 }
 
 void PaniniPass::execute(bgfx::TextureHandle sceneColor, bgfx::ViewId viewId) {
     FABRIC_ZONE_SCOPED_N("PaniniPass::execute");
 
-    if (!initialized_ || !bgfx::isValid(program_)) {
+    if (!initialized_ || !program_.isValid()) {
         return;
     }
 
@@ -158,24 +133,24 @@ void PaniniPass::execute(bgfx::TextureHandle sceneColor, bgfx::ViewId viewId) {
 
     // Set uniforms
     float params[4] = {strength_, halfTanFov, zoom, enabled_ ? 1.0f : 0.0f};
-    bgfx::setUniform(u_params_, params);
+    bgfx::setUniform(u_params_.get(), params);
 
     float viewportSize[4] = {static_cast<float>(width_), static_cast<float>(height_), 1.0f / static_cast<float>(width_),
                              1.0f / static_cast<float>(height_)};
-    bgfx::setUniform(u_viewportSize_, viewportSize);
+    bgfx::setUniform(u_viewportSize_.get(), viewportSize);
 
     float paniniExtra[4] = {verticalComp_, aspect, 0.0f, 0.0f};
-    bgfx::setUniform(u_paniniExtra_, paniniExtra);
+    bgfx::setUniform(u_paniniExtra_.get(), paniniExtra);
 
     // Bind scene texture
-    bgfx::setTexture(0, u_sceneTex_, sceneColor);
+    bgfx::setTexture(0, u_sceneTex_.get(), sceneColor);
 
     // Set vertex buffer and state
-    bgfx::setVertexBuffer(0, fullscreenQuad_);
+    bgfx::setVertexBuffer(0, fullscreenQuad_.get());
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
 
     // Submit
-    bgfx::submit(viewId, program_);
+    bgfx::submit(viewId, program_.get());
 }
 
 void PaniniPass::setEnabled(bool enabled) {
@@ -228,15 +203,15 @@ void PaniniPass::cycleStrength() {
 void PaniniPass::initPrograms() {
     bgfx::RendererType::Enum type = bgfx::getRendererType();
 
-    program_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_paniniShaders, type, "vs_panini"),
-                                   bgfx::createEmbeddedShader(s_paniniShaders, type, "fs_panini"), true);
+    program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_paniniShaders, type, "vs_panini"),
+                                       bgfx::createEmbeddedShader(s_paniniShaders, type, "fs_panini"), true));
 
-    u_sceneTex_ = bgfx::createUniform("s_sceneTex", bgfx::UniformType::Sampler);
-    u_params_ = bgfx::createUniform("u_params", bgfx::UniformType::Vec4);
-    u_viewportSize_ = bgfx::createUniform("u_viewportSize", bgfx::UniformType::Vec4);
-    u_paniniExtra_ = bgfx::createUniform("u_paniniExtra", bgfx::UniformType::Vec4);
+    u_sceneTex_.reset(bgfx::createUniform("s_sceneTex", bgfx::UniformType::Sampler));
+    u_params_.reset(bgfx::createUniform("u_params", bgfx::UniformType::Vec4));
+    u_viewportSize_.reset(bgfx::createUniform("u_viewportSize", bgfx::UniformType::Vec4));
+    u_paniniExtra_.reset(bgfx::createUniform("u_paniniExtra", bgfx::UniformType::Vec4));
 
-    if (!bgfx::isValid(program_)) {
+    if (!program_.isValid()) {
         FABRIC_LOG_ERROR("PaniniPass failed to create shader program for renderer {}", bgfx::getRendererName(type));
     }
 }
@@ -244,8 +219,8 @@ void PaniniPass::initPrograms() {
 void PaniniPass::createVertexBuffer() {
     bgfx::VertexLayout layout;
     layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
-    fullscreenQuad_ =
-        bgfx::createVertexBuffer(bgfx::makeRef(s_fullscreenVertices, sizeof(s_fullscreenVertices)), layout);
+    fullscreenQuad_.reset(
+        bgfx::createVertexBuffer(bgfx::makeRef(s_fullscreenVertices, sizeof(s_fullscreenVertices)), layout));
 }
 
 } // namespace fabric

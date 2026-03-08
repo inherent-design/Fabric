@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/core/BgfxHandle.hh"
 #include "fabric/core/Spatial.hh"
 #include "recurse/animation/Animation.hh"
 #include "recurse/animation/MeshLoader.hh"
@@ -46,13 +47,13 @@ class SkinnedRenderer {
 
   private:
     bgfx::VertexLayout layout_;
-    bgfx::ProgramHandle program_;
-    bgfx::UniformHandle uniformJointMatrices_;
+    fabric::BgfxHandle<bgfx::ProgramHandle> program_;
+    fabric::BgfxHandle<bgfx::UniformHandle> uniformJointMatrices_;
 
     // Cache: static vertex/index buffers per mesh ID (geometry is immutable)
     struct MeshBufferCache {
-        bgfx::VertexBufferHandle vbh = BGFX_INVALID_HANDLE;
-        bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
+        fabric::BgfxHandle<bgfx::VertexBufferHandle> vbh;
+        fabric::BgfxHandle<bgfx::IndexBufferHandle> ibh;
         size_t vertexCount = 0;
         size_t indexCount = 0;
     };

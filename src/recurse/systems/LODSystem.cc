@@ -27,10 +27,6 @@ void LODSystem::doInit(fabric::AppContext& /*ctx*/) {
 }
 
 void LODSystem::doShutdown() {
-    // Destroy GPU resources
-    for (auto& [key, gpu] : gpuSections_) {
-        releaseGPUSection(LODSectionKey{key});
-    }
     gpuSections_.clear();
     visibleSections_.clear();
     pendingChunks_.clear();
@@ -236,23 +232,15 @@ void LODSystem::uploadSection(LODSectionKey key, const recurse::LODMeshManager::
     }
     auto& gpu = it->second;
 
-    // Release old buffers
-    if (bgfx::isValid(gpu.vbh)) {
-        bgfx::destroy(gpu.vbh);
-    }
-    if (bgfx::isValid(gpu.ibh)) {
-        bgfx::destroy(gpu.ibh);
-    }
-
-    // Create vertex buffer (copy: mesh data is temporary)
+    // Create vertex buffer (copy: mesh data is temporary); reset destroys old handle
     bgfx::VertexLayout layout = SmoothVoxelVertex::getVertexLayout();
-    gpu.vbh = bgfx::createVertexBuffer(
+    gpu.vbh.reset(bgfx::createVertexBuffer(
         bgfx::copy(mesh.vertices.data(), static_cast<uint32_t>(mesh.vertices.size() * sizeof(SmoothVoxelVertex))),
-        layout);
+        layout));
 
-    // Create index buffer (copy: mesh data is temporary)
-    gpu.ibh = bgfx::createIndexBuffer(
-        bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t))));
+    // Create index buffer (copy: mesh data is temporary); reset destroys old handle
+    gpu.ibh.reset(bgfx::createIndexBuffer(
+        bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t)))));
 
     gpu.indexCount = static_cast<uint32_t>(mesh.indices.size());
     gpu.palette = mesh.palette;
@@ -260,17 +248,7 @@ void LODSystem::uploadSection(LODSectionKey key, const recurse::LODMeshManager::
 }
 
 void LODSystem::releaseGPUSection(LODSectionKey key) {
-    auto it = gpuSections_.find(key.value);
-    if (it != gpuSections_.end()) {
-        auto& gpu = it->second;
-        if (bgfx::isValid(gpu.vbh)) {
-            bgfx::destroy(gpu.vbh);
-        }
-        if (bgfx::isValid(gpu.ibh)) {
-            bgfx::destroy(gpu.ibh);
-        }
-        gpuSections_.erase(it);
-    }
+    gpuSections_.erase(key.value);
 }
 
 } // namespace recurse::systems

@@ -51,16 +51,16 @@ void BgfxRenderInterface::init() {
     FABRIC_ZONE_SCOPED;
 
     bgfx::RendererType::Enum type = bgfx::getRendererType();
-    program_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_embeddedShaders, type, "vs_rmlui"),
-                                   bgfx::createEmbeddedShader(s_embeddedShaders, type, "fs_rmlui"), true);
+    program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_embeddedShaders, type, "vs_rmlui"),
+                                       bgfx::createEmbeddedShader(s_embeddedShaders, type, "fs_rmlui"), true));
 
-    texUniform_ = bgfx::createUniform("s_tex", bgfx::UniformType::Sampler);
+    texUniform_.reset(bgfx::createUniform("s_tex", bgfx::UniformType::Sampler));
 
     // 1x1 white texture for untextured geometry
     uint32_t white = 0xFFFFFFFF;
-    whiteTexture_ =
-        bgfx::createTexture2D(1, 1, false, 1, bgfx::TextureFormat::RGBA8, BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP,
-                              bgfx::copy(&white, sizeof(white)));
+    whiteTexture_.reset(bgfx::createTexture2D(1, 1, false, 1, bgfx::TextureFormat::RGBA8,
+                                              BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP,
+                                              bgfx::copy(&white, sizeof(white))));
 
     FABRIC_LOG_INFO("RmlUi bgfx render interface initialized (view {})", viewId_);
 }
@@ -68,27 +68,12 @@ void BgfxRenderInterface::init() {
 void BgfxRenderInterface::shutdown() {
     FABRIC_ZONE_SCOPED;
 
-    for (auto& [handle, geom] : geometries_) {
-        bgfx::destroy(geom.vbh);
-        bgfx::destroy(geom.ibh);
-    }
     geometries_.clear();
+    textures_.destroyAll();
 
-    for (auto& [handle, tex] : textures_) {
-        bgfx::destroy(tex);
-    }
-    textures_.clear();
-
-    if (bgfx::isValid(whiteTexture_))
-        bgfx::destroy(whiteTexture_);
-    if (bgfx::isValid(texUniform_))
-        bgfx::destroy(texUniform_);
-    if (bgfx::isValid(program_))
-        bgfx::destroy(program_);
-
-    whiteTexture_ = BGFX_INVALID_HANDLE;
-    texUniform_ = BGFX_INVALID_HANDLE;
-    program_ = BGFX_INVALID_HANDLE;
+    whiteTexture_.reset();
+    texUniform_.reset();
+    program_.reset();
 
     FABRIC_LOG_INFO("RmlUi bgfx render interface shut down");
 }
@@ -115,14 +100,14 @@ Rml::CompiledGeometryHandle BgfxRenderInterface::CompileGeometry(Rml::Span<const
     FABRIC_ZONE_SCOPED;
 
     CompiledGeom geom;
-    geom.vbh = bgfx::createVertexBuffer(
-        bgfx::copy(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(Rml::Vertex))), layout_);
-    geom.ibh = bgfx::createIndexBuffer(bgfx::copy(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(int))),
-                                       BGFX_BUFFER_INDEX32);
+    geom.vbh.reset(bgfx::createVertexBuffer(
+        bgfx::copy(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(Rml::Vertex))), layout_));
+    geom.ibh.reset(bgfx::createIndexBuffer(
+        bgfx::copy(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(int))), BGFX_BUFFER_INDEX32));
     geom.indexCount = static_cast<uint32_t>(indices.size());
 
     auto handle = nextGeomHandle_++;
-    geometries_[handle] = geom;
+    geometries_[handle] = std::move(geom);
     return static_cast<Rml::CompiledGeometryHandle>(handle);
 }
 
@@ -148,18 +133,18 @@ void BgfxRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, R
     }
     bgfx::setTransform(model);
 
-    bgfx::setVertexBuffer(0, geom.vbh);
-    bgfx::setIndexBuffer(geom.ibh);
+    bgfx::setVertexBuffer(0, geom.vbh.get());
+    bgfx::setIndexBuffer(geom.ibh.get());
 
     // Bind texture: use white placeholder if no texture provided
-    bgfx::TextureHandle tex = whiteTexture_;
+    bgfx::TextureHandle tex = whiteTexture_.get();
     if (texture) {
-        auto texIt = textures_.find(static_cast<uintptr_t>(texture));
-        if (texIt != textures_.end()) {
-            tex = texIt->second;
+        auto texHandle = textures_.get(static_cast<uintptr_t>(texture));
+        if (bgfx::isValid(texHandle)) {
+            tex = texHandle;
         }
     }
-    bgfx::setTexture(0, texUniform_, tex);
+    bgfx::setTexture(0, texUniform_.get(), tex);
 
     // Per-draw-call scissor
     if (scissorEnabled_) {
@@ -168,17 +153,11 @@ void BgfxRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, R
     }
 
     bgfx::setState(K_RENDER_STATE);
-    bgfx::submit(viewId_, program_);
+    bgfx::submit(viewId_, program_.get());
 }
 
 void BgfxRenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) {
-    auto it = geometries_.find(static_cast<uintptr_t>(geometry));
-    if (it == geometries_.end())
-        return;
-
-    bgfx::destroy(it->second.vbh);
-    bgfx::destroy(it->second.ibh);
-    geometries_.erase(it);
+    geometries_.erase(static_cast<uintptr_t>(geometry));
 }
 
 // -- Textures --
@@ -204,7 +183,7 @@ Rml::TextureHandle BgfxRenderInterface::LoadTexture(Rml::Vector2i& dimensions, c
     stbi_image_free(data);
 
     auto handle = nextTexHandle_++;
-    textures_[handle] = tex;
+    textures_.emplace(handle, tex);
     return static_cast<Rml::TextureHandle>(handle);
 }
 
@@ -216,17 +195,12 @@ Rml::TextureHandle BgfxRenderInterface::GenerateTexture(Rml::Span<const Rml::byt
         BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP, bgfx::copy(source.data(), static_cast<uint32_t>(source.size())));
 
     auto handle = nextTexHandle_++;
-    textures_[handle] = tex;
+    textures_.emplace(handle, tex);
     return static_cast<Rml::TextureHandle>(handle);
 }
 
 void BgfxRenderInterface::ReleaseTexture(Rml::TextureHandle texture) {
-    auto it = textures_.find(static_cast<uintptr_t>(texture));
-    if (it == textures_.end())
-        return;
-
-    bgfx::destroy(it->second);
-    textures_.erase(it);
+    textures_.erase(static_cast<uintptr_t>(texture));
 }
 
 // -- Scissor --

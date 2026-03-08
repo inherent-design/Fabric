@@ -31,79 +31,42 @@ using namespace fabric;
 
 namespace recurse {
 
-VoxelRenderer::VoxelRenderer()
-    : program_(BGFX_INVALID_HANDLE),
-      uniformPalette_(BGFX_INVALID_HANDLE),
-      uniformLightDir_(BGFX_INVALID_HANDLE),
-      uniformViewPos_(BGFX_INVALID_HANDLE),
-      uniformLitColor_(BGFX_INVALID_HANDLE),
-      uniformShadowColor_(BGFX_INVALID_HANDLE),
-      uniformRimParams_(BGFX_INVALID_HANDLE),
-      uniformOceanParams_(BGFX_INVALID_HANDLE),
-      indirectBuffer_(BGFX_INVALID_HANDLE) {}
+VoxelRenderer::VoxelRenderer() = default;
 
 VoxelRenderer::~VoxelRenderer() {
     shutdown();
 }
 
 void VoxelRenderer::shutdown() {
-    if (bgfx::isValid(indirectBuffer_)) {
-        bgfx::destroy(indirectBuffer_);
-    }
-    if (bgfx::isValid(uniformOceanParams_)) {
-        bgfx::destroy(uniformOceanParams_);
-    }
-    if (bgfx::isValid(uniformRimParams_)) {
-        bgfx::destroy(uniformRimParams_);
-    }
-    if (bgfx::isValid(uniformShadowColor_)) {
-        bgfx::destroy(uniformShadowColor_);
-    }
-    if (bgfx::isValid(uniformLitColor_)) {
-        bgfx::destroy(uniformLitColor_);
-    }
-    if (bgfx::isValid(uniformViewPos_)) {
-        bgfx::destroy(uniformViewPos_);
-    }
-    if (bgfx::isValid(uniformLightDir_)) {
-        bgfx::destroy(uniformLightDir_);
-    }
-    if (bgfx::isValid(uniformPalette_)) {
-        bgfx::destroy(uniformPalette_);
-    }
-    if (bgfx::isValid(program_)) {
-        bgfx::destroy(program_);
-    }
-
-    indirectBuffer_ = BGFX_INVALID_HANDLE;
-    uniformOceanParams_ = BGFX_INVALID_HANDLE;
-    uniformRimParams_ = BGFX_INVALID_HANDLE;
-    uniformShadowColor_ = BGFX_INVALID_HANDLE;
-    uniformLitColor_ = BGFX_INVALID_HANDLE;
-    uniformViewPos_ = BGFX_INVALID_HANDLE;
-    uniformLightDir_ = BGFX_INVALID_HANDLE;
-    uniformPalette_ = BGFX_INVALID_HANDLE;
-    program_ = BGFX_INVALID_HANDLE;
+    indirectBuffer_.reset();
+    uniformOceanParams_.reset();
+    uniformRimParams_.reset();
+    uniformShadowColor_.reset();
+    uniformLitColor_.reset();
+    uniformViewPos_.reset();
+    uniformLightDir_.reset();
+    uniformPalette_.reset();
+    program_.reset();
     initialized_ = false;
     mdiSupported_ = false;
 }
 
 void VoxelRenderer::initProgram() {
     bgfx::RendererType::Enum type = bgfx::getRendererType();
-    program_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_voxelShaders, type, "vs_smooth"),
-                                   bgfx::createEmbeddedShader(s_voxelShaders, type, "fs_smooth"), true);
+    program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_voxelShaders, type, "vs_smooth"),
+                                       bgfx::createEmbeddedShader(s_voxelShaders, type, "fs_smooth"), true));
 
-    uniformPalette_ = bgfx::createUniform("u_palette", bgfx::UniformType::Vec4, 256);
-    uniformLightDir_ = bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4);
-    uniformViewPos_ = bgfx::createUniform("u_viewPos", bgfx::UniformType::Vec4);
-    uniformLitColor_ = bgfx::createUniform("u_litColor", bgfx::UniformType::Vec4);
-    uniformShadowColor_ = bgfx::createUniform("u_shadowColor", bgfx::UniformType::Vec4);
-    uniformRimParams_ = bgfx::createUniform("u_rimParams", bgfx::UniformType::Vec4);
-    uniformOceanParams_ = bgfx::createUniform("u_oceanParams", bgfx::UniformType::Vec4);
+    uniformPalette_.reset(bgfx::createUniform("u_palette", bgfx::UniformType::Vec4, 256));
+    uniformLightDir_.reset(bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4));
+    uniformViewPos_.reset(bgfx::createUniform("u_viewPos", bgfx::UniformType::Vec4));
+    uniformLitColor_.reset(bgfx::createUniform("u_litColor", bgfx::UniformType::Vec4));
+    uniformShadowColor_.reset(bgfx::createUniform("u_shadowColor", bgfx::UniformType::Vec4));
+    uniformRimParams_.reset(bgfx::createUniform("u_rimParams", bgfx::UniformType::Vec4));
+    uniformOceanParams_.reset(bgfx::createUniform("u_oceanParams", bgfx::UniformType::Vec4));
 
-    if (!bgfx::isValid(program_) || !bgfx::isValid(uniformPalette_) || !bgfx::isValid(uniformLightDir_) ||
-        !bgfx::isValid(uniformViewPos_) || !bgfx::isValid(uniformLitColor_) || !bgfx::isValid(uniformShadowColor_) ||
-        !bgfx::isValid(uniformRimParams_) || !bgfx::isValid(uniformOceanParams_)) {
+    if (!program_.isValid() || !uniformPalette_.isValid() || !uniformLightDir_.isValid() ||
+        !uniformViewPos_.isValid() || !uniformLitColor_.isValid() || !uniformShadowColor_.isValid() ||
+        !uniformRimParams_.isValid() || !uniformOceanParams_.isValid()) {
         FABRIC_LOG_RENDER_ERROR("VoxelRenderer shader/uniform init failed for renderer {}",
                                 bgfx::getRendererName(type));
         shutdown();
@@ -131,8 +94,8 @@ void VoxelRenderer::initProgram() {
 
     mdiSupported_ = caps.drawIndirect;
     if (mdiSupported_) {
-        indirectBuffer_ = bgfx::createIndirectBuffer(kMaxIndirectDraws);
-        if (!bgfx::isValid(indirectBuffer_)) {
+        indirectBuffer_.reset(bgfx::createIndirectBuffer(kMaxIndirectDraws));
+        if (!indirectBuffer_.isValid()) {
             FABRIC_LOG_RENDER_WARN("VoxelRenderer: indirect buffer allocation failed, MDI disabled");
             mdiSupported_ = false;
         } else {
@@ -169,7 +132,7 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, float offse
     // Upload palette colors (up to 256 entries)
     if (!mesh.palette.empty()) {
         auto count = static_cast<uint16_t>(std::min(mesh.palette.size(), static_cast<size_t>(256)));
-        bgfx::setUniform(uniformPalette_, mesh.palette.data(), count);
+        bgfx::setUniform(uniformPalette_.get(), mesh.palette.data(), count);
     }
 
     bgfx::setVertexBuffer(0, mesh.vbh);
@@ -178,13 +141,13 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, float offse
     uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                      BGFX_STATE_MSAA | BGFX_STATE_CULL_CCW;
     bgfx::setState(state);
-    bgfx::setUniform(uniformLightDir_, lightDir_);
-    bgfx::setUniform(uniformViewPos_, viewPos_);
-    bgfx::setUniform(uniformLitColor_, litColor_);
-    bgfx::setUniform(uniformShadowColor_, shadowColor_);
-    bgfx::setUniform(uniformRimParams_, rimParams_);
-    bgfx::setUniform(uniformOceanParams_, oceanParams_);
-    bgfx::submit(view, program_);
+    bgfx::setUniform(uniformLightDir_.get(), lightDir_);
+    bgfx::setUniform(uniformViewPos_.get(), viewPos_);
+    bgfx::setUniform(uniformLitColor_.get(), litColor_);
+    bgfx::setUniform(uniformShadowColor_.get(), shadowColor_);
+    bgfx::setUniform(uniformRimParams_.get(), rimParams_);
+    bgfx::setUniform(uniformOceanParams_.get(), oceanParams_);
+    bgfx::submit(view, program_.get());
 }
 
 void VoxelRenderer::setLightDirection(const Vector3<float, Space::World>& dir) {
@@ -202,7 +165,7 @@ void VoxelRenderer::setViewPosition(double x, double y, double z) {
 }
 
 bool VoxelRenderer::isValid() const {
-    return bgfx::isValid(program_);
+    return program_.isValid();
 }
 
 bool VoxelRenderer::mdiSupported() const {
@@ -282,14 +245,14 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
     for (const auto& group : groups) {
         if (!group.palette->empty()) {
             auto cnt = static_cast<uint16_t>(std::min(group.palette->size(), static_cast<size_t>(256)));
-            bgfx::setUniform(uniformPalette_, group.palette->data(), cnt);
+            bgfx::setUniform(uniformPalette_.get(), group.palette->data(), cnt);
         }
-        bgfx::setUniform(uniformLightDir_, lightDir_);
-        bgfx::setUniform(uniformViewPos_, viewPos_);
-        bgfx::setUniform(uniformLitColor_, litColor_);
-        bgfx::setUniform(uniformShadowColor_, shadowColor_);
-        bgfx::setUniform(uniformRimParams_, rimParams_);
-        bgfx::setUniform(uniformOceanParams_, oceanParams_);
+        bgfx::setUniform(uniformLightDir_.get(), lightDir_);
+        bgfx::setUniform(uniformViewPos_.get(), viewPos_);
+        bgfx::setUniform(uniformLitColor_.get(), litColor_);
+        bgfx::setUniform(uniformShadowColor_.get(), shadowColor_);
+        bgfx::setUniform(uniformRimParams_.get(), rimParams_);
+        bgfx::setUniform(uniformOceanParams_.get(), oceanParams_);
         bgfx::setState(state);
 
         for (size_t j = 0; j < group.indices.size(); ++j) {
@@ -306,7 +269,7 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
             bgfx::setIndexBuffer(ci.mesh->ibh);
 
             bool last = (j + 1 == group.indices.size());
-            bgfx::submit(view, program_, 0, last ? BGFX_DISCARD_ALL : kGroupDiscard);
+            bgfx::submit(view, program_.get(), 0, last ? BGFX_DISCARD_ALL : kGroupDiscard);
         }
     }
 }

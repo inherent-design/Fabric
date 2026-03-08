@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/core/BgfxHandle.hh"
 #include "fabric/core/Camera.hh"
 #include "fabric/core/SystemBase.hh"
 #include "fabric/simulation/SimulationGrid.hh"
@@ -63,8 +64,8 @@ class LODSystem : public fabric::System<LODSystem> {
 
     // GPU mesh management
     struct GPUSection {
-        bgfx::VertexBufferHandle vbh = BGFX_INVALID_HANDLE;
-        bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
+        fabric::BgfxHandle<bgfx::VertexBufferHandle> vbh;
+        fabric::BgfxHandle<bgfx::IndexBufferHandle> ibh;
         uint32_t indexCount = 0;
         std::vector<std::array<float, 4>> palette;
         bool resident = false;

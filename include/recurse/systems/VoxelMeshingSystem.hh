@@ -41,6 +41,9 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     VoxelMeshingSystem();
     ~VoxelMeshingSystem() override;
 
+    VoxelMeshingSystem(const VoxelMeshingSystem&) = delete;
+    VoxelMeshingSystem& operator=(const VoxelMeshingSystem&) = delete;
+
     void doInit(fabric::AppContext& ctx) override;
     void doShutdown() override;
     void render(fabric::AppContext& ctx) override;

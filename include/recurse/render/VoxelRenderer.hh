@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/core/BgfxHandle.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
@@ -76,15 +77,15 @@ class VoxelRenderer {
     void initProgram();
     void renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chunks, uint32_t count);
 
-    bgfx::ProgramHandle program_;
-    bgfx::UniformHandle uniformPalette_;
-    bgfx::UniformHandle uniformLightDir_;
-    bgfx::UniformHandle uniformViewPos_;
-    bgfx::UniformHandle uniformLitColor_;
-    bgfx::UniformHandle uniformShadowColor_;
-    bgfx::UniformHandle uniformRimParams_;
-    bgfx::UniformHandle uniformOceanParams_;
-    bgfx::IndirectBufferHandle indirectBuffer_;
+    fabric::BgfxHandle<bgfx::ProgramHandle> program_;
+    fabric::BgfxHandle<bgfx::UniformHandle> uniformPalette_;
+    fabric::BgfxHandle<bgfx::UniformHandle> uniformLightDir_;
+    fabric::BgfxHandle<bgfx::UniformHandle> uniformViewPos_;
+    fabric::BgfxHandle<bgfx::UniformHandle> uniformLitColor_;
+    fabric::BgfxHandle<bgfx::UniformHandle> uniformShadowColor_;
+    fabric::BgfxHandle<bgfx::UniformHandle> uniformRimParams_;
+    fabric::BgfxHandle<bgfx::UniformHandle> uniformOceanParams_;
+    fabric::BgfxHandle<bgfx::IndirectBufferHandle> indirectBuffer_;
     bool initialized_ = false;
     bool mdiSupported_ = false;
     float lightDir_[4] = {0.0f, -1.0f, 0.0f, 0.0f};

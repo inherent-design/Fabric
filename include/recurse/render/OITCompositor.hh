@@ -1,5 +1,7 @@
 #pragma once
 
+#include "fabric/core/BgfxHandle.hh"
+
 #include <bgfx/bgfx.h>
 #include <cstdint>
 
@@ -57,21 +59,21 @@ class OITCompositor {
 
   private:
     // Shader programs
-    bgfx::ProgramHandle accumProgram_;
-    bgfx::ProgramHandle compositeProgram_;
+    fabric::BgfxHandle<bgfx::ProgramHandle> accumProgram_;
+    fabric::BgfxHandle<bgfx::ProgramHandle> compositeProgram_;
 
     // Fullscreen triangle vertex buffer (for composite pass)
-    bgfx::VertexBufferHandle vbh_;
+    fabric::BgfxHandle<bgfx::VertexBufferHandle> vbh_;
 
     // Uniforms
-    bgfx::UniformHandle uniformOitColor_;
+    fabric::BgfxHandle<bgfx::UniformHandle> uniformOitColor_;
 
     // Texture samplers (composite pass)
-    bgfx::UniformHandle samplerAccum_;
-    bgfx::UniformHandle samplerRevealage_;
+    fabric::BgfxHandle<bgfx::UniformHandle> samplerAccum_;
+    fabric::BgfxHandle<bgfx::UniformHandle> samplerRevealage_;
 
     // OIT framebuffer: attachment 0 = RGBA16F (accumulation), attachment 1 = R8 (revealage)
-    bgfx::FrameBufferHandle oitFb_;
+    fabric::BgfxHandle<bgfx::FrameBufferHandle> oitFb_;
 
     // Stored view IDs from most recent begin/composite calls
     uint8_t accumViewId_ = 0;

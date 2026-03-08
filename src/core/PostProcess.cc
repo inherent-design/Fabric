@@ -33,22 +33,7 @@ static const float g_s_fullscreenVertices[] = {
 
 namespace fabric {
 
-PostProcess::PostProcess()
-    : brightProgram_(BGFX_INVALID_HANDLE),
-      blurProgram_(BGFX_INVALID_HANDLE),
-      tonemapProgram_(BGFX_INVALID_HANDLE),
-      vbh_(BGFX_INVALID_HANDLE),
-      uniformBloomParams_(BGFX_INVALID_HANDLE),
-      uniformTexelSize_(BGFX_INVALID_HANDLE),
-      uniformTonemapParams_(BGFX_INVALID_HANDLE),
-      samplerHdrColor_(BGFX_INVALID_HANDLE),
-      samplerBloomTex_(BGFX_INVALID_HANDLE),
-      samplerInputTex_(BGFX_INVALID_HANDLE),
-      hdrFb_(BGFX_INVALID_HANDLE) {
-    for (auto& fb : bloomFb_) {
-        fb = BGFX_INVALID_HANDLE;
-    }
-}
+PostProcess::PostProcess() = default;
 
 PostProcess::~PostProcess() {
     shutdown();
@@ -68,7 +53,7 @@ void PostProcess::init(uint16_t width, uint16_t height) {
     height_ = height;
 
     initPrograms();
-    if (!bgfx::isValid(brightProgram_)) {
+    if (!brightProgram_.isValid()) {
         return;
     }
 
@@ -82,51 +67,16 @@ void PostProcess::init(uint16_t width, uint16_t height) {
 void PostProcess::shutdown() {
     destroyFramebuffers();
 
-    if (bgfx::isValid(samplerInputTex_)) {
-        bgfx::destroy(samplerInputTex_);
-    }
-    if (bgfx::isValid(samplerBloomTex_)) {
-        bgfx::destroy(samplerBloomTex_);
-    }
-    if (bgfx::isValid(samplerHdrColor_)) {
-        bgfx::destroy(samplerHdrColor_);
-    }
-    if (bgfx::isValid(uniformTonemapParams_)) {
-        bgfx::destroy(uniformTonemapParams_);
-    }
-    if (bgfx::isValid(uniformTexelSize_)) {
-        bgfx::destroy(uniformTexelSize_);
-    }
-    if (bgfx::isValid(uniformBloomParams_)) {
-        bgfx::destroy(uniformBloomParams_);
-    }
-    if (bgfx::isValid(vbh_)) {
-        bgfx::destroy(vbh_);
-    }
-    if (bgfx::isValid(tonemapProgram_)) {
-        bgfx::destroy(tonemapProgram_);
-    }
-    if (bgfx::isValid(blurProgram_)) {
-        bgfx::destroy(blurProgram_);
-    }
-    if (bgfx::isValid(brightProgram_)) {
-        bgfx::destroy(brightProgram_);
-    }
-
-    brightProgram_ = BGFX_INVALID_HANDLE;
-    blurProgram_ = BGFX_INVALID_HANDLE;
-    tonemapProgram_ = BGFX_INVALID_HANDLE;
-    vbh_ = BGFX_INVALID_HANDLE;
-    uniformBloomParams_ = BGFX_INVALID_HANDLE;
-    uniformTexelSize_ = BGFX_INVALID_HANDLE;
-    uniformTonemapParams_ = BGFX_INVALID_HANDLE;
-    samplerHdrColor_ = BGFX_INVALID_HANDLE;
-    samplerBloomTex_ = BGFX_INVALID_HANDLE;
-    samplerInputTex_ = BGFX_INVALID_HANDLE;
-    hdrFb_ = BGFX_INVALID_HANDLE;
-    for (auto& fb : bloomFb_) {
-        fb = BGFX_INVALID_HANDLE;
-    }
+    samplerInputTex_.reset();
+    samplerBloomTex_.reset();
+    samplerHdrColor_.reset();
+    uniformTonemapParams_.reset();
+    uniformTexelSize_.reset();
+    uniformBloomParams_.reset();
+    vbh_.reset();
+    tonemapProgram_.reset();
+    blurProgram_.reset();
+    brightProgram_.reset();
 
     width_ = 0;
     height_ = 0;
@@ -134,7 +84,7 @@ void PostProcess::shutdown() {
 }
 
 bool PostProcess::isValid() const {
-    return initialized_ && bgfx::isValid(brightProgram_);
+    return initialized_ && brightProgram_.isValid();
 }
 
 void PostProcess::resize(uint16_t width, uint16_t height) {
@@ -181,7 +131,7 @@ float PostProcess::exposure() const {
 }
 
 bgfx::FrameBufferHandle PostProcess::hdrFramebuffer() const {
-    return hdrFb_;
+    return hdrFb_.get();
 }
 
 void PostProcess::render(uint8_t baseViewId) {
@@ -196,16 +146,16 @@ void PostProcess::render(uint8_t baseViewId) {
         uint8_t view = baseViewId;
         bgfx::setViewName(view, "Bright Extract");
         bgfx::setViewRect(view, 0, 0, width_ / 2, height_ / 2);
-        bgfx::setViewFrameBuffer(view, bloomFb_[0]);
+        bgfx::setViewFrameBuffer(view, bloomFb_[0].get());
         bgfx::setViewClear(view, BGFX_CLEAR_COLOR, 0x000000ff, 1.0f, 0);
 
         float bloomParams[4] = {threshold_, threshold_ * 0.5f, 0.0f, 0.0f};
-        bgfx::setUniform(uniformBloomParams_, bloomParams);
+        bgfx::setUniform(uniformBloomParams_.get(), bloomParams);
 
-        bgfx::setTexture(0, samplerHdrColor_, bgfx::getTexture(hdrFb_, 0));
-        bgfx::setVertexBuffer(0, vbh_);
+        bgfx::setTexture(0, samplerHdrColor_.get(), bgfx::getTexture(hdrFb_.get(), 0));
+        bgfx::setVertexBuffer(0, vbh_.get());
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
-        bgfx::submit(view, brightProgram_);
+        bgfx::submit(view, brightProgram_.get());
     }
 
     // Passes 1..K_BLUR_PASSES-1: Dual Kawase blur (downsample chain)
@@ -221,16 +171,16 @@ void PostProcess::render(uint8_t baseViewId) {
             h = 1;
 
         bgfx::setViewRect(view, 0, 0, w, h);
-        bgfx::setViewFrameBuffer(view, bloomFb_[i]);
+        bgfx::setViewFrameBuffer(view, bloomFb_[i].get());
         bgfx::setViewClear(view, BGFX_CLEAR_COLOR, 0x000000ff, 1.0f, 0);
 
         float texelSize[4] = {1.0f / static_cast<float>(w), 1.0f / static_cast<float>(h), 0.0f, static_cast<float>(i)};
-        bgfx::setUniform(uniformTexelSize_, texelSize);
+        bgfx::setUniform(uniformTexelSize_.get(), texelSize);
 
-        bgfx::setTexture(0, samplerInputTex_, bgfx::getTexture(bloomFb_[i - 1], 0));
-        bgfx::setVertexBuffer(0, vbh_);
+        bgfx::setTexture(0, samplerInputTex_.get(), bgfx::getTexture(bloomFb_[i - 1].get(), 0));
+        bgfx::setVertexBuffer(0, vbh_.get());
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
-        bgfx::submit(view, blurProgram_);
+        bgfx::submit(view, blurProgram_.get());
     }
 
     // Final pass: Tonemapping composite to backbuffer
@@ -242,42 +192,41 @@ void PostProcess::render(uint8_t baseViewId) {
         bgfx::setViewClear(view, BGFX_CLEAR_NONE);
 
         float tonemapParams[4] = {intensity_, exposure_, 0.0f, 0.0f};
-        bgfx::setUniform(uniformTonemapParams_, tonemapParams);
+        bgfx::setUniform(uniformTonemapParams_.get(), tonemapParams);
 
-        bgfx::setTexture(0, samplerHdrColor_, bgfx::getTexture(hdrFb_, 0));
-        bgfx::setTexture(1, samplerBloomTex_, bgfx::getTexture(bloomFb_[K_BLUR_PASSES - 1], 0));
-        bgfx::setVertexBuffer(0, vbh_);
+        bgfx::setTexture(0, samplerHdrColor_.get(), bgfx::getTexture(hdrFb_.get(), 0));
+        bgfx::setTexture(1, samplerBloomTex_.get(), bgfx::getTexture(bloomFb_[K_BLUR_PASSES - 1].get(), 0));
+        bgfx::setVertexBuffer(0, vbh_.get());
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
-        bgfx::submit(view, tonemapProgram_);
+        bgfx::submit(view, tonemapProgram_.get());
     }
 }
 
 void PostProcess::initPrograms() {
     bgfx::RendererType::Enum type = bgfx::getRendererType();
 
-    brightProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
-                                         bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_bright"), true);
+    brightProgram_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
+                                             bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_bright"), true));
 
-    blurProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
-                                       bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_blur"), true);
+    blurProgram_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
+                                           bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_blur"), true));
 
-    tonemapProgram_ = bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
-                                          bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_tonemap"), true);
+    tonemapProgram_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
+                                              bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_tonemap"), true));
 
-    uniformBloomParams_ = bgfx::createUniform("u_bloomParams", bgfx::UniformType::Vec4);
-    uniformTexelSize_ = bgfx::createUniform("u_texelSize", bgfx::UniformType::Vec4);
-    uniformTonemapParams_ = bgfx::createUniform("u_tonemapParams", bgfx::UniformType::Vec4);
-    samplerHdrColor_ = bgfx::createUniform("s_hdrColor", bgfx::UniformType::Sampler);
-    samplerBloomTex_ = bgfx::createUniform("s_bloomTex", bgfx::UniformType::Sampler);
-    samplerInputTex_ = bgfx::createUniform("s_inputTex", bgfx::UniformType::Sampler);
+    uniformBloomParams_.reset(bgfx::createUniform("u_bloomParams", bgfx::UniformType::Vec4));
+    uniformTexelSize_.reset(bgfx::createUniform("u_texelSize", bgfx::UniformType::Vec4));
+    uniformTonemapParams_.reset(bgfx::createUniform("u_tonemapParams", bgfx::UniformType::Vec4));
+    samplerHdrColor_.reset(bgfx::createUniform("s_hdrColor", bgfx::UniformType::Sampler));
+    samplerBloomTex_.reset(bgfx::createUniform("s_bloomTex", bgfx::UniformType::Sampler));
+    samplerInputTex_.reset(bgfx::createUniform("s_inputTex", bgfx::UniformType::Sampler));
 
     // Fullscreen triangle vertex buffer
     bgfx::VertexLayout layout;
     layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
-    vbh_ = bgfx::createVertexBuffer(bgfx::makeRef(g_s_fullscreenVertices, sizeof(g_s_fullscreenVertices)), layout);
+    vbh_.reset(bgfx::createVertexBuffer(bgfx::makeRef(g_s_fullscreenVertices, sizeof(g_s_fullscreenVertices)), layout));
 
-    if (!bgfx::isValid(brightProgram_) || !bgfx::isValid(blurProgram_) || !bgfx::isValid(tonemapProgram_) ||
-        !bgfx::isValid(vbh_)) {
+    if (!brightProgram_.isValid() || !blurProgram_.isValid() || !tonemapProgram_.isValid() || !vbh_.isValid()) {
         FABRIC_LOG_ERROR("PostProcess shader init failed for renderer {}", bgfx::getRendererName(type));
         shutdown();
     }
@@ -291,7 +240,7 @@ void PostProcess::createFramebuffers(uint16_t width, uint16_t height) {
     bgfx::Attachment attachments[2];
     attachments[0].init(hdrTextures[0]);
     attachments[1].init(hdrTextures[1]);
-    hdrFb_ = bgfx::createFrameBuffer(2, attachments, true);
+    hdrFb_.reset(bgfx::createFrameBuffer(2, attachments, true));
 
     // Bloom chain: progressively halved RGBA16F (no depth needed)
     for (uint16_t i = 0; i < K_BLUR_PASSES; ++i) {
@@ -302,22 +251,16 @@ void PostProcess::createFramebuffers(uint16_t width, uint16_t height) {
         if (h < 1)
             h = 1;
 
-        bloomFb_[i] = bgfx::createFrameBuffer(w, h, bgfx::TextureFormat::RGBA16F,
-                                              BGFX_TEXTURE_RT | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP);
+        bloomFb_[i].reset(bgfx::createFrameBuffer(w, h, bgfx::TextureFormat::RGBA16F,
+                                                  BGFX_TEXTURE_RT | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP));
     }
 }
 
 void PostProcess::destroyFramebuffers() {
     for (auto& fb : bloomFb_) {
-        if (bgfx::isValid(fb)) {
-            bgfx::destroy(fb);
-            fb = BGFX_INVALID_HANDLE;
-        }
+        fb.reset();
     }
-    if (bgfx::isValid(hdrFb_)) {
-        bgfx::destroy(hdrFb_);
-        hdrFb_ = BGFX_INVALID_HANDLE;
-    }
+    hdrFb_.reset();
 }
 
 } // namespace fabric

@@ -45,7 +45,10 @@ uint32_t packSmoothMaterialForShader(uint16_t paletteIndex, uint8_t aoLevel = 3)
 
 VoxelMeshingSystem::VoxelMeshingSystem() : mesher_(std::make_unique<SnapMCMesher>()) {}
 
-VoxelMeshingSystem::~VoxelMeshingSystem() = default;
+VoxelMeshingSystem::~VoxelMeshingSystem() {
+    for (auto& [_, gpuMesh] : gpuMeshes_)
+        destroyChunkMesh(gpuMesh);
+}
 
 void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
     simSystem_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
@@ -69,9 +72,7 @@ void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
 }
 
 void VoxelMeshingSystem::doShutdown() {
-    for (auto& [_, gpuMesh] : gpuMeshes_)
-        destroyChunkMesh(gpuMesh);
-    gpuMeshes_.clear();
+    clearAllMeshes();
 
     if (vertexPool_) {
         vertexPool_->shutdown();

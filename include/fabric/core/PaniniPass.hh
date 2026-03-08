@@ -1,5 +1,7 @@
 #pragma once
 
+#include "fabric/core/BgfxHandle.hh"
+
 #include <bgfx/bgfx.h>
 #include <cstdint>
 
@@ -54,16 +56,16 @@ class PaniniPass {
     void createVertexBuffer();
 
     // Shader program
-    bgfx::ProgramHandle program_;
+    BgfxHandle<bgfx::ProgramHandle> program_;
 
     // Fullscreen triangle vertex buffer
-    bgfx::VertexBufferHandle fullscreenQuad_;
+    BgfxHandle<bgfx::VertexBufferHandle> fullscreenQuad_;
 
     // Uniforms
-    bgfx::UniformHandle u_sceneTex_;     // sampler
-    bgfx::UniformHandle u_params_;       // vec4(strength, half_tan_fov, fill_zoom, enabled)
-    bgfx::UniformHandle u_viewportSize_; // vec4(width, height, 1/width, 1/height)
-    bgfx::UniformHandle u_paniniExtra_;  // vec4(vertical_comp, aspect, 0, 0)
+    BgfxHandle<bgfx::UniformHandle> u_sceneTex_;     // sampler
+    BgfxHandle<bgfx::UniformHandle> u_params_;       // vec4(strength, half_tan_fov, fill_zoom, enabled)
+    BgfxHandle<bgfx::UniformHandle> u_viewportSize_; // vec4(width, height, 1/width, 1/height)
+    BgfxHandle<bgfx::UniformHandle> u_paniniExtra_;  // vec4(vertical_comp, aspect, 0, 0)
 
     // Configuration state
     bool enabled_ = false;      // OFF by default, toggle with F6

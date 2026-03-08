@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/core/BgfxHandle.hh"
 #include "fabric/core/Spatial.hh"
 
 #include <array>
@@ -72,9 +73,9 @@ class ParticleSystem {
     std::array<Particle, kMaxParticles> particles_;
     size_t activeCount_ = 0;
 
-    bgfx::ProgramHandle program_;
-    bgfx::VertexBufferHandle vbh_;
-    bgfx::IndexBufferHandle ibh_;
+    fabric::BgfxHandle<bgfx::ProgramHandle> program_;
+    fabric::BgfxHandle<bgfx::VertexBufferHandle> vbh_;
+    fabric::BgfxHandle<bgfx::IndexBufferHandle> ibh_;
     bool initialized_ = false;
 };
 

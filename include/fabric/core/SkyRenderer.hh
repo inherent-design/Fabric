@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/core/BgfxHandle.hh"
 #include "fabric/core/Spatial.hh"
 #include <bgfx/bgfx.h>
 
@@ -38,10 +39,10 @@ class SkyRenderer {
   private:
     void initProgram();
 
-    bgfx::ProgramHandle program_;
-    bgfx::VertexBufferHandle vbh_;
-    bgfx::UniformHandle uniformSunDir_;
-    bgfx::UniformHandle uniformParams_;
+    BgfxHandle<bgfx::ProgramHandle> program_;
+    BgfxHandle<bgfx::VertexBufferHandle> vbh_;
+    BgfxHandle<bgfx::UniformHandle> uniformSunDir_;
+    BgfxHandle<bgfx::UniformHandle> uniformParams_;
     Vector3<float, Space::World> sunDir_;
     float turbidity_ = 2.0f;
     bool initialized_ = false;

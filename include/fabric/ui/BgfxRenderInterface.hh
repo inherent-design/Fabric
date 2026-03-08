@@ -1,5 +1,8 @@
 #pragma once
 
+#include "fabric/core/BgfxHandle.hh"
+#include "fabric/core/HandleMap.hh"
+
 #include <RmlUi/Core/RenderInterface.h>
 
 #include <bgfx/bgfx.h>
@@ -54,8 +57,8 @@ class BgfxRenderInterface : public Rml::RenderInterface {
 
   private:
     struct CompiledGeom {
-        bgfx::VertexBufferHandle vbh;
-        bgfx::IndexBufferHandle ibh;
+        BgfxHandle<bgfx::VertexBufferHandle> vbh;
+        BgfxHandle<bgfx::IndexBufferHandle> ibh;
         uint32_t indexCount;
     };
 
@@ -63,9 +66,9 @@ class BgfxRenderInterface : public Rml::RenderInterface {
 
     bgfx::ViewId viewId_ = K_DEFAULT_VIEW_ID;
     bgfx::VertexLayout layout_;
-    bgfx::ProgramHandle program_ = BGFX_INVALID_HANDLE;
-    bgfx::UniformHandle texUniform_ = BGFX_INVALID_HANDLE;
-    bgfx::TextureHandle whiteTexture_ = BGFX_INVALID_HANDLE;
+    BgfxHandle<bgfx::ProgramHandle> program_;
+    BgfxHandle<bgfx::UniformHandle> texUniform_;
+    BgfxHandle<bgfx::TextureHandle> whiteTexture_;
 
     bool scissorEnabled_ = false;
     Rml::Rectanglei scissorRect_ = {};
@@ -76,7 +79,7 @@ class BgfxRenderInterface : public Rml::RenderInterface {
     uintptr_t nextGeomHandle_ = 1;
     uintptr_t nextTexHandle_ = 1;
     std::unordered_map<uintptr_t, CompiledGeom> geometries_;
-    std::unordered_map<uintptr_t, bgfx::TextureHandle> textures_;
+    HandleMap<uintptr_t, bgfx::TextureHandle> textures_;
 };
 
 } // namespace fabric

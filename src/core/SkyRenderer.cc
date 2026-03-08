@@ -32,53 +32,34 @@ static const float s_skyVertices[] = {
 
 namespace fabric {
 
-SkyRenderer::SkyRenderer()
-    : program_(BGFX_INVALID_HANDLE),
-      vbh_(BGFX_INVALID_HANDLE),
-      uniformSunDir_(BGFX_INVALID_HANDLE),
-      uniformParams_(BGFX_INVALID_HANDLE),
-      sunDir_(0.0f, 0.7071f, 0.7071f) {}
+SkyRenderer::SkyRenderer() : sunDir_(0.0f, 0.7071f, 0.7071f) {}
 
 SkyRenderer::~SkyRenderer() {
     shutdown();
 }
 
 void SkyRenderer::shutdown() {
-    if (bgfx::isValid(uniformParams_)) {
-        bgfx::destroy(uniformParams_);
-    }
-    if (bgfx::isValid(uniformSunDir_)) {
-        bgfx::destroy(uniformSunDir_);
-    }
-    if (bgfx::isValid(vbh_)) {
-        bgfx::destroy(vbh_);
-    }
-    if (bgfx::isValid(program_)) {
-        bgfx::destroy(program_);
-    }
-
-    uniformParams_ = BGFX_INVALID_HANDLE;
-    uniformSunDir_ = BGFX_INVALID_HANDLE;
-    vbh_ = BGFX_INVALID_HANDLE;
-    program_ = BGFX_INVALID_HANDLE;
+    uniformParams_.reset();
+    uniformSunDir_.reset();
+    vbh_.reset();
+    program_.reset();
     initialized_ = false;
 }
 
 void SkyRenderer::initProgram() {
     bgfx::RendererType::Enum type = bgfx::getRendererType();
-    program_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_skyShaders, type, "vs_sky"),
-                                   bgfx::createEmbeddedShader(s_skyShaders, type, "fs_sky"), true);
+    program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_skyShaders, type, "vs_sky"),
+                                       bgfx::createEmbeddedShader(s_skyShaders, type, "fs_sky"), true));
 
-    uniformSunDir_ = bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4);
-    uniformParams_ = bgfx::createUniform("u_skyParams", bgfx::UniformType::Vec4);
+    uniformSunDir_.reset(bgfx::createUniform("u_sunDirection", bgfx::UniformType::Vec4));
+    uniformParams_.reset(bgfx::createUniform("u_skyParams", bgfx::UniformType::Vec4));
 
     // Fullscreen triangle vertex buffer
     bgfx::VertexLayout layout;
     layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
-    vbh_ = bgfx::createVertexBuffer(bgfx::makeRef(s_skyVertices, sizeof(s_skyVertices)), layout);
+    vbh_.reset(bgfx::createVertexBuffer(bgfx::makeRef(s_skyVertices, sizeof(s_skyVertices)), layout));
 
-    if (!bgfx::isValid(program_) || !bgfx::isValid(uniformSunDir_) || !bgfx::isValid(uniformParams_) ||
-        !bgfx::isValid(vbh_)) {
+    if (!program_.isValid() || !uniformSunDir_.isValid() || !uniformParams_.isValid() || !vbh_.isValid()) {
         FABRIC_LOG_ERROR("SkyRenderer shader/uniform init failed for renderer {}", bgfx::getRendererName(type));
         shutdown();
         return;
@@ -105,13 +86,13 @@ void SkyRenderer::render(bgfx::ViewId view) {
 
     // Upload sun direction
     float sunDir[4] = {sunDir_.x, sunDir_.y, sunDir_.z, 0.0f};
-    bgfx::setUniform(uniformSunDir_, sunDir);
+    bgfx::setUniform(uniformSunDir_.get(), sunDir);
 
     // Upload sky parameters (turbidity in x, remaining reserved)
     float params[4] = {turbidity_, 0.0f, 0.0f, 0.0f};
-    bgfx::setUniform(uniformParams_, params);
+    bgfx::setUniform(uniformParams_.get(), params);
 
-    bgfx::setVertexBuffer(0, vbh_);
+    bgfx::setVertexBuffer(0, vbh_.get());
 
     // Color-only state: no depth write, no depth test, no culling.
     // The fullscreen triangle sits at the far plane; geometry with depth
@@ -119,7 +100,7 @@ void SkyRenderer::render(bgfx::ViewId view) {
     uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A;
     bgfx::setState(state);
 
-    bgfx::submit(view, program_);
+    bgfx::submit(view, program_.get());
 }
 
 void SkyRenderer::setSunDirection(const Vector3<float, Space::World>& dir) {
@@ -131,7 +112,7 @@ Vector3<float, Space::World> SkyRenderer::sunDirection() const {
 }
 
 bool SkyRenderer::isValid() const {
-    return bgfx::isValid(program_);
+    return program_.isValid();
 }
 
 } // namespace fabric

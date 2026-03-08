@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/core/BgfxHandle.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 #include "recurse/world/VoxelVertex.hh"
 
@@ -67,8 +68,9 @@ template <typename VertexT, typename Traits = VertexPoolTraits<VertexT>> class V
             uint32_t totalVertices = config_.maxVerticesPerBucket * config_.initialBuckets;
             uint32_t totalIndices = config_.maxIndicesPerBucket * config_.initialBuckets;
 
-            vbh_ = bgfx::createDynamicVertexBuffer(totalVertices, VertexT::getVertexLayout(), BGFX_BUFFER_ALLOW_RESIZE);
-            ibh_ = bgfx::createDynamicIndexBuffer(totalIndices, BGFX_BUFFER_INDEX32 | BGFX_BUFFER_ALLOW_RESIZE);
+            vbh_.reset(
+                bgfx::createDynamicVertexBuffer(totalVertices, VertexT::getVertexLayout(), BGFX_BUFFER_ALLOW_RESIZE));
+            ibh_.reset(bgfx::createDynamicIndexBuffer(totalIndices, BGFX_BUFFER_INDEX32 | BGFX_BUFFER_ALLOW_RESIZE));
         }
 
         initialized_ = true;
@@ -78,15 +80,8 @@ template <typename VertexT, typename Traits = VertexPoolTraits<VertexT>> class V
         if (!initialized_)
             return;
 
-        if (!config_.cpuOnly) {
-            if (bgfx::isValid(vbh_))
-                bgfx::destroy(vbh_);
-            if (bgfx::isValid(ibh_))
-                bgfx::destroy(ibh_);
-        }
-
-        vbh_ = BGFX_INVALID_HANDLE;
-        ibh_ = BGFX_INVALID_HANDLE;
+        vbh_.reset();
+        ibh_.reset();
         freeList_.clear();
         used_.clear();
         allocatedCount_ = 0;
@@ -114,9 +109,9 @@ template <typename VertexT, typename Traits = VertexPoolTraits<VertexT>> class V
         slot.indexCount = indexCount;
 
         if (!config_.cpuOnly && vertexCount > 0 && indexCount > 0) {
-            bgfx::update(vbh_, slot.vertexOffset,
+            bgfx::update(vbh_.get(), slot.vertexOffset,
                          bgfx::copy(vertices, vertexCount * static_cast<uint32_t>(sizeof(VertexT))));
-            bgfx::update(ibh_, slot.indexOffset,
+            bgfx::update(ibh_.get(), slot.indexOffset,
                          bgfx::copy(indices, indexCount * static_cast<uint32_t>(sizeof(uint32_t))));
         }
 
@@ -134,8 +129,8 @@ template <typename VertexT, typename Traits = VertexPoolTraits<VertexT>> class V
         --allocatedCount_;
     }
 
-    bgfx::DynamicVertexBufferHandle vertexBuffer() const { return vbh_; }
-    bgfx::DynamicIndexBufferHandle indexBuffer() const { return ibh_; }
+    bgfx::DynamicVertexBufferHandle vertexBuffer() const { return vbh_.get(); }
+    bgfx::DynamicIndexBufferHandle indexBuffer() const { return ibh_.get(); }
 
     uint32_t allocatedBuckets() const { return allocatedCount_; }
     uint32_t totalBuckets() const { return initialized_ ? config_.initialBuckets : 0; }
@@ -145,8 +140,8 @@ template <typename VertexT, typename Traits = VertexPoolTraits<VertexT>> class V
   private:
     Config config_;
     bool initialized_ = false;
-    bgfx::DynamicVertexBufferHandle vbh_ = BGFX_INVALID_HANDLE;
-    bgfx::DynamicIndexBufferHandle ibh_ = BGFX_INVALID_HANDLE;
+    fabric::BgfxHandle<bgfx::DynamicVertexBufferHandle> vbh_;
+    fabric::BgfxHandle<bgfx::DynamicIndexBufferHandle> ibh_;
 
     std::vector<uint32_t> freeList_;
     std::vector<bool> used_;

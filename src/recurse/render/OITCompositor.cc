@@ -35,14 +35,7 @@ using namespace fabric;
 
 namespace recurse {
 
-OITCompositor::OITCompositor()
-    : accumProgram_(BGFX_INVALID_HANDLE),
-      compositeProgram_(BGFX_INVALID_HANDLE),
-      vbh_(BGFX_INVALID_HANDLE),
-      uniformOitColor_(BGFX_INVALID_HANDLE),
-      samplerAccum_(BGFX_INVALID_HANDLE),
-      samplerRevealage_(BGFX_INVALID_HANDLE),
-      oitFb_(BGFX_INVALID_HANDLE) {}
+OITCompositor::OITCompositor() = default;
 
 OITCompositor::~OITCompositor() {
     shutdown();
@@ -81,14 +74,14 @@ bool OITCompositor::init(uint16_t width, uint16_t height) {
     height_ = height;
 
     initPrograms();
-    if (!bgfx::isValid(accumProgram_) || !bgfx::isValid(compositeProgram_)) {
+    if (!accumProgram_.isValid() || !compositeProgram_.isValid()) {
         FABRIC_LOG_ERROR("OITCompositor: shader init failed");
         shutdown();
         return false;
     }
 
     createFramebuffers(width, height);
-    if (!bgfx::isValid(oitFb_)) {
+    if (!oitFb_.isValid()) {
         FABRIC_LOG_ERROR("OITCompositor: framebuffer creation failed");
         shutdown();
         return false;
@@ -102,32 +95,12 @@ bool OITCompositor::init(uint16_t width, uint16_t height) {
 void OITCompositor::shutdown() {
     destroyFramebuffers();
 
-    if (bgfx::isValid(samplerRevealage_)) {
-        bgfx::destroy(samplerRevealage_);
-    }
-    if (bgfx::isValid(samplerAccum_)) {
-        bgfx::destroy(samplerAccum_);
-    }
-    if (bgfx::isValid(uniformOitColor_)) {
-        bgfx::destroy(uniformOitColor_);
-    }
-    if (bgfx::isValid(vbh_)) {
-        bgfx::destroy(vbh_);
-    }
-    if (bgfx::isValid(compositeProgram_)) {
-        bgfx::destroy(compositeProgram_);
-    }
-    if (bgfx::isValid(accumProgram_)) {
-        bgfx::destroy(accumProgram_);
-    }
-
-    accumProgram_ = BGFX_INVALID_HANDLE;
-    compositeProgram_ = BGFX_INVALID_HANDLE;
-    vbh_ = BGFX_INVALID_HANDLE;
-    uniformOitColor_ = BGFX_INVALID_HANDLE;
-    samplerAccum_ = BGFX_INVALID_HANDLE;
-    samplerRevealage_ = BGFX_INVALID_HANDLE;
-    oitFb_ = BGFX_INVALID_HANDLE;
+    samplerRevealage_.reset();
+    samplerAccum_.reset();
+    uniformOitColor_.reset();
+    vbh_.reset();
+    compositeProgram_.reset();
+    accumProgram_.reset();
 
     width_ = 0;
     height_ = 0;
@@ -135,7 +108,7 @@ void OITCompositor::shutdown() {
 }
 
 bool OITCompositor::isValid() const {
-    return initialized_ && bgfx::isValid(accumProgram_) && bgfx::isValid(compositeProgram_) && bgfx::isValid(oitFb_);
+    return initialized_ && accumProgram_.isValid() && compositeProgram_.isValid() && oitFb_.isValid();
 }
 
 void OITCompositor::beginAccumulation(uint8_t viewId, const float* viewMtx, const float* projMtx, uint16_t width,
@@ -150,7 +123,7 @@ void OITCompositor::beginAccumulation(uint8_t viewId, const float* viewMtx, cons
 
     bgfx::setViewName(viewId, "OIT Accumulation");
     bgfx::setViewRect(viewId, 0, 0, width, height);
-    bgfx::setViewFrameBuffer(viewId, oitFb_);
+    bgfx::setViewFrameBuffer(viewId, oitFb_.get());
     bgfx::setViewTransform(viewId, viewMtx, projMtx);
 
     // Per-attachment clear via bgfx palette colors.
@@ -180,15 +153,15 @@ void OITCompositor::composite(uint8_t viewId, uint16_t width, uint16_t height) {
     bgfx::setViewClear(viewId, BGFX_CLEAR_NONE);
 
     // Bind OIT textures
-    bgfx::setTexture(0, samplerAccum_, bgfx::getTexture(oitFb_, 0));
-    bgfx::setTexture(1, samplerRevealage_, bgfx::getTexture(oitFb_, 1));
+    bgfx::setTexture(0, samplerAccum_.get(), bgfx::getTexture(oitFb_.get(), 0));
+    bgfx::setTexture(1, samplerRevealage_.get(), bgfx::getTexture(oitFb_.get(), 1));
 
-    bgfx::setVertexBuffer(0, vbh_);
+    bgfx::setVertexBuffer(0, vbh_.get());
 
     // Alpha blending: srcAlpha * src + (1 - srcAlpha) * dst
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                    BGFX_STATE_BLEND_FUNC(BGFX_STATE_BLEND_SRC_ALPHA, BGFX_STATE_BLEND_INV_SRC_ALPHA));
-    bgfx::submit(viewId, compositeProgram_);
+    bgfx::submit(viewId, compositeProgram_.get());
 }
 
 void OITCompositor::setColor(float r, float g, float b, float a) {
@@ -199,15 +172,15 @@ void OITCompositor::setColor(float r, float g, float b, float a) {
 }
 
 bgfx::ProgramHandle OITCompositor::accumProgram() const {
-    return accumProgram_;
+    return accumProgram_.get();
 }
 
 bgfx::FrameBufferHandle OITCompositor::framebuffer() const {
-    return oitFb_;
+    return oitFb_.get();
 }
 
 bgfx::UniformHandle OITCompositor::colorUniform() const {
-    return uniformOitColor_;
+    return uniformOitColor_.get();
 }
 
 uint8_t OITCompositor::accumViewId() const {
@@ -223,22 +196,22 @@ void OITCompositor::initPrograms() {
 
     auto accumVs = bgfx::createEmbeddedShader(s_oitShaders, type, "vs_oit_accum");
     auto accumFs = bgfx::createEmbeddedShader(s_oitShaders, type, "fs_oit_accum");
-    accumProgram_ = bgfx::createProgram(accumVs, accumFs, true);
+    accumProgram_.reset(bgfx::createProgram(accumVs, accumFs, true));
 
     auto compositeVs = bgfx::createEmbeddedShader(s_oitShaders, type, "vs_oit_composite");
     auto compositeFs = bgfx::createEmbeddedShader(s_oitShaders, type, "fs_oit_composite");
-    compositeProgram_ = bgfx::createProgram(compositeVs, compositeFs, true);
+    compositeProgram_.reset(bgfx::createProgram(compositeVs, compositeFs, true));
 
-    uniformOitColor_ = bgfx::createUniform("u_oitColor", bgfx::UniformType::Vec4);
-    samplerAccum_ = bgfx::createUniform("s_oitAccum", bgfx::UniformType::Sampler);
-    samplerRevealage_ = bgfx::createUniform("s_oitRevealage", bgfx::UniformType::Sampler);
+    uniformOitColor_.reset(bgfx::createUniform("u_oitColor", bgfx::UniformType::Vec4));
+    samplerAccum_.reset(bgfx::createUniform("s_oitAccum", bgfx::UniformType::Sampler));
+    samplerRevealage_.reset(bgfx::createUniform("s_oitRevealage", bgfx::UniformType::Sampler));
 
     // Fullscreen triangle vertex buffer (for composite pass)
     bgfx::VertexLayout layout;
     layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
-    vbh_ = bgfx::createVertexBuffer(bgfx::makeRef(s_fullscreenVertices, sizeof(s_fullscreenVertices)), layout);
+    vbh_.reset(bgfx::createVertexBuffer(bgfx::makeRef(s_fullscreenVertices, sizeof(s_fullscreenVertices)), layout));
 
-    if (!bgfx::isValid(accumProgram_) || !bgfx::isValid(compositeProgram_) || !bgfx::isValid(vbh_)) {
+    if (!accumProgram_.isValid() || !compositeProgram_.isValid() || !vbh_.isValid()) {
         FABRIC_LOG_ERROR("OITCompositor shader init failed for renderer {}", bgfx::getRendererName(type));
         shutdown();
     }
@@ -255,14 +228,11 @@ void OITCompositor::createFramebuffers(uint16_t width, uint16_t height) {
     bgfx::Attachment attachments[2];
     attachments[0].init(oitTextures[0]);
     attachments[1].init(oitTextures[1]);
-    oitFb_ = bgfx::createFrameBuffer(2, attachments, true);
+    oitFb_.reset(bgfx::createFrameBuffer(2, attachments, true));
 }
 
 void OITCompositor::destroyFramebuffers() {
-    if (bgfx::isValid(oitFb_)) {
-        bgfx::destroy(oitFb_);
-        oitFb_ = BGFX_INVALID_HANDLE;
-    }
+    oitFb_.reset();
 }
 
 } // namespace recurse

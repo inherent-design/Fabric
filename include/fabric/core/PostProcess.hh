@@ -1,5 +1,7 @@
 #pragma once
 
+#include "fabric/core/BgfxHandle.hh"
+
 #include <bgfx/bgfx.h>
 #include <cstdint>
 
@@ -59,28 +61,28 @@ class PostProcess {
     void destroyFramebuffers();
 
     // Shader programs
-    bgfx::ProgramHandle brightProgram_;
-    bgfx::ProgramHandle blurProgram_;
-    bgfx::ProgramHandle tonemapProgram_;
+    BgfxHandle<bgfx::ProgramHandle> brightProgram_;
+    BgfxHandle<bgfx::ProgramHandle> blurProgram_;
+    BgfxHandle<bgfx::ProgramHandle> tonemapProgram_;
 
     // Fullscreen triangle vertex buffer (shared across all passes)
-    bgfx::VertexBufferHandle vbh_;
+    BgfxHandle<bgfx::VertexBufferHandle> vbh_;
 
     // Uniforms
-    bgfx::UniformHandle uniformBloomParams_;   // threshold, soft knee
-    bgfx::UniformHandle uniformTexelSize_;     // 1/resolution
-    bgfx::UniformHandle uniformTonemapParams_; // bloom intensity, exposure
+    BgfxHandle<bgfx::UniformHandle> uniformBloomParams_;   // threshold, soft knee
+    BgfxHandle<bgfx::UniformHandle> uniformTexelSize_;     // 1/resolution
+    BgfxHandle<bgfx::UniformHandle> uniformTonemapParams_; // bloom intensity, exposure
 
     // Texture samplers
-    bgfx::UniformHandle samplerHdrColor_;
-    bgfx::UniformHandle samplerBloomTex_;
-    bgfx::UniformHandle samplerInputTex_;
+    BgfxHandle<bgfx::UniformHandle> samplerHdrColor_;
+    BgfxHandle<bgfx::UniformHandle> samplerBloomTex_;
+    BgfxHandle<bgfx::UniformHandle> samplerInputTex_;
 
     // HDR scene framebuffer (RGBA16F + depth)
-    bgfx::FrameBufferHandle hdrFb_;
+    BgfxHandle<bgfx::FrameBufferHandle> hdrFb_;
 
     // Bloom chain framebuffers (progressively halved resolution)
-    bgfx::FrameBufferHandle bloomFb_[K_BLUR_PASSES];
+    BgfxHandle<bgfx::FrameBufferHandle> bloomFb_[K_BLUR_PASSES];
 
     uint16_t width_ = 0;
     uint16_t height_ = 0;

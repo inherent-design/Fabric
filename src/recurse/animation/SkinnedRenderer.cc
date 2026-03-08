@@ -39,24 +39,12 @@ bgfx::VertexLayout createSkinnedVertexLayout() {
     return layout;
 }
 
-SkinnedRenderer::SkinnedRenderer()
-    : layout_(createSkinnedVertexLayout()), program_(BGFX_INVALID_HANDLE), uniformJointMatrices_(BGFX_INVALID_HANDLE) {}
+SkinnedRenderer::SkinnedRenderer() : layout_(createSkinnedVertexLayout()) {}
 
 SkinnedRenderer::~SkinnedRenderer() {
-    for (auto& [_, cache] : meshBufferCache_) {
-        if (bgfx::isValid(cache.vbh)) {
-            bgfx::destroy(cache.vbh);
-        }
-        if (bgfx::isValid(cache.ibh)) {
-            bgfx::destroy(cache.ibh);
-        }
-    }
-    if (bgfx::isValid(uniformJointMatrices_)) {
-        bgfx::destroy(uniformJointMatrices_);
-    }
-    if (bgfx::isValid(program_)) {
-        bgfx::destroy(program_);
-    }
+    meshBufferCache_.clear();
+    uniformJointMatrices_.reset();
+    program_.reset();
 }
 
 void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const SkinningData& skinning,
@@ -64,12 +52,12 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
     FABRIC_ZONE_SCOPED;
 
     // Lazy-init program on first render (requires bgfx to be active)
-    if (!bgfx::isValid(program_)) {
+    if (!program_.isValid()) {
         bgfx::RendererType::Enum type = bgfx::getRendererType();
-        program_ = bgfx::createProgram(bgfx::createEmbeddedShader(s_skinnedShaders, type, "vs_skinned"),
-                                       bgfx::createEmbeddedShader(s_skinnedShaders, type, "fs_skinned"), true);
+        program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_skinnedShaders, type, "vs_skinned"),
+                                           bgfx::createEmbeddedShader(s_skinnedShaders, type, "fs_skinned"), true));
 
-        uniformJointMatrices_ = bgfx::createUniform("u_jointMatrices", bgfx::UniformType::Mat4, kMaxGpuJoints);
+        uniformJointMatrices_.reset(bgfx::createUniform("u_jointMatrices", bgfx::UniformType::Mat4, kMaxGpuJoints));
 
         FABRIC_LOG_INFO("SkinnedRenderer shader program initialized");
     }
@@ -139,15 +127,15 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
         }
 
         MeshBufferCache cache;
-        cache.vbh =
-            bgfx::createVertexBuffer(bgfx::copy(vertexData.data(), static_cast<uint32_t>(vertexData.size())), layout_);
-        cache.ibh = bgfx::createIndexBuffer(
+        cache.vbh.reset(
+            bgfx::createVertexBuffer(bgfx::copy(vertexData.data(), static_cast<uint32_t>(vertexData.size())), layout_));
+        cache.ibh.reset(bgfx::createIndexBuffer(
             bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t))),
-            BGFX_BUFFER_INDEX32);
+            BGFX_BUFFER_INDEX32));
         cache.vertexCount = vertexCount;
         cache.indexCount = mesh.indices.size();
 
-        it = meshBufferCache_.emplace(cacheKey, cache).first;
+        it = meshBufferCache_.emplace(cacheKey, std::move(cache)).first;
     }
 
     const auto& cache = it->second;
@@ -155,7 +143,8 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
     // Upload joint matrices (clamp to max GPU joints)
     const size_t jointCount = std::min(skinning.jointMatrices.size(), static_cast<size_t>(kMaxGpuJoints));
     if (jointCount > 0) {
-        bgfx::setUniform(uniformJointMatrices_, skinning.jointMatrices[0].data(), static_cast<uint16_t>(jointCount));
+        bgfx::setUniform(uniformJointMatrices_.get(), skinning.jointMatrices[0].data(),
+                         static_cast<uint16_t>(jointCount));
     }
 
     // Transpose column-major Matrix4x4 to row-major for bgfx
@@ -166,14 +155,14 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
     bgfx::setTransform(mtx);
 
     // Set cached static buffers and submit
-    bgfx::setVertexBuffer(0, cache.vbh);
-    bgfx::setIndexBuffer(cache.ibh);
+    bgfx::setVertexBuffer(0, cache.vbh.get());
+    bgfx::setIndexBuffer(cache.ibh.get());
 
     uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                      BGFX_STATE_MSAA | BGFX_STATE_CULL_CCW;
     bgfx::setState(state);
 
-    bgfx::submit(view, program_);
+    bgfx::submit(view, program_.get());
 }
 
 const bgfx::VertexLayout& SkinnedRenderer::vertexLayout() const {
@@ -181,7 +170,7 @@ const bgfx::VertexLayout& SkinnedRenderer::vertexLayout() const {
 }
 
 bool SkinnedRenderer::isValid() const {
-    return bgfx::isValid(program_);
+    return program_.isValid();
 }
 
 } // namespace recurse
