@@ -234,6 +234,42 @@ TEST_F(ParallelSimulationTest, LiquidTestsStillPass) {
     EXPECT_EQ(bottomWater, 9);
 }
 
+// 8. Cross-chunk boundary writes are deferred and applied correctly
+TEST_F(ParallelSimulationTest, BoundaryWriteQueueCrossChunkSand) {
+    VoxelSimulationSystem sim;
+
+    // Upper chunk (0,0,0) covers world y=0..31
+    sim.grid().fillChunk(0, 0, 0, VoxelCell{});
+    sim.grid().materializeChunk(0, 0, 0);
+
+    // Lower chunk (0,-1,0) covers world y=-32..-1
+    sim.grid().fillChunk(0, -1, 0, VoxelCell{});
+    sim.grid().materializeChunk(0, -1, 0);
+
+    // Stone floor at world y=-2 in lower chunk (catches falling sand)
+    for (int x = 0; x < K_CHUNK_SIZE; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
+            sim.grid().writeCell(x, -2, z, makeMaterial(material_ids::STONE));
+
+    // Sand at world (16, 0, 16): chunk (0,0,0) local y=0
+    // Below is world (16, -1, 16): chunk (0,-1,0) local y=31 (cross-chunk)
+    sim.grid().writeCell(16, 0, 16, makeMaterial(material_ids::SAND));
+    sim.grid().advanceEpoch();
+
+    for (int tick = 0; tick < 5; ++tick) {
+        sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
+        sim.activityTracker().setState(ChunkPos{0, -1, 0}, ChunkState::Active);
+        markAllSubRegions(sim.activityTracker(), ChunkPos{0, 0, 0});
+        markAllSubRegions(sim.activityTracker(), ChunkPos{0, -1, 0});
+        sim.tick();
+    }
+
+    // Sand should have crossed the chunk boundary and landed at y=-1
+    EXPECT_EQ(sim.grid().readCell(16, -1, 16).materialId, material_ids::SAND);
+    // Source position should be air
+    EXPECT_EQ(sim.grid().readCell(16, 0, 16).materialId, material_ids::AIR);
+}
+
 // 7. disableForTesting() runs inline, deterministic
 TEST_F(ParallelSimulationTest, DisableForTesting) {
     fabric::JobScheduler scheduler(4);

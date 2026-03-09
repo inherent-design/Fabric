@@ -17,6 +17,7 @@ class FallingSandLiquidTest : public ::testing::Test {
     ChunkActivityTracker tracker;
     GhostCellManager ghosts;
     FallingSandSystem system{registry};
+    BoundaryWriteQueue boundaryWrites;
     std::mt19937 rng{42};
 
     void SetUp() override {
@@ -37,13 +38,13 @@ class FallingSandLiquidTest : public ::testing::Test {
 
     void runLiquidTick(ChunkPos pos, uint64_t frame) {
         ghosts.syncGhostCells(pos, grid);
-        system.simulateLiquid(pos, grid, ghosts, tracker, frame, rng);
+        system.simulateLiquid(pos, grid, ghosts, tracker, frame, rng, boundaryWrites);
         grid.advanceEpoch();
     }
 
     void runChunkTick(ChunkPos pos, uint64_t frame) {
         ghosts.syncGhostCells(pos, grid);
-        system.simulateChunk(pos, grid, ghosts, tracker, frame, rng);
+        system.simulateChunk(pos, grid, ghosts, tracker, frame, rng, boundaryWrites);
         grid.advanceEpoch();
     }
 
@@ -230,7 +231,13 @@ TEST_F(FallingSandLiquidTest, CrossChunkHorizontalFlow) {
     // Run several ticks on chunk (0,0,0)
     for (uint64_t f = 0; f < 20; ++f) {
         ghosts.syncGhostCells(ChunkPos{0, 0, 0}, grid);
-        system.simulateLiquid(ChunkPos{0, 0, 0}, grid, ghosts, tracker, f, rng);
+        system.simulateLiquid(ChunkPos{0, 0, 0}, grid, ghosts, tracker, f, rng, boundaryWrites);
+        // Drain deferred cross-chunk writes
+        for (const auto& bw : boundaryWrites) {
+            if (!grid.writeCellIfExists(bw.dstWx, bw.dstWy, bw.dstWz, bw.writeCell))
+                grid.writeCell(bw.srcWx, bw.srcWy, bw.srcWz, bw.undoCell);
+        }
+        boundaryWrites.clear();
         grid.advanceEpoch();
     }
 
@@ -325,7 +332,7 @@ TEST_F(FallingSandLiquidTest, PerformanceLiquidSim) {
     ghosts.syncGhostCells(ChunkPos{0, 0, 0}, grid);
 
     auto start = std::chrono::high_resolution_clock::now();
-    system.simulateLiquid(ChunkPos{0, 0, 0}, grid, ghosts, tracker, 0, rng);
+    system.simulateLiquid(ChunkPos{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();

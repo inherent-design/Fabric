@@ -50,13 +50,20 @@ void VoxelSimulationSystem::tick() {
     }
 
     // 3. Simulate chunks via scheduler (parallel or inline)
+    std::vector<BoundaryWriteQueue> boundaryQueues(scheduler_.workerCount() + 1);
     {
         FABRIC_ZONE_SCOPED_N("chunk_simulate");
-        scheduler_.parallelFor(active.size(), [&](size_t jobIdx, size_t /*workerIdx*/) {
+        scheduler_.parallelFor(active.size(), [&](size_t jobIdx, size_t workerIdx) {
             std::mt19937 rng(frameIndex_ + jobIdx);
             const auto& pos = active[jobIdx].pos;
-            sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, frameIndex_, rng);
+            sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, frameIndex_, rng, boundaryQueues[workerIdx]);
         });
+    }
+
+    // 3b. Drain boundary write queues (single-threaded)
+    {
+        FABRIC_ZONE_SCOPED_N("boundary_drain");
+        drainBoundaryWrites(boundaryQueues);
     }
 
     // 4. Advance epoch (swap read/write buffers)
@@ -87,6 +94,19 @@ void VoxelSimulationSystem::propagateDirty(const std::vector<ActiveChunkEntry>& 
             tracker_.notifyBoundaryChange(ChunkPos{p.x, p.y, p.z + 1});
             tracker_.notifyBoundaryChange(ChunkPos{p.x, p.y, p.z - 1});
         }
+    }
+}
+
+void VoxelSimulationSystem::drainBoundaryWrites(std::vector<BoundaryWriteQueue>& queues) {
+    for (auto& queue : queues) {
+        for (const auto& bw : queue) {
+            if (grid_.writeCellIfExists(bw.dstWx, bw.dstWy, bw.dstWz, bw.writeCell)) {
+                tracker_.notifyBoundaryChange(bw.neighborChunk);
+            } else {
+                grid_.writeCell(bw.srcWx, bw.srcWy, bw.srcWz, bw.undoCell);
+            }
+        }
+        queue.clear();
     }
 }
 

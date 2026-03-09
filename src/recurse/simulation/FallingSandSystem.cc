@@ -57,7 +57,7 @@ bool FallingSandSystem::canDisplace(VoxelCell mover, VoxelCell target) const {
 
 void FallingSandSystem::writeSwap(ChunkPos pos, int srcLx, int srcLy, int srcLz, int dstLx, int dstLy, int dstLz,
                                   VoxelCell srcCell, VoxelCell dstCell, SimulationGrid& grid,
-                                  ChunkActivityTracker& tracker) const {
+                                  ChunkActivityTracker& tracker, BoundaryWriteQueue& boundaryWrites) const {
 
     // Source is always in-bounds (we only move cells we own)
     int srcWx = pos.x * K_CHUNK_SIZE + srcLx;
@@ -73,29 +73,21 @@ void FallingSandSystem::writeSwap(ChunkPos pos, int srcLx, int srcLy, int srcLz,
         int dstWz = pos.z * K_CHUNK_SIZE + dstLz;
         grid.writeCell(dstWx, dstWy, dstWz, srcCell);
     } else {
-        // Cross-chunk write: use writeCellIfExists to avoid operator[]
-        // inserting into chunks_ during parallel dispatch (ARCH-SIM-RACE).
+        // Cross-chunk write: defer to boundary queue (Phase 3b)
         int dstWx = pos.x * K_CHUNK_SIZE + dstLx;
         int dstWy = pos.y * K_CHUNK_SIZE + dstLy;
         int dstWz = pos.z * K_CHUNK_SIZE + dstLz;
-        if (!grid.writeCellIfExists(dstWx, dstWy, dstWz, srcCell)) {
-            // Destination chunk absent or unmaterialized; undo source write
-            grid.writeCell(srcWx, srcWy, srcWz, srcCell);
-            return;
-        }
-
-        // Wake the neighbor chunk
         int ncx = dstWx >> 5;
         int ncy = dstWy >> 5;
         int ncz = dstWz >> 5;
-        // Handle negative coordinates: arithmetic right shift gives floor division
-        // for power-of-2 on two's complement (C++20 guarantees this)
-        tracker.notifyBoundaryChange(ChunkPos{ncx, ncy, ncz});
+        boundaryWrites.push_back(
+            BoundaryWrite{dstWx, dstWy, dstWz, srcCell, srcWx, srcWy, srcWz, srcCell, ChunkPos{ncx, ncy, ncz}});
     }
 }
 
 bool FallingSandSystem::simulateGravity(ChunkPos pos, SimulationGrid& grid, const GhostCellManager& ghosts,
-                                        ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng) {
+                                        ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
+                                        BoundaryWriteQueue& boundaryWrites) {
 
     return sweepChunk(frameIndex, [&](int lx, int ly, int lz) -> bool {
         VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
@@ -109,7 +101,7 @@ bool FallingSandSystem::simulateGravity(ChunkPos pos, SimulationGrid& grid, cons
         // Try direct fall (down = ly-1)
         VoxelCell below = readCell(pos, lx, ly - 1, lz, grid, ghosts);
         if (canDisplace(cell, below)) {
-            writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, grid, tracker);
+            writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, grid, tracker, boundaryWrites);
             return true;
         }
 
@@ -124,7 +116,7 @@ bool FallingSandSystem::simulateGravity(ChunkPos pos, SimulationGrid& grid, cons
             for (const auto& [dx, dy, dz] : diags) {
                 VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
                 if (canDisplace(cell, target)) {
-                    writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker);
+                    writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker, boundaryWrites);
                     return true;
                 }
             }
@@ -134,7 +126,8 @@ bool FallingSandSystem::simulateGravity(ChunkPos pos, SimulationGrid& grid, cons
 }
 
 bool FallingSandSystem::simulateLiquid(ChunkPos pos, SimulationGrid& grid, const GhostCellManager& ghosts,
-                                       ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng) {
+                                       ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
+                                       BoundaryWriteQueue& boundaryWrites) {
 
     return sweepChunk(frameIndex, [&](int lx, int ly, int lz) -> bool {
         VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
@@ -145,7 +138,7 @@ bool FallingSandSystem::simulateLiquid(ChunkPos pos, SimulationGrid& grid, const
         // 1. Gravity (same as powder)
         VoxelCell below = readCell(pos, lx, ly - 1, lz, grid, ghosts);
         if (canDisplace(cell, below)) {
-            writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, grid, tracker);
+            writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, grid, tracker, boundaryWrites);
             return true;
         }
 
@@ -159,7 +152,7 @@ bool FallingSandSystem::simulateLiquid(ChunkPos pos, SimulationGrid& grid, const
         for (const auto& [dx, dy, dz] : diags) {
             VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
             if (canDisplace(cell, target)) {
-                writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker);
+                writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker, boundaryWrites);
                 return true;
             }
         }
@@ -171,7 +164,7 @@ bool FallingSandSystem::simulateLiquid(ChunkPos pos, SimulationGrid& grid, const
         for (const auto& [dx, dy, dz] : horiz) {
             VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
             if (target.materialId == material_ids::AIR) {
-                writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker);
+                writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker, boundaryWrites);
                 return true;
             }
         }
@@ -180,9 +173,10 @@ bool FallingSandSystem::simulateLiquid(ChunkPos pos, SimulationGrid& grid, const
 }
 
 void FallingSandSystem::simulateChunk(ChunkPos pos, SimulationGrid& grid, const GhostCellManager& ghosts,
-                                      ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng) {
-    bool gravityChanged = simulateGravity(pos, grid, ghosts, tracker, frameIndex, rng);
-    bool liquidChanged = simulateLiquid(pos, grid, ghosts, tracker, frameIndex, rng);
+                                      ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
+                                      BoundaryWriteQueue& boundaryWrites) {
+    bool gravityChanged = simulateGravity(pos, grid, ghosts, tracker, frameIndex, rng, boundaryWrites);
+    bool liquidChanged = simulateLiquid(pos, grid, ghosts, tracker, frameIndex, rng, boundaryWrites);
     if (!gravityChanged && !liquidChanged)
         tracker.putToSleep(pos);
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "fabric/core/JobScheduler.hh"
+#include "recurse/simulation/BoundaryWriteQueue.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
@@ -39,6 +40,7 @@ class VoxelSimulationSystem {
     std::mt19937 rng_{42};
 
     void propagateDirty(const std::vector<ActiveChunkEntry>& active);
+    void drainBoundaryWrites(std::vector<BoundaryWriteQueue>& queues);
 
   public:
     fabric::JobScheduler& scheduler();

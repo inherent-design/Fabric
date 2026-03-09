@@ -17,6 +17,7 @@ class FallingSandGravityTest : public ::testing::Test {
     ChunkActivityTracker tracker;
     GhostCellManager ghosts;
     FallingSandSystem system{registry};
+    BoundaryWriteQueue boundaryWrites;
     std::mt19937 rng{42};
 
     void SetUp() override {
@@ -43,7 +44,7 @@ class FallingSandGravityTest : public ::testing::Test {
 
     void runGravityTick(ChunkPos pos, uint64_t frame) {
         ghosts.syncGhostCells(pos, grid);
-        system.simulateGravity(pos, grid, ghosts, tracker, frame, rng);
+        system.simulateGravity(pos, grid, ghosts, tracker, frame, rng, boundaryWrites);
         grid.advanceEpoch();
     }
 };
@@ -214,7 +215,13 @@ TEST_F(FallingSandGravityTest, CrossChunkFalling) {
 
     // Simulate chunk(0,1,0) -- sand at y=32 should fall to y=31 (chunk 0,0,0)
     ghosts.syncGhostCells(ChunkPos{0, 1, 0}, grid);
-    system.simulateGravity(ChunkPos{0, 1, 0}, grid, ghosts, tracker, 0, rng);
+    system.simulateGravity(ChunkPos{0, 1, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
+    // Drain deferred cross-chunk writes
+    for (const auto& bw : boundaryWrites) {
+        if (!grid.writeCellIfExists(bw.dstWx, bw.dstWy, bw.dstWz, bw.writeCell))
+            grid.writeCell(bw.srcWx, bw.srcWy, bw.srcWz, bw.undoCell);
+    }
+    boundaryWrites.clear();
     grid.advanceEpoch();
 
     EXPECT_EQ(grid.readCell(16, 31, 16).materialId, material_ids::SAND);
@@ -233,7 +240,7 @@ TEST_F(FallingSandGravityTest, NoMovementSleepsChunk) {
     tracker.setState(ChunkPos{0, 0, 0}, ChunkState::Active);
 
     ghosts.syncGhostCells(ChunkPos{0, 0, 0}, grid);
-    bool changed = system.simulateGravity(ChunkPos{0, 0, 0}, grid, ghosts, tracker, 0, rng);
+    bool changed = system.simulateGravity(ChunkPos{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
     grid.advanceEpoch();
 
     EXPECT_FALSE(changed) << "All-stone chunk should have no gravity movement";
@@ -252,7 +259,7 @@ TEST_F(FallingSandGravityTest, PerformanceSingleChunk) {
     ghosts.syncGhostCells(ChunkPos{0, 0, 0}, grid);
 
     auto start = std::chrono::high_resolution_clock::now();
-    system.simulateGravity(ChunkPos{0, 0, 0}, grid, ghosts, tracker, 0, rng);
+    system.simulateGravity(ChunkPos{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto ms = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
