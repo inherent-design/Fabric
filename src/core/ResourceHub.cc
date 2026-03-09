@@ -2,84 +2,27 @@
 #include "fabric/core/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <algorithm>
-#include <array>
-#include <iostream>
-
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-#endif
+#include <thread>
 
 namespace fabric {
 
-// Worker thread function
-void ResourceHub::workerThreadFunc() {
-    // Call the process queue function
-    this->processLoadQueue();
-}
-
-// Enforce budget wrapper
 void ResourceHub::enforceBudget() {
     enforceMemoryBudget();
 }
 
-// Destructor implementation
 ResourceHub::~ResourceHub() {
     try {
         shutdown();
-    } catch (const std::exception& e) {
-        FABRIC_LOG_ERROR("Exception in ResourceHub destructor: {}", e.what());
     } catch (...) {
-        FABRIC_LOG_ERROR("Unknown exception in ResourceHub destructor");
+        FABRIC_LOG_ERROR("Exception in ResourceHub destructor");
     }
 }
 
-// Shutdown implementation
 void ResourceHub::shutdown() {
-    // Signal workers to exit: set flag, drain queue, notify
-    {
-        std::unique_lock<std::timed_mutex> lock(queueMutex_, std::chrono::milliseconds(200));
-        if (shutdown_)
-            return; // Already shut down
-        shutdown_ = true;
-        if (lock.owns_lock()) {
-            while (!loadQueue_.empty())
-                loadQueue_.pop();
-        }
-    } // Mutex released before notify so workers can re-acquire
-    queueCondition_.notify_all();
-
-    // Join worker threads. Workers see shutdown_ and exit their loop after
-    // finishing any in-flight load (file I/O, bounded duration). The 500ms
-    // condition_variable timeout in workerThread() guarantees wake-up even
-    // if notify_all races with wait_for entry.
-    {
-        std::unique_lock<std::timed_mutex> lock(threadControlMutex_, std::chrono::milliseconds(500));
-        if (lock.owns_lock()) {
-            for (auto& t : workerThreads_) {
-                if (t && t->joinable())
-                    t->join();
-            }
-            workerThreads_.clear();
-        } else {
-            FABRIC_LOG_WARN("ResourceHub::shutdown: could not acquire thread control mutex");
-        }
-    }
-
-    // Join pending load threads spawned by load() method
-    {
-        std::unique_lock<std::timed_mutex> lock(pendingThreadsMutex_, std::chrono::milliseconds(500));
-        if (lock.owns_lock()) {
-            for (auto& t : pendingLoadThreads_) {
-                if (t.joinable())
-                    t.join();
-            }
-            pendingLoadThreads_.clear();
-        } else {
-            FABRIC_LOG_WARN("ResourceHub::shutdown: could not acquire pending threads mutex");
-        }
-    }
-
-    // Clear loaded resources
+    if (shutdown_)
+        return;
+    shutdown_ = true;
+    scheduler_.reset();
     try {
         clear();
     } catch (const std::exception& e) {
@@ -199,20 +142,10 @@ void ResourceHub::preload(const std::vector<std::string>& typeIds, const std::ve
     }
 
     for (size_t i = 0; i < resourceIds.size(); ++i) {
-        ResourceLoadRequest request;
-        request.typeId = typeIds[i];
-        request.resourceId = resourceIds[i];
-        request.priority = priority;
-
-        // Add the request to the queue
-        {
-            std::lock_guard<std::timed_mutex> lock(queueMutex_);
-            loadQueue_.push(request);
-        }
+        auto typeId = typeIds[i];
+        auto resourceId = resourceIds[i];
+        scheduler_->submitBackground([this, typeId, resourceId]() { this->load<Resource>(typeId, resourceId); });
     }
-
-    // Signal the worker thread
-    queueCondition_.notify_one();
 }
 
 void ResourceHub::setMemoryBudget(size_t bytes) {
@@ -559,273 +492,16 @@ size_t ResourceHub::enforceMemoryBudget() {
     return evictedCount;
 }
 
-void ResourceHub::processLoadQueue() {
-    try {
-        while (true) {
-            ResourceLoadRequest request;
-            bool hasRequest = false;
-
-            // Get a request from the queue
-            {
-                std::unique_lock<std::timed_mutex> lock(queueMutex_);
-
-                // Wait for a request or shutdown signal
-                // Add a timeout to periodically check the shutdown status even if the
-                // condition variable isn't notified
-                auto waitResult = queueCondition_.wait_for(lock, std::chrono::milliseconds(500),
-                                                           [this] { return !loadQueue_.empty() || shutdown_; });
-
-                // Check for shutdown first
-                if (shutdown_) {
-                    break;
-                }
-
-                // Skip this iteration if no request is available
-                if (!waitResult || loadQueue_.empty()) {
-                    continue;
-                }
-
-                // Get the next request
-                request = loadQueue_.top();
-                loadQueue_.pop();
-                hasRequest = true;
-            }
-
-            // Skip processing if we didn't get a valid request
-            if (!hasRequest) {
-                continue;
-            }
-
-            try {
-                // Process the request
-                auto resourceNode = resourceGraph_.getNode(request.resourceId);
-                std::shared_ptr<Resource> resource;
-
-                if (!resourceNode) {
-                    // Create a new resource
-                    resource = ResourceFactory::create(request.typeId, request.resourceId);
-                    if (resource) {
-                        if (!resourceGraph_.addNode(request.resourceId, resource)) {
-                            // Node may have been added by another thread, try to get it again
-                            resourceNode = resourceGraph_.getNode(request.resourceId);
-                            if (resourceNode) {
-                                auto nodeLock = resourceNode->tryLock(
-                                    CoordinatedGraph<std::shared_ptr<Resource>>::LockIntent::Read);
-
-                                if (nodeLock && nodeLock->isLocked()) {
-                                    resource = nodeLock->getNode()->getDataNoLock();
-                                }
-                            }
-                        } else {
-                            resourceNode = resourceGraph_.getNode(request.resourceId);
-                        }
-                    }
-                } else {
-                    auto nodeLock =
-                        resourceNode->tryLock(CoordinatedGraph<std::shared_ptr<Resource>>::LockIntent::Read);
-
-                    if (nodeLock && nodeLock->isLocked()) {
-                        resource = nodeLock->getNode()->getDataNoLock();
-                    }
-                }
-
-                // Load the resource if needed
-                if (resource) {
-                    ResourceState state = resource->getState();
-                    if (state != ResourceState::Loaded) {
-                        // Try to load - handle exceptions that might occur
-                        try {
-                            resource->load();
-
-                            // Update the last access time
-                            if (resourceNode) {
-                                resourceNode->touch();
-                            }
-                        } catch (const std::exception& e) {
-                            FABRIC_LOG_ERROR("Error loading resource {}: {}", request.resourceId, e.what());
-                        }
-                    }
-                }
-
-                // Enforce memory budget - handle any exceptions
-                try {
-                    enforceBudget();
-                } catch (const std::exception& e) {
-                    FABRIC_LOG_ERROR("Error enforcing memory budget: {}", e.what());
-                }
-
-                // Call the callback - handle any exceptions
-                if (request.callback && resource) {
-                    try {
-                        request.callback(resource);
-                    } catch (const std::exception& e) {
-                        FABRIC_LOG_ERROR("Error in resource callback for {}: {}", request.resourceId, e.what());
-                    }
-                }
-            } catch (const std::exception& e) {
-                // Catch any exception during request processing to keep the thread
-                // alive
-                FABRIC_LOG_ERROR("Error processing request for {}: {}", request.resourceId, e.what());
-            } catch (...) {
-                // Catch any unknown exception
-                FABRIC_LOG_ERROR("Unknown error processing request for {}", request.resourceId);
-            }
-        }
-    } catch (const std::exception& e) {
-        // Log the error but don't propagate it - this would terminate the thread
-        FABRIC_LOG_CRITICAL("Fatal worker thread error: {}", e.what());
-    } catch (...) {
-        // Catch any unknown exception
-        FABRIC_LOG_CRITICAL("Unknown fatal worker thread error");
-    }
-}
-
 void ResourceHub::disableWorkerThreadsForTesting() {
-    // Set shutdown flag first (it's atomic and thread-safe)
-    shutdown_ = true;
-
-    // Notify all threads to check the shutdown flag
-    queueCondition_.notify_all();
-
-    // Try to acquire mutex with a timeout - don't block indefinitely
-    auto timeoutMs = 100;
-    auto start = std::chrono::steady_clock::now();
-    while (!threadControlMutex_.try_lock()) {
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count() >
-            timeoutMs) {
-            FABRIC_LOG_WARN("Could not acquire thread control mutex in disableWorkerThreadsForTesting");
-
-            // Even if we couldn't get the mutex, we've already set the shutdown flag
-            // and notified threads, so they should eventually terminate
-            workerThreads_.clear();
-            workerThreadCount_ = 0;
-            return;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-
-    // Use RAII for proper mutex management
-    std::lock_guard<std::timed_mutex> guard(threadControlMutex_, std::adopt_lock);
-
-    // Return early if already shut down
-    if (workerThreadCount_ == 0 && workerThreads_.empty()) {
-        return;
-    }
-
-    // Clear any pending requests to help blocked workers exit faster
-    {
-        // Try to acquire queue lock with timeout
-        auto queueLockTimeoutMs = 50;
-        auto queueLockStart = std::chrono::steady_clock::now();
-        bool queueLockAcquired = false;
-
-        while (!queueMutex_.try_lock()) {
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - queueLockStart)
-                    .count() > queueLockTimeoutMs) {
-                break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-
-        if (queueMutex_.try_lock()) {
-            queueLockAcquired = true;
-
-            // Clear the queue
-            while (!loadQueue_.empty()) {
-                loadQueue_.pop();
-            }
-        }
-
-        if (queueLockAcquired) {
-            queueMutex_.unlock();
-        }
-    }
-
-    // Notify all threads again
-    queueCondition_.notify_all();
-
-    // Join worker threads with timeout protection - no detaching
-    const int MAX_JOIN_TIME_MS = 200;
-    auto joinStart = std::chrono::steady_clock::now();
-
-    for (auto& thread : workerThreads_) {
-        if (thread && thread->joinable()) {
-            // Check if we've exceeded total timeout
-            auto elapsed =
-                std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - joinStart)
-                    .count();
-            if (elapsed > MAX_JOIN_TIME_MS) {
-                FABRIC_LOG_WARN("Thread join timeout in disableWorkerThreadsForTesting");
-                break;
-            }
-            thread->join();
-        }
-    }
-
-    // Clear the worker threads vector
-    workerThreads_.clear();
+    if (scheduler_)
+        scheduler_->disableForTesting();
     workerThreadCount_ = 0;
-
-    // Log completion
-    FABRIC_LOG_DEBUG("Worker threads disabled for testing");
 }
 
 void ResourceHub::restartWorkerThreadsAfterTesting() {
-    // Use mutex to synchronize thread creation
-    std::unique_lock<std::timed_mutex> qLock(threadControlMutex_);
-
-    // Make sure any existing threads are properly shut down
-    if (!workerThreads_.empty()) {
-        // Signal threads to exit
-        {
-            std::lock_guard<std::timed_mutex> qLock(queueMutex_);
-            shutdown_ = true;
-            // Clear any pending requests to prevent blocked workers
-            while (!loadQueue_.empty()) {
-                loadQueue_.pop();
-            }
-        }
-        queueCondition_.notify_all();
-
-        // Join with timeout to prevent hangs
-        for (auto& thread : workerThreads_) {
-            if (thread && thread->joinable()) {
-                // Create a timeout thread
-                std::atomic<bool> joinCompleted{false};
-                std::thread timeoutThread([&]() {
-                    for (int i = 0; i < 50; i++) { // Wait up to 5 seconds
-                        if (joinCompleted)
-                            return;
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    }
-                    if (!joinCompleted) {
-                        // Log timeout warning
-                        FABRIC_LOG_WARN("Thread join timeout in restartWorkerThreadsAfterTesting");
-                    }
-                });
-
-                // Join the worker thread
-                thread->join();
-                joinCompleted = true;
-
-                // Clean up timeout thread
-                if (timeoutThread.joinable()) {
-                    timeoutThread.join();
-                }
-            }
-        }
-        workerThreads_.clear();
-    }
-
-    // Start fresh
     shutdown_ = false;
-    workerThreadCount_ = std::thread::hardware_concurrency();
-
-    // Start worker threads
-    workerThreads_.reserve(workerThreadCount_);
-    for (unsigned int i = 0; i < workerThreadCount_; ++i) {
-        workerThreads_.push_back(std::make_unique<std::thread>(&ResourceHub::workerThreadFunc, this));
-    }
+    scheduler_ = std::make_unique<JobScheduler>(std::thread::hardware_concurrency());
+    workerThreadCount_ = static_cast<unsigned int>(scheduler_->workerCount());
 }
 
 unsigned int ResourceHub::getWorkerThreadCount() const {
@@ -833,156 +509,16 @@ unsigned int ResourceHub::getWorkerThreadCount() const {
 }
 
 void ResourceHub::setWorkerThreadCount(unsigned int count) {
-    if (count == 0) {
+    if (count == 0)
         throwError("Worker thread count must be at least 1");
-    }
-
-    // Use thread control mutex to synchronize thread adjustments
-    std::unique_lock<std::timed_mutex> controlLock(threadControlMutex_);
-
-    // If no change, return early
-    if (count == workerThreadCount_) {
-        return;
-    }
-
-    // If decreasing thread count, signal specific threads to stop
-    if (count < workerThreadCount_) {
-        unsigned int threadsToStop = workerThreadCount_ - count;
-        std::vector<std::unique_ptr<std::thread>> threadsToJoin;
-
-        // Move threads to be stopped to a separate vector
-        for (unsigned int i = 0; i < threadsToStop; ++i) {
-            if (i < workerThreads_.size()) {
-                threadsToJoin.push_back(std::move(workerThreads_.back()));
-                workerThreads_.pop_back();
-            }
-        }
-
-        // Signal threads to check their shutdown status
-        queueCondition_.notify_all();
-
-        // Join the threads we're removing with timeout protection
-        for (auto& thread : threadsToJoin) {
-            if (thread && thread->joinable()) {
-                // Create a timeout thread
-                std::atomic<bool> joinCompleted{false};
-                std::thread timeoutThread([&]() {
-                    for (int i = 0; i < 30; i++) { // 3 second timeout
-                        if (joinCompleted)
-                            return;
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    }
-                    if (!joinCompleted) {
-                        // Log timeout warning
-                        FABRIC_LOG_WARN("Thread join timeout in setWorkerThreadCount");
-                    }
-                });
-
-                // Join the worker thread
-                thread->join();
-                joinCompleted = true;
-
-                // Clean up timeout thread
-                if (timeoutThread.joinable()) {
-                    timeoutThread.join();
-                }
-            }
-        }
-    }
-
-    // If increasing thread count, create new threads
-    if (count > workerThreadCount_) {
-        // Ensure we're not in shutdown state
-        if (shutdown_) {
-            shutdown_ = false; // Reset shutdown flag
-        }
-
-        // Create new threads
-        unsigned int threadsToAdd = count - workerThreadCount_;
-        workerThreads_.reserve(workerThreads_.size() + threadsToAdd);
-
-        for (unsigned int i = 0; i < threadsToAdd; ++i) {
-            try {
-                workerThreads_.push_back(std::make_unique<std::thread>(&ResourceHub::workerThreadFunc, this));
-            } catch (const std::exception& e) {
-                // Log thread creation error
-                FABRIC_LOG_ERROR("Error creating worker thread: {}", e.what());
-            }
-        }
-    }
-
-    // Update the thread count
-    workerThreadCount_ = count;
+    scheduler_ = std::make_unique<JobScheduler>(count);
+    workerThreadCount_ = static_cast<unsigned int>(scheduler_->workerCount());
 }
 
-// Constructor implementation
-ResourceHub::ResourceHub()
-    : memoryBudget_(1024 * 1024 * 1024), // 1 GB default
-      workerThreadCount_(std::thread::hardware_concurrency()),
-      shutdown_(false) {
-    // Optional debug message but quieter
-    FABRIC_LOG_DEBUG("ResourceHub initialized with {} configured worker threads", workerThreadCount_.load());
-
-    // Don't start threads here - let them be started explicitly
-    // This prevents issues with tests
-
-    // Detect if we're in a test environment
-    bool inTestEnvironment = true;
-    try {
-        // Check for a common environment variable that testing frameworks set
-        // or try to detect common test patterns in the executable path
-        char* testEnv = std::getenv("GTEST_ALSO_RUN_DISABLED_TESTS");
-        if (testEnv != nullptr) {
-            inTestEnvironment = true;
-        } else {
-            // Try to get the executable path
-            std::array<char, 1024> buffer;
-            std::fill(buffer.begin(), buffer.end(), 0);
-
-            // Use platform-specific way to get executable path
-#if defined(_WIN32)
-            GetModuleFileNameA(NULL, buffer.data(), buffer.size());
-#elif defined(__APPLE__)
-            uint32_t size = buffer.size();
-            if (_NSGetExecutablePath(buffer.data(), &size) != 0) {
-                buffer[0] = 0;
-            }
-#elif defined(__linux__)
-            char procPath[32];
-            sprintf(procPath, "/proc/%d/exe", getpid());
-            if (readlink(procPath, buffer.data(), buffer.size()) == -1) {
-                buffer[0] = 0;
-            }
-#endif
-
-            std::string exePath(buffer.data());
-            // If the path contains "test", "Test", "TEST", assume it's a test
-            std::string lowerPath = exePath;
-            std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(),
-                           [](unsigned char c) { return std::tolower(c); });
-
-            if (lowerPath.find("test") != std::string::npos || lowerPath.find("unittest") != std::string::npos) {
-                inTestEnvironment = true;
-            } else {
-                inTestEnvironment = false;
-            }
-        }
-    } catch (...) {
-        FABRIC_LOG_DEBUG("ResourceHub: exception during test environment detection, defaulting to test mode");
-        inTestEnvironment = true;
-    }
-
-    // Only start worker threads if we're not in a test environment
-    if (!inTestEnvironment && workerThreadCount_ > 0) {
-        FABRIC_LOG_INFO("Starting {} worker threads", workerThreadCount_.load());
-        for (unsigned int i = 0; i < workerThreadCount_; ++i) {
-            workerThreads_.push_back(std::make_unique<std::thread>(&ResourceHub::workerThreadFunc, this));
-        }
-    } else {
-        // In test environment, don't start threads automatically
-        workerThreadCount_ = 0;
-        FABRIC_LOG_DEBUG("ResourceHub detected test environment - not starting worker threads");
-    }
+ResourceHub::ResourceHub() : memoryBudget_(1024 * 1024 * 1024), workerThreadCount_(0), shutdown_(false) {
+    scheduler_ = std::make_unique<JobScheduler>(2);
+    workerThreadCount_ = static_cast<unsigned int>(scheduler_->workerCount());
+    FABRIC_LOG_DEBUG("ResourceHub initialized with JobScheduler ({} workers)", workerThreadCount_.load());
 }
 
 void ResourceHub::clear() {
@@ -1081,25 +617,9 @@ void ResourceHub::clear() {
 }
 
 void ResourceHub::reset() {
-    // Disable worker threads
     disableWorkerThreadsForTesting();
-
-    // Join pending load threads before clearing
-    {
-        std::lock_guard<std::timed_mutex> lock(pendingThreadsMutex_);
-        for (auto& thread : pendingLoadThreads_) {
-            if (thread.joinable()) {
-                thread.join();
-            }
-        }
-        pendingLoadThreads_.clear();
-    }
-
-    // Clear all resources
     clear();
-
-    // Reset memory budget to default
-    memoryBudget_ = 1024 * 1024 * 1024; // 1 GB default
+    memoryBudget_ = 1024 * 1024 * 1024;
 }
 
 bool ResourceHub::isEmpty() const {

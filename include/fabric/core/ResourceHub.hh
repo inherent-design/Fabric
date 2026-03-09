@@ -1,17 +1,14 @@
 #pragma once
 
+#include "fabric/core/JobScheduler.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/Resource.hh"
 #include "fabric/utils/CoordinatedGraph.hh"
-#include <any>
 #include <atomic>
 #include <chrono>
 #include <functional>
 #include <future>
-#include <iostream>
 #include <memory>
-#include <mutex>
-#include <queue>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -50,228 +47,61 @@ class ResourceHub {
      */
     template <typename T> ResourceHandle<T> load(const std::string& typeId, const std::string& resourceId) {
         static_assert(std::is_base_of<Resource, T>::value, "T must be derived from Resource");
-
-        // Robust implementation following best practices from docs/guides/IMPLEMENTATION_PATTERNS.md
-        // Using the Copy-Then-Process pattern and avoiding nested locks
-
-        const int LOAD_TIMEOUT_MS = 500;  // 500ms timeout to prevent UI hangs
-        const int PHASE_TIMEOUT_MS = 150; // Each phase gets shorter timeout
-        auto startTime = std::chrono::steady_clock::now();
-
-        // Timeout checker function
-        auto isTimedOut = [&startTime, LOAD_TIMEOUT_MS]() -> bool {
-            return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime)
-                       .count() > LOAD_TIMEOUT_MS;
-        };
+        constexpr int LOAD_TIMEOUT_MS = 500;
+        constexpr int PHASE_TIMEOUT_MS = 150;
 
         try {
-            // =================================================================
-            // Phase 1: Resource Lookup or Creation - Highly resilient to failures
-            // =================================================================
+            // Phase 1: Resource lookup or creation
             std::shared_ptr<Resource> resource;
-            bool createdNewResource = false;
 
-            // First attempt to get existing resource
-            if (!isTimedOut()) {
-                try {
-                    // Use a very short operation timeout to avoid blocking
-                    bool nodeExists = false;
-                    try {
-                        nodeExists = resourceGraph_.hasNode(resourceId);
-                    } catch (...) {
-                        // Silently continue with creation flow if this fails
+            if (resourceGraph_.hasNode(resourceId)) {
+                auto node = resourceGraph_.getNode(resourceId, PHASE_TIMEOUT_MS);
+                if (node) {
+                    auto nodeLock =
+                        node->tryLock(CoordinatedGraph<std::shared_ptr<Resource>>::LockIntent::Read, PHASE_TIMEOUT_MS);
+                    if (nodeLock && nodeLock->isLocked()) {
+                        resource = nodeLock->getNode()->getDataNoLock();
+                        nodeLock->release();
                     }
-
-                    if (nodeExists) {
-                        try {
-                            auto node = resourceGraph_.getNode(resourceId, PHASE_TIMEOUT_MS / 3);
-                            if (node) {
-                                auto nodeLock =
-                                    node->tryLock(CoordinatedGraph<std::shared_ptr<Resource>>::LockIntent::Read,
-                                                  PHASE_TIMEOUT_MS / 3);
-
-                                if (nodeLock && nodeLock->isLocked()) {
-                                    resource = nodeLock->getNode()->getDataNoLock();
-                                    nodeLock->release();
-                                }
-                            }
-                        } catch (...) {
-                            // Silently continue if this fails
-                        }
-                    }
-                } catch (...) {
-                    // Silently continue with creation flow if this fails
                 }
             }
 
-            // If we still don't have a resource by this point, create a new one
-            if (!resource && !isTimedOut()) {
-                try {
-                    // Create new resource
-                    resource = ResourceFactory::create(typeId, resourceId);
-                    if (resource) {
-                        createdNewResource = true;
-
-                        // Try to add resource to graph with strict timeout
-                        try {
-                            bool added = resourceGraph_.addNode(resourceId, resource);
-
-                            // If adding failed, the node might already exist
-                            if (!added) {
-                                // Handle the case where someone else added the node first
-                                try {
-                                    auto node = resourceGraph_.getNode(resourceId, PHASE_TIMEOUT_MS / 3);
-                                    if (node) {
-                                        auto nodeLock =
-                                            node->tryLock(CoordinatedGraph<std::shared_ptr<Resource>>::LockIntent::Read,
-                                                          PHASE_TIMEOUT_MS / 3);
-
-                                        if (nodeLock && nodeLock->isLocked()) {
-                                            resource = nodeLock->getNode()->getDataNoLock();
-                                            createdNewResource = false;
-                                            nodeLock->release();
-                                        }
-                                    }
-                                } catch (...) {
-                                    // If we can't get the node someone else added, keep our locally created one
-                                    // We just won't be able to add it to the graph
-                                }
-                            }
-                        } catch (...) {
-                            // If graph operations fail, we still have the resource locally
-                            // Just continue with local instance
-                            FABRIC_LOG_WARN("Failed to add resource to graph: {}", resourceId);
-                        }
-                    } else {
-                        FABRIC_LOG_ERROR("Failed to create resource: {}", resourceId);
-                    }
-                } catch (const std::exception& e) {
-                    FABRIC_LOG_ERROR("Exception creating resource: {}", e.what());
-                } catch (...) {
-                    FABRIC_LOG_ERROR("Unknown exception creating resource");
-                }
-            }
-
-            // Return early if we have no resource or timed out
             if (!resource) {
-                if (isTimedOut()) {
-                    FABRIC_LOG_WARN("Timed out in ResourceHub::load during resource lookup for {}", resourceId);
-                } else {
-                    FABRIC_LOG_ERROR("Could not create or retrieve resource: {}", resourceId);
-                }
-                return ResourceHandle<T>();
-            }
-
-            // =================================================================
-            // Phase 2: Resource Loading - With proper timeout handling
-            // =================================================================
-            if (resource->getState() != ResourceState::Loaded && !isTimedOut()) {
-                auto loadTimeoutMs = PHASE_TIMEOUT_MS;
-                auto loadStartTime = std::chrono::steady_clock::now();
-
-                auto loadTimedOut = [&loadStartTime, loadTimeoutMs]() -> bool {
-                    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
-                                                                                 loadStartTime)
-                               .count() > loadTimeoutMs;
-                };
-
-                // Load the resource with a separate timeout
-                try {
-                    // Create a future with timeout for loading.
-                    // Promise is moved into the lambda so the detached thread
-                    // owns it outright. Resource is captured by value (shared_ptr
-                    // copy) so it stays alive even if this stack frame returns.
-                    auto loadPromise = std::make_shared<std::promise<bool>>();
-                    auto loadFuture = loadPromise->get_future();
-
-                    std::shared_ptr<Resource> resourceCopy = resource;
-                    std::thread loadThread([resourceCopy, loadPromise]() {
-                        try {
-                            bool result = resourceCopy->load();
-                            loadPromise->set_value(result);
-                        } catch (...) {
-                            try {
-                                loadPromise->set_value(false);
-                            } catch (...) {
-                                // Promise might already be satisfied
-                            }
-                        }
-                    });
-
-                    // Track thread for proper cleanup in destructor instead of detaching
-                    {
-                        std::lock_guard<std::timed_mutex> lock(pendingThreadsMutex_);
-                        // Clean up finished threads periodically
-                        pendingLoadThreads_.erase(std::remove_if(pendingLoadThreads_.begin(), pendingLoadThreads_.end(),
-                                                                 [](std::thread& t) { return !t.joinable(); }),
-                                                  pendingLoadThreads_.end());
-                        pendingLoadThreads_.push_back(std::move(loadThread));
-                    }
-
-                    // Wait for the future with timeout
-                    bool loadSuccess = false;
-
-                    if (loadFuture.wait_for(std::chrono::milliseconds(loadTimeoutMs)) == std::future_status::ready) {
-                        try {
-                            loadSuccess = loadFuture.get();
-                        } catch (...) {
-                            loadSuccess = false;
-                        }
-                    } else {
-                        FABRIC_LOG_WARN("Resource loading timed out for: {}", resourceId);
-                        loadSuccess = false;
-                    }
-
-                    if (!loadSuccess) {
-                        FABRIC_LOG_WARN("Failed to load resource: {}", resourceId);
-                        // Continue anyway - we'll return the handle even if loading failed
-                    }
-
-                    // Update access time if needed and if we haven't timed out
-                    if ((createdNewResource || loadSuccess) && !loadTimedOut() && !isTimedOut()) {
-                        try {
-                            auto node = resourceGraph_.getNode(resourceId, PHASE_TIMEOUT_MS / 3);
-                            if (node) {
-                                node->touch();
-                            }
-                        } catch (...) {
-                            // Failure to update access time is not critical
-                        }
-                    }
-                } catch (const std::exception& e) {
-                    FABRIC_LOG_ERROR("Exception during resource loading: {}", e.what());
-                } catch (...) {
-                    FABRIC_LOG_ERROR("Unknown exception during resource loading");
-                }
-            }
-
-            // =================================================================
-            // Phase 3: Handle Creation
-            // =================================================================
-            try {
-                // Even if loading failed, return a handle to the resource
-                // The client can check the resource state
-                if (!isTimedOut()) {
-                    return ResourceHandle<T>(std::static_pointer_cast<T>(resource));
-                } else {
-                    FABRIC_LOG_WARN("Timed out before returning resource handle: {}", resourceId);
+                resource = ResourceFactory::create(typeId, resourceId);
+                if (!resource) {
+                    FABRIC_LOG_ERROR("Failed to create resource: {}", resourceId);
                     return ResourceHandle<T>();
                 }
-            } catch (const std::exception& e) {
-                FABRIC_LOG_ERROR("Exception creating resource handle: {}", e.what());
-                return ResourceHandle<T>();
+                if (!resourceGraph_.addNode(resourceId, resource)) {
+                    auto node = resourceGraph_.getNode(resourceId, PHASE_TIMEOUT_MS);
+                    if (node) {
+                        auto nodeLock = node->tryLock(CoordinatedGraph<std::shared_ptr<Resource>>::LockIntent::Read,
+                                                      PHASE_TIMEOUT_MS);
+                        if (nodeLock && nodeLock->isLocked()) {
+                            resource = nodeLock->getNode()->getDataNoLock();
+                            nodeLock->release();
+                        }
+                    }
+                }
             }
 
+            // Phase 2: Load via scheduler
+            if (resource->getState() != ResourceState::Loaded) {
+                auto resourceCopy = resource;
+                auto future = scheduler_->submit([resourceCopy]() { return resourceCopy->load(); });
+                if (future.wait_for(std::chrono::milliseconds(LOAD_TIMEOUT_MS)) == std::future_status::ready) {
+                    if (!future.get())
+                        FABRIC_LOG_WARN("Failed to load resource: {}", resourceId);
+                } else {
+                    FABRIC_LOG_WARN("Resource loading timed out for: {}", resourceId);
+                }
+            }
+
+            return ResourceHandle<T>(std::static_pointer_cast<T>(resource));
         } catch (const std::exception& e) {
             FABRIC_LOG_ERROR("Exception in ResourceHub::load() for {}: {}", resourceId, e.what());
             return ResourceHandle<T>();
-        } catch (...) {
-            FABRIC_LOG_ERROR("Unknown exception in ResourceHub::load() for {}", resourceId);
-            return ResourceHandle<T>();
         }
-
-        // Fallback in case of any uncaught errors
-        return ResourceHandle<T>();
     }
 
     /**
@@ -288,41 +118,26 @@ class ResourceHub {
                    std::function<void(ResourceHandle<T>)> callback) {
         static_assert(std::is_base_of<Resource, T>::value, "T must be derived from Resource");
 
-        // First check if the resource is already loaded
-        auto resourceNode = resourceGraph_.getNode(resourceId);
-        if (resourceNode) {
-            auto nodeLock = resourceNode->tryLock(CoordinatedGraph<std::shared_ptr<Resource>>::LockIntent::Read);
-            if (nodeLock && nodeLock->isLocked()) {
-                auto resource = nodeLock->getNode()->getDataNoLock();
-                if (resource->getState() == ResourceState::Loaded) {
-                    if (callback) {
-                        callback(ResourceHandle<T>(std::static_pointer_cast<T>(resource)));
+        if (resourceGraph_.hasNode(resourceId)) {
+            auto node = resourceGraph_.getNode(resourceId);
+            if (node) {
+                auto nodeLock = node->tryLock(CoordinatedGraph<std::shared_ptr<Resource>>::LockIntent::Read);
+                if (nodeLock && nodeLock->isLocked()) {
+                    auto resource = nodeLock->getNode()->getDataNoLock();
+                    if (resource->getState() == ResourceState::Loaded) {
+                        if (callback)
+                            callback(ResourceHandle<T>(std::static_pointer_cast<T>(resource)));
+                        return;
                     }
-                    return;
                 }
             }
         }
 
-        // Create a load request
-        ResourceLoadRequest request;
-        request.typeId = typeId;
-        request.resourceId = resourceId;
-        request.priority = priority;
-
-        if (callback) {
-            request.callback = [callback](std::shared_ptr<Resource> resource) {
-                callback(ResourceHandle<T>(std::static_pointer_cast<T>(resource)));
-            };
-        }
-
-        // Add the request to the queue
-        {
-            std::lock_guard<std::timed_mutex> lock(queueMutex_);
-            loadQueue_.push(request);
-        }
-
-        // Signal the worker thread
-        queueCondition_.notify_one();
+        scheduler_->submitBackground([this, typeId, resourceId, callback]() {
+            auto handle = this->load<T>(typeId, resourceId);
+            if (callback)
+                callback(handle);
+        });
     }
 
     /**
@@ -517,35 +332,12 @@ class ResourceHub {
     CoordinatedGraph<std::shared_ptr<Resource>> resourceGraph_;
 
   private:
-    // Process load queue function
-    void processLoadQueue();
-
-    // Worker thread function
-    void workerThreadFunc();
-
-    // Enforce budget
     void enforceBudget();
 
-    // Memory management
+    std::unique_ptr<JobScheduler> scheduler_;
     std::atomic<size_t> memoryBudget_;
-
-    // Worker threads
     std::atomic<unsigned int> workerThreadCount_;
-    std::vector<std::unique_ptr<std::thread>> workerThreads_;
-
-    // Load queue
-    std::priority_queue<ResourceLoadRequest, std::vector<ResourceLoadRequest>, ResourceLoadRequestComparator>
-        loadQueue_;
-
-    // Synchronization with timed mutex support for safer thread management
-    std::timed_mutex queueMutex_;
-    std::timed_mutex threadControlMutex_; // Mutex for thread creation/destruction
-    std::condition_variable_any queueCondition_;
     std::atomic<bool> shutdown_{false};
-
-    // Pending load threads - tracks threads spawned by load() for proper cleanup
-    std::vector<std::thread> pendingLoadThreads_;
-    std::timed_mutex pendingThreadsMutex_;
 };
 
 } // namespace fabric
