@@ -73,4 +73,29 @@ std::vector<std::tuple<int, int, int>> ChunkRegistry::allChunks() const {
     return result;
 }
 
+// -- Dispatch helpers (C-1c) --------------------------------------------------
+
+std::vector<ChunkDispatchEntry> ChunkRegistry::buildDispatchList(ChunkSlotState filter) {
+    std::vector<ChunkDispatchEntry> result;
+    for (auto& [key, slot] : slots_) {
+        if (slot.state == filter) {
+            auto [cx, cy, cz] = unpackChunkKey(key);
+            result.push_back({ChunkPos{cx, cy, cz}, &slot});
+        }
+    }
+    return result;
+}
+
+void ChunkRegistry::resolveBufferPointers(uint64_t epoch) {
+    for (auto& [key, slot] : slots_) {
+        if (slot.isMaterialized()) {
+            slot.readPtr = slot.simBuffers.buffers[epoch & 1].get()->data();
+            slot.writePtr = slot.simBuffers.buffers[(epoch + 1) & 1].get()->data();
+        } else {
+            slot.readPtr = nullptr;
+            slot.writePtr = nullptr;
+        }
+    }
+}
+
 } // namespace recurse::simulation

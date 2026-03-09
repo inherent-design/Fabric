@@ -204,3 +204,57 @@ TEST_F(ChunkRegistryTest, ChunkSlotConvenienceDelegation) {
     EXPECT_TRUE(slot.isMaterialized());
     EXPECT_TRUE(slot.simBuffers.isMaterialized());
 }
+
+// 18. buildDispatchList returns empty vector when no chunks exist
+TEST_F(ChunkRegistryTest, BuildDispatchListEmpty) {
+    auto list = registry.buildDispatchList(ChunkSlotState::Active);
+    EXPECT_TRUE(list.empty());
+}
+
+// 19. buildDispatchList filters by state
+TEST_F(ChunkRegistryTest, BuildDispatchListFiltersState) {
+    auto& s0 = registry.addChunk(0, 0, 0);
+    s0.state = ChunkSlotState::Active;
+
+    auto& s1 = registry.addChunk(1, 0, 0);
+    s1.state = ChunkSlotState::Generating;
+
+    auto& s2 = registry.addChunk(2, 0, 0);
+    s2.state = ChunkSlotState::Draining;
+
+    auto list = registry.buildDispatchList(ChunkSlotState::Active);
+    ASSERT_EQ(list.size(), 1u);
+    EXPECT_EQ(list[0].pos.x, 0);
+    EXPECT_EQ(list[0].pos.y, 0);
+    EXPECT_EQ(list[0].pos.z, 0);
+    EXPECT_EQ(list[0].slot, &s0);
+}
+
+// 20. resolveBufferPointers sets correct pointers for each epoch
+TEST_F(ChunkRegistryTest, ResolveBufferPointersCorrectForEpoch) {
+    auto& slot = registry.addChunk(0, 0, 0);
+    slot.materialize();
+
+    auto* buf0 = slot.simBuffers.buffers[0].get()->data();
+    auto* buf1 = slot.simBuffers.buffers[1].get()->data();
+
+    registry.resolveBufferPointers(0);
+    EXPECT_EQ(slot.readPtr, buf0);
+    EXPECT_EQ(slot.writePtr, buf1);
+
+    registry.resolveBufferPointers(1);
+    EXPECT_EQ(slot.readPtr, buf1);
+    EXPECT_EQ(slot.writePtr, buf0);
+}
+
+// 21. resolveBufferPointers sets nullptr for unmaterialized slots
+TEST_F(ChunkRegistryTest, ResolveBufferPointersNullForUnmaterialized) {
+    registry.addChunk(0, 0, 0);
+
+    registry.resolveBufferPointers(0);
+
+    auto* slot = registry.find(0, 0, 0);
+    ASSERT_NE(slot, nullptr);
+    EXPECT_EQ(slot->readPtr, nullptr);
+    EXPECT_EQ(slot->writePtr, nullptr);
+}

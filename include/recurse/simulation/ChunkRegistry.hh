@@ -1,5 +1,6 @@
 #pragma once
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <array>
 #include <cstdint>
@@ -42,6 +43,11 @@ struct ChunkSlot {
     bool isMaterialized() const { return simBuffers.isMaterialized(); }
 };
 
+struct ChunkDispatchEntry {
+    ChunkPos pos;
+    ChunkSlot* slot;
+};
+
 class ChunkRegistry {
   public:
     // Structural modification
@@ -58,6 +64,10 @@ class ChunkRegistry {
     size_t chunkCount() const;
     size_t materializedChunkCount() const;
     std::vector<std::tuple<int, int, int>> allChunks() const;
+
+    // Dispatch helpers (C-1c)
+    std::vector<ChunkDispatchEntry> buildDispatchList(ChunkSlotState filter);
+    void resolveBufferPointers(uint64_t epoch);
 
     // Iteration over materialized chunks (used by advanceEpoch)
     template <typename Fn> void forEachMaterialized(Fn&& fn) {
