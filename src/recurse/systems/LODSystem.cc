@@ -4,6 +4,8 @@
 #include "fabric/core/Camera.hh"
 #include "fabric/core/JobScheduler.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/core/SceneView.hh"
+#include "fabric/core/Spatial.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/LODGrid.hh"
@@ -11,6 +13,7 @@
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/systems/VoxelRenderSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 
@@ -39,6 +42,10 @@ void LODSystem::doInit(fabric::AppContext& ctx) {
     } else {
         FABRIC_LOG_INFO("LODSystem initialized (no VoxelSimulationSystem available)");
     }
+
+    auto* renderSystem = ctx.systemRegistry.get<VoxelRenderSystem>();
+    if (renderSystem)
+        voxelRenderer_ = &renderSystem->voxelRenderer();
 }
 
 void LODSystem::doShutdown() {
@@ -48,6 +55,7 @@ void LODSystem::doShutdown() {
     simGrid_ = nullptr;
     materials_ = nullptr;
     scheduler_ = nullptr;
+    voxelRenderer_ = nullptr;
 
     FABRIC_LOG_INFO("LODSystem shut down");
 }
@@ -108,7 +116,7 @@ void LODSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fixedDt*/) {
     }
 }
 
-void LODSystem::render(fabric::AppContext& /*ctx*/) {
+void LODSystem::render(fabric::AppContext& ctx) {
     if (!grid_) {
         return;
     }
@@ -166,10 +174,63 @@ void LODSystem::render(fabric::AppContext& /*ctx*/) {
         int sz = section.origin.z / LODGrid::K_SECTION_WORLD_SIZE;
         grid_->tryBuildParent(section.level, sx, sy, sz);
     });
+
+    // Submit visible LOD sections
+    if (voxelRenderer_ && grid_) {
+        auto* camera = ctx.camera;
+        if (camera) {
+            selectVisibleSections(*camera, baseRadius_);
+
+            if (!visibleSections_.empty()) {
+                std::vector<recurse::ChunkMesh> lodMeshes;
+                std::vector<recurse::ChunkRenderInfo> lodBatch;
+                lodMeshes.reserve(visibleSections_.size());
+                lodBatch.reserve(visibleSections_.size());
+
+                for (const auto& vis : visibleSections_) {
+                    auto it = gpuSections_.find(vis.key.value);
+                    if (it == gpuSections_.end() || !it->second.resident)
+                        continue;
+
+                    const auto& gpu = it->second;
+
+                    lodMeshes.push_back(recurse::ChunkMesh{
+                        .vbh = gpu.vbh.get(),
+                        .ibh = gpu.ibh.get(),
+                        .indexCount = gpu.indexCount,
+                        .palette = gpu.palette,
+                        .valid = true,
+                    });
+
+                    auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
+                        static_cast<double>(vis.section->origin.x), static_cast<double>(vis.section->origin.y),
+                        static_cast<double>(vis.section->origin.z));
+                    auto relOrigin = camera->cameraRelative(worldOrigin);
+
+                    lodBatch.push_back(recurse::ChunkRenderInfo{
+                        .mesh = nullptr,
+                        .offsetX = relOrigin.x,
+                        .offsetY = relOrigin.y,
+                        .offsetZ = relOrigin.z,
+                        .sortKey = vis.key.value,
+                    });
+                }
+
+                for (size_t i = 0; i < lodBatch.size(); ++i)
+                    lodBatch[i].mesh = &lodMeshes[i];
+
+                if (!lodBatch.empty()) {
+                    voxelRenderer_->renderBatch(ctx.sceneView->geometryViewId(), lodBatch.data(),
+                                                static_cast<uint32_t>(lodBatch.size()));
+                }
+            }
+        }
+    }
 }
 
 void LODSystem::configureDependencies() {
     after<VoxelSimulationSystem>();
+    after<VoxelRenderSystem>();
 }
 
 void LODSystem::setMaterialRegistry(const recurse::simulation::MaterialRegistry* materials) {

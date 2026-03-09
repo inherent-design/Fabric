@@ -8,6 +8,7 @@
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/VertexPool.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/systems/ShadowRenderSystem.hh"
@@ -55,6 +56,7 @@ void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
     if (simSystem_) {
         simGrid_ = &simSystem_->simulationGrid();
         activityTracker_ = &simSystem_->activityTracker();
+        materials_ = &simSystem_->materials();
     }
 
     if (!mesher_)
@@ -83,6 +85,7 @@ void VoxelMeshingSystem::doShutdown() {
     simSystem_ = nullptr;
     simGrid_ = nullptr;
     activityTracker_ = nullptr;
+    materials_ = nullptr;
     gpuUploadEnabled_ = false;
 
     FABRIC_LOG_INFO("VoxelMeshingSystem shutdown");
@@ -336,22 +339,15 @@ void VoxelMeshingSystem::destroyChunkMesh(ChunkGPUMesh& gpuMesh) {
 }
 
 std::array<float, 4> VoxelMeshingSystem::materialColor(uint16_t materialId) const {
-    using namespace recurse::simulation;
-    switch (materialId) {
-        case material_ids::STONE:
-            return {0.56f, 0.56f, 0.60f, 1.0f};
-        case material_ids::DIRT:
-            return {0.43f, 0.30f, 0.20f, 1.0f};
-        case material_ids::SAND:
-            return {0.84f, 0.77f, 0.52f, 1.0f};
-        case material_ids::WATER:
-            return {0.24f, 0.45f, 0.82f, 1.0f};
-        case material_ids::GRAVEL:
-            return {0.47f, 0.45f, 0.43f, 1.0f};
-        case material_ids::AIR:
-        default:
-            return {0.0f, 0.0f, 0.0f, 0.0f};
+    if (materials_) {
+        uint32_t c = materials_->get(materialId).baseColor;
+        float a = static_cast<float>((c >> 24) & 0xFF) / 255.0f;
+        float r = static_cast<float>((c >> 16) & 0xFF) / 255.0f;
+        float g = static_cast<float>((c >> 8) & 0xFF) / 255.0f;
+        float b = static_cast<float>(c & 0xFF) / 255.0f;
+        return {r, g, b, a};
     }
+    return {0.0f, 0.0f, 0.0f, 0.0f};
 }
 
 size_t VoxelMeshingSystem::pendingMeshCount() const {

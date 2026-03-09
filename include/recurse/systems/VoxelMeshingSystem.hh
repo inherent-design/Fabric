@@ -11,6 +11,7 @@
 
 namespace recurse::simulation {
 class ChunkActivityTracker;
+class MaterialRegistry;
 class SimulationGrid;
 } // namespace recurse::simulation
 
@@ -81,6 +82,7 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     VoxelSimulationSystem* simSystem_ = nullptr;
     recurse::simulation::SimulationGrid* simGrid_ = nullptr;
     recurse::simulation::ChunkActivityTracker* activityTracker_ = nullptr;
+    const recurse::simulation::MaterialRegistry* materials_ = nullptr;
     std::unique_ptr<recurse::SnapMCMesher> mesher_;
     std::unique_ptr<recurse::SmoothVertexPool> vertexPool_;
 

@@ -18,7 +18,13 @@ namespace fabric {
 class JobScheduler;
 }
 
+namespace recurse {
+class VoxelRenderer;
+}
+
 namespace recurse::systems {
+
+class VoxelRenderSystem;
 
 /// ECS system that manages LOD generation, cascade, selection, and rendering.
 ///
@@ -85,6 +91,7 @@ class LODSystem : public fabric::System<LODSystem> {
     recurse::simulation::SimulationGrid* simGrid_ = nullptr;
     const recurse::simulation::MaterialRegistry* materials_ = nullptr;
     fabric::JobScheduler* scheduler_ = nullptr;
+    recurse::VoxelRenderer* voxelRenderer_ = nullptr;
 
     // GPU resources
     std::unordered_map<uint64_t, GPUSection> gpuSections_;

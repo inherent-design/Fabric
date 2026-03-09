@@ -357,10 +357,10 @@ std::array<float, 4> LODMeshManager::materialColor(uint16_t materialId) const {
     const auto& def = materials_.get(materialId);
     uint32_t c = def.baseColor;
 
-    float r = static_cast<float>((c >> 24) & 0xFF) / 255.0f;
-    float g = static_cast<float>((c >> 16) & 0xFF) / 255.0f;
-    float b = static_cast<float>((c >> 8) & 0xFF) / 255.0f;
-    float a = static_cast<float>(c & 0xFF) / 255.0f;
+    float a = static_cast<float>((c >> 24) & 0xFF) / 255.0f;
+    float r = static_cast<float>((c >> 16) & 0xFF) / 255.0f;
+    float g = static_cast<float>((c >> 8) & 0xFF) / 255.0f;
+    float b = static_cast<float>(c & 0xFF) / 255.0f;
 
     return {r, g, b, a};
 }

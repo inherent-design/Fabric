@@ -44,7 +44,7 @@ struct MaterialDef {
     uint8_t density{0};        // 0-255, higher = heavier. Displacement ordering.
     uint8_t viscosity{0};      // 0-255, liquid flow resistance
     uint8_t dispersionRate{0}; // cells/tick horizontal flow
-    uint32_t baseColor{0};     // RGBA packed
+    uint32_t baseColor{0};     // ARGB packed (0xAARRGGBB)
 
     // Thermal (reserved, zeroed in v1)
     uint16_t meltPoint{0};
