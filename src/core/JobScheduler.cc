@@ -1,10 +1,16 @@
 #include "fabric/core/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
-#include <algorithm>
-#include <future>
+#include <mutex>
+#include <TaskScheduler.h>
 #include <thread>
 
 namespace fabric {
+
+struct JobScheduler::PendingTask {
+    enki::TaskSet task;
+    PendingTask(uint32_t size, std::function<void(enki::TaskSetPartition, uint32_t)> func)
+        : task(size, std::move(func)) {}
+};
 
 JobScheduler::JobScheduler(size_t threadCount) {
     if (threadCount == 0) {
@@ -13,9 +19,22 @@ JobScheduler::JobScheduler(size_t threadCount) {
     } else {
         workerCount_ = threadCount;
     }
+
+    scheduler_ = std::make_unique<enki::TaskScheduler>();
+    enki::TaskSchedulerConfig config;
+    config.numTaskThreadsToCreate = workerCount_;
+    scheduler_->Initialize(config);
 }
 
-JobScheduler::~JobScheduler() = default;
+JobScheduler::~JobScheduler() {
+    {
+        std::lock_guard<std::mutex> lock(pendingMutex_);
+        for (auto& p : pendingTasks_)
+            scheduler_->WaitforTask(&p->task);
+        pendingTasks_.clear();
+    }
+    scheduler_->WaitforAllAndShutdown();
+}
 
 void JobScheduler::disableForTesting() {
     disabled_ = true;
@@ -41,27 +60,36 @@ void JobScheduler::parallelFor(size_t count, std::function<void(size_t jobIdx, s
         return;
     }
 
-    size_t numWorkers = std::min(workerCount_, count);
-    std::vector<std::future<void>> futures;
-    futures.reserve(numWorkers);
+    enki::TaskSet taskSet(static_cast<uint32_t>(count), [&fn](enki::TaskSetPartition range, uint32_t threadnum) {
+        for (uint32_t i = range.start; i < range.end; ++i)
+            fn(static_cast<size_t>(i), static_cast<size_t>(threadnum));
+    });
+    scheduler_->AddTaskSetToPipe(&taskSet);
+    scheduler_->WaitforTask(&taskSet);
+}
 
-    size_t jobsPerWorker = count / numWorkers;
-    size_t remainder = count % numWorkers;
+void JobScheduler::submitAsync(std::function<void()> work, bool background) {
+    FABRIC_ZONE_SCOPED_N("job_scheduler_submit_async");
 
-    size_t offset = 0;
-    for (size_t w = 0; w < numWorkers; ++w) {
-        size_t batchSize = jobsPerWorker + (w < remainder ? 1 : 0);
-        size_t batchStart = offset;
-        offset += batchSize;
+    auto pending = std::make_unique<PendingTask>(1, [w = std::move(work)](enki::TaskSetPartition, uint32_t) { w(); });
 
-        futures.push_back(std::async(std::launch::async, [&fn, w, batchStart, batchSize]() {
-            for (size_t i = batchStart; i < batchStart + batchSize; ++i)
-                fn(i, w);
-        }));
+    if (background)
+        pending->task.m_Priority = enki::TASK_PRIORITY_LOW;
+
+    auto* rawPtr = &pending->task;
+    {
+        std::lock_guard<std::mutex> lock(pendingMutex_);
+        pendingTasks_.push_back(std::move(pending));
     }
+    scheduler_->AddTaskSetToPipe(rawPtr);
+}
 
-    for (auto& f : futures)
-        f.get();
+void JobScheduler::submitBackground(std::function<void()> fn) {
+    if (disabled_) {
+        fn();
+        return;
+    }
+    submitAsync(std::move(fn), true);
 }
 
 } // namespace fabric

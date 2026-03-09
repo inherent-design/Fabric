@@ -115,6 +115,9 @@ include(FabricToml)
 # efsw - cross-platform file system watcher for hot-reload
 include(FabricEfsw)
 
+# enkiTS - task scheduler for parallel dispatch
+include(FabricEnkiTS)
+
 # SDL3 - cross-platform windowing and input
 include(FabricSDL3)
 
@@ -376,6 +379,7 @@ target_link_libraries(FabricLib
         miniaudio
         tomlplusplus::tomlplusplus
         efsw
+        enkiTS
 )
 
 target_compile_definitions(FabricLib

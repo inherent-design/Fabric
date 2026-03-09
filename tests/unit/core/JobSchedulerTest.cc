@@ -1,8 +1,10 @@
 #include "fabric/core/JobScheduler.hh"
 #include <atomic>
 #include <gtest/gtest.h>
+#include <mutex>
 #include <random>
 #include <set>
+#include <thread>
 #include <vector>
 
 using fabric::JobScheduler;
@@ -102,4 +104,78 @@ TEST(JobSchedulerTest, SingleJobDispatch) {
         ++called;
     });
     EXPECT_EQ(called, 1);
+}
+
+// 9. Stress: 100 sequential dispatches with no deadlock
+TEST(JobSchedulerTest, StressSequentialDispatches) {
+    JobScheduler scheduler(4);
+
+    for (int round = 0; round < 100; ++round) {
+        std::atomic<int> sum{0};
+        scheduler.parallelFor(
+            50, [&](size_t /*jobIdx*/, size_t /*workerIdx*/) { sum.fetch_add(1, std::memory_order_relaxed); });
+        EXPECT_EQ(sum.load(), 50) << "Deadlock or miscount at round " << round;
+    }
+}
+
+// 10. Worker indices stay within expected bounds
+TEST(JobSchedulerTest, WorkerIndicesInRange) {
+    JobScheduler scheduler(4);
+
+    std::mutex mu;
+    std::set<size_t> observed;
+
+    scheduler.parallelFor(100, [&](size_t /*jobIdx*/, size_t workerIdx) {
+        std::lock_guard<std::mutex> lock(mu);
+        observed.insert(workerIdx);
+    });
+
+    // enkiTS threadnum: created threads 1..N, calling thread is 0 during WaitforTask
+    size_t bound = scheduler.workerCount() + 1;
+    for (size_t idx : observed)
+        EXPECT_LT(idx, bound) << "workerIdx " << idx << " out of range [0, " << bound << ")";
+}
+
+// 11. Large job count completes correctly
+TEST(JobSchedulerTest, LargeJobCount) {
+    JobScheduler scheduler(4);
+
+    std::atomic<int> counter{0};
+    scheduler.parallelFor(
+        10000, [&](size_t /*jobIdx*/, size_t /*workerIdx*/) { counter.fetch_add(1, std::memory_order_relaxed); });
+
+    EXPECT_EQ(counter.load(), 10000);
+}
+
+// 12. submit() returns a value through the future
+TEST(JobSchedulerTest, SubmitReturnsValue) {
+    JobScheduler scheduler(4);
+    auto future = scheduler.submit([]() -> int { return 42; });
+    EXPECT_EQ(future.get(), 42);
+}
+
+// 13. submit() with void return completes
+TEST(JobSchedulerTest, SubmitVoidCompletes) {
+    JobScheduler scheduler(4);
+    std::atomic<bool> ran{false};
+    auto future = scheduler.submit([&]() { ran.store(true, std::memory_order_release); });
+    future.get();
+    EXPECT_TRUE(ran.load(std::memory_order_acquire));
+}
+
+// 14. submitBackground() completes all fire-and-forget work
+TEST(JobSchedulerTest, SubmitBackgroundCompletes) {
+    JobScheduler scheduler(4);
+    std::atomic<int> counter{0};
+    for (int i = 0; i < 10; ++i)
+        scheduler.submitBackground([&]() { counter.fetch_add(1, std::memory_order_relaxed); });
+
+    // Use a tracked submit to synchronize; background tasks submitted
+    // earlier will typically drain via work-stealing before this completes.
+    auto future = scheduler.submit([]() -> int { return 1; });
+    future.get();
+
+    for (int attempt = 0; attempt < 1000 && counter.load() < 10; ++attempt)
+        std::this_thread::yield();
+    EXPECT_EQ(counter.load(), 10);
 }
