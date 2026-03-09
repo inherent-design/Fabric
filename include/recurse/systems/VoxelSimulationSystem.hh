@@ -6,7 +6,8 @@
 
 namespace fabric {
 class EventDispatcher;
-}
+class JobScheduler;
+} // namespace fabric
 
 namespace recurse::simulation {
 class ChunkActivityTracker;
@@ -54,6 +55,9 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     /// Remove a chunk from the simulation grid.
     /// Called by ChunkPipelineSystem during streaming unload.
     void removeChunk(int cx, int cy, int cz);
+
+    /// Access the underlying JobScheduler (owned by the inner simulation system).
+    fabric::JobScheduler& scheduler();
 
     /// Number of chunks actively simulated last tick (for debug overlay)
     size_t activeChunkCount() const { return lastActiveCount_; }

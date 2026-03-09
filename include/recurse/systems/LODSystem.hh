@@ -14,6 +14,10 @@
 #include <unordered_map>
 #include <vector>
 
+namespace fabric {
+class JobScheduler;
+}
+
 namespace recurse::systems {
 
 /// ECS system that manages LOD generation, cascade, selection, and rendering.
@@ -80,6 +84,7 @@ class LODSystem : public fabric::System<LODSystem> {
     // References to other systems
     recurse::simulation::SimulationGrid* simGrid_ = nullptr;
     const recurse::simulation::MaterialRegistry* materials_ = nullptr;
+    fabric::JobScheduler* scheduler_ = nullptr;
 
     // GPU resources
     std::unordered_map<uint64_t, GPUSection> gpuSections_;

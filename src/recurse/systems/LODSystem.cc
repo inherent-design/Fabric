@@ -2,6 +2,7 @@
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Camera.hh"
+#include "fabric/core/JobScheduler.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/world/ChunkedGrid.hh"
@@ -27,6 +28,7 @@ void LODSystem::doInit(fabric::AppContext& ctx) {
     if (voxelSim) {
         setSimulationGrid(&voxelSim->simulationGrid());
         setMaterialRegistry(&voxelSim->materials());
+        scheduler_ = &voxelSim->scheduler();
 
         // Queue any chunks that were generated before LODSystem was enabled
         auto allChunks = simGrid_->allChunks();
@@ -45,20 +47,64 @@ void LODSystem::doShutdown() {
     pendingChunks_.clear();
     simGrid_ = nullptr;
     materials_ = nullptr;
+    scheduler_ = nullptr;
 
     FABRIC_LOG_INFO("LODSystem shut down");
 }
 
 void LODSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fixedDt*/) {
-    // Process pending chunks: build LOD0 sections
-    int processedThisFrame = 0;
+    if (!scheduler_ || !simGrid_ || !grid_)
+        return;
+
+    int dispatchedThisFrame = 0;
     constexpr int K_MAX_PER_FRAME = 10;
 
-    while (!pendingChunks_.empty() && processedThisFrame < K_MAX_PER_FRAME) {
+    while (!pendingChunks_.empty() && dispatchedThisFrame < K_MAX_PER_FRAME) {
         auto [cx, cy, cz] = pendingChunks_.front();
         pendingChunks_.pop_front();
-        buildLOD0Section(cx, cy, cz);
-        ++processedThisFrame;
+
+        // Allocate section on main thread; getOrCreate is not thread-safe
+        int sx = cx;
+        int sy = cy;
+        int sz = cz;
+        auto* section = grid_->getOrCreate(0, sx, sy, sz);
+        if (!section)
+            continue;
+
+        auto* grid = simGrid_;
+        scheduler_->submitBackground([section, grid, cx, cy, cz]() {
+            section->origin = Vec3i(cx * LODGrid::K_SECTION_WORLD_SIZE, cy * LODGrid::K_SECTION_WORLD_SIZE,
+                                    cz * LODGrid::K_SECTION_WORLD_SIZE);
+            section->palette.clear();
+            section->palette.push_back(1);
+            section->blockIndices.assign(LODSection::K_VOLUME, 0);
+
+            for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
+                for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
+                    for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
+                        int wx = section->origin.x + lx;
+                        int wy = section->origin.y + ly;
+                        int wz = section->origin.z + lz;
+                        auto cell = grid->readCell(wx, wy, wz);
+
+                        uint16_t matId = cell.materialId;
+                        uint16_t palIdx = 0;
+                        auto it = std::find(section->palette.begin(), section->palette.end(), matId);
+                        if (it != section->palette.end()) {
+                            palIdx = static_cast<uint16_t>(std::distance(section->palette.begin(), it));
+                        } else {
+                            palIdx = static_cast<uint16_t>(section->palette.size());
+                            section->palette.push_back(matId);
+                        }
+                        section->set(lx, ly, lz, palIdx);
+                    }
+                }
+            }
+
+            section->dirty = true;
+        });
+
+        ++dispatchedThisFrame;
     }
 }
 

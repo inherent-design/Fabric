@@ -113,6 +113,10 @@ const recurse::simulation::MaterialRegistry& VoxelSimulationSystem::materials() 
     return fabSim_->materials();
 }
 
+fabric::JobScheduler& VoxelSimulationSystem::scheduler() {
+    return fabSim_->scheduler();
+}
+
 void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
     if (!terrain_ || !fabSim_)
         return;
