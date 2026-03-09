@@ -13,10 +13,10 @@ class ChunkRegistryTest : public ::testing::Test {
 // 1. addChunk returns reference; second call returns same chunk (no duplicate)
 TEST_F(ChunkRegistryTest, AddChunkIdempotent) {
     auto& first = registry.addChunk(0, 0, 0);
-    first.fillValue.materialId = material_ids::STONE;
+    first.simBuffers.fillValue.materialId = material_ids::STONE;
 
     auto& second = registry.addChunk(0, 0, 0);
-    EXPECT_EQ(second.fillValue.materialId, material_ids::STONE);
+    EXPECT_EQ(second.simBuffers.fillValue.materialId, material_ids::STONE);
     EXPECT_EQ(&first, &second);
     EXPECT_EQ(registry.chunkCount(), 1u);
 }
@@ -127,31 +127,31 @@ TEST_F(ChunkRegistryTest, ClearResetsAll) {
     EXPECT_TRUE(registry.allChunks().empty());
 }
 
-// 10. ChunkBufferPair materialize/isMaterialized
-TEST_F(ChunkRegistryTest, ChunkBufferPairMaterialize) {
-    auto& pair = registry.addChunk(0, 0, 0);
-    EXPECT_FALSE(pair.isMaterialized());
+// 10. ChunkSlot materialize/isMaterialized (delegates to simBuffers)
+TEST_F(ChunkRegistryTest, ChunkSlotMaterialize) {
+    auto& slot = registry.addChunk(0, 0, 0);
+    EXPECT_FALSE(slot.isMaterialized());
 
-    pair.materialize();
-    EXPECT_TRUE(pair.isMaterialized());
-    ASSERT_NE(pair.buffers[0], nullptr);
-    ASSERT_NE(pair.buffers[1], nullptr);
+    slot.materialize();
+    EXPECT_TRUE(slot.isMaterialized());
+    ASSERT_NE(slot.simBuffers.buffers[0], nullptr);
+    ASSERT_NE(slot.simBuffers.buffers[1], nullptr);
 
     // Second materialize is a no-op
-    auto* buf0 = pair.buffers[0].get();
-    pair.materialize();
-    EXPECT_EQ(pair.buffers[0].get(), buf0);
+    auto* buf0 = slot.simBuffers.buffers[0].get();
+    slot.materialize();
+    EXPECT_EQ(slot.simBuffers.buffers[0].get(), buf0);
 }
 
 // 11. Materialized buffers are filled with fillValue
 TEST_F(ChunkRegistryTest, MaterializePreservesFillValue) {
-    auto& pair = registry.addChunk(0, 0, 0);
-    pair.fillValue.materialId = material_ids::STONE;
-    pair.materialize();
+    auto& slot = registry.addChunk(0, 0, 0);
+    slot.simBuffers.fillValue.materialId = material_ids::STONE;
+    slot.materialize();
 
     for (size_t i = 0; i < K_CHUNK_VOLUME; ++i) {
-        EXPECT_EQ((*pair.buffers[0])[i].materialId, material_ids::STONE) << "Buffer 0, index " << i;
-        EXPECT_EQ((*pair.buffers[1])[i].materialId, material_ids::STONE) << "Buffer 1, index " << i;
+        EXPECT_EQ((*slot.simBuffers.buffers[0])[i].materialId, material_ids::STONE) << "Buffer 0, index " << i;
+        EXPECT_EQ((*slot.simBuffers.buffers[1])[i].materialId, material_ids::STONE) << "Buffer 1, index " << i;
     }
 }
 
@@ -165,7 +165,7 @@ TEST_F(ChunkRegistryTest, ForEachMaterializedSkipsUnmaterialized) {
     registry.find(2, 0, 0)->materialize();
 
     int count = 0;
-    registry.forEachMaterialized([&count](ChunkBufferPair&) { ++count; });
+    registry.forEachMaterialized([&count](ChunkSlot&) { ++count; });
     EXPECT_EQ(count, 2);
 }
 
@@ -179,4 +179,28 @@ TEST_F(ChunkRegistryTest, RemoveAbsentChunkIsSafe) {
 TEST_F(ChunkRegistryTest, BufferMemorySize) {
     static_assert(sizeof(ChunkBufferPair::Buffer) == K_CHUNK_VOLUME * sizeof(VoxelCell));
     EXPECT_EQ(sizeof(ChunkBufferPair::Buffer), 131072u);
+}
+
+// 15. ChunkSlot default state is Active
+TEST_F(ChunkRegistryTest, ChunkSlotDefaultState) {
+    auto& slot = registry.addChunk(0, 0, 0);
+    EXPECT_EQ(slot.state, ChunkSlotState::Active);
+}
+
+// 16. ChunkSlot writePtr/readPtr default to nullptr
+TEST_F(ChunkRegistryTest, ChunkSlotWriteReadPointers) {
+    auto& slot = registry.addChunk(0, 0, 0);
+    EXPECT_EQ(slot.writePtr, nullptr);
+    EXPECT_EQ(slot.readPtr, nullptr);
+}
+
+// 17. ChunkSlot convenience delegation forwards to simBuffers
+TEST_F(ChunkRegistryTest, ChunkSlotConvenienceDelegation) {
+    auto& slot = registry.addChunk(0, 0, 0);
+    EXPECT_FALSE(slot.isMaterialized());
+    EXPECT_FALSE(slot.simBuffers.isMaterialized());
+
+    slot.materialize();
+    EXPECT_TRUE(slot.isMaterialized());
+    EXPECT_TRUE(slot.simBuffers.isMaterialized());
 }

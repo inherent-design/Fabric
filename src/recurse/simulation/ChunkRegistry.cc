@@ -19,7 +19,7 @@ bool ChunkBufferPair::isMaterialized() const {
 
 // -- ChunkRegistry ------------------------------------------------------------
 
-ChunkBufferPair& ChunkRegistry::addChunk(int cx, int cy, int cz) {
+ChunkSlot& ChunkRegistry::addChunk(int cx, int cy, int cz) {
     auto key = packChunkKey(cx, cy, cz);
     return slots_[key];
 }
@@ -32,14 +32,14 @@ void ChunkRegistry::clear() {
     slots_.clear();
 }
 
-ChunkBufferPair* ChunkRegistry::find(int cx, int cy, int cz) {
+ChunkSlot* ChunkRegistry::find(int cx, int cy, int cz) {
     auto it = slots_.find(packChunkKey(cx, cy, cz));
     if (it == slots_.end())
         return nullptr;
     return &it->second;
 }
 
-const ChunkBufferPair* ChunkRegistry::find(int cx, int cy, int cz) const {
+const ChunkSlot* ChunkRegistry::find(int cx, int cy, int cz) const {
     auto it = slots_.find(packChunkKey(cx, cy, cz));
     if (it == slots_.end())
         return nullptr;
@@ -56,8 +56,8 @@ size_t ChunkRegistry::chunkCount() const {
 
 size_t ChunkRegistry::materializedChunkCount() const {
     size_t count = 0;
-    for (const auto& [_, pair] : slots_) {
-        if (pair.isMaterialized())
+    for (const auto& [_, slot] : slots_) {
+        if (slot.isMaterialized())
             ++count;
     }
     return count;

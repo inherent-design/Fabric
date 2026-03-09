@@ -23,16 +23,35 @@ struct ChunkBufferPair {
     bool isMaterialized() const;
 };
 
+enum class ChunkSlotState : uint8_t {
+    Absent,
+    Generating,
+    Active,
+    Draining
+};
+
+struct ChunkSlot {
+    ChunkSlotState state = ChunkSlotState::Active;
+    ChunkBufferPair simBuffers;
+
+    // Pre-resolved raw pointers for zero-overhead worker access (wired by C-1c).
+    VoxelCell* writePtr = nullptr;
+    const VoxelCell* readPtr = nullptr;
+
+    void materialize() { simBuffers.materialize(); }
+    bool isMaterialized() const { return simBuffers.isMaterialized(); }
+};
+
 class ChunkRegistry {
   public:
     // Structural modification
-    ChunkBufferPair& addChunk(int cx, int cy, int cz);
+    ChunkSlot& addChunk(int cx, int cy, int cz);
     void removeChunk(int cx, int cy, int cz);
     void clear();
 
     // Lookup (read-only on map topology)
-    ChunkBufferPair* find(int cx, int cy, int cz);
-    const ChunkBufferPair* find(int cx, int cy, int cz) const;
+    ChunkSlot* find(int cx, int cy, int cz);
+    const ChunkSlot* find(int cx, int cy, int cz) const;
     bool hasChunk(int cx, int cy, int cz) const;
 
     // Bulk queries
@@ -42,14 +61,14 @@ class ChunkRegistry {
 
     // Iteration over materialized chunks (used by advanceEpoch)
     template <typename Fn> void forEachMaterialized(Fn&& fn) {
-        for (auto& [key, pair] : slots_) {
-            if (pair.isMaterialized())
-                fn(pair);
+        for (auto& [key, slot] : slots_) {
+            if (slot.isMaterialized())
+                fn(slot);
         }
     }
 
   private:
-    std::unordered_map<uint64_t, ChunkBufferPair> slots_;
+    std::unordered_map<uint64_t, ChunkSlot> slots_;
 };
 
 } // namespace recurse::simulation
