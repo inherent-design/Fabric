@@ -10,6 +10,7 @@ class EventDispatcher;
 
 namespace recurse::simulation {
 class ChunkActivityTracker;
+class MaterialRegistry;
 class SimulationGrid;
 class VoxelSimulationSystem;
 } // namespace recurse::simulation
@@ -31,11 +32,12 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
     void configureDependencies() override;
 
-    /// Read-only access for VoxelMeshingSystem and ChunkPipelineSystem
+    /// Read-only access for VoxelMeshingSystem, ChunkPipelineSystem, DebugOverlaySystem
     recurse::simulation::SimulationGrid& simulationGrid();
     const recurse::simulation::SimulationGrid& simulationGrid() const;
     recurse::simulation::ChunkActivityTracker& activityTracker();
     const recurse::simulation::ChunkActivityTracker& activityTracker() const;
+    const recurse::simulation::MaterialRegistry& materials() const;
 
     /// Generate terrain for a single chunk into the simulation grid.
     /// Called by ChunkPipelineSystem during streaming load.

@@ -14,6 +14,7 @@
 #include "recurse/character/MovementFSM.hh"
 #include "recurse/physics/PhysicsWorld.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/systems/AIGameSystem.hh"
 #include "recurse/systems/AudioGameSystem.hh"
@@ -358,9 +359,10 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             waila.distance = hit->t;
             auto cell = voxelSim_->simulationGrid().readCell(hit->x, hit->y, hit->z);
             waila.density = (cell.materialId != recurse::simulation::material_ids::AIR) ? 1.0f : 0.0f;
-            waila.essenceR = 0.0f;
-            waila.essenceG = 0.0f;
-            waila.essenceB = 0.0f;
+            uint32_t packed = voxelSim_->materials().get(cell.materialId).baseColor;
+            waila.essenceR = static_cast<float>((packed >> 16) & 0xFF) / 255.0f;
+            waila.essenceG = static_cast<float>((packed >> 8) & 0xFF) / 255.0f;
+            waila.essenceB = static_cast<float>(packed & 0xFF) / 255.0f;
         }
         wailaPanel_.update(waila);
     }

@@ -109,6 +109,10 @@ const recurse::simulation::ChunkActivityTracker& VoxelSimulationSystem::activity
     return fabSim_->activityTracker();
 }
 
+const recurse::simulation::MaterialRegistry& VoxelSimulationSystem::materials() const {
+    return fabSim_->materials();
+}
+
 void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
     if (!terrain_ || !fabSim_)
         return;
