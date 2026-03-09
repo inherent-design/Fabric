@@ -21,15 +21,14 @@ SaveManager::SaveManager(const std::string& saveDirectory) : saveDirectory_(save
     }
 }
 
-bool SaveManager::save(const std::string& slotName, SceneSerializer& serializer, World& world, DensityField& density,
-                       EssenceField& essence, Timeline& timeline, const std::optional<Position>& playerPos,
-                       const std::optional<Position>& playerVel) {
+bool SaveManager::save(const std::string& slotName, SceneSerializer& serializer, World& world, Timeline& timeline,
+                       const std::optional<Position>& playerPos, const std::optional<Position>& playerVel) {
     bool wasPaused = timeline.isPaused();
     if (!wasPaused) {
         timeline.pause();
     }
 
-    nlohmann::json sceneData = serializer.serialize(world, density, essence, timeline, playerPos, playerVel);
+    nlohmann::json sceneData = serializer.serialize(world, timeline, playerPos, playerVel);
 
     nlohmann::json envelope;
     envelope["save_version"] = K_SAVE_VERSION;
@@ -53,9 +52,8 @@ bool SaveManager::save(const std::string& slotName, SceneSerializer& serializer,
     return ok;
 }
 
-bool SaveManager::load(const std::string& slotName, SceneSerializer& serializer, World& world, DensityField& density,
-                       EssenceField& essence, Timeline& timeline, std::optional<Position>& playerPos,
-                       std::optional<Position>& playerVel) {
+bool SaveManager::load(const std::string& slotName, SceneSerializer& serializer, World& world, Timeline& timeline,
+                       std::optional<Position>& playerPos, std::optional<Position>& playerVel) {
     std::string filepath = slotPath(slotName);
     auto loaded = serializer.loadFromFile(filepath);
     if (!loaded) {
@@ -80,7 +78,7 @@ bool SaveManager::load(const std::string& slotName, SceneSerializer& serializer,
         return false;
     }
 
-    bool ok = serializer.deserialize(envelope["scene"], world, density, essence, timeline, playerPos, playerVel);
+    bool ok = serializer.deserialize(envelope["scene"], world, timeline, playerPos, playerVel);
     if (ok) {
         FABRIC_LOG_INFO("Loaded slot '{}' from {}", slotName, filepath);
     } else {
@@ -146,9 +144,8 @@ void SaveManager::enableAutosave(float intervalSeconds) {
     autosaveTimer_ = 0.0f;
 }
 
-void SaveManager::tickAutosave(float dt, SceneSerializer& serializer, World& world, DensityField& density,
-                               EssenceField& essence, Timeline& timeline, const std::optional<Position>& playerPos,
-                               const std::optional<Position>& playerVel) {
+void SaveManager::tickAutosave(float dt, SceneSerializer& serializer, World& world, Timeline& timeline,
+                               const std::optional<Position>& playerPos, const std::optional<Position>& playerVel) {
     if (!autosaveEnabled_) {
         return;
     }
@@ -163,7 +160,7 @@ void SaveManager::tickAutosave(float dt, SceneSerializer& serializer, World& wor
     std::string slotName = "autosave_" + std::to_string(autosaveIndex_);
     autosaveIndex_ = (autosaveIndex_ + 1) % 2;
 
-    save(slotName, serializer, world, density, essence, timeline, playerPos, playerVel);
+    save(slotName, serializer, world, timeline, playerPos, playerVel);
 }
 
 std::string SaveManager::slotPath(const std::string& slotName) const {

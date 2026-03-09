@@ -8,12 +8,11 @@ using namespace fabric;
 
 namespace recurse {
 
-nlohmann::json SceneSerializer::serialize(World& world, DensityField& density, EssenceField& essence,
-                                          const Timeline& timeline, const std::optional<Position>& playerPos,
+nlohmann::json SceneSerializer::serialize(World& world, const Timeline& timeline,
+                                          const std::optional<Position>& playerPos,
                                           const std::optional<Position>& playerVel) {
     SceneConfig config;
     config.entities = serializeEntities(world);
-    config.chunks = serializeChunks(density, essence);
     config.timeline = serializeTimeline(timeline);
 
     if (playerPos || playerVel) {
@@ -44,38 +43,6 @@ nlohmann::json SceneSerializer::serializeEntities(World& world) {
     });
 
     return entitiesJson;
-}
-
-nlohmann::json SceneSerializer::serializeChunks(DensityField& density, EssenceField& essence) {
-    std::vector<nlohmann::json> chunksJson;
-
-    auto activeChunks = density.activeChunks();
-    for (const auto& [cx, cy, cz] : activeChunks) {
-        nlohmann::json chunkJson;
-        chunkJson["x"] = cx;
-        chunkJson["y"] = cy;
-        chunkJson["z"] = cz;
-
-        std::vector<float> densityData;
-        std::vector<float> essenceData;
-
-        const auto& densityGrid = density;
-        densityGrid.forEachCell(cx, cy, cz, [&](int wx, int wy, int wz, const float& d) { densityData.push_back(d); });
-
-        const auto& essenceGrid = essence;
-        essenceGrid.forEachCell(cx, cy, cz, [&](int wx, int wy, int wz, const Vector4<float, Space::World>& e) {
-            essenceData.push_back(e.x);
-            essenceData.push_back(e.y);
-            essenceData.push_back(e.z);
-            essenceData.push_back(e.w);
-        });
-
-        chunkJson["density"] = densityData;
-        chunkJson["essence"] = essenceData;
-        chunksJson.push_back(std::move(chunkJson));
-    }
-
-    return chunksJson;
 }
 
 nlohmann::json SceneSerializer::serializeTimeline(const Timeline& timeline) {
@@ -219,9 +186,8 @@ nlohmann::json SceneSerializer::serializeTimeState(const TimeState& state) {
     return stateJson;
 }
 
-bool SceneSerializer::deserialize(const nlohmann::json& json, World& world, DensityField& density,
-                                  EssenceField& essence, Timeline& timeline, std::optional<Position>& playerPos,
-                                  std::optional<Position>& playerVel) {
+bool SceneSerializer::deserialize(const nlohmann::json& json, World& world, Timeline& timeline,
+                                  std::optional<Position>& playerPos, std::optional<Position>& playerVel) {
     if (!json.contains("version")) {
         FABRIC_LOG_ERROR("Invalid scene JSON: missing version field");
         return false;
@@ -229,12 +195,6 @@ bool SceneSerializer::deserialize(const nlohmann::json& json, World& world, Dens
 
     if (json.contains("entities")) {
         if (!deserializeEntities(json["entities"], world)) {
-            return false;
-        }
-    }
-
-    if (json.contains("chunks")) {
-        if (!deserializeChunks(json["chunks"], density, essence)) {
             return false;
         }
     }
@@ -297,68 +257,6 @@ bool SceneSerializer::deserializeEntities(const nlohmann::json& json, World& wor
         const auto parentIt = idMap.find(parentOldId);
         if (childIt != idMap.end() && parentIt != idMap.end()) {
             childIt->second.child_of(parentIt->second);
-        }
-    }
-
-    return true;
-}
-
-bool SceneSerializer::deserializeChunks(const nlohmann::json& json, DensityField& density, EssenceField& essence) {
-    if (!json.is_array()) {
-        FABRIC_LOG_ERROR("Chunks JSON is not an array");
-        return false;
-    }
-
-    for (const auto& chunkJson : json) {
-        if (!chunkJson.contains("x") || !chunkJson.contains("y") || !chunkJson.contains("z")) {
-            FABRIC_LOG_WARN("Skipping chunk without coordinates");
-            continue;
-        }
-
-        int cx = chunkJson["x"];
-        int cy = chunkJson["y"];
-        int cz = chunkJson["z"];
-
-        if (chunkJson.contains("density")) {
-            const auto& densityArray = chunkJson["density"];
-            if (densityArray.is_array()) {
-                const size_t maxCells = static_cast<size_t>(K_CHUNK_SIZE) * static_cast<size_t>(K_CHUNK_SIZE) *
-                                        static_cast<size_t>(K_CHUNK_SIZE);
-                const size_t cellCount = std::min(densityArray.size(), maxCells);
-                const int baseX = cx * K_CHUNK_SIZE;
-                const int baseY = cy * K_CHUNK_SIZE;
-                const int baseZ = cz * K_CHUNK_SIZE;
-
-                for (size_t i = 0; i < cellCount; ++i) {
-                    const int lx = static_cast<int>(i % K_CHUNK_SIZE);
-                    const int ly = static_cast<int>((i / K_CHUNK_SIZE) % K_CHUNK_SIZE);
-                    const int lz = static_cast<int>(i / (K_CHUNK_SIZE * K_CHUNK_SIZE));
-                    density.set(baseX + lx, baseY + ly, baseZ + lz, densityArray[i]);
-                }
-            }
-        }
-
-        if (chunkJson.contains("essence")) {
-            const auto& essenceArray = chunkJson["essence"];
-            if (essenceArray.is_array() && essenceArray.size() % 4 == 0) {
-                const size_t maxCells = static_cast<size_t>(K_CHUNK_SIZE) * static_cast<size_t>(K_CHUNK_SIZE) *
-                                        static_cast<size_t>(K_CHUNK_SIZE);
-                const size_t vecCount = std::min(essenceArray.size() / 4, maxCells);
-                const int baseX = cx * K_CHUNK_SIZE;
-                const int baseY = cy * K_CHUNK_SIZE;
-                const int baseZ = cz * K_CHUNK_SIZE;
-
-                for (size_t i = 0; i < vecCount; ++i) {
-                    const size_t index = i * 4;
-                    const int lx = static_cast<int>(i % K_CHUNK_SIZE);
-                    const int ly = static_cast<int>((i / K_CHUNK_SIZE) % K_CHUNK_SIZE);
-                    const int lz = static_cast<int>(i / (K_CHUNK_SIZE * K_CHUNK_SIZE));
-
-                    Vector4<float, Space::World> e{essenceArray[index], essenceArray[index + 1],
-                                                   essenceArray[index + 2], essenceArray[index + 3]};
-                    essence.set(baseX + lx, baseY + ly, baseZ + lz, e);
-                }
-            }
         }
     }
 

@@ -3,7 +3,6 @@
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/Temporal.hh"
-#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/persistence/SceneSerializer.hh"
 #include <optional>
 #include <string>
@@ -11,16 +10,9 @@
 
 namespace recurse {
 
-// Engine types imported from fabric:: namespace
-using fabric::ChunkedGrid;
 using fabric::Position;
-namespace Space = fabric::Space;
 using fabric::Timeline;
-using fabric::Vector4;
 using fabric::World;
-
-using DensityField = ChunkedGrid<float>;
-using EssenceField = ChunkedGrid<Vector4<float, Space::World>>;
 
 /// Metadata for a save slot on disk
 struct SlotInfo {
@@ -39,15 +31,13 @@ class SaveManager {
 
     /// Serialize complete game state into saves/<slotName>.json.
     /// Pauses the timeline during serialization and resumes afterward.
-    bool save(const std::string& slotName, SceneSerializer& serializer, World& world, DensityField& density,
-              EssenceField& essence, Timeline& timeline, const std::optional<Position>& playerPos,
-              const std::optional<Position>& playerVel);
+    bool save(const std::string& slotName, SceneSerializer& serializer, World& world, Timeline& timeline,
+              const std::optional<Position>& playerPos, const std::optional<Position>& playerVel);
 
     /// Load game state from saves/<slotName>.json.
     /// Validates save_version before deserializing. Resumes timeline on success.
-    bool load(const std::string& slotName, SceneSerializer& serializer, World& world, DensityField& density,
-              EssenceField& essence, Timeline& timeline, std::optional<Position>& playerPos,
-              std::optional<Position>& playerVel);
+    bool load(const std::string& slotName, SceneSerializer& serializer, World& world, Timeline& timeline,
+              std::optional<Position>& playerPos, std::optional<Position>& playerVel);
 
     /// Scan the save directory and return metadata for each slot found.
     std::vector<SlotInfo> listSlots() const;
@@ -60,9 +50,8 @@ class SaveManager {
 
     /// Call each frame (or fixed tick). Decrements the autosave timer and
     /// triggers a save when the interval elapses.
-    void tickAutosave(float dt, SceneSerializer& serializer, World& world, DensityField& density, EssenceField& essence,
-                      Timeline& timeline, const std::optional<Position>& playerPos,
-                      const std::optional<Position>& playerVel);
+    void tickAutosave(float dt, SceneSerializer& serializer, World& world, Timeline& timeline,
+                      const std::optional<Position>& playerPos, const std::optional<Position>& playerVel);
 
   private:
     std::string slotPath(const std::string& slotName) const;

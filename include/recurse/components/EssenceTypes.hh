@@ -1,7 +1,7 @@
 #pragma once
 
 // Recurse Essence Types
-// Semantic meaning for EssenceField Vec4 components.
+// Semantic meaning for essence Vec4 components.
 // Each NPC and voxel has an essence [Order, Chaos, Life, Decay].
 // The dominant essence determines behavior, appearance, and transformation rules.
 

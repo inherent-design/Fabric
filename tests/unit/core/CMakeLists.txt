@@ -23,7 +23,6 @@ target_sources(UnitTests
   ECSTest.cc
   ECSRestTest.cc
   ChunkedGridTest.cc
-  SimulationTest.cc
   VoxelRendererTest.cc
   VoxelRaycastTest.cc
   ChunkStreamingTest.cc
@@ -63,8 +62,6 @@ target_sources(UnitTests
   ParticleSystemTest.cc
   BVHVisitorTest.cc
   ReverbZoneTest.cc
-  LSystemVegetationTest.cc
-  WFCGeneratorTest.cc
   InputRecorderTest.cc
   OITCompositorTest.cc
   MaterialSoundsTest.cc

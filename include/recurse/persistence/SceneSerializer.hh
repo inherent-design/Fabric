@@ -3,7 +3,6 @@
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/Temporal.hh"
-#include "fabric/world/ChunkedGrid.hh"
 #include <array>
 #include <cstdint>
 #include <nlohmann/json.hpp>
@@ -13,17 +12,10 @@
 
 namespace recurse {
 
-// Engine types imported from fabric:: namespace
-using fabric::ChunkedGrid;
 using fabric::Position;
-namespace Space = fabric::Space;
 using fabric::Timeline;
 using fabric::TimeState;
-using fabric::Vector4;
 using fabric::World;
-
-using DensityField = ChunkedGrid<float>;
-using EssenceField = ChunkedGrid<Vector4<float, Space::World>>;
 
 /// Physics shape type for serialization (mirrors Jolt shape kinds)
 enum class PhysicsShapeType : uint8_t {
@@ -103,30 +95,24 @@ class SceneSerializer {
     SceneSerializer() = default;
 
     /// Serialize complete scene to JSON
-    /// Includes all entities, loaded chunks, timeline state, and optional player state
-    nlohmann::json serialize(World& world, DensityField& density, EssenceField& essence, const Timeline& timeline,
+    /// Includes all entities, timeline state, and optional player state
+    nlohmann::json serialize(World& world, const Timeline& timeline,
                              const std::optional<Position>& playerPos = std::nullopt,
                              const std::optional<Position>& playerVel = std::nullopt);
 
     /// Serialize only entities (useful for partial saves)
     nlohmann::json serializeEntities(World& world);
 
-    /// Serialize only chunk data (useful for terrain-only saves)
-    nlohmann::json serializeChunks(DensityField& density, EssenceField& essence);
-
     /// Serialize timeline state
     nlohmann::json serializeTimeline(const Timeline& timeline);
 
     /// Deserialize JSON and restore scene state
     /// Returns true on success, false if JSON is invalid
-    bool deserialize(const nlohmann::json& json, World& world, DensityField& density, EssenceField& essence,
-                     Timeline& timeline, std::optional<Position>& playerPos, std::optional<Position>& playerVel);
+    bool deserialize(const nlohmann::json& json, World& world, Timeline& timeline, std::optional<Position>& playerPos,
+                     std::optional<Position>& playerVel);
 
     /// Deserialize only entities
     bool deserializeEntities(const nlohmann::json& json, World& world);
-
-    /// Deserialize only chunks
-    bool deserializeChunks(const nlohmann::json& json, DensityField& density, EssenceField& essence);
 
     /// Deserialize timeline state
     bool deserializeTimeline(const nlohmann::json& json, Timeline& timeline);

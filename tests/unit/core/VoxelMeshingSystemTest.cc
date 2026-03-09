@@ -125,7 +125,7 @@ TEST_F(VoxelMeshingSystemTest, MeshUpdateReplacesOld) {
     EXPECT_TRUE(meshes.at(coord).valid);
 }
 
-TEST_F(VoxelMeshingSystemTest, KnownDensityFieldMesh) {
+TEST_F(VoxelMeshingSystemTest, KnownVoxelFieldMesh) {
     ChunkCoord coord{0, 0, 0};
     VoxelCell solid;
     solid.materialId = MaterialIds::STONE;

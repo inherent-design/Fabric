@@ -1,16 +1,12 @@
 #include "recurse/persistence/SceneSerializer.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/Temporal.hh"
-#include "fabric/world/ChunkedGrid.hh"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 
 using namespace fabric;
 using namespace recurse;
-
-using DensityGrid = fabric::ChunkedGrid<float>;
-using EssenceGrid = fabric::ChunkedGrid<Vector4<float, Space::World>>;
 
 class SceneSerializerTest : public ::testing::Test {
   protected:
@@ -22,15 +18,13 @@ class SceneSerializerTest : public ::testing::Test {
     void TearDown() override { std::filesystem::remove(testFile); }
 
     World world;
-    DensityGrid density;
-    EssenceGrid essence;
     Timeline timeline;
     SceneSerializer serializer;
     std::string testFile;
 };
 
 TEST_F(SceneSerializerTest, EmptySceneSerialization) {
-    nlohmann::json json = serializer.serialize(world, density, essence, timeline);
+    nlohmann::json json = serializer.serialize(world, timeline);
 
     EXPECT_TRUE(json.contains("version"));
     EXPECT_TRUE(json.contains("entities"));
@@ -122,40 +116,6 @@ TEST_F(SceneSerializerTest, EntityRoundTrip) {
     EXPECT_FLOAT_EQ(scale->z, 1.5f);
 }
 
-TEST_F(SceneSerializerTest, ChunkSerialization) {
-    density.set(0, 0, 0, 1.0f);
-    density.set(1, 0, 0, 2.0f);
-    density.set(0, 1, 0, 3.0f);
-
-    essence.set(0, 0, 0, Vector4<float, Space::World>{1.0f, 0.0f, 0.0f, 1.0f});
-    essence.set(1, 0, 0, Vector4<float, Space::World>{0.0f, 1.0f, 0.0f, 1.0f});
-
-    nlohmann::json json = serializer.serializeChunks(density, essence);
-
-    EXPECT_GT(json.size(), 0);
-}
-
-TEST_F(SceneSerializerTest, ChunkRoundTrip) {
-    float originalDensity = 0.75f;
-    Vector4<float, Space::World> originalEssence{0.5f, 0.6f, 0.7f, 0.8f};
-
-    density.set(5, 5, 5, originalDensity);
-    essence.set(5, 5, 5, originalEssence);
-
-    nlohmann::json chunksJson = serializer.serializeChunks(density, essence);
-
-    ASSERT_TRUE(serializer.deserializeChunks(chunksJson, density, essence));
-
-    float restoredDensity = density.get(5, 5, 5);
-    EXPECT_FLOAT_EQ(restoredDensity, originalDensity);
-
-    auto restoredEssence = essence.get(5, 5, 5);
-    EXPECT_FLOAT_EQ(restoredEssence.x, originalEssence.x);
-    EXPECT_FLOAT_EQ(restoredEssence.y, originalEssence.y);
-    EXPECT_FLOAT_EQ(restoredEssence.z, originalEssence.z);
-    EXPECT_FLOAT_EQ(restoredEssence.w, originalEssence.w);
-}
-
 TEST_F(SceneSerializerTest, TimelineSerialization) {
     timeline.setGlobalTimeScale(2.0);
     timeline.update(1.0);
@@ -189,7 +149,7 @@ TEST_F(SceneSerializerTest, PlayerStateSerialization) {
     Position playerPos{100.0f, 200.0f, 300.0f};
     Position playerVel{1.0f, 2.0f, 3.0f};
 
-    nlohmann::json json = serializer.serialize(world, density, essence, timeline, playerPos, playerVel);
+    nlohmann::json json = serializer.serialize(world, timeline, playerPos, playerVel);
 
     EXPECT_TRUE(json.contains("player"));
     EXPECT_TRUE(json["player"].contains("position"));
@@ -203,13 +163,13 @@ TEST_F(SceneSerializerTest, PlayerStateSerialization) {
 }
 
 TEST_F(SceneSerializerTest, PlayerStateRoundTrip) {
-    nlohmann::json json = serializer.serialize(world, density, essence, timeline);
+    nlohmann::json json = serializer.serialize(world, timeline);
     json["player"] = nlohmann::json{{"position", {{"x", 50.0}, {"y", 60.0}, {"z", 70.0}}},
                                     {"velocity", {{"x", -1.0}, {"y", 0.5}, {"z", 2.5}}}};
 
     std::optional<Position> playerPos;
     std::optional<Position> playerVel;
-    ASSERT_TRUE(serializer.deserialize(json, world, density, essence, timeline, playerPos, playerVel));
+    ASSERT_TRUE(serializer.deserialize(json, world, timeline, playerPos, playerVel));
 
     ASSERT_TRUE(playerPos);
     EXPECT_FLOAT_EQ(playerPos->x, 50.0f);
@@ -225,29 +185,24 @@ TEST_F(SceneSerializerTest, PlayerStateRoundTrip) {
 TEST_F(SceneSerializerTest, FullSceneRoundTrip) {
     auto entity = world.createSceneEntity("test");
     entity.set<Position>(Position{1.0f, 2.0f, 3.0f});
-    density.set(0, 0, 0, 0.5f);
     timeline.setGlobalTimeScale(1.5);
 
     world.progress(0.0f);
-    nlohmann::json json = serializer.serialize(world, density, essence, timeline);
+    nlohmann::json json = serializer.serialize(world, timeline);
 
     World newWorld;
     newWorld.registerCoreComponents();
-    DensityGrid newDensity;
-    EssenceGrid newEssence;
     Timeline newTimeline;
     std::optional<Position> newPlayerPos;
     std::optional<Position> newPlayerVel;
 
-    ASSERT_TRUE(
-        serializer.deserialize(json, newWorld, newDensity, newEssence, newTimeline, newPlayerPos, newPlayerVel));
+    ASSERT_TRUE(serializer.deserialize(json, newWorld, newTimeline, newPlayerPos, newPlayerVel));
 
-    EXPECT_FLOAT_EQ(newDensity.get(0, 0, 0), 0.5f);
     EXPECT_FLOAT_EQ(newTimeline.getGlobalTimeScale(), 1.5f);
 }
 
 TEST_F(SceneSerializerTest, SaveToFile) {
-    nlohmann::json json = serializer.serialize(world, density, essence, timeline);
+    nlohmann::json json = serializer.serialize(world, timeline);
 
     ASSERT_TRUE(serializer.saveToFile(testFile, json));
 
@@ -285,7 +240,7 @@ TEST_F(SceneSerializerTest, DeserializeInvalidJson) {
     std::optional<Position> playerPos;
     std::optional<Position> playerVel;
 
-    EXPECT_FALSE(serializer.deserialize(invalidJson, world, density, essence, timeline, playerPos, playerVel));
+    EXPECT_FALSE(serializer.deserialize(invalidJson, world, timeline, playerPos, playerVel));
 }
 
 TEST_F(SceneSerializerTest, DeserializeMissingVersion) {
@@ -294,7 +249,7 @@ TEST_F(SceneSerializerTest, DeserializeMissingVersion) {
     std::optional<Position> playerPos;
     std::optional<Position> playerVel;
 
-    EXPECT_FALSE(serializer.deserialize(json, world, density, essence, timeline, playerPos, playerVel));
+    EXPECT_FALSE(serializer.deserialize(json, world, timeline, playerPos, playerVel));
 }
 
 TEST_F(SceneSerializerTest, SceneConfigHelpers) {
@@ -382,12 +337,6 @@ TEST_F(SceneSerializerTest, EmptyEntitiesDeserialize) {
     nlohmann::json entitiesJson = nlohmann::json::array();
 
     EXPECT_TRUE(serializer.deserializeEntities(entitiesJson, world));
-}
-
-TEST_F(SceneSerializerTest, EmptyChunksDeserialize) {
-    nlohmann::json chunksJson = nlohmann::json::array();
-
-    EXPECT_TRUE(serializer.deserializeChunks(chunksJson, density, essence));
 }
 
 TEST_F(SceneSerializerTest, TimelinePausedSerialization) {

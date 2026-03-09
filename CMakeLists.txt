@@ -152,7 +152,6 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/Resource.cc
     src/core/ResourceHub.cc
     src/core/SceneView.cc
-    src/core/Simulation.cc
     src/core/Spatial.cc
     src/core/Temporal.cc
     src/core/InputSource.cc
@@ -181,8 +180,6 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/world/VoxelRaycast.cc
     src/recurse/world/ChunkStreaming.cc
     src/recurse/world/EssencePalette.cc
-    src/recurse/world/LSystemVegetation.cc
-    src/recurse/world/WFCGenerator.cc
     src/recurse/world/StructuralIntegrity.cc
     # character/
     src/recurse/character/CharacterController.cc

@@ -1,7 +1,6 @@
 #include "recurse/persistence/SaveManager.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/Temporal.hh"
-#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/persistence/SceneSerializer.hh"
 #include <filesystem>
 #include <fstream>
@@ -9,9 +8,6 @@
 
 using namespace fabric;
 using namespace recurse;
-
-using DensityGrid = fabric::ChunkedGrid<float>;
-using EssenceGrid = fabric::ChunkedGrid<Vector4<float, Space::World>>;
 
 class SaveManagerTest : public ::testing::Test {
   protected:
@@ -31,8 +27,6 @@ class SaveManagerTest : public ::testing::Test {
 
     std::filesystem::path testDir_;
     World world_;
-    DensityGrid density_;
-    EssenceGrid essence_;
     Timeline timeline_;
     SceneSerializer serializer_;
 };
@@ -49,19 +43,16 @@ TEST_F(SaveManagerTest, SaveAndLoadRoundTrip) {
     std::optional<Position> playerPos = Position{1.0f, 2.0f, 3.0f};
     std::optional<Position> playerVel = Position{0.5f, -1.0f, 0.0f};
 
-    ASSERT_TRUE(mgr.save("test_slot", serializer_, world_, density_, essence_, timeline_, playerPos, playerVel));
+    ASSERT_TRUE(mgr.save("test_slot", serializer_, world_, timeline_, playerPos, playerVel));
 
     World newWorld;
     newWorld.registerCoreComponents();
-    DensityGrid newDensity;
-    EssenceGrid newEssence;
     Timeline newTimeline;
     std::optional<Position> loadedPos;
     std::optional<Position> loadedVel;
     SceneSerializer newSerializer;
 
-    ASSERT_TRUE(
-        mgr.load("test_slot", newSerializer, newWorld, newDensity, newEssence, newTimeline, loadedPos, loadedVel));
+    ASSERT_TRUE(mgr.load("test_slot", newSerializer, newWorld, newTimeline, loadedPos, loadedVel));
 
     ASSERT_TRUE(loadedPos);
     EXPECT_FLOAT_EQ(loadedPos->x, 1.0f);
@@ -82,9 +73,9 @@ TEST_F(SaveManagerTest, ListSlotsReturnsAll) {
     std::optional<Position> pos = Position{0.0f, 0.0f, 0.0f};
     std::optional<Position> vel = Position{0.0f, 0.0f, 0.0f};
 
-    ASSERT_TRUE(mgr.save("slot_a", serializer_, world_, density_, essence_, timeline_, pos, vel));
-    ASSERT_TRUE(mgr.save("slot_b", serializer_, world_, density_, essence_, timeline_, pos, vel));
-    ASSERT_TRUE(mgr.save("slot_c", serializer_, world_, density_, essence_, timeline_, pos, vel));
+    ASSERT_TRUE(mgr.save("slot_a", serializer_, world_, timeline_, pos, vel));
+    ASSERT_TRUE(mgr.save("slot_b", serializer_, world_, timeline_, pos, vel));
+    ASSERT_TRUE(mgr.save("slot_c", serializer_, world_, timeline_, pos, vel));
 
     auto slots = mgr.listSlots();
     EXPECT_EQ(slots.size(), 3u);
@@ -96,7 +87,7 @@ TEST_F(SaveManagerTest, DeleteSlotRemovesFile) {
     std::optional<Position> pos = Position{0.0f, 0.0f, 0.0f};
     std::optional<Position> vel = Position{0.0f, 0.0f, 0.0f};
 
-    ASSERT_TRUE(mgr.save("to_delete", serializer_, world_, density_, essence_, timeline_, pos, vel));
+    ASSERT_TRUE(mgr.save("to_delete", serializer_, world_, timeline_, pos, vel));
 
     auto slotsBefore = mgr.listSlots();
     ASSERT_EQ(slotsBefore.size(), 1u);
@@ -113,7 +104,7 @@ TEST_F(SaveManagerTest, MetadataInSlotInfo) {
     std::optional<Position> pos = Position{0.0f, 0.0f, 0.0f};
     std::optional<Position> vel = Position{0.0f, 0.0f, 0.0f};
 
-    ASSERT_TRUE(mgr.save("meta_test", serializer_, world_, density_, essence_, timeline_, pos, vel));
+    ASSERT_TRUE(mgr.save("meta_test", serializer_, world_, timeline_, pos, vel));
 
     auto slots = mgr.listSlots();
     ASSERT_EQ(slots.size(), 1u);
@@ -142,7 +133,7 @@ TEST_F(SaveManagerTest, VersionMismatchRejectsLoad) {
 
     std::optional<Position> pos;
     std::optional<Position> vel;
-    EXPECT_FALSE(mgr.load("bad_version", serializer_, world_, density_, essence_, timeline_, pos, vel));
+    EXPECT_FALSE(mgr.load("bad_version", serializer_, world_, timeline_, pos, vel));
 }
 
 TEST_F(SaveManagerTest, AutosaveRotation) {
@@ -153,7 +144,7 @@ TEST_F(SaveManagerTest, AutosaveRotation) {
     std::optional<Position> vel = Position{0.0f, 0.0f, 0.0f};
 
     // First autosave trigger: autosave_0
-    mgr.tickAutosave(1.5f, serializer_, world_, density_, essence_, timeline_, pos, vel);
+    mgr.tickAutosave(1.5f, serializer_, world_, timeline_, pos, vel);
 
     auto slots1 = mgr.listSlots();
     ASSERT_EQ(slots1.size(), 1u);
@@ -166,7 +157,7 @@ TEST_F(SaveManagerTest, AutosaveRotation) {
     EXPECT_TRUE(hasSlot0);
 
     // Second autosave trigger: autosave_1
-    mgr.tickAutosave(1.5f, serializer_, world_, density_, essence_, timeline_, pos, vel);
+    mgr.tickAutosave(1.5f, serializer_, world_, timeline_, pos, vel);
 
     auto slots2 = mgr.listSlots();
     ASSERT_EQ(slots2.size(), 2u);
@@ -179,7 +170,7 @@ TEST_F(SaveManagerTest, AutosaveRotation) {
     EXPECT_TRUE(hasSlot1);
 
     // Third trigger overwrites autosave_0; still 2 files total
-    mgr.tickAutosave(1.5f, serializer_, world_, density_, essence_, timeline_, pos, vel);
+    mgr.tickAutosave(1.5f, serializer_, world_, timeline_, pos, vel);
 
     auto slots3 = mgr.listSlots();
     EXPECT_EQ(slots3.size(), 2u);
@@ -190,7 +181,7 @@ TEST_F(SaveManagerTest, LoadNonexistentSlotReturnsFalse) {
 
     std::optional<Position> pos;
     std::optional<Position> vel;
-    EXPECT_FALSE(mgr.load("does_not_exist", serializer_, world_, density_, essence_, timeline_, pos, vel));
+    EXPECT_FALSE(mgr.load("does_not_exist", serializer_, world_, timeline_, pos, vel));
 }
 
 TEST_F(SaveManagerTest, EmptyDirectoryListSlotsReturnsEmpty) {
@@ -207,7 +198,7 @@ TEST_F(SaveManagerTest, AutosaveDisabledByDefault) {
     std::optional<Position> vel = Position{0.0f, 0.0f, 0.0f};
 
     // Ticking without enableAutosave should produce no saves
-    mgr.tickAutosave(500.0f, serializer_, world_, density_, essence_, timeline_, pos, vel);
+    mgr.tickAutosave(500.0f, serializer_, world_, timeline_, pos, vel);
 
     auto slots = mgr.listSlots();
     EXPECT_TRUE(slots.empty());
@@ -221,7 +212,7 @@ TEST_F(SaveManagerTest, SavePausesAndResumesTimeline) {
     std::optional<Position> pos = Position{0.0f, 0.0f, 0.0f};
     std::optional<Position> vel = Position{0.0f, 0.0f, 0.0f};
 
-    ASSERT_TRUE(mgr.save("pause_test", serializer_, world_, density_, essence_, timeline_, pos, vel));
+    ASSERT_TRUE(mgr.save("pause_test", serializer_, world_, timeline_, pos, vel));
 
     // Timeline should be resumed after save
     EXPECT_FALSE(timeline_.isPaused());
@@ -236,7 +227,7 @@ TEST_F(SaveManagerTest, SavePreservesPausedTimeline) {
     std::optional<Position> pos = Position{0.0f, 0.0f, 0.0f};
     std::optional<Position> vel = Position{0.0f, 0.0f, 0.0f};
 
-    ASSERT_TRUE(mgr.save("already_paused", serializer_, world_, density_, essence_, timeline_, pos, vel));
+    ASSERT_TRUE(mgr.save("already_paused", serializer_, world_, timeline_, pos, vel));
 
     // Timeline was already paused; should stay paused
     EXPECT_TRUE(timeline_.isPaused());
