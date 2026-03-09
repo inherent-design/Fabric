@@ -9,6 +9,7 @@
 #include "recurse/character/VoxelInteraction.hh"
 #include "recurse/simulation/ChunkRegistry.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
+#include "recurse/systems/ChunkPipelineSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/world/WorldGenerator.hh"
 
@@ -47,6 +48,7 @@ void VoxelSimulationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fix
 
 void VoxelSimulationSystem::configureDependencies() {
     after<TerrainSystem>();
+    after<ChunkPipelineSystem>();
 }
 
 void VoxelSimulationSystem::generateInitialWorld() {

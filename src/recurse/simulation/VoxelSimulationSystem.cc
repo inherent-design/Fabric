@@ -24,9 +24,20 @@ void VoxelSimulationSystem::tick() {
             tracker_.resolveBoundaryDirty(entry.pos, true);
     }
 
-    // 2. Sync ghost cells for all active chunks
+    // Phase 0: Resolve buffer pointers and build dispatch list
     {
-        FABRIC_ZONE_SCOPED_N("ghost_cell_copy");
+        FABRIC_ZONE_SCOPED_N("phase_0_dispatch");
+        grid_.registry().resolveBufferPointers(grid_.currentEpoch());
+        // Dispatch list not yet consumed by simulation; collectActiveChunks still
+        // drives the work list via ChunkState. Phase 0 wiring prepares for future
+        // migration where dispatchList replaces collectActiveChunks.
+        auto dispatchList = grid_.registry().buildDispatchList(ChunkSlotState::Active);
+        (void)dispatchList;
+    }
+
+    // Phase 2: Sync ghost cells for all active chunks
+    {
+        FABRIC_ZONE_SCOPED_N("phase_2_ghost_sync");
         std::vector<ChunkPos> positions;
         positions.reserve(active.size());
         for (const auto& entry : active)
@@ -34,10 +45,10 @@ void VoxelSimulationSystem::tick() {
         ghosts_.syncAll(positions, grid_);
     }
 
-    // 2b. Pre-materialize face-neighbor chunks so writeCell cannot
+    // Phase 2b: Pre-materialize face-neighbor chunks so writeCell cannot
     // insert into chunks_ during parallel dispatch (ARCH-SIM-RACE fix).
     {
-        FABRIC_ZONE_SCOPED_N("pre_materialize_neighbors");
+        FABRIC_ZONE_SCOPED_N("phase_2b_pre_materialize");
         const int offsets[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
         for (const auto& entry : active) {
             const auto& p = entry.pos;
@@ -49,10 +60,10 @@ void VoxelSimulationSystem::tick() {
         }
     }
 
-    // 3. Simulate chunks via scheduler (parallel or inline)
+    // Phase 3: Simulate chunks via scheduler (parallel or inline)
     std::vector<BoundaryWriteQueue> boundaryQueues(scheduler_.workerCount() + 1);
     {
-        FABRIC_ZONE_SCOPED_N("chunk_simulate");
+        FABRIC_ZONE_SCOPED_N("phase_3_simulate");
         scheduler_.parallelFor(active.size(), [&](size_t jobIdx, size_t workerIdx) {
             std::mt19937 rng(frameIndex_ + jobIdx);
             const auto& pos = active[jobIdx].pos;
@@ -60,21 +71,21 @@ void VoxelSimulationSystem::tick() {
         });
     }
 
-    // 3b. Drain boundary write queues (single-threaded)
+    // Phase 3b: Drain boundary write queues (single-threaded)
     {
-        FABRIC_ZONE_SCOPED_N("boundary_drain");
+        FABRIC_ZONE_SCOPED_N("phase_3b_boundary_drain");
         drainBoundaryWrites(boundaryQueues);
     }
 
-    // 4. Advance epoch (swap read/write buffers)
+    // Phase 4: Advance epoch (swap read/write buffers)
     {
-        FABRIC_ZONE_SCOPED_N("epoch_advance");
+        FABRIC_ZONE_SCOPED_N("phase_4_epoch_advance");
         grid_.advanceEpoch();
     }
 
-    // 5. Propagate dirty: wake neighbors of active chunks
+    // Phase 5: Propagate dirty; wake neighbors of active chunks
     {
-        FABRIC_ZONE_SCOPED_N("dirty_propagate");
+        FABRIC_ZONE_SCOPED_N("phase_5_dirty_propagate");
         propagateDirty(active);
     }
 

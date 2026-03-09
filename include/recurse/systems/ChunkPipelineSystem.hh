@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
+#include "recurse/character/GameConstants.hh"
 #include "recurse/world/ChunkStreaming.hh"
 #include <flecs.h>
 #include <memory>
@@ -42,6 +43,11 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
 
     std::unique_ptr<ChunkStreamingManager> streaming_;
     std::unordered_map<ChunkCoord, flecs::entity, ChunkCoordHash> chunkEntities_;
+
+    float lastPlayerX_ = K_DEFAULT_SPAWN_X;
+    float lastPlayerY_ = K_DEFAULT_SPAWN_Y;
+    float lastPlayerZ_ = K_DEFAULT_SPAWN_Z;
+    float lastSpeed_ = 0.0f;
 };
 
 } // namespace recurse::systems

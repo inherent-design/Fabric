@@ -62,20 +62,8 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
     FABRIC_ZONE_SCOPED_N("chunk_pipeline");
     auto& ecsWorld = ctx.world;
 
-    // Streaming: load/unload chunks around player position
-    float px = K_DEFAULT_SPAWN_X, py = K_DEFAULT_SPAWN_Y, pz = K_DEFAULT_SPAWN_Z;
-    float speed = 0.0f;
-
-    if (charMovement_) {
-        const auto& pos = charMovement_->playerPosition();
-        px = pos.x;
-        py = pos.y;
-        pz = pos.z;
-        const auto& vel = charMovement_->playerVelocity();
-        speed = std::sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
-    }
-
-    auto streamUpdate = streaming_->update(px, py, pz, speed);
+    // Use cached position for streaming (one-frame delay; invisible at chunk scale)
+    auto streamUpdate = streaming_->update(lastPlayerX_, lastPlayerY_, lastPlayerZ_, lastSpeed_);
 
     for (const auto& coord : streamUpdate.toLoad) {
         if (chunkEntities_.find(coord) == chunkEntities_.end()) {
@@ -103,13 +91,20 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
             chunkEntities_.erase(it);
         }
     }
+
+    // Update cached position for next frame
+    if (charMovement_) {
+        const auto& pos = charMovement_->playerPosition();
+        lastPlayerX_ = pos.x;
+        lastPlayerY_ = pos.y;
+        lastPlayerZ_ = pos.z;
+        const auto& vel = charMovement_->playerVelocity();
+        lastSpeed_ = std::sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
+    }
 }
 
 void ChunkPipelineSystem::configureDependencies() {
     after<TerrainSystem>();
-    after<VoxelSimulationSystem>();
-    after<PhysicsGameSystem>();
-    after<CharacterMovementSystem>();
 }
 
 } // namespace recurse::systems

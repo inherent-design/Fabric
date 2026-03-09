@@ -16,6 +16,7 @@ class VoxelSimulationSystem;
 
 namespace recurse::systems {
 
+class ChunkPipelineSystem;
 class TerrainSystem;
 
 /// Wraps the fabric-level VoxelSimulationSystem as a System<> in FixedUpdate.
