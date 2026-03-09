@@ -32,7 +32,7 @@ enum class ChunkSlotState : uint8_t {
 };
 
 struct ChunkSlot {
-    ChunkSlotState state = ChunkSlotState::Active;
+    ChunkSlotState state = ChunkSlotState::Absent;
     ChunkBufferPair simBuffers;
 
     // Pre-resolved raw pointers for zero-overhead worker access (wired by C-1c).
@@ -59,6 +59,9 @@ class ChunkRegistry {
     ChunkSlot* find(int cx, int cy, int cz);
     const ChunkSlot* find(int cx, int cy, int cz) const;
     bool hasChunk(int cx, int cy, int cz) const;
+
+    // Lifecycle state machine
+    void transitionState(int cx, int cy, int cz, ChunkSlotState to);
 
     // Bulk queries
     size_t chunkCount() const;

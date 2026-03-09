@@ -7,6 +7,7 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/character/VoxelInteraction.hh"
+#include "recurse/simulation/ChunkRegistry.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/world/WorldGenerator.hh"
@@ -66,14 +67,16 @@ void VoxelSimulationSystem::generateInitialWorld() {
     for (int cz = -2; cz <= 2; ++cz) {
         for (int cy = -1; cy <= 1; ++cy) {
             for (int cx = -2; cx <= 2; ++cx) {
+                grid.registry().addChunk(cx, cy, cz);
+                grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Generating);
                 gen.generate(grid, cx, cy, cz);
-                // Mark chunk Active so VoxelMeshingSystem will mesh it
+                grid.syncChunkBuffers(cx, cy, cz);
+                grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
                 tracker.setState(recurse::simulation::ChunkPos{cx, cy, cz}, recurse::simulation::ChunkState::Active);
                 generatedChunks.emplace_back(cx, cy, cz);
             }
         }
     }
-    grid.advanceEpoch();
 
     // Initialize Jolt physics collision for each chunk
     for (const auto& [cx, cy, cz] : generatedChunks) {
@@ -108,8 +111,12 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
     if (!terrain_ || !fabSim_)
         return;
     auto& gen = terrain_->worldGenerator();
-    gen.generate(fabSim_->grid(), cx, cy, cz);
-    fabSim_->grid().advanceEpoch();
+    auto& grid = fabSim_->grid();
+    grid.registry().addChunk(cx, cy, cz);
+    grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Generating);
+    gen.generate(grid, cx, cy, cz);
+    grid.syncChunkBuffers(cx, cy, cz);
+    grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
     fabSim_->activityTracker().setState(recurse::simulation::ChunkPos{cx, cy, cz},
                                         recurse::simulation::ChunkState::Active);
 
@@ -143,6 +150,10 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
 void VoxelSimulationSystem::removeChunk(int cx, int cy, int cz) {
     if (!fabSim_)
         return;
+    auto* slot = fabSim_->grid().registry().find(cx, cy, cz);
+    if (slot) {
+        fabSim_->grid().registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Draining);
+    }
     fabSim_->grid().removeChunk(cx, cy, cz);
     fabSim_->activityTracker().remove(recurse::simulation::ChunkPos{cx, cy, cz});
 }

@@ -71,6 +71,15 @@ void SimulationGrid::writeCellImmediate(int wx, int wy, int wz, VoxelCell cell) 
     (*slot.simBuffers.buffers[writeIndex()])[idx] = cell;
 }
 
+void SimulationGrid::syncChunkBuffers(int cx, int cy, int cz) {
+    auto* slot = registry_.find(cx, cy, cz);
+    if (!slot || !slot->isMaterialized())
+        return;
+    int ri = readIndex();
+    int wi = writeIndex();
+    *slot->simBuffers.buffers[ri] = *slot->simBuffers.buffers[wi];
+}
+
 void SimulationGrid::advanceEpoch() {
     int ri = readIndex();
     int wi = writeIndex();

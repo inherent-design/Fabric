@@ -1,4 +1,5 @@
 #include "recurse/simulation/ChunkRegistry.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <gtest/gtest.h>
 
@@ -181,10 +182,10 @@ TEST_F(ChunkRegistryTest, BufferMemorySize) {
     EXPECT_EQ(sizeof(ChunkBufferPair::Buffer), 131072u);
 }
 
-// 15. ChunkSlot default state is Active
+// 15. ChunkSlot default state is Absent
 TEST_F(ChunkRegistryTest, ChunkSlotDefaultState) {
     auto& slot = registry.addChunk(0, 0, 0);
-    EXPECT_EQ(slot.state, ChunkSlotState::Active);
+    EXPECT_EQ(slot.state, ChunkSlotState::Absent);
 }
 
 // 16. ChunkSlot writePtr/readPtr default to nullptr
@@ -257,4 +258,70 @@ TEST_F(ChunkRegistryTest, ResolveBufferPointersNullForUnmaterialized) {
     ASSERT_NE(slot, nullptr);
     EXPECT_EQ(slot->readPtr, nullptr);
     EXPECT_EQ(slot->writePtr, nullptr);
+}
+
+// 22. Valid lifecycle transitions succeed without assertion
+TEST_F(ChunkRegistryTest, ValidTransitionsSucceed) {
+    registry.addChunk(0, 0, 0); // default state: Absent
+    EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Absent);
+
+    registry.transitionState(0, 0, 0, ChunkSlotState::Generating);
+    EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Generating);
+
+    registry.transitionState(0, 0, 0, ChunkSlotState::Active);
+    EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Active);
+
+    registry.transitionState(0, 0, 0, ChunkSlotState::Draining);
+    EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Draining);
+}
+
+// 23. Invalid transition asserts in debug builds
+TEST_F(ChunkRegistryTest, InvalidTransitionAssertsInDebug) {
+#ifdef NDEBUG
+    GTEST_SKIP() << "Debug assertions disabled in release builds";
+#else
+    registry.addChunk(0, 0, 0); // default state: Absent
+    EXPECT_DEATH(registry.transitionState(0, 0, 0, ChunkSlotState::Active), "invalid state transition");
+#endif
+}
+
+// 24. syncChunkBuffers copies a single chunk without touching others
+TEST_F(ChunkRegistryTest, SyncChunkBuffersCopiesSingleChunk) {
+    SimulationGrid grid;
+
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.materializeChunk(0, 0, 0);
+    grid.fillChunk(1, 0, 0, VoxelCell{});
+    grid.materializeChunk(1, 0, 0);
+
+    VoxelCell sand;
+    sand.materialId = material_ids::SAND;
+    grid.writeCell(0, 0, 0, sand);
+
+    grid.syncChunkBuffers(0, 0, 0);
+
+    // Chunk A read buffer should now have Sand
+    EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::SAND);
+
+    // Chunk B read buffer should still be Air (untouched)
+    EXPECT_EQ(grid.readCell(32, 0, 0).materialId, material_ids::AIR);
+}
+
+// 25. syncChunkBuffers is a no-op for unmaterialized chunks
+TEST_F(ChunkRegistryTest, SyncChunkBuffersNoOpForUnmaterialized) {
+    SimulationGrid grid;
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    EXPECT_NO_THROW(grid.syncChunkBuffers(0, 0, 0));
+}
+
+// 26. Lifecycle state transitions through Generating -> Active
+TEST_F(ChunkRegistryTest, GenerateChunkSetsLifecycleStates) {
+    registry.addChunk(0, 0, 0);
+    EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Absent);
+
+    registry.transitionState(0, 0, 0, ChunkSlotState::Generating);
+    EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Generating);
+
+    registry.transitionState(0, 0, 0, ChunkSlotState::Active);
+    EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Active);
 }
