@@ -42,15 +42,15 @@ class LODSystem : public fabric::System<LODSystem> {
     void setSimulationGrid(recurse::simulation::SimulationGrid* grid) { simGrid_ = grid; }
     void setMaterialRegistry(const recurse::simulation::MaterialRegistry* materials);
 
+    // Chunk notification (called by ChunkPipelineSystem after generation)
+    void onChunkReady(int cx, int cy, int cz);
+
     // Statistics
     size_t gpuResidentCount() const { return gpuSections_.size(); }
     size_t totalSectionCount() const { return grid_ ? grid_->sectionCount() : 0; }
     size_t visibleSectionCount() const { return visibleSections_.size(); }
 
   private:
-    // Called when a chunk is ready (connected to ChunkPipelineSystem)
-    void onChunkReady(int cx, int cy, int cz);
-
     // Build LOD0 section from SimulationGrid chunk data
     void buildLOD0Section(int cx, int cy, int cz);
 

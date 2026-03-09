@@ -1,6 +1,7 @@
 #include "recurse/systems/ChunkPipelineSystem.hh"
 #include "recurse/character/GameConstants.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
+#include "recurse/systems/LODSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
@@ -19,6 +20,7 @@ namespace recurse::systems {
 ChunkPipelineSystem::~ChunkPipelineSystem() = default;
 
 void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
+    lodSystem_ = ctx.systemRegistry.get<LODSystem>();
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     simSystem_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
     physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
@@ -70,6 +72,9 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
             // Generate terrain into simulation grid
             if (simSystem_)
                 simSystem_->generateChunk(coord.cx, coord.cy, coord.cz);
+
+            if (lodSystem_)
+                lodSystem_->onChunkReady(coord.cx, coord.cy, coord.cz);
 
             auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
                 {static_cast<float>(coord.cx * K_CHUNK_SIZE), static_cast<float>(coord.cy * K_CHUNK_SIZE),

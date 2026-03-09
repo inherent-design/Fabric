@@ -3,12 +3,14 @@
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Camera.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/core/SystemRegistry.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/LODGrid.hh"
 #include "recurse/render/LODMeshManager.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 
 #include <algorithm>
@@ -20,16 +22,29 @@ LODSystem::LODSystem() : grid_(std::make_unique<LODGrid>()) {}
 
 LODSystem::~LODSystem() = default;
 
-void LODSystem::doInit(fabric::AppContext& /*ctx*/) {
-    // Note: In a full implementation, materials would be obtained from ctx
-    // For now, we LODSystem doesn't require materials for basic operation
-    FABRIC_LOG_INFO("LODSystem initialized");
+void LODSystem::doInit(fabric::AppContext& ctx) {
+    auto* voxelSim = ctx.systemRegistry.get<VoxelSimulationSystem>();
+    if (voxelSim) {
+        setSimulationGrid(&voxelSim->simulationGrid());
+        setMaterialRegistry(&voxelSim->materials());
+
+        // Queue any chunks that were generated before LODSystem was enabled
+        auto allChunks = simGrid_->allChunks();
+        for (const auto& [cx, cy, cz] : allChunks) {
+            pendingChunks_.emplace_back(cx, cy, cz);
+        }
+        FABRIC_LOG_INFO("LODSystem initialized: {} existing chunks queued", allChunks.size());
+    } else {
+        FABRIC_LOG_INFO("LODSystem initialized (no VoxelSimulationSystem available)");
+    }
 }
 
 void LODSystem::doShutdown() {
     gpuSections_.clear();
     visibleSections_.clear();
     pendingChunks_.clear();
+    simGrid_ = nullptr;
+    materials_ = nullptr;
 
     FABRIC_LOG_INFO("LODSystem shut down");
 }
@@ -108,7 +123,7 @@ void LODSystem::render(fabric::AppContext& /*ctx*/) {
 }
 
 void LODSystem::configureDependencies() {
-    // Dependencies resolved in init() or via setters
+    after<VoxelSimulationSystem>();
 }
 
 void LODSystem::setMaterialRegistry(const recurse::simulation::MaterialRegistry* materials) {

@@ -9,6 +9,7 @@
 
 namespace recurse::systems {
 
+class LODSystem;
 class TerrainSystem;
 class VoxelSimulationSystem;
 class PhysicsGameSystem;
@@ -36,6 +37,7 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     ChunkStreamingManager& streaming() { return *streaming_; }
 
   private:
+    LODSystem* lodSystem_ = nullptr;
     TerrainSystem* terrain_ = nullptr;
     VoxelSimulationSystem* simSystem_ = nullptr;
     PhysicsGameSystem* physics_ = nullptr;
