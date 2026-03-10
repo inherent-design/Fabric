@@ -76,7 +76,7 @@ TEST_F(VoxelInteractionTest, CreateMatterPlacesAdjacentNegY) {
 
 TEST_F(VoxelInteractionTest, DestroyMatterSetsMaterialToAir) {
     VoxelInteraction vi(grid, dispatcher);
-    grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 128, voxel_flags::NONE});
+    grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 0, voxel_flags::NONE});
     VoxelHit hit{5, 5, 5, 0, 0, -1, 1.0f};
     auto result = vi.destroyMatter(hit);
     EXPECT_TRUE(result.success);
@@ -93,7 +93,7 @@ TEST_F(VoxelInteractionTest, CreateMatterEmitsVoxelChangedEvent) {
 
 TEST_F(VoxelInteractionTest, DestroyMatterEmitsVoxelChangedEvent) {
     VoxelInteraction vi(grid, dispatcher);
-    grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 128, voxel_flags::NONE});
+    grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 0, voxel_flags::NONE});
     VoxelHit hit{5, 5, 5, 0, 0, -1, 1.0f};
     vi.destroyMatter(hit);
     EXPECT_EQ(eventCount, 1);
@@ -101,7 +101,7 @@ TEST_F(VoxelInteractionTest, DestroyMatterEmitsVoxelChangedEvent) {
 
 TEST_F(VoxelInteractionTest, CreateMatterAtWithRaycast) {
     VoxelInteraction vi(grid, dispatcher);
-    grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 128, voxel_flags::NONE});
+    grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 0, voxel_flags::NONE});
     auto result = vi.createMatterAt(5.5f, 5.5f, 0.5f, 0.0f, 0.0f, 1.0f);
     EXPECT_TRUE(result.success);
     // Ray hits +Z face of voxel at (5,5,5), normal is (0,0,-1), so placement at (5,5,4)
@@ -111,7 +111,7 @@ TEST_F(VoxelInteractionTest, CreateMatterAtWithRaycast) {
 
 TEST_F(VoxelInteractionTest, DestroyMatterAtWithRaycast) {
     VoxelInteraction vi(grid, dispatcher);
-    grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 128, voxel_flags::NONE});
+    grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 0, voxel_flags::NONE});
     auto result = vi.destroyMatterAt(5.5f, 5.5f, 0.5f, 0.0f, 0.0f, 1.0f);
     EXPECT_TRUE(result.success);
     EXPECT_EQ(grid.readCell(5, 5, 5).materialId, material_ids::AIR);

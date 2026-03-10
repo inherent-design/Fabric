@@ -33,7 +33,7 @@ inline constexpr uint8_t FREE_FALL = 1 << 1; // In free-fall (optimization)
 /// 4-byte voxel cell. Fits 32768 cells per 32^3 chunk = 128 KB.
 struct VoxelCell {
     MaterialId materialId{material_ids::AIR}; // 2 bytes
-    uint8_t temperature{128};                 // 1 byte (reserved, unused in v1)
+    uint8_t essenceIdx{0};                    ///< Palette index into per-chunk EssencePalette (0-255).
     uint8_t flags{voxel_flags::NONE};         // 1 byte
 };
 static_assert(sizeof(VoxelCell) == 4, "VoxelCell must be exactly 4 bytes");
