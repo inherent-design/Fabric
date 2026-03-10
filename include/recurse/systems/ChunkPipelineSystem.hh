@@ -87,8 +87,13 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     void updateLODRing(int centerCX, int centerCY, int centerCZ);
 
     // Async chunk loading
+    struct AsyncLoadResult {
+        bool success = false;
+        std::vector<float> paletteData;
+        uint16_t paletteEntryCount = 0;
+    };
     struct PendingChunkLoad {
-        std::future<bool> result;
+        std::future<AsyncLoadResult> result;
         int cx, cy, cz;
         bool cancelled = false;
     };

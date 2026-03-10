@@ -292,14 +292,19 @@ bool ChunkPipelineSystem::dispatchAsyncLoad(int cx, int cy, int cz) {
     }
 
     auto* store = chunkStore_;
-    auto future = simSystem_->scheduler().submit([store, cx, cy, cz, buf]() -> bool {
+    using Result = ChunkPipelineSystem::AsyncLoadResult;
+    auto future = simSystem_->scheduler().submit([store, cx, cy, cz, buf]() -> Result {
+        Result r;
         auto genBlob = store->loadGenData(cx, cy, cz);
         if (!genBlob)
-            return false;
+            return r;
 
         auto decoded = FilesystemChunkStore::decode(*genBlob);
         if (decoded.cells.size() == sizeof(*buf))
             std::memcpy(buf->data(), decoded.cells.data(), decoded.cells.size());
+
+        r.paletteData = std::move(decoded.paletteData);
+        r.paletteEntryCount = decoded.paletteEntryCount;
 
         if (store->hasDelta(cx, cy, cz)) {
             auto deltaBlob = store->loadDelta(cx, cy, cz);
@@ -307,10 +312,15 @@ bool ChunkPipelineSystem::dispatchAsyncLoad(int cx, int cy, int cz) {
                 auto dd = FilesystemChunkStore::decode(*deltaBlob);
                 if (dd.cells.size() == sizeof(*buf))
                     std::memcpy(buf->data(), dd.cells.data(), dd.cells.size());
+                if (dd.paletteEntryCount > 0) {
+                    r.paletteData = std::move(dd.paletteData);
+                    r.paletteEntryCount = dd.paletteEntryCount;
+                }
             }
         }
 
-        return true;
+        r.success = true;
+        return r;
     });
 
     pendingLoads_.push_back({std::move(future), cx, cy, cz, false});
@@ -325,7 +335,7 @@ void ChunkPipelineSystem::pollPendingLoads(fabric::AppContext& ctx) {
             continue;
         }
 
-        bool success = it->result.get();
+        auto loadResult = it->result.get();
         int cx = it->cx;
         int cy = it->cy;
         int cz = it->cz;
@@ -337,12 +347,25 @@ void ChunkPipelineSystem::pollPendingLoads(fabric::AppContext& ctx) {
             continue;
         }
 
-        if (success) {
+        if (loadResult.success) {
             auto& grid = simSystem_->simulationGrid();
             grid.syncChunkBuffers(cx, cy, cz);
             grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
             simSystem_->activityTracker().setState(recurse::simulation::ChunkPos{cx, cy, cz},
                                                    recurse::simulation::ChunkState::Active);
+
+            // Reconstruct palette from decoded FCHK data
+            if (loadResult.paletteEntryCount > 0) {
+                auto* palette = grid.chunkPalette(cx, cy, cz);
+                if (palette) {
+                    palette->clear();
+                    for (uint16_t i = 0; i < loadResult.paletteEntryCount; ++i) {
+                        size_t base = static_cast<size_t>(i) * 4;
+                        palette->addEntry({loadResult.paletteData[base], loadResult.paletteData[base + 1],
+                                           loadResult.paletteData[base + 2], loadResult.paletteData[base + 3]});
+                    }
+                }
+            }
 
             if (lodSystem_)
                 lodSystem_->onChunkReady(cx, cy, cz);
@@ -355,8 +378,6 @@ void ChunkPipelineSystem::pollPendingLoads(fabric::AppContext& ctx) {
                  static_cast<float>((cy + 1) * K_CHUNK_SIZE), static_cast<float>((cz + 1) * K_CHUNK_SIZE)});
             chunkEntities_[coord] = ent;
         } else {
-            // Disk read failed after hasGenData returned true; remove the
-            // half-initialized slot so the streaming manager can retry.
             if (simSystem_)
                 simSystem_->removeChunk(cx, cy, cz);
         }
@@ -392,9 +413,26 @@ void ChunkPipelineSystem::saveChunkToDisk(int cx, int cy, int cz) {
     if (!buf)
         return;
 
-    // Encode VoxelCell data to FCHK blob and queue for debounced save
-    auto blob = FilesystemChunkStore::encode(buf->data(), sizeof(*buf));
-    // Direct save on unload (no debounce; chunk is about to be destroyed)
+    // Serialize palette entries to flat float array for FCHK v2
+    const float* palettePtr = nullptr;
+    uint16_t paletteCount = 0;
+    std::vector<float> paletteFloats;
+    const auto* palette = grid.chunkPalette(cx, cy, cz);
+    if (palette && palette->paletteSize() > 0) {
+        paletteCount = static_cast<uint16_t>(palette->paletteSize());
+        paletteFloats.resize(static_cast<size_t>(paletteCount) * 4);
+        for (uint16_t i = 0; i < paletteCount; ++i) {
+            auto e = palette->lookup(i);
+            size_t base = static_cast<size_t>(i) * 4;
+            paletteFloats[base] = e.x;
+            paletteFloats[base + 1] = e.y;
+            paletteFloats[base + 2] = e.z;
+            paletteFloats[base + 3] = e.w;
+        }
+        palettePtr = paletteFloats.data();
+    }
+
+    auto blob = FilesystemChunkStore::encode(buf->data(), sizeof(*buf), 0, 1, palettePtr, paletteCount);
     if (chunkStore_) {
         if (chunkStore_->hasGenData(cx, cy, cz)) {
             chunkStore_->saveDelta(cx, cy, cz, blob);
