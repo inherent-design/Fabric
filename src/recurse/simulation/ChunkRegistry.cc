@@ -31,6 +31,9 @@ bool ChunkBufferPair::isMaterialized() const {
 
 ChunkSlot& ChunkRegistry::addChunk(int cx, int cy, int cz) {
     auto key = packChunkKey(cx, cy, cz);
+    auto it = slots_.find(key);
+    if (it != slots_.end())
+        return it->second;
     return slots_[key];
 }
 

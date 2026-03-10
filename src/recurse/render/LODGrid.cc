@@ -28,7 +28,7 @@ LODSection* LODGrid::getOrCreate(int level, int sx, int sy, int sz) {
     section->origin = Vec3i(sx * K_SECTION_WORLD_SIZE, sy * K_SECTION_WORLD_SIZE, sz * K_SECTION_WORLD_SIZE);
     section->blockIndices.assign(LODSection::K_VOLUME, 0);
     section->palette.clear();
-    section->palette.push_back(0); // Index 0 = air (materialId 1)
+    section->palette.push_back(1); // Index 0 = air (materialId 1)
     section->dirty = true;
 
     auto* ptr = section.get();

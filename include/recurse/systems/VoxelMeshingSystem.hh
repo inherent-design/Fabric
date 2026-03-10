@@ -20,9 +20,6 @@ namespace recurse {
 class SnapMCMesher;
 } // namespace recurse
 
-// SmoothVertexPool is a type alias, cannot forward-declare
-#include "recurse/render/VertexPool.hh"
-
 namespace recurse::systems {
 
 struct MeshingDebugInfo {
@@ -95,7 +92,6 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     recurse::simulation::ChunkActivityTracker* activityTracker_ = nullptr;
     const recurse::simulation::MaterialRegistry* materials_ = nullptr;
     std::unique_ptr<recurse::SnapMCMesher> mesher_;
-    std::unique_ptr<recurse::SmoothVertexPool> vertexPool_;
 
     std::unordered_map<fabric::ChunkCoord, ChunkGPUMesh, fabric::ChunkCoordHash> gpuMeshes_;
     std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> emptyChunks_;

@@ -241,54 +241,6 @@ void LODSystem::setMaterialRegistry(const recurse::simulation::MaterialRegistry*
     }
 }
 
-void LODSystem::buildLOD0Section(int cx, int cy, int cz) {
-    if (!simGrid_) {
-        return;
-    }
-
-    // Create LOD0 section
-    int sx = cx;
-    int sy = cy;
-    int sz = cz;
-    auto* section = grid_->getOrCreate(0, sx, sy, sz);
-    section->origin = Vec3i(cx * LODGrid::K_SECTION_WORLD_SIZE, cy * LODGrid::K_SECTION_WORLD_SIZE,
-                            cz * LODGrid::K_SECTION_WORLD_SIZE);
-    section->palette.clear();
-    section->palette.push_back(1); // Index 0 = air (materialId 1)
-    section->blockIndices.assign(LODSection::K_VOLUME, 0);
-    section->dirty = true;
-
-    // Fill section data from SimulationGrid
-    for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
-        for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
-            for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
-                int wx = section->origin.x + lx;
-                int wy = section->origin.y + ly;
-                int wz = section->origin.z + lz;
-                auto cell = simGrid_->readCell(wx, wy, wz);
-
-                // Map materialId to palette
-                uint16_t matId = cell.materialId;
-                uint16_t palIdx = 0;
-
-                // Find existing palette entry or add new one
-                auto it = std::find(section->palette.begin(), section->palette.end(), matId);
-                if (it != section->palette.end()) {
-                    palIdx = static_cast<uint16_t>(std::distance(section->palette.begin(), it));
-                } else {
-                    palIdx = static_cast<uint16_t>(section->palette.size());
-                    section->palette.push_back(matId);
-                }
-
-                section->set(lx, ly, lz, palIdx);
-            }
-        }
-    }
-
-    // Try to build parent LOD section
-    grid_->tryBuildParent(0, sx, sy, sz);
-}
-
 void LODSystem::onChunkReady(int cx, int cy, int cz) {
     pendingChunks_.emplace_back(cx, cy, cz);
 }
@@ -378,7 +330,8 @@ void LODSystem::uploadSection(LODSectionKey key, const recurse::LODMeshManager::
 
     // Create index buffer (copy: mesh data is temporary); reset destroys old handle
     gpu.ibh.reset(bgfx::createIndexBuffer(
-        bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t)))));
+        bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t))),
+        BGFX_BUFFER_INDEX32));
 
     gpu.vertexCount = static_cast<uint32_t>(mesh.vertices.size());
     gpu.indexCount = static_cast<uint32_t>(mesh.indices.size());

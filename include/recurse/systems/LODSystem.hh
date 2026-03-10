@@ -70,9 +70,6 @@ class LODSystem : public fabric::System<LODSystem> {
     LODDebugInfo debugInfo() const;
 
   private:
-    // Build LOD0 section from SimulationGrid chunk data
-    void buildLOD0Section(int cx, int cy, int cz);
-
     // Distance-based LOD selection + frustum culling
     struct VisibleSection {
         const LODSection* section;

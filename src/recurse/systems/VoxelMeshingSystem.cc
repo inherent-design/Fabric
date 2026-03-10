@@ -6,7 +6,6 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkedGrid.hh"
-#include "recurse/render/VertexPool.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
@@ -62,12 +61,7 @@ void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
     if (!mesher_)
         mesher_ = std::make_unique<SnapMCMesher>();
 
-    SmoothVertexPool::Config poolConfig;
     gpuUploadEnabled_ = (ctx.renderCaps != nullptr);
-    poolConfig.cpuOnly = !gpuUploadEnabled_;
-
-    vertexPool_ = std::make_unique<SmoothVertexPool>();
-    vertexPool_->init(poolConfig);
 
     FABRIC_LOG_INFO("VoxelMeshingSystem initialized (budget={}, simBound={}, trackerBound={}, gpuUpload={})",
                     meshBudget_, simGrid_ != nullptr, activityTracker_ != nullptr, gpuUploadEnabled_);
@@ -75,12 +69,6 @@ void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
 
 void VoxelMeshingSystem::doShutdown() {
     clearAllMeshes();
-
-    if (vertexPool_) {
-        vertexPool_->shutdown();
-        vertexPool_.reset();
-    }
-
     mesher_.reset();
     simSystem_ = nullptr;
     simGrid_ = nullptr;
