@@ -115,3 +115,32 @@ TEST_F(EssencePaletteTest, ZeroEpsilonRequiresExactMatch) {
     exact.quantize(b);
     EXPECT_EQ(exact.paletteSize(), 2u);
 }
+
+// --- Group B: Palette overflow with silent merge ---
+
+TEST_F(EssencePaletteTest, PaletteOverflowAt256SilentMerge) {
+    EssencePalette pal(0.0f, 256);
+    for (int i = 0; i < 256; ++i) {
+        float v = static_cast<float>(i);
+        pal.quantize(Vec4(v, 0.0f, 0.0f, 0.0f));
+    }
+    EXPECT_EQ(pal.paletteSize(), 256u);
+
+    uint16_t idx = pal.quantize(Vec4(999.0f, 999.0f, 999.0f, 999.0f));
+    EXPECT_EQ(pal.paletteSize(), 256u);
+    EXPECT_LT(idx, 256u);
+}
+
+TEST_F(EssencePaletteTest, PaletteMergeSelectsClosestEntry) {
+    EssencePalette pal(0.0f, 2);
+    uint16_t idxA = pal.quantize(Vec4(1.0f, 0.0f, 0.0f, 0.0f));
+    uint16_t idxB = pal.quantize(Vec4(0.0f, 1.0f, 0.0f, 0.0f));
+    EXPECT_EQ(pal.paletteSize(), 2u);
+
+    uint16_t idxC = pal.quantize(Vec4(0.95f, 0.05f, 0.0f, 0.0f));
+    EXPECT_EQ(pal.paletteSize(), 2u);
+
+    Vec4 result = pal.lookup(idxC);
+    EXPECT_FLOAT_EQ(result.x, 0.95f);
+    EXPECT_FLOAT_EQ(result.y, 0.05f);
+}

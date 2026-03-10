@@ -222,3 +222,81 @@ TEST_F(SimulationGridTest, AllBuffersAllocated) {
     for (int i = 0; i < ChunkBuffers::K_COUNT; ++i)
         EXPECT_NE(slot.simBuffers.buffers[i], nullptr) << "buffer " << i;
 }
+
+// --- Group E: VoxelCell field verification ---
+
+TEST_F(SimulationGridTest, VoxelCellSizeIs4Bytes) {
+    static_assert(sizeof(VoxelCell) == 4);
+    EXPECT_EQ(sizeof(VoxelCell), 4u);
+}
+
+TEST_F(SimulationGridTest, VoxelCellEssenceIdxDefaultZero) {
+    VoxelCell cell{};
+    EXPECT_EQ(cell.essenceIdx, 0u);
+}
+
+TEST_F(SimulationGridTest, VoxelCellEssenceIdxPreservedInCopy) {
+    VoxelCell cell{};
+    cell.materialId = material_ids::STONE;
+    cell.essenceIdx = 42;
+    cell.flags = voxel_flags::NONE;
+
+    VoxelCell copy = cell;
+    EXPECT_EQ(copy.essenceIdx, 42u);
+    EXPECT_EQ(copy.materialId, material_ids::STONE);
+}
+
+// --- Group A: Essence round-trip through epoch ---
+
+TEST_F(SimulationGridTest, EssenceIdxPreservedAcrossEpoch) {
+    VoxelCell cell{};
+    cell.materialId = material_ids::STONE;
+    cell.essenceIdx = 42;
+
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.writeCell(0, 0, 0, cell);
+    grid.advanceEpoch();
+
+    VoxelCell read = grid.readCell(0, 0, 0);
+    EXPECT_EQ(read.essenceIdx, 42u);
+}
+
+TEST_F(SimulationGridTest, EssenceIdxPreservedMultipleEpochs) {
+    VoxelCell cell{};
+    cell.materialId = material_ids::STONE;
+    cell.essenceIdx = 200;
+
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.writeCell(0, 0, 0, cell);
+    grid.advanceEpoch();
+
+    for (int i = 0; i < 10; ++i) {
+        VoxelCell other{};
+        other.materialId = material_ids::SAND;
+        other.essenceIdx = static_cast<uint8_t>(i);
+        grid.writeCell(1, 0, 0, other);
+        grid.advanceEpoch();
+    }
+
+    VoxelCell read = grid.readCell(0, 0, 0);
+    EXPECT_EQ(read.essenceIdx, 200u);
+}
+
+TEST_F(SimulationGridTest, EssenceIdxZeroIsDefault) {
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+
+    VoxelCell read = grid.readCell(0, 0, 0);
+    EXPECT_EQ(read.essenceIdx, 0u);
+}
+
+TEST_F(SimulationGridTest, EssenceIdxSurvivesWriteCellImmediate) {
+    VoxelCell cell{};
+    cell.materialId = material_ids::STONE;
+    cell.essenceIdx = 100;
+
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.writeCellImmediate(0, 0, 0, cell);
+
+    VoxelCell read = grid.readCell(0, 0, 0);
+    EXPECT_EQ(read.essenceIdx, 100u);
+}
