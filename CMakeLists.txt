@@ -281,6 +281,7 @@ set(FABRIC_SIMULATION_SOURCE_FILES
     src/recurse/simulation/GhostCells.cc
     src/recurse/simulation/FallingSandSystem.cc
     src/recurse/simulation/VoxelSimulationSystem.cc
+    src/recurse/simulation/EssenceAssigner.cc
 )
 
 # World library components (fabric::world namespace)

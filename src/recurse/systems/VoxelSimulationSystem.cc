@@ -9,6 +9,7 @@
 #include "fabric/utils/Profiler.hh"
 #include "recurse/character/VoxelInteraction.hh"
 #include "recurse/simulation/ChunkRegistry.hh"
+#include "recurse/simulation/EssenceAssigner.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "recurse/systems/ChunkPipelineSystem.hh"
@@ -86,6 +87,12 @@ void VoxelSimulationSystem::generateInitialWorld() {
                 grid.registry().addChunk(cx, cy, cz);
                 grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Generating);
                 gen.generate(grid, cx, cy, cz);
+                if (grid.isChunkMaterialized(cx, cy, cz)) {
+                    auto* buf = grid.writeBuffer(cx, cy, cz);
+                    auto* pal = grid.chunkPalette(cx, cy, cz);
+                    if (buf && pal)
+                        recurse::simulation::assignEssence(buf->data(), cx, cy, cz, fabSim_->materials(), *pal, 42);
+                }
                 grid.syncChunkBuffers(cx, cy, cz);
                 grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
                 tracker.setState(recurse::simulation::ChunkPos{cx, cy, cz}, recurse::simulation::ChunkState::Active);
@@ -139,6 +146,12 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
     grid.registry().addChunk(cx, cy, cz);
     grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Generating);
     gen.generate(grid, cx, cy, cz);
+    if (grid.isChunkMaterialized(cx, cy, cz)) {
+        auto* buf = grid.writeBuffer(cx, cy, cz);
+        auto* pal = grid.chunkPalette(cx, cy, cz);
+        if (buf && pal)
+            recurse::simulation::assignEssence(buf->data(), cx, cy, cz, fabSim_->materials(), *pal, 42);
+    }
     grid.syncChunkBuffers(cx, cy, cz);
     grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
     fabSim_->activityTracker().setState(recurse::simulation::ChunkPos{cx, cy, cz},
@@ -186,6 +199,7 @@ void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int
     // Resolves registry slots and allocates buffers before parallel dispatch.
     struct GenTask {
         recurse::simulation::VoxelCell* buffer;
+        recurse::EssencePalette* palette;
         int cx, cy, cz;
     };
     std::vector<GenTask> tasks;
@@ -196,16 +210,22 @@ void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int
         grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Generating);
         grid.materializeChunk(cx, cy, cz);
         auto* buf = grid.writeBuffer(cx, cy, cz);
+        auto* pal = grid.chunkPalette(cx, cy, cz);
         if (buf)
-            tasks.push_back({buf->data(), cx, cy, cz});
+            tasks.push_back({buf->data(), pal, cx, cy, cz});
     }
 
-    // Phase 1: Parallel generation. Each worker writes exclusively to its
-    // chunk's pre-resolved buffer. No grid registry access during this phase.
+    // Phase 1: Parallel generation + essence assignment. Each worker writes
+    // exclusively to its chunk's pre-resolved buffer and palette.
     {
         FABRIC_ZONE_SCOPED_N("gen_parallel");
+        const auto& mats = fabSim_->materials();
         sched.parallelFor(tasks.size(), [&](size_t idx, size_t /*workerIdx*/) {
             gen.generateToBuffer(tasks[idx].buffer, tasks[idx].cx, tasks[idx].cy, tasks[idx].cz);
+            if (tasks[idx].palette) {
+                recurse::simulation::assignEssence(tasks[idx].buffer, tasks[idx].cx, tasks[idx].cy, tasks[idx].cz, mats,
+                                                   *tasks[idx].palette, 42);
+            }
         });
     }
 

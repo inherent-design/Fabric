@@ -41,10 +41,11 @@ static_assert(sizeof(VoxelCell) == 4, "VoxelCell must be exactly 4 bytes");
 /// Shared properties for a material type.
 struct MaterialDef {
     MoveType moveType{MoveType::Static};
-    uint8_t density{0};        // 0-255, higher = heavier. Displacement ordering.
-    uint8_t viscosity{0};      // 0-255, liquid flow resistance
-    uint8_t dispersionRate{0}; // cells/tick horizontal flow
-    uint32_t baseColor{0};     // ARGB packed (0xAARRGGBB)
+    uint8_t density{0};                       // 0-255, higher = heavier. Displacement ordering.
+    uint8_t viscosity{0};                     // 0-255, liquid flow resistance
+    uint8_t dispersionRate{0};                // cells/tick horizontal flow
+    uint32_t baseColor{0};                    // ARGB packed (0xAARRGGBB)
+    float baseEssence[4]{0.f, 0.f, 0.f, 0.f}; // [Order, Chaos, Life, Decay]
 
     // Thermal (reserved, zeroed in v1)
     uint16_t meltPoint{0};
