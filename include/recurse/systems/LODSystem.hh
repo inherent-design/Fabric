@@ -115,6 +115,7 @@ class LODSystem : public fabric::System<LODSystem> {
 
     // Configuration (read from TOML in doInit; defaults match pre-config values)
     int uploadBudget_ = 50;
+    int genBudget_ = 16;
     int maxLODLevel_ = 6;
     float baseRadius_ = 10.0f;
 };

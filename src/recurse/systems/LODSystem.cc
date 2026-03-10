@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace recurse::systems {
 
@@ -31,6 +32,7 @@ LODSystem::~LODSystem() = default;
 
 void LODSystem::doInit(fabric::AppContext& ctx) {
     uploadBudget_ = ctx.configManager.get<int>("lod.upload_budget", 50);
+    genBudget_ = ctx.configManager.get<int>("lod.gen_budget", 16);
     maxLODLevel_ = ctx.configManager.get<int>("lod.max_level", 6);
     baseRadius_ = ctx.configManager.get<float>("lod.base_radius", 10.0f);
 
@@ -77,97 +79,81 @@ void LODSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fixedDt*/) {
     if (!scheduler_ || !grid_)
         return;
 
-    int dispatchedThisFrame = 0;
-    constexpr int K_MAX_PER_FRAME = 10;
+    // Phase 0: Collect batch and pre-allocate sections on main thread.
+    // getOrCreate() modifies sections_ map; must not be called from workers.
+    struct GenTask {
+        LODSection* section;
+        int cx, cy, cz;
+        bool useWorldGen;
+    };
+    std::vector<GenTask> tasks;
+    tasks.reserve(static_cast<size_t>(genBudget_));
 
-    // Process full-res LOD0 sections (from SimulationGrid data)
-    while (simGrid_ && !pendingChunks_.empty() && dispatchedThisFrame < K_MAX_PER_FRAME) {
+    while (simGrid_ && !pendingChunks_.empty() && static_cast<int>(tasks.size()) < genBudget_) {
         auto [cx, cy, cz] = pendingChunks_.front();
         pendingChunks_.pop_front();
-
         auto* section = grid_->getOrCreate(0, cx, cy, cz);
         if (!section)
             continue;
-
-        auto* grid = simGrid_;
-        scheduler_->submitBackground([section, grid, cx, cy, cz]() {
-            section->origin = Vec3i(cx * LODGrid::K_SECTION_WORLD_SIZE, cy * LODGrid::K_SECTION_WORLD_SIZE,
-                                    cz * LODGrid::K_SECTION_WORLD_SIZE);
-            section->palette.clear();
-            section->palette.push_back(1);
-            section->blockIndices.assign(LODSection::K_VOLUME, 0);
-
-            for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
-                for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
-                    for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
-                        int wx = section->origin.x + lx;
-                        int wy = section->origin.y + ly;
-                        int wz = section->origin.z + lz;
-                        auto cell = grid->readCell(wx, wy, wz);
-
-                        uint16_t matId = cell.materialId;
-                        uint16_t palIdx = 0;
-                        auto it = std::find(section->palette.begin(), section->palette.end(), matId);
-                        if (it != section->palette.end()) {
-                            palIdx = static_cast<uint16_t>(std::distance(section->palette.begin(), it));
-                        } else {
-                            palIdx = static_cast<uint16_t>(section->palette.size());
-                            section->palette.push_back(matId);
-                        }
-                        section->set(lx, ly, lz, palIdx);
-                    }
-                }
-            }
-
-            section->dirty = true;
-        });
-
-        ++dispatchedThisFrame;
+        tasks.push_back({section, cx, cy, cz, false});
     }
 
-    // Process direct LOD sections (from WorldGenerator point queries)
-    while (worldGen_ && !pendingDirectChunks_.empty() && dispatchedThisFrame < K_MAX_PER_FRAME) {
+    while (worldGen_ && !pendingDirectChunks_.empty() && static_cast<int>(tasks.size()) < genBudget_) {
         auto [cx, cy, cz] = pendingDirectChunks_.front();
         pendingDirectChunks_.pop_front();
-
         auto* section = grid_->getOrCreate(0, cx, cy, cz);
         if (!section)
             continue;
+        tasks.push_back({section, cx, cy, cz, true});
+    }
 
-        auto* gen = worldGen_;
-        scheduler_->submitBackground([section, gen, cx, cy, cz]() {
-            section->origin = Vec3i(cx * LODGrid::K_SECTION_WORLD_SIZE, cy * LODGrid::K_SECTION_WORLD_SIZE,
-                                    cz * LODGrid::K_SECTION_WORLD_SIZE);
-            section->palette.clear();
-            section->palette.push_back(1);
-            section->blockIndices.assign(LODSection::K_VOLUME, 0);
+    if (tasks.empty())
+        return;
 
-            for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
-                for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
-                    for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
-                        int wx = section->origin.x + lx;
-                        int wy = section->origin.y + ly;
-                        int wz = section->origin.z + lz;
+    // Phase 1: Parallel fill (C-P2). Each worker writes to its own
+    // LODSection; no contention. parallelFor blocks, so all sections
+    // have dirty=true on return and render() picks them up safely.
+    auto* grid = simGrid_;
+    auto* gen = worldGen_;
+    scheduler_->parallelFor(tasks.size(), [&tasks, grid, gen](size_t idx, size_t /*workerIdx*/) {
+        auto& task = tasks[idx];
+        auto* section = task.section;
 
-                        uint16_t matId = gen->sampleMaterial(wx, wy, wz);
-                        uint16_t palIdx = 0;
-                        auto it = std::find(section->palette.begin(), section->palette.end(), matId);
-                        if (it != section->palette.end()) {
-                            palIdx = static_cast<uint16_t>(std::distance(section->palette.begin(), it));
-                        } else {
-                            palIdx = static_cast<uint16_t>(section->palette.size());
-                            section->palette.push_back(matId);
-                        }
-                        section->set(lx, ly, lz, palIdx);
+        section->origin = Vec3i(task.cx * LODGrid::K_SECTION_WORLD_SIZE, task.cy * LODGrid::K_SECTION_WORLD_SIZE,
+                                task.cz * LODGrid::K_SECTION_WORLD_SIZE);
+        section->palette.clear();
+        section->palette.push_back(1);
+        section->blockIndices.assign(LODSection::K_VOLUME, 0);
+
+        for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
+            for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
+                for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
+                    int wx = section->origin.x + lx;
+                    int wy = section->origin.y + ly;
+                    int wz = section->origin.z + lz;
+
+                    uint16_t matId;
+                    if (task.useWorldGen) {
+                        matId = gen->sampleMaterial(wx, wy, wz);
+                    } else {
+                        matId = grid->readCell(wx, wy, wz).materialId;
                     }
+
+                    uint16_t palIdx = 0;
+                    auto it = std::find(section->palette.begin(), section->palette.end(), matId);
+                    if (it != section->palette.end()) {
+                        palIdx = static_cast<uint16_t>(std::distance(section->palette.begin(), it));
+                    } else {
+                        palIdx = static_cast<uint16_t>(section->palette.size());
+                        section->palette.push_back(matId);
+                    }
+                    section->set(lx, ly, lz, palIdx);
                 }
             }
+        }
 
-            section->dirty = true;
-        });
-
-        ++dispatchedThisFrame;
-    }
+        section->dirty = true;
+    });
 }
 
 void LODSystem::render(fabric::AppContext& ctx) {

@@ -99,4 +99,5 @@ target_sources(UnitTests
   BgfxHandleTest.cc
   HandleMapTest.cc
   JobSchedulerTest.cc
+  LODGridTest.cc
 )
