@@ -257,13 +257,11 @@ void LODSystem::onChunkRemoved(int cx, int cy, int cz) {
         return px == cx && py == cy && pz == cz;
     });
 
-    // Release GPU section
+    // Release GPU resources (VRAM) but keep LODGrid section data (RAM).
+    // Section data persists so parent LOD levels remain valid and the
+    // section can be re-uploaded cheaply if the chunk reloads.
     auto key = LODSectionKey::make(0, cx, cy, cz);
     releaseGPUSection(key);
-
-    // Remove grid section
-    if (grid_)
-        grid_->remove(key);
 }
 
 void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRadius) {
