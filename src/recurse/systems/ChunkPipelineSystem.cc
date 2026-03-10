@@ -41,24 +41,6 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     streamConfig.maxUnloadsPerTick = 8;
     streamConfig.maxTrackedChunks = 4096;
     streaming_ = std::make_unique<ChunkStreamingManager>(streamConfig);
-
-    // Initial chunk load (ECS entities only, no meshing)
-    {
-        FABRIC_ZONE_SCOPED_N("initial_terrain");
-        auto& ecsWorld = ctx.world;
-        auto initLoad = streaming_->update(K_DEFAULT_SPAWN_X, K_DEFAULT_SPAWN_Y, K_DEFAULT_SPAWN_Z);
-
-        for (const auto& coord : initLoad.toLoad) {
-            auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
-                {static_cast<float>(coord.cx * K_CHUNK_SIZE), static_cast<float>(coord.cy * K_CHUNK_SIZE),
-                 static_cast<float>(coord.cz * K_CHUNK_SIZE), static_cast<float>((coord.cx + 1) * K_CHUNK_SIZE),
-                 static_cast<float>((coord.cy + 1) * K_CHUNK_SIZE), static_cast<float>((coord.cz + 1) * K_CHUNK_SIZE)});
-            chunkEntities_[coord] = ent;
-        }
-
-        FABRIC_LOG_INFO("Initial terrain: {} chunks loaded (meshing deferred to simulation layer)",
-                        initLoad.toLoad.size());
-    }
 }
 
 void ChunkPipelineSystem::doShutdown() {
