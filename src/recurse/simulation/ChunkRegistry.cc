@@ -12,18 +12,18 @@ bool isValidTransition(ChunkSlotState from, ChunkSlotState to) {
 }
 } // namespace
 
-// -- ChunkBufferPair ----------------------------------------------------------
+// -- ChunkBuffers -------------------------------------------------------------
 
-void ChunkBufferPair::materialize() {
+void ChunkBuffers::materialize() {
     if (isMaterialized())
         return;
-    buffers[0] = std::make_unique<Buffer>();
-    buffers[1] = std::make_unique<Buffer>();
-    buffers[0]->fill(fillValue);
-    buffers[1]->fill(fillValue);
+    for (int i = 0; i < K_COUNT; ++i) {
+        buffers[i] = std::make_unique<Buffer>();
+        buffers[i]->fill(fillValue);
+    }
 }
 
-bool ChunkBufferPair::isMaterialized() const {
+bool ChunkBuffers::isMaterialized() const {
     return buffers[0] != nullptr;
 }
 
@@ -107,10 +107,11 @@ std::vector<ChunkDispatchEntry> ChunkRegistry::buildDispatchList(ChunkSlotState 
 }
 
 void ChunkRegistry::resolveBufferPointers(uint64_t epoch) {
+    constexpr int K = ChunkBuffers::K_COUNT;
     for (auto& [key, slot] : slots_) {
         if (slot.isMaterialized()) {
-            slot.readPtr = slot.simBuffers.buffers[epoch & 1].get()->data();
-            slot.writePtr = slot.simBuffers.buffers[(epoch + 1) & 1].get()->data();
+            slot.readPtr = slot.simBuffers.buffers[epoch % K].get()->data();
+            slot.writePtr = slot.simBuffers.buffers[(epoch + 1) % K].get()->data();
         } else {
             slot.readPtr = nullptr;
             slot.writePtr = nullptr;

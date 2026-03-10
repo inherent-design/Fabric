@@ -82,9 +82,9 @@ TEST_F(SimulationGridTest, FirstWritePromotesSentinel) {
 
 // 6. static_assert Buffer size == 131072 bytes
 TEST_F(SimulationGridTest, MaterializedChunkMemory) {
-    static_assert(sizeof(ChunkBufferPair::Buffer) == K_CHUNK_VOLUME * sizeof(VoxelCell));
+    static_assert(sizeof(ChunkBuffers::Buffer) == K_CHUNK_VOLUME * sizeof(VoxelCell));
     // K_CHUNK_VOLUME = 32768, sizeof(VoxelCell) = 4 -> 131072
-    EXPECT_EQ(sizeof(ChunkBufferPair::Buffer), 131072u);
+    EXPECT_EQ(sizeof(ChunkBuffers::Buffer), 131072u);
 }
 
 // 7. Write at (31,0,0) and (32,0,0), both readable
@@ -185,4 +185,40 @@ TEST_F(SimulationGridTest, WriteCellImmediatePreservedAcrossEpoch) {
 
     // Value survives the epoch swap
     EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::SAND);
+}
+
+// 13. advanceEpoch preserves untouched cells across K_COUNT * 3 cycles.
+// Validates that the copy in advanceEpoch correctly propagates the full state
+// into the next write buffer regardless of K_COUNT.
+TEST_F(SimulationGridTest, UntouchedCellsSurviveManyCycles) {
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.materializeChunk(0, 0, 0);
+
+    VoxelCell stone;
+    stone.materialId = material_ids::STONE;
+    grid.writeCell(0, 0, 0, stone);
+    grid.advanceEpoch();
+
+    // Run K_COUNT * 3 additional epochs without writing to (0,0,0).
+    // The stone value must survive every cycle.
+    constexpr int cycles = ChunkBuffers::K_COUNT * 3;
+    for (int i = 0; i < cycles; ++i) {
+        // Write to a DIFFERENT cell each epoch to exercise the buffers
+        VoxelCell sand;
+        sand.materialId = material_ids::SAND;
+        grid.writeCell(1, 0, 0, sand);
+        grid.advanceEpoch();
+
+        EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::STONE) << "Untouched cell lost at cycle " << i;
+    }
+}
+
+// 14. K_COUNT buffers are all allocated on materialize
+TEST_F(SimulationGridTest, AllBuffersAllocated) {
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.materializeChunk(0, 0, 0);
+
+    auto& slot = grid.registry().addChunk(0, 0, 0);
+    for (int i = 0; i < ChunkBuffers::K_COUNT; ++i)
+        EXPECT_NE(slot.simBuffers.buffers[i], nullptr) << "buffer " << i;
 }

@@ -16,9 +16,12 @@ using fabric::K_CHUNK_VOLUME;
 using fabric::packChunkKey;
 using fabric::unpackChunkKey;
 
-struct ChunkBufferPair {
+struct ChunkBuffers {
+    /// Set to 3 to enable triple-buffering (eliminates advanceEpoch copy target
+    /// contention; does NOT eliminate the copy itself). See D-26.
+    static constexpr int K_COUNT = 2;
     using Buffer = std::array<VoxelCell, K_CHUNK_VOLUME>;
-    std::unique_ptr<Buffer> buffers[2]; // nullptr = homogeneous sentinel
+    std::unique_ptr<Buffer> buffers[K_COUNT];
     VoxelCell fillValue{};
     void materialize();
     bool isMaterialized() const;
@@ -33,7 +36,7 @@ enum class ChunkSlotState : uint8_t {
 
 struct ChunkSlot {
     ChunkSlotState state = ChunkSlotState::Absent;
-    ChunkBufferPair simBuffers;
+    ChunkBuffers simBuffers;
 
     // Pre-resolved raw pointers for zero-overhead worker access (wired by C-1c).
     VoxelCell* writePtr = nullptr;

@@ -10,11 +10,11 @@ using fabric::ChunkedGrid;
 SimulationGrid::SimulationGrid() = default;
 
 int SimulationGrid::readIndex() const {
-    return static_cast<int>(epoch_ & 1);
+    return static_cast<int>(epoch_ % ChunkBuffers::K_COUNT);
 }
 
 int SimulationGrid::writeIndex() const {
-    return static_cast<int>((epoch_ + 1) & 1);
+    return static_cast<int>((epoch_ + 1) % ChunkBuffers::K_COUNT);
 }
 
 VoxelCell SimulationGrid::readFromBuffer(int wx, int wy, int wz, int bufferIdx) const {
@@ -67,24 +67,29 @@ void SimulationGrid::writeCellImmediate(int wx, int wy, int wz, VoxelCell cell) 
     if (!slot.isMaterialized())
         slot.materialize();
     int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
-    (*slot.simBuffers.buffers[readIndex()])[idx] = cell;
-    (*slot.simBuffers.buffers[writeIndex()])[idx] = cell;
+    for (int i = 0; i < ChunkBuffers::K_COUNT; ++i)
+        (*slot.simBuffers.buffers[i])[idx] = cell;
 }
 
 void SimulationGrid::syncChunkBuffers(int cx, int cy, int cz) {
     auto* slot = registry_.find(cx, cy, cz);
     if (!slot || !slot->isMaterialized())
         return;
-    int ri = readIndex();
     int wi = writeIndex();
-    *slot->simBuffers.buffers[ri] = *slot->simBuffers.buffers[wi];
+    for (int i = 0; i < ChunkBuffers::K_COUNT; ++i) {
+        if (i != wi)
+            *slot->simBuffers.buffers[i] = *slot->simBuffers.buffers[wi];
+    }
 }
 
 void SimulationGrid::advanceEpoch() {
-    int ri = readIndex();
-    int wi = writeIndex();
+    // Copy the write buffer into the buffer that will serve as next epoch's
+    // write target. For K_COUNT=2 this is the current read buffer; for
+    // K_COUNT=3 it would be the free buffer (enabling concurrent reads).
+    int src = writeIndex();
+    int dst = static_cast<int>((epoch_ + 2) % ChunkBuffers::K_COUNT);
     registry_.forEachMaterialized(
-        [ri, wi](ChunkSlot& slot) { *slot.simBuffers.buffers[ri] = *slot.simBuffers.buffers[wi]; });
+        [src, dst](ChunkSlot& slot) { *slot.simBuffers.buffers[dst] = *slot.simBuffers.buffers[src]; });
     ++epoch_;
 }
 

@@ -135,8 +135,8 @@ TEST_F(ChunkRegistryTest, ChunkSlotMaterialize) {
 
     slot.materialize();
     EXPECT_TRUE(slot.isMaterialized());
-    ASSERT_NE(slot.simBuffers.buffers[0], nullptr);
-    ASSERT_NE(slot.simBuffers.buffers[1], nullptr);
+    for (int i = 0; i < ChunkBuffers::K_COUNT; ++i)
+        ASSERT_NE(slot.simBuffers.buffers[i], nullptr) << "buffer " << i;
 
     // Second materialize is a no-op
     auto* buf0 = slot.simBuffers.buffers[0].get();
@@ -150,9 +150,11 @@ TEST_F(ChunkRegistryTest, MaterializePreservesFillValue) {
     slot.simBuffers.fillValue.materialId = material_ids::STONE;
     slot.materialize();
 
-    for (size_t i = 0; i < K_CHUNK_VOLUME; ++i) {
-        EXPECT_EQ((*slot.simBuffers.buffers[0])[i].materialId, material_ids::STONE) << "Buffer 0, index " << i;
-        EXPECT_EQ((*slot.simBuffers.buffers[1])[i].materialId, material_ids::STONE) << "Buffer 1, index " << i;
+    for (int b = 0; b < ChunkBuffers::K_COUNT; ++b) {
+        for (size_t i = 0; i < K_CHUNK_VOLUME; ++i) {
+            EXPECT_EQ((*slot.simBuffers.buffers[b])[i].materialId, material_ids::STONE)
+                << "Buffer " << b << ", index " << i;
+        }
     }
 }
 
@@ -178,8 +180,8 @@ TEST_F(ChunkRegistryTest, RemoveAbsentChunkIsSafe) {
 
 // 14. Memory size matches expected value
 TEST_F(ChunkRegistryTest, BufferMemorySize) {
-    static_assert(sizeof(ChunkBufferPair::Buffer) == K_CHUNK_VOLUME * sizeof(VoxelCell));
-    EXPECT_EQ(sizeof(ChunkBufferPair::Buffer), 131072u);
+    static_assert(sizeof(ChunkBuffers::Buffer) == K_CHUNK_VOLUME * sizeof(VoxelCell));
+    EXPECT_EQ(sizeof(ChunkBuffers::Buffer), 131072u);
 }
 
 // 15. ChunkSlot default state is Absent
@@ -236,16 +238,13 @@ TEST_F(ChunkRegistryTest, ResolveBufferPointersCorrectForEpoch) {
     auto& slot = registry.addChunk(0, 0, 0);
     slot.materialize();
 
-    auto* buf0 = slot.simBuffers.buffers[0].get()->data();
-    auto* buf1 = slot.simBuffers.buffers[1].get()->data();
-
-    registry.resolveBufferPointers(0);
-    EXPECT_EQ(slot.readPtr, buf0);
-    EXPECT_EQ(slot.writePtr, buf1);
-
-    registry.resolveBufferPointers(1);
-    EXPECT_EQ(slot.readPtr, buf1);
-    EXPECT_EQ(slot.writePtr, buf0);
+    constexpr int K = ChunkBuffers::K_COUNT;
+    for (uint64_t epoch = 0; epoch < static_cast<uint64_t>(K * 2); ++epoch) {
+        registry.resolveBufferPointers(epoch);
+        EXPECT_EQ(slot.readPtr, slot.simBuffers.buffers[epoch % K].get()->data()) << "readPtr at epoch " << epoch;
+        EXPECT_EQ(slot.writePtr, slot.simBuffers.buffers[(epoch + 1) % K].get()->data())
+            << "writePtr at epoch " << epoch;
+    }
 }
 
 // 21. resolveBufferPointers sets nullptr for unmaterialized slots
