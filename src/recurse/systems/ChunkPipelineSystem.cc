@@ -20,7 +20,10 @@
 #include "fabric/platform/ConfigManager.hh"
 #include "fabric/utils/Profiler.hh"
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <vector>
 
 namespace recurse::systems {
 
@@ -41,6 +44,9 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     streamConfig.maxUnloadsPerTick = 8;
     streamConfig.maxTrackedChunks = 4096;
     streaming_ = std::make_unique<ChunkStreamingManager>(streamConfig);
+
+    lodRadius_ = ctx.configManager.get<int>("lod.radius", 24);
+    lodGenBudget_ = ctx.configManager.get<int>("lod.gen_budget", 4);
 }
 
 void ChunkPipelineSystem::doShutdown() {
@@ -114,6 +120,70 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
         lastPlayerX_ = pos.x;
         lastPlayerY_ = pos.y;
         lastPlayerZ_ = pos.z;
+    }
+
+    // LOD ring: track chunks outside full-res radius, inside lod_radius
+    int chunkRadius = streaming_ ? streaming_->currentRadius() : 0;
+    if (lodRadius_ > chunkRadius) {
+        int cx = static_cast<int>(std::floor(lastPlayerX_ / static_cast<float>(K_CHUNK_SIZE)));
+        int cy = static_cast<int>(std::floor(lastPlayerY_ / static_cast<float>(K_CHUNK_SIZE)));
+        int cz = static_cast<int>(std::floor(lastPlayerZ_ / static_cast<float>(K_CHUNK_SIZE)));
+        updateLODRing(cx, cy, cz);
+    }
+}
+
+void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ) {
+    int chunkRadius = streaming_ ? streaming_->currentRadius() : 0;
+
+    // Build desired LOD set: inside lodRadius_, outside chunkRadius, not in chunkEntities_
+    std::unordered_set<ChunkCoord, ChunkCoordHash> desired;
+    for (int dz = -lodRadius_; dz <= lodRadius_; ++dz) {
+        for (int dy = -lodRadius_; dy <= lodRadius_; ++dy) {
+            for (int dx = -lodRadius_; dx <= lodRadius_; ++dx) {
+                if (std::abs(dx) <= chunkRadius && std::abs(dy) <= chunkRadius && std::abs(dz) <= chunkRadius)
+                    continue; // Inside full-res ring
+                ChunkCoord c{centerCX + dx, centerCY + dy, centerCZ + dz};
+                desired.insert(c);
+            }
+        }
+    }
+
+    // LOD chunks to load: in desired but not tracked
+    std::vector<ChunkCoord> toLoad;
+    for (const auto& c : desired) {
+        if (!lodChunks_.contains(c))
+            toLoad.push_back(c);
+    }
+
+    // Sort by distance (nearest first)
+    auto distSq = [&](const ChunkCoord& c) {
+        int ddx = c.cx - centerCX;
+        int ddy = c.cy - centerCY;
+        int ddz = c.cz - centerCZ;
+        return ddx * ddx + ddy * ddy + ddz * ddz;
+    };
+    std::sort(toLoad.begin(), toLoad.end(),
+              [&](const ChunkCoord& a, const ChunkCoord& b) { return distSq(a) < distSq(b); });
+
+    // Rate-limit loads
+    int loadCount = std::min(static_cast<int>(toLoad.size()), lodGenBudget_);
+    for (int i = 0; i < loadCount; ++i) {
+        const auto& c = toLoad[static_cast<size_t>(i)];
+        if (lodSystem_)
+            lodSystem_->onChunkReady(c.cx, c.cy, c.cz);
+        lodChunks_.insert(c);
+    }
+
+    // LOD chunks to unload: tracked but not desired
+    std::vector<ChunkCoord> toUnload;
+    for (const auto& c : lodChunks_) {
+        if (!desired.contains(c))
+            toUnload.push_back(c);
+    }
+    for (const auto& c : toUnload) {
+        if (lodSystem_)
+            lodSystem_->onChunkRemoved(c.cx, c.cy, c.cz);
+        lodChunks_.erase(c);
     }
 }
 

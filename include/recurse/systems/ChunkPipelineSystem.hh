@@ -6,6 +6,7 @@
 #include <flecs.h>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace recurse {
 class ChunkStore;
@@ -75,6 +76,13 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     // Optional persistence (null if no world loaded)
     recurse::ChunkStore* chunkStore_ = nullptr;
     recurse::ChunkSaveService* saveService_ = nullptr;
+
+    // LOD ring: chunks outside full-res radius, inside lod_radius
+    std::unordered_set<ChunkCoord, ChunkCoordHash> lodChunks_;
+    int lodRadius_ = 0;
+    int lodGenBudget_ = 4;
+
+    void updateLODRing(int centerCX, int centerCY, int centerCZ);
 
     bool tryLoadChunkFromDisk(int cx, int cy, int cz);
     void saveChunkToDisk(int cx, int cy, int cz);
