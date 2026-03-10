@@ -8,16 +8,19 @@
 #include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/EssenceColor.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/systems/ShadowRenderSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/ChunkDensityCache.hh"
+#include "recurse/world/EssencePalette.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 #include "recurse/world/SnapMCMesher.hh"
 
 #include <bgfx/bgfx.h>
+#include <cmath>
 #include <set>
 #include <unordered_map>
 #include <vector>
@@ -246,23 +249,63 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
     if (meshData.empty() || meshData.indices.empty())
         return result;
 
-    // Build deterministic palette (sorted material IDs)
-    std::set<uint16_t> uniqueMaterials;
-    for (const auto& v : meshData.vertices)
-        uniqueMaterials.insert(unpackMaterialId(v.material));
+    // Look up per-vertex essenceIdx from the simulation grid
+    const auto* palette = simGrid_->chunkPalette(coord.x, coord.y, coord.z);
+    const bool hasEssence = palette && palette->paletteSize() > 0;
 
-    std::unordered_map<uint16_t, uint16_t> paletteLookup;
-    result.palette.reserve(uniqueMaterials.size());
-    for (uint16_t matId : uniqueMaterials) {
-        paletteLookup[matId] = static_cast<uint16_t>(result.palette.size());
-        result.palette.push_back(materialColor(matId));
+    std::vector<uint8_t> vertEssenceIdx(meshData.vertices.size(), 0);
+    if (hasEssence) {
+        for (size_t i = 0; i < meshData.vertices.size(); ++i) {
+            const auto& v = meshData.vertices[i];
+            int wx = baseX + static_cast<int>(std::round(v.px));
+            int wy = baseY + static_cast<int>(std::round(v.py));
+            int wz = baseZ + static_cast<int>(std::round(v.pz));
+            vertEssenceIdx[i] = simGrid_->readCell(wx, wy, wz).essenceIdx;
+        }
     }
 
-    result.vertices.reserve(meshData.vertices.size());
-    for (const auto& v : meshData.vertices) {
-        recurse::SmoothVoxelVertex vertex = v;
-        vertex.material = packSmoothMaterialForShader(paletteLookup[unpackMaterialId(v.material)], 3);
-        result.vertices.push_back(vertex);
+    // Build GPU palette from essence indices (or fall back to materialId colors)
+    if (hasEssence) {
+        std::set<uint8_t> uniqueEssence;
+        for (uint8_t eidx : vertEssenceIdx)
+            uniqueEssence.insert(eidx);
+
+        std::unordered_map<uint8_t, uint16_t> essenceLookup;
+        result.palette.reserve(uniqueEssence.size());
+        for (uint8_t eidx : uniqueEssence) {
+            essenceLookup[eidx] = static_cast<uint16_t>(result.palette.size());
+            if (eidx < palette->paletteSize()) {
+                result.palette.push_back(recurse::simulation::essenceToColor(palette->lookup(eidx)));
+            } else {
+                result.palette.push_back({0.5f, 0.5f, 0.5f, 1.0f});
+            }
+        }
+
+        result.vertices.reserve(meshData.vertices.size());
+        for (size_t i = 0; i < meshData.vertices.size(); ++i) {
+            recurse::SmoothVoxelVertex vertex = meshData.vertices[i];
+            vertex.material = packSmoothMaterialForShader(essenceLookup[vertEssenceIdx[i]], 3);
+            result.vertices.push_back(vertex);
+        }
+    } else {
+        // Fallback: no essence palette populated yet; use materialId colors
+        std::set<uint16_t> uniqueMaterials;
+        for (const auto& v : meshData.vertices)
+            uniqueMaterials.insert(unpackMaterialId(v.material));
+
+        std::unordered_map<uint16_t, uint16_t> paletteLookup;
+        result.palette.reserve(uniqueMaterials.size());
+        for (uint16_t matId : uniqueMaterials) {
+            paletteLookup[matId] = static_cast<uint16_t>(result.palette.size());
+            result.palette.push_back(materialColor(matId));
+        }
+
+        result.vertices.reserve(meshData.vertices.size());
+        for (const auto& v : meshData.vertices) {
+            recurse::SmoothVoxelVertex vertex = v;
+            vertex.material = packSmoothMaterialForShader(paletteLookup[unpackMaterialId(v.material)], 3);
+            result.vertices.push_back(vertex);
+        }
     }
 
     result.indices = std::move(meshData.indices);

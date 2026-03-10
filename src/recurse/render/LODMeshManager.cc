@@ -136,7 +136,10 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
     // For now, use the SnapMC mesher with a custom approach
     // We'll manually invoke the meshing logic
 
-    // Build material palette for this section
+    // Build color palette for this section.
+    // TODO(EF-1c): When MaterialDef::baseEssence is available, replace
+    // materialColor() with essenceToColor(materials_.get(matId).baseEssence)
+    // so LOD sections share the same color basis as essence-colored chunks.
     for (size_t i = 0; i < section.palette.size(); ++i) {
         uint16_t matId = section.palette[i];
         if (matId == 0) {
@@ -299,10 +302,10 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
                         v3.ny = ndy;
                         v3.nz = ndz;
 
-                        v0.material = SmoothVoxelVertex::packMaterial(matId);
-                        v1.material = SmoothVoxelVertex::packMaterial(matId);
-                        v2.material = SmoothVoxelVertex::packMaterial(matId);
-                        v3.material = SmoothVoxelVertex::packMaterial(matId);
+                        v0.material = SmoothVoxelVertex::packMaterial(palIdx);
+                        v1.material = SmoothVoxelVertex::packMaterial(palIdx);
+                        v2.material = SmoothVoxelVertex::packMaterial(palIdx);
+                        v3.material = SmoothVoxelVertex::packMaterial(palIdx);
 
                         uint32_t base = static_cast<uint32_t>(result.vertices.size());
                         result.vertices.insert(result.vertices.end(), {v0, v1, v2, v3});
