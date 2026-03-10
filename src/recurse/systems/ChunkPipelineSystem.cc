@@ -140,6 +140,9 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
         lastPlayerZ_ = pos.z;
     }
 
+    if (physics_)
+        physics_->setPlayerPosition(lastPlayerX_, lastPlayerY_, lastPlayerZ_);
+
     // LOD ring: track chunks outside full-res radius, inside lod_radius
     int chunkRadius = streaming_ ? streaming_->currentRadius() : 0;
     if (lodRadius_ > chunkRadius) {

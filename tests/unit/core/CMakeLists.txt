@@ -100,4 +100,5 @@ target_sources(UnitTests
   HandleMapTest.cc
   JobSchedulerTest.cc
   LODGridTest.cc
+  CollisionBudgetTest.cc
 )
