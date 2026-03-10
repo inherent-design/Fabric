@@ -79,6 +79,20 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         }
     }
 
+    // ── Phase 1.5: Configuration ────────────────────────────────
+    // Config must load before window creation so TOML drives window params.
+    ConfigManager configManager;
+    if (!desc.configDefaults.empty()) {
+        configManager.loadDefaults(desc.configDefaults);
+    }
+    configManager.loadEngineConfig(ConfigManager::findConfig("fabric.toml"));
+    if (!desc.configPath.empty())
+        configManager.loadAppConfig(ConfigManager::findConfig(desc.configPath));
+    configManager.applyCLIOverrides(argc, argv);
+
+    // Reconfigure logging from TOML (init() already called with defaults in main)
+    log::init(log::LogConfig::fromConfigManager(configManager));
+
     // ── Phase 2: Platform Init ──────────────────────────────────
     SDL_Window* window = nullptr;
     Rml::Context* rmlContext = nullptr;
@@ -91,8 +105,12 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
             return 1;
         }
 
-        // Use WindowDesc from the descriptor (config overrides can adjust it)
-        window = createWindow(desc.windowDesc);
+        // Build WindowDesc from config, falling back to desc.windowDesc defaults
+        WindowDesc winDesc = desc.windowDesc;
+        if (auto* winTable = configManager.merged()["window"].as_table()) {
+            winDesc = windowDescFromConfig(*winTable);
+        }
+        window = createWindow(winDesc);
         if (!window) {
             FABRIC_LOG_CRITICAL("Window creation failed: {}", SDL_GetError());
             SDL_Quit();
@@ -156,12 +174,6 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
     }
 
     // ── Phase 3: Infrastructure ─────────────────────────────────
-    ConfigManager configManager;
-    configManager.loadEngineConfig(ConfigManager::findConfig("fabric.toml"));
-    if (!desc.configPath.empty())
-        configManager.loadAppConfig(ConfigManager::findConfig(desc.configPath));
-    configManager.applyCLIOverrides(argc, argv);
-
     EventDispatcher dispatcher;
     Timeline timeline;
     World world;

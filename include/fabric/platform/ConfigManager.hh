@@ -19,6 +19,10 @@ class ConfigManager {
   public:
     ConfigManager();
 
+    /// Load app-provided defaults (merged on top of compiled defaults).
+    /// Call before loadEngineConfig() to establish app-layer base values.
+    void loadDefaults(const toml::table& defaults);
+
     /// Load engine config (fabric.toml) from the given path.
     /// Merges on top of compiled defaults.
     void loadEngineConfig(const std::filesystem::path& path);

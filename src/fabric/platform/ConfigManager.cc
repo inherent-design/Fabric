@@ -10,8 +10,8 @@
 #include <windows.h>
 #endif
 
-#include "fabric/platform/DefaultConfig.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/platform/DefaultConfig.hh"
 
 namespace fabric {
 
@@ -59,6 +59,12 @@ ConfigManager::ConfigManager() : userConfigPath_(defaultUserConfigPath()) {
 }
 
 // -- Layer loading --
+
+void ConfigManager::loadDefaults(const toml::table& defaults) {
+    std::lock_guard lock(mutex_);
+    deepMerge(defaults_, defaults);
+    rebuildMerged();
+}
 
 void ConfigManager::loadEngineConfig(const std::filesystem::path& path) {
     std::lock_guard lock(mutex_);

@@ -3,6 +3,9 @@
 
 [window]
 title = "Recurse"
+borderless = true
+fullscreen_desktop = true
+hidpi = true
 
 [terrain]
 seed = 42

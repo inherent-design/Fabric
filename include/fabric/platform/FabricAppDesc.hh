@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <toml++/toml.hpp>
 #include <tuple>
 #include <typeindex>
 #include <vector>
@@ -24,8 +25,13 @@ struct FabricAppDesc {
     std::string name = "Fabric";
     std::string configPath; // App-layer config, e.g., "recurse.toml"
 
-    // Window configuration (uses platform WindowDesc from Gap 2)
+    // Window configuration (fallback if no TOML config found)
     WindowDesc windowDesc;
+
+    // App-layer config defaults (injected between compiled defaults and engine TOML).
+    // Example: Recurse sets borderless fullscreen here so it overrides engine defaults
+    // but can still be overridden by fabric.toml, recurse.toml, user.toml, or CLI.
+    toml::table configDefaults;
 
     /// Register a system for deferred construction inside FabricApp::run().
     /// Constructor args are captured in a lambda; the system is instantiated
