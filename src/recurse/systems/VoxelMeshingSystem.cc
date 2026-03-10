@@ -4,6 +4,7 @@
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
@@ -56,6 +57,7 @@ void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
         simGrid_ = &simSystem_->simulationGrid();
         activityTracker_ = &simSystem_->activityTracker();
         materials_ = &simSystem_->materials();
+        scheduler_ = &simSystem_->scheduler();
     }
 
     if (!mesher_)
@@ -74,6 +76,7 @@ void VoxelMeshingSystem::doShutdown() {
     simGrid_ = nullptr;
     activityTracker_ = nullptr;
     materials_ = nullptr;
+    scheduler_ = nullptr;
     gpuUploadEnabled_ = false;
 
     FABRIC_LOG_INFO("VoxelMeshingSystem shutdown");
@@ -127,123 +130,90 @@ void VoxelMeshingSystem::processFrame() {
     meshedThisFrame_ = 0;
     emptySkippedThisFrame_ = 0;
 
+    // Collect chunks to mesh from both active set and unmeshed set
     std::vector<recurse::simulation::ActiveChunkEntry> activeChunks;
     {
         FABRIC_ZONE_SCOPED_N("mesh_collect_active");
         activeChunks = activityTracker_->collectActiveChunks(meshBudget_);
     }
 
-    // Log chunk activity for this frame
-    FABRIC_LOG_DEBUG("VoxelMeshingSystem: {} active chunks to mesh (budget={})", activeChunks.size(), meshBudget_);
+    std::vector<fabric::ChunkCoord> toMesh;
+    toMesh.reserve(static_cast<size_t>(meshBudget_));
+    std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> scheduled;
 
     for (const auto& entry : activeChunks) {
-        const auto coord = toChunkCoord(entry.pos);
-        bool wasAlreadyMeshed = gpuMeshes_.find(coord) != gpuMeshes_.end();
-        size_t meshCountBefore = gpuMeshes_.size();
-        {
-            FABRIC_ZONE_SCOPED_N("chunk_remesh");
-            meshChunk(coord);
-        }
-        if (gpuMeshes_.size() > meshCountBefore || (wasAlreadyMeshed && gpuMeshes_.count(coord)))
-            ++meshedThisFrame_;
-        // Log if this was a remesh (neighbor notification triggered)
-        if (wasAlreadyMeshed) {
-            FABRIC_LOG_DEBUG("Remeshed chunk ({},{},{}) - likely neighbor notification", coord.x, coord.y, coord.z);
-        }
-        // Only sleep BoundaryDirty chunks (remesh-only). Active chunks need
-        // simulation processing; FallingSandSystem will sleep them when settled.
-        if (activityTracker_->getState(entry.pos) != recurse::simulation::ChunkState::Active) {
-            activityTracker_->putToSleep(entry.pos);
-        }
+        auto coord = toChunkCoord(entry.pos);
+        toMesh.push_back(coord);
+        scheduled.insert(coord);
     }
 
-    // Second pass: mesh chunks that exist in the grid but have no GPU mesh.
-    // Handles newly-generated chunks that FallingSandSystem put to sleep before
-    // meshing could process them (static terrain has no simulation activity).
-    {
-        FABRIC_ZONE_SCOPED_N("mesh_initial_chunks");
-        int remaining = meshBudget_ - static_cast<int>(activeChunks.size());
-        if (remaining > 0 && simGrid_) {
-            auto allChunks = simGrid_->allChunks();
-            int attempted = 0;
-            for (const auto& [cx, cy, cz] : allChunks) {
-                if (attempted >= remaining)
-                    break;
-                fabric::ChunkCoord coord{cx, cy, cz};
-                if (gpuMeshes_.find(coord) != gpuMeshes_.end())
-                    continue;
-                if (emptyChunks_.find(coord) != emptyChunks_.end()) {
-                    ++emptySkippedThisFrame_;
-                    continue;
-                }
-
-                size_t before = gpuMeshes_.size();
-                meshChunk(coord);
-                ++attempted;
-                if (gpuMeshes_.size() > before)
-                    ++meshedThisFrame_;
-
-                if (gpuMeshes_.find(coord) == gpuMeshes_.end()) {
-                    // No mesh produced. If all horizontal neighbors exist, the
-                    // chunk is genuinely empty (all-air or all-solid); mark it so
-                    // we skip it on future scans. If neighbors are missing, the
-                    // mesh was deferred and will be retried next frame.
-                    bool allNeighborsExist = true;
-                    if (requireNeighborsForMeshing_) {
-                        for (int d = 0; d < 4; ++d) {
-                            if (!simGrid_->hasChunk(coord.x + K_HORIZONTAL_NEIGHBORS[d][0], coord.y,
-                                                    coord.z + K_HORIZONTAL_NEIGHBORS[d][2])) {
-                                allNeighborsExist = false;
-                                break;
-                            }
-                        }
-                    }
-                    if (allNeighborsExist) {
-                        emptyChunks_.insert(coord);
-                    }
-                }
+    int remaining = meshBudget_ - static_cast<int>(activeChunks.size());
+    if (remaining > 0 && simGrid_) {
+        auto allChunks = simGrid_->allChunks();
+        for (const auto& [cx, cy, cz] : allChunks) {
+            if (static_cast<int>(toMesh.size()) >= meshBudget_)
+                break;
+            fabric::ChunkCoord coord{cx, cy, cz};
+            if (scheduled.contains(coord))
+                continue;
+            if (gpuMeshes_.find(coord) != gpuMeshes_.end())
+                continue;
+            if (emptyChunks_.find(coord) != emptyChunks_.end()) {
+                ++emptySkippedThisFrame_;
+                continue;
             }
+            toMesh.push_back(coord);
+            scheduled.insert(coord);
         }
     }
 
-    // Log GPU mesh statistics
-    FABRIC_LOG_DEBUG("VoxelMeshingSystem: {} GPU meshes active, {} vertices, {} indices", gpuMeshes_.size(),
-                     vertexBufferSize(), indexBufferSize());
+    if (toMesh.empty())
+        return;
+
+    // Parallel CPU mesh generation
+    std::vector<CPUMeshResult> results(toMesh.size());
+    {
+        FABRIC_ZONE_SCOPED_N("mesh_parallel_gen");
+        if (scheduler_) {
+            scheduler_->parallelFor(toMesh.size(), [&](size_t jobIdx, size_t /*workerIdx*/) {
+                results[jobIdx] = generateMeshCPU(toMesh[jobIdx]);
+            });
+        } else {
+            for (size_t i = 0; i < toMesh.size(); ++i)
+                results[i] = generateMeshCPU(toMesh[i]);
+        }
+    }
+
+    // Sequential GPU upload and bookkeeping
+    {
+        FABRIC_ZONE_SCOPED_N("mesh_gpu_upload");
+        for (size_t i = 0; i < results.size(); ++i)
+            uploadMeshResult(toMesh[i], std::move(results[i]));
+    }
+
+    // Activity tracker updates (sequential; D-34)
+    for (const auto& entry : activeChunks) {
+        if (activityTracker_->getState(entry.pos) != recurse::simulation::ChunkState::Active)
+            activityTracker_->putToSleep(entry.pos);
+    }
 }
 
-void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
-    // Verify the chunk exists in the simulation grid before meshing.
-    if (!simGrid_->hasChunk(coord.x, coord.y, coord.z)) {
-        FABRIC_LOG_DEBUG("Meshing skipped ({},{},{}): chunk not in grid", coord.x, coord.y, coord.z);
-        return;
-    }
+CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coord) const {
+    CPUMeshResult result;
 
-    // Check horizontal face-adjacent neighbors (±X, ±Z) before meshing.
-    // Missing neighbors return air from readCell, creating boundary artifacts.
-    // Y neighbors (±Y) are checked but don't block meshing - flat terrain at Y=0
-    // legitimately has no Y neighbors, and sampling air above/below is correct.
-    // When horizontal neighbors load later, notifyBoundaryChange() re-triggers meshing.
+    if (!simGrid_->hasChunk(coord.x, coord.y, coord.z))
+        return result;
+
     if (requireNeighborsForMeshing_) {
-        // Horizontal neighbors (+/-X, +/-Z) - MUST exist to avoid X/Z boundary gaps
         for (int d = 0; d < 4; ++d) {
             if (!simGrid_->hasChunk(coord.x + K_HORIZONTAL_NEIGHBORS[d][0], coord.y,
                                     coord.z + K_HORIZONTAL_NEIGHBORS[d][2])) {
-                FABRIC_LOG_DEBUG("Meshing deferred ({},{},{}): horizontal neighbor ({},{},{}) missing", coord.x,
-                                 coord.y, coord.z, coord.x + K_HORIZONTAL_NEIGHBORS[d][0], coord.y,
-                                 coord.z + K_HORIZONTAL_NEIGHBORS[d][2]);
-                return; // Horizontal neighbor missing - defer meshing
+                result.deferred = true;
+                return result;
             }
-        }
-        // Y neighbors (±Y) - log if missing but don't block (air above/below is valid for flat terrain)
-        if (!simGrid_->hasChunk(coord.x, coord.y - 1, coord.z) || !simGrid_->hasChunk(coord.x, coord.y + 1, coord.z)) {
-            FABRIC_LOG_DEBUG("Meshing ({},{},{}): Y neighbor missing, sampling air at Y boundary", coord.x, coord.y,
-                             coord.z);
         }
     }
 
-    // Build density + material grids from SimulationGrid.
-    // Sample ±1 voxel around chunk for ChunkDensityCache boundary.
-    // Total: 32 + 2 = 34^3 region
     ChunkedGrid<float> densityGrid;
     ChunkedGrid<uint16_t> materialGrid;
 
@@ -251,7 +221,7 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
     const int baseY = coord.y * K_CHUNK_SIZE;
     const int baseZ = coord.z * K_CHUNK_SIZE;
 
-    constexpr int K_SAMPLE_MARGIN = 1; // 1 for cache boundary
+    constexpr int K_SAMPLE_MARGIN = 1;
     for (int lz = -K_SAMPLE_MARGIN; lz <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++lz) {
         for (int ly = -K_SAMPLE_MARGIN; ly <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++ly) {
             for (int lx = -K_SAMPLE_MARGIN; lx <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++lx) {
@@ -267,93 +237,98 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
         }
     }
 
-    // No blur - use binary density directly for sharp corners.
-    // The blur was causing chamfered edges by creating intermediate values (0.33, 0.66)
-    // at solid-air boundaries.
     ChunkDensityCache densityCache;
     ChunkMaterialCache materialCache;
     densityCache.build(coord.x, coord.y, coord.z, densityGrid);
     materialCache.build(coord.x, coord.y, coord.z, materialGrid);
 
     auto meshData = mesher_->meshChunk(densityCache, materialCache, 0.5f, 0);
+    if (meshData.empty() || meshData.indices.empty())
+        return result;
 
+    // Build deterministic palette (sorted material IDs)
+    std::set<uint16_t> uniqueMaterials;
+    for (const auto& v : meshData.vertices)
+        uniqueMaterials.insert(unpackMaterialId(v.material));
+
+    std::unordered_map<uint16_t, uint16_t> paletteLookup;
+    result.palette.reserve(uniqueMaterials.size());
+    for (uint16_t matId : uniqueMaterials) {
+        paletteLookup[matId] = static_cast<uint16_t>(result.palette.size());
+        result.palette.push_back(materialColor(matId));
+    }
+
+    result.vertices.reserve(meshData.vertices.size());
+    for (const auto& v : meshData.vertices) {
+        recurse::SmoothVoxelVertex vertex = v;
+        vertex.material = packSmoothMaterialForShader(paletteLookup[unpackMaterialId(v.material)], 3);
+        result.vertices.push_back(vertex);
+    }
+
+    result.indices = std::move(meshData.indices);
+    result.valid = !result.vertices.empty() && !result.indices.empty();
+    return result;
+}
+
+void VoxelMeshingSystem::uploadMeshResult(const fabric::ChunkCoord& coord, CPUMeshResult&& result) {
     auto existing = gpuMeshes_.find(coord);
-    if (meshData.empty() || meshData.indices.empty()) {
+
+    if (!result.valid) {
         if (existing != gpuMeshes_.end()) {
             destroyChunkMesh(existing->second);
             gpuMeshes_.erase(existing);
         }
+        // Track genuinely empty chunks (not deferred) to avoid re-processing
+        if (!result.deferred && simGrid_->hasChunk(coord.x, coord.y, coord.z)) {
+            bool allNeighborsExist = true;
+            if (requireNeighborsForMeshing_) {
+                for (int d = 0; d < 4; ++d) {
+                    if (!simGrid_->hasChunk(coord.x + K_HORIZONTAL_NEIGHBORS[d][0], coord.y,
+                                            coord.z + K_HORIZONTAL_NEIGHBORS[d][2])) {
+                        allNeighborsExist = false;
+                        break;
+                    }
+                }
+            }
+            if (allNeighborsExist)
+                emptyChunks_.insert(coord);
+        }
         return;
-    }
-
-    std::vector<recurse::SmoothVoxelVertex> gpuVertices;
-    gpuVertices.reserve(meshData.vertices.size());
-
-    // Collect unique materials first for deterministic palette ordering
-    std::set<uint16_t> uniqueMaterials;
-    for (const auto& smoothVertex : meshData.vertices) {
-        uniqueMaterials.insert(unpackMaterialId(smoothVertex.material));
-    }
-
-    // Build deterministic palette (sorted by material ID ensures consistent colors across chunks)
-    std::vector<std::array<float, 4>> palette;
-    palette.reserve(uniqueMaterials.size());
-    std::unordered_map<uint16_t, uint16_t> paletteLookup;
-
-    for (uint16_t materialId : uniqueMaterials) {
-        paletteLookup[materialId] = static_cast<uint16_t>(palette.size());
-        palette.push_back(materialColor(materialId));
-    }
-
-    // Transform vertices with deterministic palette indices
-    for (const auto& smoothVertex : meshData.vertices) {
-        const uint16_t materialId = unpackMaterialId(smoothVertex.material);
-        recurse::SmoothVoxelVertex vertex = smoothVertex;
-        vertex.material = packSmoothMaterialForShader(paletteLookup[materialId], 3);
-        gpuVertices.push_back(vertex);
     }
 
     ChunkGPUMesh gpuMesh;
-    gpuMesh.vertexCount = static_cast<uint32_t>(gpuVertices.size());
-    gpuMesh.indexCount = static_cast<uint32_t>(meshData.indices.size());
+    gpuMesh.vertexCount = static_cast<uint32_t>(result.vertices.size());
+    gpuMesh.indexCount = static_cast<uint32_t>(result.indices.size());
     gpuMesh.mesh.indexCount = gpuMesh.indexCount;
-    gpuMesh.mesh.palette = std::move(palette);
-    gpuMesh.mesh.valid = (gpuMesh.vertexCount > 0 && gpuMesh.mesh.indexCount > 0);
-    gpuMesh.valid = gpuMesh.mesh.valid;
+    gpuMesh.mesh.palette = std::move(result.palette);
+    gpuMesh.mesh.valid = true;
+    gpuMesh.valid = true;
 
-    if (gpuUploadEnabled_ && gpuMesh.valid) {
+    if (gpuUploadEnabled_) {
         gpuMesh.mesh.vbh = bgfx::createVertexBuffer(
-            bgfx::copy(gpuVertices.data(),
-                       static_cast<uint32_t>(gpuVertices.size() * sizeof(recurse::SmoothVoxelVertex))),
+            bgfx::copy(result.vertices.data(),
+                       static_cast<uint32_t>(result.vertices.size() * sizeof(recurse::SmoothVoxelVertex))),
             recurse::SmoothVoxelVertex::getVertexLayout());
         if (!bgfx::isValid(gpuMesh.mesh.vbh)) {
-            FABRIC_LOG_ERROR("Failed to create vertex buffer for chunk ({},{},{})", coord.x, coord.y, coord.z);
             gpuMesh.valid = false;
             gpuMesh.mesh.valid = false;
-            return;
         }
 
-        gpuMesh.mesh.ibh = bgfx::createIndexBuffer(
-            bgfx::copy(meshData.indices.data(), static_cast<uint32_t>(meshData.indices.size() * sizeof(uint32_t))),
-            BGFX_BUFFER_INDEX32);
-        if (!bgfx::isValid(gpuMesh.mesh.ibh)) {
-            FABRIC_LOG_ERROR("Failed to create index buffer for chunk ({},{},{})", coord.x, coord.y, coord.z);
-            bgfx::destroy(gpuMesh.mesh.vbh);
-            gpuMesh.mesh.vbh = BGFX_INVALID_HANDLE;
-            gpuMesh.valid = false;
-            gpuMesh.mesh.valid = false;
-            return;
+        if (gpuMesh.valid) {
+            gpuMesh.mesh.ibh = bgfx::createIndexBuffer(
+                bgfx::copy(result.indices.data(), static_cast<uint32_t>(result.indices.size() * sizeof(uint32_t))),
+                BGFX_BUFFER_INDEX32);
+            if (!bgfx::isValid(gpuMesh.mesh.ibh)) {
+                bgfx::destroy(gpuMesh.mesh.vbh);
+                gpuMesh.mesh.vbh = BGFX_INVALID_HANDLE;
+                gpuMesh.valid = false;
+                gpuMesh.mesh.valid = false;
+            }
         }
     }
 
-    if (!gpuMesh.valid) {
-        if (existing != gpuMeshes_.end()) {
-            destroyChunkMesh(existing->second);
-            gpuMeshes_.erase(existing);
-        }
-        FABRIC_LOG_DEBUG("Meshing failed ({},{},{}): invalid GPU mesh", coord.x, coord.y, coord.z);
+    if (!gpuMesh.valid)
         return;
-    }
 
     if (existing != gpuMeshes_.end()) {
         destroyChunkMesh(existing->second);
@@ -361,17 +336,7 @@ void VoxelMeshingSystem::meshChunk(const fabric::ChunkCoord& coord) {
     } else {
         gpuMeshes_.emplace(coord, std::move(gpuMesh));
     }
-
-    // Log successful meshing with statistics
-    const auto& mesh = gpuMeshes_.at(coord);
-    FABRIC_LOG_DEBUG("Meshing complete ({},{},{}): vertices={} indices={} materials={}", coord.x, coord.y, coord.z,
-                     mesh.vertexCount, mesh.indexCount, mesh.mesh.palette.size());
-
-    // Log palette entries at TRACE level for detailed debugging
-    for (size_t i = 0; i < mesh.mesh.palette.size(); ++i) {
-        const auto& c = mesh.mesh.palette[i];
-        FABRIC_LOG_TRACE("  palette[{}]: rgba=({:.2f},{:.2f},{:.2f},{:.2f})", i, c[0], c[1], c[2], c[3]);
-    }
+    ++meshedThisFrame_;
 }
 
 void VoxelMeshingSystem::destroyChunkMesh(ChunkGPUMesh& gpuMesh) {

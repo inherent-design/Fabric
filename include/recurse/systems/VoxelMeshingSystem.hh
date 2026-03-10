@@ -10,6 +10,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
+namespace fabric {
+class JobScheduler;
+} // namespace fabric
+
 namespace recurse::simulation {
 class ChunkActivityTracker;
 class MaterialRegistry;
@@ -36,6 +40,15 @@ struct ChunkGPUMesh {
     uint32_t vertexCount = 0;
     uint32_t indexCount = 0;
     bool valid = false;
+};
+
+/// CPU-side mesh output from parallel generation. Consumed by sequential GPU upload.
+struct CPUMeshResult {
+    std::vector<recurse::SmoothVoxelVertex> vertices;
+    std::vector<uint32_t> indices;
+    std::vector<std::array<float, 4>> palette;
+    bool valid = false;
+    bool deferred = false; ///< True if neighbor check deferred meshing
 };
 
 /// Bridges simulation activity flags to mesh updates via SnapMC meshing.
@@ -83,7 +96,8 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     MeshingDebugInfo debugInfo() const;
 
   private:
-    void meshChunk(const fabric::ChunkCoord& coord);
+    CPUMeshResult generateMeshCPU(const fabric::ChunkCoord& coord) const;
+    void uploadMeshResult(const fabric::ChunkCoord& coord, CPUMeshResult&& result);
     void destroyChunkMesh(ChunkGPUMesh& gpuMesh);
     std::array<float, 4> materialColor(uint16_t materialId) const;
 
@@ -91,6 +105,7 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     recurse::simulation::SimulationGrid* simGrid_ = nullptr;
     recurse::simulation::ChunkActivityTracker* activityTracker_ = nullptr;
     const recurse::simulation::MaterialRegistry* materials_ = nullptr;
+    fabric::JobScheduler* scheduler_ = nullptr;
     std::unique_ptr<recurse::SnapMCMesher> mesher_;
 
     std::unordered_map<fabric::ChunkCoord, ChunkGPUMesh, fabric::ChunkCoordHash> gpuMeshes_;
