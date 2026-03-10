@@ -1,0 +1,23 @@
+<rml>
+<head>
+    <link type="text/rcss" href="main_menu.rcss" />
+</head>
+<body>
+    <div id="world_list">
+        <div class="menu_container">
+            <div class="menu_content">
+                <h1 class="title_small">Saved Worlds</h1>
+
+                <div id="worlds_container" class="list_container">
+                    <!-- Populated dynamically by MainMenuSystem -->
+                </div>
+
+                <div class="button_group">
+                    <button id="btn_new_world" class="menu_button wide"><span>New World</span></button>
+                    <button id="btn_back" class="menu_button secondary"><span>Back</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>

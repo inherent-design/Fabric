@@ -43,7 +43,9 @@ struct SplashEntry {
 enum class MenuState {
     Splash,      // Showing splash screens
     TitleScreen, // Main menu (Start, Settings, Quit)
-    WorldSelect, // World type selection (Flat, Minecraft)
+    WorldSelect, // Quick world type selection (Flat, Natural) - legacy flow
+    WorldCreate, // New World screen (name, type, seed)
+    WorldList,   // Saved worlds list (load, delete, rename)
     Settings,    // Settings panel (unwired for now)
     Pause,       // In-game pause menu (Resume, Quit to Title, Exit)
     Hidden       // Game is running, menu not visible
@@ -90,6 +92,8 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     void advanceSplash(float dt);
     void showTitleScreen();
     void showWorldSelect();
+    void showWorldCreate();
+    void showWorldList();
     void showSettings();
     void showPause();
     void hideMenu();
@@ -104,6 +108,13 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     void onResumeClicked();
     void onQuitToTitleClicked();
     void onExitToDesktopClicked();
+    void onNewWorldClicked();
+    void onLoadWorldClicked();
+    void onCreateWorldClicked();
+    void onDeleteWorldClicked(const std::string& uuid);
+    void onRenameWorldClicked(const std::string& uuid, const std::string& newName);
+    void onOpenFolderClicked(const std::string& uuid);
+    void onWorldSelected(const std::string& uuid);
 
     // Reset all world state (meshes, physics, simulation, terrain)
     void resetWorldState();
@@ -137,6 +148,14 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     // Data model bindings
     std::string titleText_ = "RECURSE";
     std::string versionText_ = "v0.1.0";
+
+    // New World screen bindings
+    std::string newWorldName_ = "New World";
+    std::string newWorldType_ = "Natural";
+    std::string newWorldSeed_;
+
+    // World List screen state
+    std::string selectedWorldUUID_;
 };
 
 } // namespace recurse::systems

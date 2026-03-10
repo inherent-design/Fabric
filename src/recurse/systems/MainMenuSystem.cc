@@ -1,5 +1,6 @@
 #include "recurse/systems/MainMenuSystem.hh"
 #include "recurse/character/GameConstants.hh"
+#include "recurse/persistence/WorldRegistry.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/AppModeManager.hh"
@@ -244,6 +245,12 @@ void MainMenuSystem::transitionTo(MenuState newState) {
         case MenuState::WorldSelect:
             showWorldSelect();
             break;
+        case MenuState::WorldCreate:
+            showWorldCreate();
+            break;
+        case MenuState::WorldList:
+            showWorldList();
+            break;
         case MenuState::Settings:
             showSettings();
             break;
@@ -326,6 +333,102 @@ void MainMenuSystem::showWorldSelect() {
     }
 }
 
+void MainMenuSystem::showWorldCreate() {
+    showDocument("assets/ui/new_world.rml");
+
+    // Reset input state
+    newWorldName_ = "New World";
+    newWorldType_ = "Natural";
+    newWorldSeed_.clear();
+
+    if (currentDocument_) {
+        auto* typeFlat = currentDocument_->GetElementById("btn_type_flat");
+        if (typeFlat) {
+            typeFlat->AddEventListener(Rml::EventId::Click,
+                                       new MenuButtonListener([this]() { newWorldType_ = "Flat"; }), true);
+        }
+
+        auto* typeNatural = currentDocument_->GetElementById("btn_type_natural");
+        if (typeNatural) {
+            typeNatural->AddEventListener(Rml::EventId::Click,
+                                          new MenuButtonListener([this]() { newWorldType_ = "Natural"; }), true);
+        }
+
+        auto* createBtn = currentDocument_->GetElementById("btn_create");
+        if (createBtn) {
+            createBtn->AddEventListener(Rml::EventId::Click, new MenuButtonListener([this]() {
+                                            // Read input values from RML elements before creating
+                                            if (currentDocument_) {
+                                                auto* nameInput = currentDocument_->GetElementById("input_name");
+                                                if (nameInput) {
+                                                    newWorldName_ =
+                                                        nameInput->GetAttribute("value", Rml::String("New World"));
+                                                }
+                                                auto* seedInput = currentDocument_->GetElementById("input_seed");
+                                                if (seedInput) {
+                                                    newWorldSeed_ = seedInput->GetAttribute("value", Rml::String(""));
+                                                }
+                                            }
+                                            onCreateWorldClicked();
+                                        }),
+                                        true);
+        }
+
+        auto* backBtn = currentDocument_->GetElementById("btn_back");
+        if (backBtn) {
+            backBtn->AddEventListener(Rml::EventId::Click, new MenuButtonListener([this]() { onBackClicked(); }), true);
+        }
+    }
+}
+
+void MainMenuSystem::showWorldList() {
+    showDocument("assets/ui/world_list.rml");
+
+    if (currentDocument_) {
+        // Populate world list dynamically
+        if (worldRegistry_) {
+            auto worlds = worldRegistry_->listWorlds();
+            auto* container = currentDocument_->GetElementById("worlds_container");
+
+            if (container) {
+                // Clear existing children
+                while (container->GetNumChildren() > 0) {
+                    container->RemoveChild(container->GetFirstChild());
+                }
+
+                for (const auto& world : worlds) {
+                    // Create a button element for each world
+                    auto el = container->AppendChild(currentDocument_->CreateElement("button"));
+                    el->SetClassNames("menu_button wide");
+                    el->SetId("world_" + world.uuid);
+
+                    std::string typeStr = (world.type == WorldType::Flat) ? "Flat" : "Natural";
+                    el->SetInnerRML("<span class='btn_title'>" + world.name +
+                                    "</span>"
+                                    "<span class='btn_desc'>" +
+                                    typeStr + " | " + world.lastPlayed + "</span>");
+
+                    std::string uuid = world.uuid;
+                    el->AddEventListener(Rml::EventId::Click,
+                                         new MenuButtonListener([this, uuid]() { onWorldSelected(uuid); }), true);
+                }
+            }
+        }
+
+        auto* newWorldBtn = currentDocument_->GetElementById("btn_new_world");
+        if (newWorldBtn) {
+            newWorldBtn->AddEventListener(Rml::EventId::Click,
+                                          new MenuButtonListener([this]() { onNewWorldClicked(); }), true);
+        }
+
+        auto* backBtn = currentDocument_->GetElementById("btn_back");
+        if (backBtn) {
+            backBtn->AddEventListener(Rml::EventId::Click,
+                                      new MenuButtonListener([this]() { transitionTo(MenuState::TitleScreen); }), true);
+        }
+    }
+}
+
 void MainMenuSystem::showSettings() {
     showDocument("assets/ui/settings.rml");
 
@@ -403,7 +506,17 @@ void MainMenuSystem::hideCurrentDocument() {
 
 void MainMenuSystem::onStartClicked() {
     FABRIC_LOG_INFO("MainMenu: Start clicked");
-    transitionTo(MenuState::WorldSelect);
+    // If WorldRegistry is available, show world list; otherwise fall back to quick select
+    if (worldRegistry_) {
+        auto worlds = worldRegistry_->listWorlds();
+        if (worlds.empty()) {
+            transitionTo(MenuState::WorldCreate);
+        } else {
+            transitionTo(MenuState::WorldList);
+        }
+    } else {
+        transitionTo(MenuState::WorldSelect);
+    }
 }
 
 void MainMenuSystem::onSettingsClicked() {
@@ -437,7 +550,119 @@ void MainMenuSystem::onMinecraftWorldClicked() {
 
 void MainMenuSystem::onBackClicked() {
     FABRIC_LOG_DEBUG("MainMenu: Back clicked");
+    // Context-dependent back: WorldCreate -> WorldList (if registry), else TitleScreen
+    if (menuState_ == MenuState::WorldCreate && worldRegistry_) {
+        auto worlds = worldRegistry_->listWorlds();
+        if (!worlds.empty()) {
+            transitionTo(MenuState::WorldList);
+            return;
+        }
+    }
     transitionTo(MenuState::TitleScreen);
+}
+
+void MainMenuSystem::onNewWorldClicked() {
+    FABRIC_LOG_INFO("MainMenu: New World clicked");
+    transitionTo(MenuState::WorldCreate);
+}
+
+void MainMenuSystem::onLoadWorldClicked() {
+    FABRIC_LOG_INFO("MainMenu: Load World clicked");
+    transitionTo(MenuState::WorldList);
+}
+
+void MainMenuSystem::onCreateWorldClicked() {
+    if (!worldRegistry_) {
+        FABRIC_LOG_ERROR("MainMenu: No WorldRegistry, cannot create world");
+        return;
+    }
+
+    // Read inputs from the RML document
+    std::string worldName = newWorldName_;
+    if (worldName.empty())
+        worldName = "New World";
+
+    WorldType type = (newWorldType_ == "Flat") ? WorldType::Flat : WorldType::Natural;
+
+    int64_t seed = 0;
+    if (!newWorldSeed_.empty()) {
+        try {
+            seed = std::stoll(newWorldSeed_);
+        } catch (...) {
+            // Use hash of string as seed
+            seed = static_cast<int64_t>(std::hash<std::string>{}(newWorldSeed_));
+        }
+    } else {
+        seed = static_cast<int64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+    }
+
+    auto meta = worldRegistry_->createWorld(worldName, type, seed);
+    FABRIC_LOG_INFO("MainMenu: Created world '{}' (uuid={}, type={}, seed={})", meta.name, meta.uuid,
+                    static_cast<int>(meta.type), meta.seed);
+
+    // Start the game with this world type
+    if (startGameCallback_) {
+        startGameCallback_(type);
+    }
+    transitionTo(MenuState::Hidden);
+}
+
+void MainMenuSystem::onDeleteWorldClicked(const std::string& uuid) {
+    if (!worldRegistry_)
+        return;
+
+    bool deleted = worldRegistry_->deleteWorld(uuid);
+    FABRIC_LOG_INFO("MainMenu: Delete world {} -> {}", uuid, deleted ? "success" : "failed");
+
+    // Refresh the list
+    if (menuState_ == MenuState::WorldList) {
+        showWorldList();
+    }
+}
+
+void MainMenuSystem::onRenameWorldClicked(const std::string& uuid, const std::string& newName) {
+    if (!worldRegistry_)
+        return;
+
+    bool renamed = worldRegistry_->renameWorld(uuid, newName);
+    FABRIC_LOG_INFO("MainMenu: Rename world {} to '{}' -> {}", uuid, newName, renamed ? "success" : "failed");
+
+    if (menuState_ == MenuState::WorldList) {
+        showWorldList();
+    }
+}
+
+void MainMenuSystem::onOpenFolderClicked(const std::string& uuid) {
+    if (!worldRegistry_)
+        return;
+
+    std::string path = worldRegistry_->worldPath(uuid);
+    FABRIC_LOG_INFO("MainMenu: Open folder {}", path);
+
+    std::string url = "file://" + path;
+    if (!SDL_OpenURL(url.c_str())) {
+        FABRIC_LOG_ERROR("MainMenu: SDL_OpenURL failed for {}: {}", url, SDL_GetError());
+    }
+}
+
+void MainMenuSystem::onWorldSelected(const std::string& uuid) {
+    if (!worldRegistry_)
+        return;
+
+    auto meta = worldRegistry_->getWorld(uuid);
+    if (!meta) {
+        FABRIC_LOG_ERROR("MainMenu: World {} not found", uuid);
+        return;
+    }
+
+    worldRegistry_->touchWorld(uuid);
+    FABRIC_LOG_INFO("MainMenu: Loading world '{}' (type={}, seed={})", meta->name, static_cast<int>(meta->type),
+                    meta->seed);
+
+    if (startGameCallback_) {
+        startGameCallback_(meta->type);
+    }
+    transitionTo(MenuState::Hidden);
 }
 
 void MainMenuSystem::onResumeClicked() {

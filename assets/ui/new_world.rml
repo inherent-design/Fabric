@@ -1,0 +1,37 @@
+<rml>
+<head>
+    <link type="text/rcss" href="main_menu.rcss" />
+</head>
+<body>
+    <div id="new_world">
+        <div class="menu_container">
+            <div class="menu_content">
+                <h1 class="title_small">New World</h1>
+
+                <div class="form_group">
+                    <label>World Name</label>
+                    <input id="input_name" type="text" value="New World" />
+                </div>
+
+                <div class="form_group">
+                    <label>World Type</label>
+                    <div class="button_row">
+                        <button id="btn_type_flat" class="menu_button small">Flat</button>
+                        <button id="btn_type_natural" class="menu_button small selected">Natural</button>
+                    </div>
+                </div>
+
+                <div class="form_group">
+                    <label>Seed (optional)</label>
+                    <input id="input_seed" type="text" value="" />
+                </div>
+
+                <div class="button_group">
+                    <button id="btn_create" class="menu_button wide"><span>Create World</span></button>
+                    <button id="btn_back" class="menu_button secondary"><span>Back</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</rml>
