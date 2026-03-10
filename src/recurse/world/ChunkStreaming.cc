@@ -7,21 +7,19 @@ namespace recurse {
 
 ChunkStreamingManager::ChunkStreamingManager(const StreamingConfig& config) : config_(config) {}
 
-StreamingUpdate ChunkStreamingManager::update(float viewX, float viewY, float viewZ, float speed) {
+StreamingUpdate ChunkStreamingManager::update(float viewX, float viewY, float viewZ) {
     FABRIC_ZONE_SCOPED_N("ChunkStreamingManager::update");
 
-    int effectiveRadius = std::min(
-        static_cast<int>(static_cast<float>(config_.baseRadius) + speed * config_.speedScale), config_.maxRadius);
-    currentRadius_ = effectiveRadius;
+    currentRadius_ = config_.baseRadius;
 
     int centerCX = static_cast<int>(std::floor(viewX / static_cast<float>(K_CHUNK_SIZE)));
     int centerCY = static_cast<int>(std::floor(viewY / static_cast<float>(K_CHUNK_SIZE)));
     int centerCZ = static_cast<int>(std::floor(viewZ / static_cast<float>(K_CHUNK_SIZE)));
 
     std::unordered_set<ChunkCoord, ChunkCoordHash> desired;
-    for (int dz = -effectiveRadius; dz <= effectiveRadius; ++dz) {
-        for (int dy = -effectiveRadius; dy <= effectiveRadius; ++dy) {
-            for (int dx = -effectiveRadius; dx <= effectiveRadius; ++dx) {
+    for (int dz = -currentRadius_; dz <= currentRadius_; ++dz) {
+        for (int dy = -currentRadius_; dy <= currentRadius_; ++dy) {
+            for (int dx = -currentRadius_; dx <= currentRadius_; ++dx) {
                 desired.insert({centerCX + dx, centerCY + dy, centerCZ + dz});
             }
         }

@@ -13,8 +13,6 @@ using fabric::ChunkedGrid;
 
 struct StreamingConfig {
     int baseRadius = 8;
-    int maxRadius = 16;
-    float speedScale = 0.5f;
     int maxLoadsPerTick = 4;
     int maxUnloadsPerTick = 4;
     int maxTrackedChunks = 0; // 0 = unlimited; >0 = hard cap, farthest evicted first
@@ -43,7 +41,7 @@ class ChunkStreamingManager {
   public:
     explicit ChunkStreamingManager(const StreamingConfig& config = {});
 
-    StreamingUpdate update(float viewX, float viewY, float viewZ, float speed);
+    StreamingUpdate update(float viewX, float viewY, float viewZ);
 
     int currentRadius() const;
     size_t trackedChunkCount() const;

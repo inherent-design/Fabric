@@ -68,7 +68,6 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     float lastPlayerX_ = K_DEFAULT_SPAWN_X;
     float lastPlayerY_ = K_DEFAULT_SPAWN_Y;
     float lastPlayerZ_ = K_DEFAULT_SPAWN_Z;
-    float lastSpeed_ = 0.0f;
 
     int loadsThisFrame_ = 0;
     int unloadsThisFrame_ = 0;

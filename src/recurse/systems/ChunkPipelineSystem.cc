@@ -20,7 +20,6 @@
 #include "fabric/platform/ConfigManager.hh"
 #include "fabric/utils/Profiler.hh"
 
-#include <cmath>
 #include <cstring>
 
 namespace recurse::systems {
@@ -38,7 +37,6 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     // Chunk streaming — stress test: push render distance
     StreamingConfig streamConfig;
     streamConfig.baseRadius = ctx.configManager.get<int>("terrain.chunk_radius", 8);
-    streamConfig.maxRadius = ctx.configManager.get<int>("terrain.chunk_radius_max", 12);
     streamConfig.maxLoadsPerTick = 4;
     streamConfig.maxUnloadsPerTick = 8;
     streamConfig.maxTrackedChunks = 4096;
@@ -48,7 +46,7 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     {
         FABRIC_ZONE_SCOPED_N("initial_terrain");
         auto& ecsWorld = ctx.world;
-        auto initLoad = streaming_->update(K_DEFAULT_SPAWN_X, K_DEFAULT_SPAWN_Y, K_DEFAULT_SPAWN_Z, 0.0f);
+        auto initLoad = streaming_->update(K_DEFAULT_SPAWN_X, K_DEFAULT_SPAWN_Y, K_DEFAULT_SPAWN_Z);
 
         for (const auto& coord : initLoad.toLoad) {
             auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
@@ -79,7 +77,7 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
     auto& ecsWorld = ctx.world;
 
     // Use cached position for streaming (one-frame delay; invisible at chunk scale)
-    auto streamUpdate = streaming_->update(lastPlayerX_, lastPlayerY_, lastPlayerZ_, lastSpeed_);
+    auto streamUpdate = streaming_->update(lastPlayerX_, lastPlayerY_, lastPlayerZ_);
 
     loadsThisFrame_ = static_cast<int>(streamUpdate.toLoad.size());
     unloadsThisFrame_ = static_cast<int>(streamUpdate.toUnload.size());
@@ -132,8 +130,6 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
         lastPlayerX_ = pos.x;
         lastPlayerY_ = pos.y;
         lastPlayerZ_ = pos.z;
-        const auto& vel = charMovement_->playerVelocity();
-        lastSpeed_ = std::sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
     }
 }
 
