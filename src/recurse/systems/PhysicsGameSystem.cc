@@ -21,7 +21,7 @@ void PhysicsGameSystem::doInit(fabric::AppContext& ctx) {
         int cx = e.getData<int>("cx");
         int cy = e.getData<int>("cy");
         int cz = e.getData<int>("cz");
-        physicsWorld_.rebuildChunkCollision(voxelSim_->simulationGrid(), cx, cy, cz);
+        dirtyCollisionChunks_.insert({cx, cy, cz});
     });
 
     ragdoll_.init(&physicsWorld_);
@@ -37,12 +37,24 @@ void PhysicsGameSystem::doShutdown() {
 
 void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) {
     FABRIC_ZONE_SCOPED_N("physics_step");
+
+    if (!dirtyCollisionChunks_.empty() && voxelSim_) {
+        for (const auto& key : dirtyCollisionChunks_) {
+            physicsWorld_.rebuildChunkCollision(voxelSim_->simulationGrid(), key.cx, key.cy, key.cz);
+        }
+        dirtyCollisionChunks_.clear();
+    }
+
     physicsWorld_.step(fixedDt);
 }
 
 void PhysicsGameSystem::configureDependencies() {
     after<TerrainSystem>();
     after<VoxelSimulationSystem>();
+}
+
+void PhysicsGameSystem::removeDirtyChunk(int cx, int cy, int cz) {
+    dirtyCollisionChunks_.erase({cx, cy, cz});
 }
 
 void PhysicsGameSystem::clearAllCollisions() {

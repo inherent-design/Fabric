@@ -97,8 +97,10 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
         if (simSystem_)
             simSystem_->removeChunk(coord.cx, coord.cy, coord.cz);
 
-        if (physics_)
+        if (physics_) {
+            physics_->removeDirtyChunk(coord.cx, coord.cy, coord.cz);
             physics_->physicsWorld().removeChunkCollision(coord.cx, coord.cy, coord.cz);
+        }
 
         if (auto it = chunkEntities_.find(coord); it != chunkEntities_.end()) {
             it->second.destruct();

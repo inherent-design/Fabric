@@ -4,6 +4,8 @@
 #include "recurse/physics/PhysicsWorld.hh"
 #include "recurse/physics/Ragdoll.hh"
 
+#include <unordered_set>
+
 namespace recurse::systems {
 
 class TerrainSystem;
@@ -30,11 +32,17 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
     /// Clear all terrain collision bodies (for world reset)
     void clearAllCollisions();
 
+    /// Remove a chunk from the pending collision rebuild set.
+    /// Called by ChunkPipelineSystem before removeChunkCollision() during unload
+    /// to prevent rebuilding collision for a chunk whose simulation data is gone.
+    void removeDirtyChunk(int cx, int cy, int cz);
+
   private:
     TerrainSystem* terrain_ = nullptr;
     VoxelSimulationSystem* voxelSim_ = nullptr;
     PhysicsWorld physicsWorld_;
     Ragdoll ragdoll_;
+    std::unordered_set<recurse::ChunkKey, recurse::ChunkKeyHash> dirtyCollisionChunks_;
 };
 
 } // namespace recurse::systems
