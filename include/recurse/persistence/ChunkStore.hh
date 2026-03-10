@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <tuple>
 #include <vector>
 
 namespace recurse {
@@ -31,6 +32,29 @@ class ChunkStore {
     /// Size queries for compaction threshold decisions.
     virtual size_t deltaSize(int cx, int cy, int cz) const = 0;
     virtual size_t genDataSize(int cx, int cy, int cz) const = 0;
+
+    /// Batch load gen data. Returns (coord, blob) pairs for chunks that exist.
+    /// Default loops over loadGenData(). Backends may override for optimized I/O.
+    virtual std::vector<std::pair<std::tuple<int, int, int>, ChunkBlob>>
+    loadBatch(const std::vector<std::tuple<int, int, int>>& coords) const {
+        std::vector<std::pair<std::tuple<int, int, int>, ChunkBlob>> results;
+        results.reserve(coords.size());
+        for (const auto& [cx, cy, cz] : coords) {
+            auto blob = loadGenData(cx, cy, cz);
+            if (blob)
+                results.push_back({{cx, cy, cz}, std::move(*blob)});
+        }
+        return results;
+    }
+
+    /// Batch save gen data. Default loops over saveGenData().
+    /// Backends may override for sorted sequential I/O or region-file batching.
+    virtual void saveBatch(const std::vector<std::pair<std::tuple<int, int, int>, ChunkBlob>>& entries) {
+        for (const auto& [coord, blob] : entries) {
+            auto [cx, cy, cz] = coord;
+            saveGenData(cx, cy, cz, blob);
+        }
+    }
 };
 
 } // namespace recurse

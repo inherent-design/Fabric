@@ -1,6 +1,7 @@
 #include "recurse/persistence/ChunkSaveService.hh"
 
 #include "fabric/platform/JobScheduler.hh"
+#include <algorithm>
 #include <vector>
 
 namespace recurse {
@@ -52,6 +53,7 @@ void ChunkSaveService::update(float dt) {
         }
     }
 
+    std::sort(toSave.begin(), toSave.end());
     for (auto& [cx, cy, cz] : toSave) {
         saveChunk(cx, cy, cz);
     }
@@ -77,7 +79,7 @@ void ChunkSaveService::flush() {
         }
     }
 
-    // Synchronous flush; no background dispatch
+    std::sort(toSave.begin(), toSave.end());
     for (auto& [cx, cy, cz] : toSave) {
         saveChunkSync(cx, cy, cz);
     }

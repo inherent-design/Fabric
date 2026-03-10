@@ -1,6 +1,7 @@
 #include "recurse/persistence/FilesystemChunkStore.hh"
 
 #include "fabric/utils/ErrorHandling.hh"
+#include <algorithm>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -275,6 +276,38 @@ size_t FilesystemChunkStore::fileSize(const std::string& path) const {
     if (ec)
         return 0;
     return static_cast<size_t>(sz);
+}
+
+// --- Batch operations (sorted for sequential I/O) ---
+
+std::vector<std::pair<std::tuple<int, int, int>, ChunkBlob>>
+FilesystemChunkStore::loadBatch(const std::vector<std::tuple<int, int, int>>& coords) const {
+    auto sorted = coords;
+    std::sort(sorted.begin(), sorted.end());
+
+    std::vector<std::pair<std::tuple<int, int, int>, ChunkBlob>> results;
+    results.reserve(sorted.size());
+
+    for (const auto& [cx, cy, cz] : sorted) {
+        auto blob = loadGenData(cx, cy, cz);
+        if (blob)
+            results.push_back({{cx, cy, cz}, std::move(*blob)});
+    }
+    return results;
+}
+
+void FilesystemChunkStore::saveBatch(const std::vector<std::pair<std::tuple<int, int, int>, ChunkBlob>>& entries) {
+    // Sort by coordinate for sequential file I/O
+    std::vector<const std::pair<std::tuple<int, int, int>, ChunkBlob>*> sorted;
+    sorted.reserve(entries.size());
+    for (const auto& e : entries)
+        sorted.push_back(&e);
+    std::sort(sorted.begin(), sorted.end(), [](const auto* a, const auto* b) { return a->first < b->first; });
+
+    for (const auto* e : sorted) {
+        auto [cx, cy, cz] = e->first;
+        saveGenData(cx, cy, cz, e->second);
+    }
 }
 
 } // namespace recurse

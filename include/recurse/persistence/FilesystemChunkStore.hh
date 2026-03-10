@@ -47,6 +47,10 @@ class FilesystemChunkStore : public ChunkStore {
     size_t deltaSize(int cx, int cy, int cz) const override;
     size_t genDataSize(int cx, int cy, int cz) const override;
 
+    std::vector<std::pair<std::tuple<int, int, int>, ChunkBlob>>
+    loadBatch(const std::vector<std::tuple<int, int, int>>& coords) const override;
+    void saveBatch(const std::vector<std::pair<std::tuple<int, int, int>, ChunkBlob>>& entries) override;
+
     /// Encode raw VoxelCell data into FCHK v2 blob.
     /// When paletteData is non-null and paletteEntryCount > 0, palette is appended after the
     /// voxel payload. Compression wraps bytes 10-EOF (payload + palette).

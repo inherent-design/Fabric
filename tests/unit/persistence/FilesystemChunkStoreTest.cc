@@ -159,3 +159,62 @@ TEST_F(FilesystemChunkStoreTest, LoadMissingReturnsNullopt) {
     auto result = store.loadGenData(999, 999, 999);
     EXPECT_FALSE(result.has_value());
 }
+
+// --- Batch operations ---
+
+TEST_F(FilesystemChunkStoreTest, BatchLoadMultipleChunks) {
+    recurse::FilesystemChunkStore store(worldDir_);
+    auto blob = makeFakeChunkData();
+
+    store.saveGenData(0, 0, 0, blob);
+    store.saveGenData(1, 0, 0, blob);
+    store.saveGenData(2, 0, 0, blob);
+
+    std::vector<std::tuple<int, int, int>> coords = {{0, 0, 0}, {1, 0, 0}, {2, 0, 0}};
+    auto results = store.loadBatch(coords);
+
+    EXPECT_EQ(results.size(), 3u);
+    for (const auto& [coord, loaded] : results) {
+        EXPECT_EQ(loaded.size(), blob.size());
+        EXPECT_EQ(loaded, blob);
+    }
+}
+
+TEST_F(FilesystemChunkStoreTest, BatchLoadMixedExistence) {
+    recurse::FilesystemChunkStore store(worldDir_);
+    auto blob = makeFakeChunkData();
+
+    store.saveGenData(0, 0, 0, blob);
+    store.saveGenData(3, 3, 3, blob);
+
+    std::vector<std::tuple<int, int, int>> coords = {{0, 0, 0}, {1, 1, 1}, {2, 2, 2}, {3, 3, 3}};
+    auto results = store.loadBatch(coords);
+
+    EXPECT_EQ(results.size(), 2u);
+}
+
+TEST_F(FilesystemChunkStoreTest, BatchSaveMultiple) {
+    recurse::FilesystemChunkStore store(worldDir_);
+    auto blob = makeFakeChunkData();
+
+    std::vector<std::pair<std::tuple<int, int, int>, recurse::ChunkBlob>> entries;
+    entries.push_back({{0, 0, 0}, blob});
+    entries.push_back({{1, 2, 3}, blob});
+    entries.push_back({{-1, -1, 0}, blob});
+
+    store.saveBatch(entries);
+
+    EXPECT_TRUE(store.hasGenData(0, 0, 0));
+    EXPECT_TRUE(store.hasGenData(1, 2, 3));
+    EXPECT_TRUE(store.hasGenData(-1, -1, 0));
+
+    auto loaded = store.loadGenData(1, 2, 3);
+    ASSERT_TRUE(loaded.has_value());
+    EXPECT_EQ(*loaded, blob);
+}
+
+TEST_F(FilesystemChunkStoreTest, BatchSaveEmpty) {
+    recurse::FilesystemChunkStore store(worldDir_);
+    std::vector<std::pair<std::tuple<int, int, int>, recurse::ChunkBlob>> entries;
+    store.saveBatch(entries);
+}
