@@ -5,9 +5,11 @@
 #include "fabric/core/Event.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/character/VoxelInteraction.hh"
 #include "recurse/simulation/ChunkRegistry.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "recurse/systems/ChunkPipelineSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
@@ -167,6 +169,79 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
         FABRIC_LOG_DEBUG("Notified {} existing neighbors (face+diagonal) after loading chunk ({},{},{})", notifiedCount,
                          cx, cy, cz);
     }
+}
+
+void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int, int, int>>& chunks) {
+    if (!terrain_ || !fabSim_ || chunks.empty())
+        return;
+
+    FABRIC_ZONE_SCOPED_N("gen_batch");
+
+    auto& gen = terrain_->worldGenerator();
+    auto& grid = fabSim_->grid();
+    auto& tracker = fabSim_->activityTracker();
+    auto& sched = fabSim_->scheduler();
+
+    // Phase 0: Pre-materialize all chunks on calling thread (structural modification).
+    // Resolves registry slots and allocates buffers before parallel dispatch.
+    struct GenTask {
+        recurse::simulation::VoxelCell* buffer;
+        int cx, cy, cz;
+    };
+    std::vector<GenTask> tasks;
+    tasks.reserve(chunks.size());
+
+    for (const auto& [cx, cy, cz] : chunks) {
+        grid.registry().addChunk(cx, cy, cz);
+        grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Generating);
+        grid.materializeChunk(cx, cy, cz);
+        auto* buf = grid.writeBuffer(cx, cy, cz);
+        if (buf)
+            tasks.push_back({buf->data(), cx, cy, cz});
+    }
+
+    // Phase 1: Parallel generation. Each worker writes exclusively to its
+    // chunk's pre-resolved buffer. No grid registry access during this phase.
+    {
+        FABRIC_ZONE_SCOPED_N("gen_parallel");
+        sched.parallelFor(tasks.size(), [&](size_t idx, size_t /*workerIdx*/) {
+            gen.generateToBuffer(tasks[idx].buffer, tasks[idx].cx, tasks[idx].cy, tasks[idx].cz);
+        });
+    }
+
+    // Phase 2: Sequential finalization (state transitions, events, neighbor notifications).
+    for (const auto& [cx, cy, cz] : chunks) {
+        grid.syncChunkBuffers(cx, cy, cz);
+        grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
+        tracker.setState(recurse::simulation::ChunkPos{cx, cy, cz}, recurse::simulation::ChunkState::Active);
+
+        if (dispatcher_) {
+            fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelSimulationSystem");
+            e.setData("cx", cx);
+            e.setData("cy", cy);
+            e.setData("cz", cz);
+            dispatcher_->dispatchEvent(e);
+        }
+    }
+
+    for (const auto& [cx, cy, cz] : chunks) {
+        int notifiedCount = 0;
+        for (int d = 0; d < 10; ++d) {
+            recurse::simulation::ChunkPos neighbor{cx + K_FACE_DIAGONAL_NEIGHBORS[d][0],
+                                                   cy + K_FACE_DIAGONAL_NEIGHBORS[d][1],
+                                                   cz + K_FACE_DIAGONAL_NEIGHBORS[d][2]};
+            if (fabSim_->grid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
+                fabSim_->activityTracker().notifyBoundaryChange(neighbor);
+                ++notifiedCount;
+            }
+        }
+        if (notifiedCount > 0) {
+            FABRIC_LOG_DEBUG("Notified {} existing neighbors (face+diagonal) after batch-loading chunk ({},{},{})",
+                             notifiedCount, cx, cy, cz);
+        }
+    }
+
+    FABRIC_LOG_DEBUG("generateChunksBatch: {} chunks generated in parallel", chunks.size());
 }
 
 void VoxelSimulationSystem::removeChunk(int cx, int cy, int cz) {

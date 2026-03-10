@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <tuple>
 #include <vector>
 
 namespace recurse::systems {
@@ -71,22 +72,32 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
     loadsThisFrame_ = static_cast<int>(streamUpdate.toLoad.size());
     unloadsThisFrame_ = static_cast<int>(streamUpdate.toUnload.size());
 
+    // Separate new chunks into disk-loaded and needs-generation
+    std::vector<ChunkCoord> newChunks;
+    std::vector<std::tuple<int, int, int>> toGenerate;
     for (const auto& coord : streamUpdate.toLoad) {
-        if (chunkEntities_.find(coord) == chunkEntities_.end()) {
-            // Try loading from disk; fall back to generation
-            bool loaded = tryLoadChunkFromDisk(coord.cx, coord.cy, coord.cz);
-            if (!loaded && simSystem_)
-                simSystem_->generateChunk(coord.cx, coord.cy, coord.cz);
+        if (chunkEntities_.find(coord) != chunkEntities_.end())
+            continue;
+        newChunks.push_back(coord);
+        bool loaded = tryLoadChunkFromDisk(coord.cx, coord.cy, coord.cz);
+        if (!loaded)
+            toGenerate.emplace_back(coord.cx, coord.cy, coord.cz);
+    }
 
-            if (lodSystem_)
-                lodSystem_->onChunkReady(coord.cx, coord.cy, coord.cz);
+    // Parallel batch generation for chunks not loaded from disk
+    if (!toGenerate.empty() && simSystem_)
+        simSystem_->generateChunksBatch(toGenerate);
 
-            auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
-                {static_cast<float>(coord.cx * K_CHUNK_SIZE), static_cast<float>(coord.cy * K_CHUNK_SIZE),
-                 static_cast<float>(coord.cz * K_CHUNK_SIZE), static_cast<float>((coord.cx + 1) * K_CHUNK_SIZE),
-                 static_cast<float>((coord.cy + 1) * K_CHUNK_SIZE), static_cast<float>((coord.cz + 1) * K_CHUNK_SIZE)});
-            chunkEntities_[coord] = ent;
-        }
+    // Sequential finalization: ECS entities + LOD notification
+    for (const auto& coord : newChunks) {
+        if (lodSystem_)
+            lodSystem_->onChunkReady(coord.cx, coord.cy, coord.cz);
+
+        auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
+            {static_cast<float>(coord.cx * K_CHUNK_SIZE), static_cast<float>(coord.cy * K_CHUNK_SIZE),
+             static_cast<float>(coord.cz * K_CHUNK_SIZE), static_cast<float>((coord.cx + 1) * K_CHUNK_SIZE),
+             static_cast<float>((coord.cy + 1) * K_CHUNK_SIZE), static_cast<float>((coord.cz + 1) * K_CHUNK_SIZE)});
+        chunkEntities_[coord] = ent;
     }
     for (const auto& coord : streamUpdate.toUnload) {
         // Save chunk to disk before removing data

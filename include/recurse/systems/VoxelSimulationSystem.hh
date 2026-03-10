@@ -3,6 +3,8 @@
 #include "fabric/core/SystemBase.hh"
 #include <cstddef>
 #include <memory>
+#include <tuple>
+#include <vector>
 
 namespace fabric {
 class EventDispatcher;
@@ -43,6 +45,10 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     /// Generate terrain for a single chunk into the simulation grid.
     /// Called by ChunkPipelineSystem during streaming load.
     void generateChunk(int cx, int cy, int cz);
+
+    /// Parallel generation of multiple chunks via JobScheduler.
+    /// Pre-materializes on calling thread, dispatches parallel gen, finalizes sequentially.
+    void generateChunksBatch(const std::vector<std::tuple<int, int, int>>& chunks);
 
     /// Generate initial world region (5x3x5 chunks).
     /// Called by MainMenuSystem when world type is selected.

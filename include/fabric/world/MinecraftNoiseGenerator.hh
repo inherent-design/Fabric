@@ -33,6 +33,11 @@ class MinecraftNoiseGenerator : public GeneratorInterface {
     /// a margin for intra-chunk variation.
     int maxSurfaceHeight(int cx, int cz) const;
 
+    /// Fill a pre-allocated buffer with voxel data for chunk (cx, cy, cz).
+    /// Buffer must hold K_CHUNK_VOLUME VoxelCells, zero-initialized (air).
+    /// Thread-safe: reads only immutable generator state.
+    void generateToBuffer(recurse::simulation::VoxelCell* buffer, int cx, int cy, int cz) const;
+
   private:
     NoiseGenConfig config_;
     FastNoise::SmartNode<FastNoise::Simplex> continentalNode_;
@@ -43,9 +48,8 @@ class MinecraftNoiseGenerator : public GeneratorInterface {
 
     static constexpr int K_SIZE = 32;
 
-    // Batch-generate a 32x32 2D noise grid at given frequency and base offsets
     void batchNoise2D(const FastNoise::SmartNode<FastNoise::Simplex>& node, float freq, float baseX, float baseZ,
-                      std::array<float, K_SIZE * K_SIZE>& out, int seed) const;
+                      float* out, int seed) const;
 
     float computeBaseHeight(float continental, float erosion, float peaks) const;
 

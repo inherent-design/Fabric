@@ -1,6 +1,8 @@
 #include "fabric/world/MinecraftNoiseGenerator.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <cmath>
+#include <vector>
 
 namespace fabric::world {
 
@@ -17,13 +19,8 @@ MinecraftNoiseGenerator::MinecraftNoiseGenerator(const NoiseGenConfig& config)
       humidityNode_(FastNoise::New<FastNoise::Simplex>()) {}
 
 void MinecraftNoiseGenerator::batchNoise2D(const FastNoise::SmartNode<FastNoise::Simplex>& node, float freq,
-                                           float baseX, float baseZ, std::array<float, K_SIZE * K_SIZE>& out,
-                                           int seed) const {
-    // GenUniformGrid2D layout: out[z * xCount + x] (row-major, X inner loop)
-    // We want out[lz * K_SIZE + lx] = noise at (baseX + lx, baseZ + lz) * freq
-    // GenUniformGrid2D(out, xOffset, yOffset, xCount, yCount, xStep, yStep, seed)
-    // Maps: x-axis = world X, y-axis = world Z
-    node->GenUniformGrid2D(out.data(), baseX * freq, baseZ * freq, K_SIZE, K_SIZE, freq, freq, seed);
+                                           float baseX, float baseZ, float* out, int seed) const {
+    node->GenUniformGrid2D(out, baseX * freq, baseZ * freq, K_SIZE, K_SIZE, freq, freq, seed);
 }
 
 float MinecraftNoiseGenerator::computeBaseHeight(float continental, float erosion, float peaks) const {
@@ -44,37 +41,39 @@ MaterialId MinecraftNoiseGenerator::selectSurfaceMaterial(float temp, float humi
 
 void MinecraftNoiseGenerator::generate(recurse::simulation::SimulationGrid& grid, recurse::simulation::ChunkPos pos) {
     grid.materializeChunk(pos.x, pos.y, pos.z);
+    auto* buf = grid.writeBuffer(pos.x, pos.y, pos.z);
+    if (!buf)
+        return;
+    generateToBuffer(buf->data(), pos.x, pos.y, pos.z);
+}
 
-    int baseX = pos.x * K_SIZE;
-    int baseY = pos.y * K_SIZE;
-    int baseZ = pos.z * K_SIZE;
+void MinecraftNoiseGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy, int cz) const {
+    int baseX = cx * K_SIZE;
+    int baseY = cy * K_SIZE;
+    int baseZ = cz * K_SIZE;
 
-    // Batch 2D noise for all 5 layers (32x32 each)
-    std::array<float, K_SIZE * K_SIZE> continental{};
-    std::array<float, K_SIZE * K_SIZE> erosion{};
-    std::array<float, K_SIZE * K_SIZE> peaks{};
-    std::array<float, K_SIZE * K_SIZE> temperature{};
-    std::array<float, K_SIZE * K_SIZE> humidity{};
+    // D-33: Heap-allocated noise arrays. 5x4KB on stack risks overflow on
+    // enkiTS 64KB fiber stacks during parallel world generation (C-P1).
+    std::vector<float> continental(K_SIZE * K_SIZE);
+    std::vector<float> erosion(K_SIZE * K_SIZE);
+    std::vector<float> peaks(K_SIZE * K_SIZE);
+    std::vector<float> temperature(K_SIZE * K_SIZE);
+    std::vector<float> humidity(K_SIZE * K_SIZE);
 
-    // Each layer uses a different seed offset to decorrelate noise functions.
-    // Without this, all layers sample the same Simplex function and produce
-    // correlated outputs, collapsing terrain variation.
     batchNoise2D(continentalNode_, config_.continentalFreq, static_cast<float>(baseX), static_cast<float>(baseZ),
-                 continental, config_.seed);
-    batchNoise2D(erosionNode_, config_.erosionFreq, static_cast<float>(baseX), static_cast<float>(baseZ), erosion,
-                 config_.seed + 1);
-    batchNoise2D(peaksNode_, config_.peaksFreq, static_cast<float>(baseX), static_cast<float>(baseZ), peaks,
+                 continental.data(), config_.seed);
+    batchNoise2D(erosionNode_, config_.erosionFreq, static_cast<float>(baseX), static_cast<float>(baseZ),
+                 erosion.data(), config_.seed + 1);
+    batchNoise2D(peaksNode_, config_.peaksFreq, static_cast<float>(baseX), static_cast<float>(baseZ), peaks.data(),
                  config_.seed + 2);
     batchNoise2D(temperatureNode_, config_.temperatureFreq, static_cast<float>(baseX), static_cast<float>(baseZ),
-                 temperature, config_.seed + 3);
-    batchNoise2D(humidityNode_, config_.humidityFreq, static_cast<float>(baseX), static_cast<float>(baseZ), humidity,
-                 config_.seed + 4);
+                 temperature.data(), config_.seed + 3);
+    batchNoise2D(humidityNode_, config_.humidityFreq, static_cast<float>(baseX), static_cast<float>(baseZ),
+                 humidity.data(), config_.seed + 4);
 
     for (int lz = 0; lz < K_SIZE; ++lz) {
         for (int lx = 0; lx < K_SIZE; ++lx) {
             int idx2d = lz * K_SIZE + lx;
-            int wx = baseX + lx;
-            int wz = baseZ + lz;
 
             float c = continental[idx2d];
             float e = erosion[idx2d];
@@ -96,17 +95,17 @@ void MinecraftNoiseGenerator::generate(recurse::simulation::SimulationGrid& grid
                 } else if (static_cast<float>(wy) < config_.seaLevel) {
                     cell.materialId = material_ids::WATER;
                 } else {
-                    continue; // Air -- skip write (default)
+                    continue;
                 }
 
-                grid.writeCell(wx, wy, wz, cell);
+                int idx = lx + ly * K_SIZE + lz * K_SIZE * K_SIZE;
+                buffer[idx] = cell;
             }
         }
     }
 }
 
 int MinecraftNoiseGenerator::maxSurfaceHeight(int cx, int cz) const {
-    // Evaluate noise at chunk center for a representative height estimate
     float centerX = static_cast<float>(cx * K_SIZE + K_SIZE / 2);
     float centerZ = static_cast<float>(cz * K_SIZE + K_SIZE / 2);
 
@@ -117,8 +116,6 @@ int MinecraftNoiseGenerator::maxSurfaceHeight(int cx, int cz) const {
 
     float bh = computeBaseHeight(c, e, p);
 
-    // Simplex noise varies ~7 blocks over a 32-block span at these frequencies.
-    // Use 16-block margin to cover worst-case gradient across the chunk.
     constexpr float K_MARGIN = 16.0f;
     float maxHeight = std::max(bh + K_MARGIN, config_.seaLevel);
 

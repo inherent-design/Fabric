@@ -15,6 +15,10 @@ class NaturalWorldGenerator : public WorldGenerator {
         noiseGen_.generate(grid, recurse::simulation::ChunkPos{cx, cy, cz});
     }
 
+    void generateToBuffer(recurse::simulation::VoxelCell* buffer, int cx, int cy, int cz) override {
+        noiseGen_.generateToBuffer(buffer, cx, cy, cz);
+    }
+
     uint16_t sampleMaterial(int wx, int wy, int wz) const override { return noiseGen_.sampleMaterial(wx, wy, wz); }
     int maxSurfaceHeight(int cx, int cz) const override { return noiseGen_.maxSurfaceHeight(cx, cz); }
 

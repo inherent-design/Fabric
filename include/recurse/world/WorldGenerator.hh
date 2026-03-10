@@ -5,6 +5,7 @@
 
 namespace recurse::simulation {
 class SimulationGrid;
+struct VoxelCell;
 } // namespace recurse::simulation
 
 namespace recurse {
@@ -18,6 +19,12 @@ class WorldGenerator {
     /// Fill the given chunk of the SimulationGrid with initial voxel data.
     /// Called once per chunk during world init or chunk streaming load.
     virtual void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) = 0;
+
+    /// Fill a pre-allocated buffer with voxel data for chunk (cx, cy, cz).
+    /// Buffer must hold K_CHUNK_VOLUME VoxelCells, zero-initialized (air).
+    /// Used by parallel world generation (C-P1) to bypass grid registry access.
+    /// Default delegates to generate() via a temporary grid.
+    virtual void generateToBuffer(simulation::VoxelCell* buffer, int cx, int cy, int cz);
 
     /// Return the material ID at a single world coordinate.
     /// Used by LOD direct generation (E-3) to fill LOD sections without
