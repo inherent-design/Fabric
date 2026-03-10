@@ -277,7 +277,48 @@ TEST_F(MinecraftNoiseGenTest, SampleMaterialDeterministic) {
     }
 }
 
-// 10. PerformanceSingleChunk
+// 10. MaxSurfaceHeightIsConservative
+TEST_F(MinecraftNoiseGenTest, MaxSurfaceHeightIsConservative) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator gen(config);
+
+    // Generate several chunks and verify maxSurfaceHeight >= actual highest solid
+    for (int cx = -2; cx <= 2; ++cx) {
+        for (int cz = -2; cz <= 2; ++cz) {
+            int bound = gen.maxSurfaceHeight(cx, cz);
+
+            // Generate chunks spanning the expected surface region
+            for (int cy = 0; cy <= 4; ++cy)
+                gen.generate(grid, {cx, cy, cz});
+            grid.advanceEpoch();
+
+            // Find actual highest solid in this column
+            int bx = cx * K_CHUNK + K_CHUNK / 2;
+            int bz = cz * K_CHUNK + K_CHUNK / 2;
+            int actual = surfaceY(grid, bx, bz, 0, 4 * K_CHUNK - 1);
+
+            EXPECT_GE(bound, actual) << "maxSurfaceHeight(" << cx << "," << cz << ")=" << bound
+                                     << " < actual=" << actual;
+        }
+    }
+}
+
+// 11. MaxSurfaceHeightDeterministic
+TEST_F(MinecraftNoiseGenTest, MaxSurfaceHeightDeterministic) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator gen1(config);
+    MinecraftNoiseGenerator gen2(config);
+
+    for (int cx = -3; cx <= 3; ++cx) {
+        for (int cz = -3; cz <= 3; ++cz) {
+            EXPECT_EQ(gen1.maxSurfaceHeight(cx, cz), gen2.maxSurfaceHeight(cx, cz));
+        }
+    }
+}
+
+// 12. PerformanceSingleChunk
 TEST_F(MinecraftNoiseGenTest, PerformanceSingleChunk) {
     NoiseGenConfig config;
     config.seed = 42;

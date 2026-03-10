@@ -11,6 +11,7 @@
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelMeshingSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
+#include "recurse/world/WorldGenerator.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/ECS.hh"
@@ -135,14 +136,23 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
 void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ) {
     int chunkRadius = streaming_ ? streaming_->currentRadius() : 0;
 
-    // Build desired LOD set: inside lodRadius_, outside chunkRadius, not in chunkEntities_
     std::unordered_set<ChunkCoord, ChunkCoordHash> desired;
     for (int dz = -lodRadius_; dz <= lodRadius_; ++dz) {
         for (int dy = -lodRadius_; dy <= lodRadius_; ++dy) {
             for (int dx = -lodRadius_; dx <= lodRadius_; ++dx) {
                 if (std::abs(dx) <= chunkRadius && std::abs(dy) <= chunkRadius && std::abs(dz) <= chunkRadius)
-                    continue; // Inside full-res ring
+                    continue;
+
                 ChunkCoord c{centerCX + dx, centerCY + dy, centerCZ + dz};
+
+                if (terrain_) {
+                    int surfaceMax = terrain_->worldGenerator().maxSurfaceHeight(c.cx, c.cz);
+                    int chunkBottomY = c.cy * K_CHUNK_SIZE;
+                    int chunkTopY = (c.cy + 1) * K_CHUNK_SIZE;
+                    if (chunkBottomY > surfaceMax || chunkTopY < surfaceMax - K_CHUNK_SIZE)
+                        continue;
+                }
+
                 desired.insert(c);
             }
         }

@@ -47,6 +47,10 @@ uint16_t FlatWorldGenerator::sampleMaterial(int /*wx*/, int wy, int /*wz*/) cons
     return (wy < groundLevel_) ? simulation::material_ids::STONE : simulation::material_ids::AIR;
 }
 
+int FlatWorldGenerator::maxSurfaceHeight(int /*cx*/, int /*cz*/) const {
+    return groundLevel_;
+}
+
 // -- LayeredWorldGenerator ----------------------------------------------------
 
 LayeredWorldGenerator::LayeredWorldGenerator(int stoneLevel, int sandDepth)
@@ -91,6 +95,10 @@ uint16_t LayeredWorldGenerator::sampleMaterial(int /*wx*/, int wy, int /*wz*/) c
     if (wy < stoneLevel_ + sandDepth_)
         return simulation::material_ids::SAND;
     return simulation::material_ids::AIR;
+}
+
+int LayeredWorldGenerator::maxSurfaceHeight(int /*cx*/, int /*cz*/) const {
+    return stoneLevel_ + sandDepth_;
 }
 
 } // namespace recurse

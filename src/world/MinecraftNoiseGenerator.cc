@@ -105,6 +105,26 @@ void MinecraftNoiseGenerator::generate(recurse::simulation::SimulationGrid& grid
     }
 }
 
+int MinecraftNoiseGenerator::maxSurfaceHeight(int cx, int cz) const {
+    // Evaluate noise at chunk center for a representative height estimate
+    float centerX = static_cast<float>(cx * K_SIZE + K_SIZE / 2);
+    float centerZ = static_cast<float>(cz * K_SIZE + K_SIZE / 2);
+
+    float c = continentalNode_->GenSingle2D(centerX * config_.continentalFreq, centerZ * config_.continentalFreq,
+                                            config_.seed);
+    float e = erosionNode_->GenSingle2D(centerX * config_.erosionFreq, centerZ * config_.erosionFreq, config_.seed + 1);
+    float p = peaksNode_->GenSingle2D(centerX * config_.peaksFreq, centerZ * config_.peaksFreq, config_.seed + 2);
+
+    float bh = computeBaseHeight(c, e, p);
+
+    // Simplex noise varies ~7 blocks over a 32-block span at these frequencies.
+    // Use 16-block margin to cover worst-case gradient across the chunk.
+    constexpr float K_MARGIN = 16.0f;
+    float maxHeight = std::max(bh + K_MARGIN, config_.seaLevel);
+
+    return static_cast<int>(std::ceil(maxHeight));
+}
+
 uint16_t MinecraftNoiseGenerator::sampleMaterial(int wx, int wy, int wz) const {
     float fx = static_cast<float>(wx);
     float fz = static_cast<float>(wz);

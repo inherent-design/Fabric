@@ -25,6 +25,12 @@ class WorldGenerator {
     /// the default generates an entire chunk and reads the target cell.
     virtual uint16_t sampleMaterial(int wx, int wy, int wz) const;
 
+    /// Conservative upper bound on the maximum Y coordinate where visible
+    /// material (non-air) exists in the chunk column at (cx, cz).
+    /// Used to skip LOD generation for all-air and all-underground chunks.
+    /// Default returns 1024 (never skip for unknown generators).
+    virtual int maxSurfaceHeight(int cx, int cz) const;
+
     /// Human-readable name for logging
     virtual std::string name() const = 0;
 };

@@ -16,6 +16,7 @@ class NaturalWorldGenerator : public WorldGenerator {
     }
 
     uint16_t sampleMaterial(int wx, int wy, int wz) const override { return noiseGen_.sampleMaterial(wx, wy, wz); }
+    int maxSurfaceHeight(int cx, int cz) const override { return noiseGen_.maxSurfaceHeight(cx, cz); }
 
     std::string name() const override { return "NaturalWorldGenerator"; }
 

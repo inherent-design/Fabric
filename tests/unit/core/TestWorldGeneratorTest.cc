@@ -87,6 +87,20 @@ TEST(TestWorldGenerator, LayeredSampleMaterial_StoneAndSandAndAir) {
     EXPECT_EQ(gen.sampleMaterial(0, 32, 0), material_ids::AIR);
 }
 
+// -- maxSurfaceHeight ---------------------------------------------------------
+
+TEST(TestWorldGenerator, FlatMaxSurfaceHeight_ReturnsGroundLevel) {
+    FlatWorldGenerator gen(32);
+    EXPECT_EQ(gen.maxSurfaceHeight(0, 0), 32);
+    EXPECT_EQ(gen.maxSurfaceHeight(100, -50), 32);
+}
+
+TEST(TestWorldGenerator, LayeredMaxSurfaceHeight_ReturnsStonePlusSand) {
+    LayeredWorldGenerator gen(28, 4);
+    EXPECT_EQ(gen.maxSurfaceHeight(0, 0), 32);
+    EXPECT_EQ(gen.maxSurfaceHeight(-10, 10), 32);
+}
+
 // -- Interface ----------------------------------------------------------------
 
 TEST(TestWorldGenerator, WorldGeneratorInterface_Swappable) {

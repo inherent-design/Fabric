@@ -28,6 +28,11 @@ class MinecraftNoiseGenerator : public GeneratorInterface {
     /// and applies the same density/material logic as generate().
     uint16_t sampleMaterial(int wx, int wy, int wz) const;
 
+    /// Conservative upper bound on the maximum Y where visible material exists
+    /// in the chunk column at (cx, cz). Evaluates noise at chunk center with
+    /// a margin for intra-chunk variation.
+    int maxSurfaceHeight(int cx, int cz) const;
+
   private:
     NoiseGenConfig config_;
     FastNoise::SmartNode<FastNoise::Simplex> continentalNode_;
