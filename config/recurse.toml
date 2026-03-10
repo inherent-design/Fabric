@@ -11,6 +11,11 @@ hidpi = true
 seed = 42
 chunk_radius = 8         # full-res streaming radius (cube radius in chunk coords)
 
+[lod]
+upload_budget = 50       # max LOD sections uploaded per frame
+max_level = 6            # highest LOD level (LOD1 to LOD6)
+base_radius = 10.0       # LOD1 starts at base_radius * 32 blocks from camera
+
 [panini]
 enabled = false
 strength = 0.5

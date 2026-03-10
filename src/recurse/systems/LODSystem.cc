@@ -4,6 +4,7 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/platform/ConfigManager.hh"
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/render/Camera.hh"
 #include "fabric/render/SceneView.hh"
@@ -27,6 +28,10 @@ LODSystem::LODSystem() : grid_(std::make_unique<LODGrid>()) {}
 LODSystem::~LODSystem() = default;
 
 void LODSystem::doInit(fabric::AppContext& ctx) {
+    uploadBudget_ = ctx.configManager.get<int>("lod.upload_budget", 50);
+    maxLODLevel_ = ctx.configManager.get<int>("lod.max_level", 6);
+    baseRadius_ = ctx.configManager.get<float>("lod.base_radius", 10.0f);
+
     auto* voxelSim = ctx.systemRegistry.get<VoxelSimulationSystem>();
     if (voxelSim) {
         setSimulationGrid(&voxelSim->simulationGrid());

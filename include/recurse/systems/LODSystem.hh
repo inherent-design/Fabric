@@ -50,11 +50,6 @@ class LODSystem : public fabric::System<LODSystem> {
     void render(fabric::AppContext& ctx) override;
     void configureDependencies() override;
 
-    // Configuration
-    void setMaxRenderDistance(float blocks) { maxRenderDistance_ = blocks; }
-    void setUploadBudget(int sectionsPerFrame) { uploadBudget_ = sectionsPerFrame; }
-    void setMaxLODLevel(int level) { maxLODLevel_ = level; }
-
     // Dependency injection (called by FabricAppDesc or parent system)
     void setSimulationGrid(recurse::simulation::SimulationGrid* grid) { simGrid_ = grid; }
     void setMaterialRegistry(const recurse::simulation::MaterialRegistry* materials);
@@ -107,11 +102,10 @@ class LODSystem : public fabric::System<LODSystem> {
     // Pending generation queue
     std::deque<std::tuple<int, int, int>> pendingChunks_;
 
-    // Configuration
-    float maxRenderDistance_ = 2048.0f;
+    // Configuration (read from TOML in doInit; defaults match pre-config values)
     int uploadBudget_ = 50;
     int maxLODLevel_ = 6;
-    float baseRadius_ = 10.0f; // LOD1 starts at 10*32=320 blocks (just past chunk_radius=8)
+    float baseRadius_ = 10.0f;
 };
 
 } // namespace recurse::systems
