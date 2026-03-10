@@ -38,7 +38,7 @@ enum class ChunkSlotState : uint8_t {
 struct ChunkSlot {
     ChunkSlotState state = ChunkSlotState::Absent;
     ChunkBuffers simBuffers;
-    recurse::EssencePalette palette;
+    recurse::EssencePalette palette{recurse::EssencePalette::K_DEFAULT_EPSILON, 256};
 
     // Pre-resolved raw pointers for zero-overhead worker access (wired by C-1c).
     VoxelCell* writePtr = nullptr;

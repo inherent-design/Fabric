@@ -1,7 +1,9 @@
 #pragma once
 
 #include "fabric/core/Spatial.hh"
+#include <cmath>
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 namespace recurse {
@@ -13,6 +15,7 @@ using fabric::Vector4;
 /// Maps continuous vec4 essence values to discrete palette indices.
 /// Entries within epsilon distance are merged to the same index.
 /// When full, the two closest entries are silently merged (D-38).
+/// Grid-quantized hash map provides O(1) amortized dedup for epsilon > 0.
 class EssencePalette {
   public:
     static constexpr uint16_t K_DEFAULT_MAX_SIZE = 65535;
@@ -45,6 +48,29 @@ class EssencePalette {
     float epsilon_;
     uint16_t maxSize_;
     std::vector<Vector4<float, Space::World>> entries_;
+
+    // Grid hash for O(1) dedup (epsilon > 0). Cell size = epsilon.
+    struct GridKey {
+        int16_t c[4];
+        bool operator==(const GridKey&) const = default;
+    };
+
+    struct GridKeyHash {
+        size_t operator()(const GridKey& k) const noexcept {
+            auto u = [](int16_t v) {
+                return static_cast<uint16_t>(v);
+            };
+            uint64_t h = u(k.c[0]);
+            h = h * 65537u + u(k.c[1]);
+            h = h * 65537u + u(k.c[2]);
+            h = h * 65537u + u(k.c[3]);
+            return static_cast<size_t>(h ^ (h >> 16));
+        }
+    };
+
+    GridKey toGridKey(const Vector4<float, Space::World>& v) const;
+    void rebuildGridMap();
+    std::unordered_map<GridKey, uint16_t, GridKeyHash> gridMap_;
 
     /// Merge the two closest entries. Returns the index of the merged entry.
     uint16_t mergeClosestPair();

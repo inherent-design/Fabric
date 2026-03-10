@@ -3,6 +3,7 @@
 #include "fabric/core/SystemBase.hh"
 #include "recurse/character/GameConstants.hh"
 #include "recurse/world/ChunkStreaming.hh"
+#include <climits>
 #include <flecs.h>
 #include <future>
 #include <memory>
@@ -83,6 +84,9 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     std::unordered_set<ChunkCoord, ChunkCoordHash> lodChunks_;
     int lodRadius_ = 0;
     int lodGenBudget_ = 4;
+    int lastLodCX_ = INT_MIN;
+    int lastLodCY_ = INT_MIN;
+    int lastLodCZ_ = INT_MIN;
 
     void updateLODRing(int centerCX, int centerCY, int centerCZ);
 

@@ -173,6 +173,14 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
 }
 
 void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ) {
+    FABRIC_ZONE_SCOPED_N("lod_ring_update");
+
+    if (centerCX == lastLodCX_ && centerCY == lastLodCY_ && centerCZ == lastLodCZ_)
+        return;
+    lastLodCX_ = centerCX;
+    lastLodCY_ = centerCY;
+    lastLodCZ_ = centerCZ;
+
     int chunkRadius = streaming_ ? streaming_->currentRadius() : 0;
 
     std::unordered_set<ChunkCoord, ChunkCoordHash> desired;
@@ -369,6 +377,9 @@ void ChunkPipelineSystem::pollPendingLoads(fabric::AppContext& ctx) {
 
             if (lodSystem_)
                 lodSystem_->onChunkReady(cx, cy, cz);
+
+            if (physics_)
+                physics_->insertDirtyChunk(cx, cy, cz);
 
             auto& ecsWorld = ctx.world;
             ChunkCoord coord{cx, cy, cz};
