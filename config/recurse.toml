@@ -9,7 +9,8 @@ hidpi = true
 
 [terrain]
 seed = 42
-chunk_radius = 8
+chunk_radius = 8         # full-res chunks at rest (cube radius in chunk coords)
+chunk_radius_max = 12    # full-res chunks at max movement speed
 
 [panini]
 enabled = false

@@ -114,7 +114,7 @@ class LODSystem : public fabric::System<LODSystem> {
     float maxRenderDistance_ = 2048.0f;
     int uploadBudget_ = 50;
     int maxLODLevel_ = 6;
-    float baseRadius_ = 96.0f; // 3 chunks * 32 = base LOD0 range
+    float baseRadius_ = 10.0f; // LOD1 starts at 10*32=320 blocks (just past chunk_radius=8)
 };
 
 } // namespace recurse::systems

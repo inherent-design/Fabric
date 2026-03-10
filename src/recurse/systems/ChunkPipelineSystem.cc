@@ -17,6 +17,7 @@
 #include "fabric/core/Event.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/platform/ConfigManager.hh"
 #include "fabric/utils/Profiler.hh"
 
 #include <cmath>
@@ -34,13 +35,13 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
 
-    // Chunk streaming
+    // Chunk streaming — stress test: push render distance
     StreamingConfig streamConfig;
-    streamConfig.baseRadius = 3;
-    streamConfig.maxRadius = 5;
-    streamConfig.maxLoadsPerTick = 2;
-    streamConfig.maxUnloadsPerTick = 4;
-    streamConfig.maxTrackedChunks = 512;
+    streamConfig.baseRadius = ctx.configManager.get<int>("terrain.chunk_radius", 8);
+    streamConfig.maxRadius = ctx.configManager.get<int>("terrain.chunk_radius_max", 12);
+    streamConfig.maxLoadsPerTick = 4;
+    streamConfig.maxUnloadsPerTick = 8;
+    streamConfig.maxTrackedChunks = 4096;
     streaming_ = std::make_unique<ChunkStreamingManager>(streamConfig);
 
     // Initial chunk load (ECS entities only, no meshing)
