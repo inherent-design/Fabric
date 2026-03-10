@@ -407,10 +407,14 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             waila.distance = hit->t;
             auto cell = voxelSim_->simulationGrid().readCell(hit->x, hit->y, hit->z);
             waila.density = (cell.materialId != recurse::simulation::material_ids::AIR) ? 1.0f : 0.0f;
-            uint32_t packed = voxelSim_->materials().get(cell.materialId).baseColor;
-            waila.essenceR = static_cast<float>((packed >> 16) & 0xFF) / 255.0f;
-            waila.essenceG = static_cast<float>((packed >> 8) & 0xFF) / 255.0f;
-            waila.essenceB = static_cast<float>(packed & 0xFF) / 255.0f;
+            const auto* pal = voxelSim_->simulationGrid().chunkPalette(waila.chunkX, waila.chunkY, waila.chunkZ);
+            if (pal && cell.essenceIdx < pal->paletteSize()) {
+                auto e = pal->lookup(cell.essenceIdx);
+                waila.essenceO = e.x;
+                waila.essenceC = e.y;
+                waila.essenceL = e.z;
+                waila.essenceD = e.w;
+            }
         }
         wailaPanel_.update(waila);
     }

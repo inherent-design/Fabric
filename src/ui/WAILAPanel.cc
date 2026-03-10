@@ -60,12 +60,9 @@ void WAILAPanel::update(const WAILAData& data) {
         std::snprintf(normalBuf, sizeof(normalBuf), "%d, %d, %d", data.normalX, data.normalY, data.normalZ);
         normalStr_ = normalBuf;
 
-        auto clamp = [](float v) -> int {
-            return static_cast<int>(v * 255.0f + 0.5f) & 0xFF;
-        };
-        char essBuf[16];
-        std::snprintf(essBuf, sizeof(essBuf), "#%02X%02X%02X", clamp(data.essenceR), clamp(data.essenceG),
-                      clamp(data.essenceB));
+        char essBuf[64];
+        std::snprintf(essBuf, sizeof(essBuf), "O=%.2f C=%.2f L=%.2f D=%.2f", data.essenceO, data.essenceC,
+                      data.essenceL, data.essenceD);
         essenceStr_ = essBuf;
     } else {
         displayText_ = "Sky";

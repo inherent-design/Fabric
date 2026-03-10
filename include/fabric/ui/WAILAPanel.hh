@@ -13,7 +13,7 @@ struct WAILAData {
     int normalX = 0, normalY = 0, normalZ = 0;
     float distance = 0.0f;
     float density = 0.0f;
-    float essenceR = 0.0f, essenceG = 0.0f, essenceB = 0.0f;
+    float essenceO = 0.0f, essenceC = 0.0f, essenceL = 0.0f, essenceD = 0.0f;
 };
 
 class WAILAPanel : public RmlPanel {
