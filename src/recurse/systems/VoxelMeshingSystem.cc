@@ -100,6 +100,15 @@ void VoxelMeshingSystem::clearAllMeshes() {
     FABRIC_LOG_INFO("VoxelMeshingSystem: cleared {} GPU meshes", count);
 }
 
+void VoxelMeshingSystem::removeChunkMesh(const fabric::ChunkCoord& coord) {
+    auto it = gpuMeshes_.find(coord);
+    if (it != gpuMeshes_.end()) {
+        destroyChunkMesh(it->second);
+        gpuMeshes_.erase(it);
+    }
+    emptyChunks_.erase(coord);
+}
+
 void VoxelMeshingSystem::render(fabric::AppContext& /*ctx*/) {
     FABRIC_ZONE_SCOPED_N("voxel_meshing");
     processFrame();

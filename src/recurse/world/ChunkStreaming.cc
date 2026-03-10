@@ -69,6 +69,30 @@ StreamingUpdate ChunkStreamingManager::update(float viewX, float viewY, float vi
         tracked_.erase(oldChunks[static_cast<size_t>(i)]);
     }
 
+    // Enforce hard chunk budget: evict farthest tracked chunks if over cap
+    if (config_.maxTrackedChunks > 0 && static_cast<int>(tracked_.size()) > config_.maxTrackedChunks) {
+        std::vector<ChunkCoord> allTracked(tracked_.begin(), tracked_.end());
+        std::sort(allTracked.begin(), allTracked.end(),
+                  [&](const ChunkCoord& a, const ChunkCoord& b) { return distSq(a) > distSq(b); });
+
+        int excess = static_cast<int>(tracked_.size()) - config_.maxTrackedChunks;
+        for (int i = 0; i < excess; ++i) {
+            const auto& c = allTracked[static_cast<size_t>(i)];
+            // Skip if already in toUnload
+            bool alreadyQueued = false;
+            for (const auto& u : result.toUnload) {
+                if (u == c) {
+                    alreadyQueued = true;
+                    break;
+                }
+            }
+            if (!alreadyQueued) {
+                result.toUnload.push_back(c);
+                tracked_.erase(c);
+            }
+        }
+    }
+
     return result;
 }
 

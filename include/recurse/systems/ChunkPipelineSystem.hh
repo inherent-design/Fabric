@@ -11,6 +11,7 @@ namespace recurse::systems {
 
 class LODSystem;
 class TerrainSystem;
+class VoxelMeshingSystem;
 class VoxelSimulationSystem;
 class PhysicsGameSystem;
 class CharacterMovementSystem;
@@ -39,6 +40,7 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
   private:
     LODSystem* lodSystem_ = nullptr;
     TerrainSystem* terrain_ = nullptr;
+    VoxelMeshingSystem* meshingSystem_ = nullptr;
     VoxelSimulationSystem* simSystem_ = nullptr;
     PhysicsGameSystem* physics_ = nullptr;
     CharacterMovementSystem* charMovement_ = nullptr;

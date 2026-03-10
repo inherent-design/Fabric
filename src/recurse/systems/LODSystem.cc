@@ -293,6 +293,22 @@ void LODSystem::onChunkReady(int cx, int cy, int cz) {
     pendingChunks_.emplace_back(cx, cy, cz);
 }
 
+void LODSystem::onChunkRemoved(int cx, int cy, int cz) {
+    // Remove pending entry if not yet processed
+    std::erase_if(pendingChunks_, [cx, cy, cz](const auto& t) {
+        auto [px, py, pz] = t;
+        return px == cx && py == cy && pz == cz;
+    });
+
+    // Release GPU section
+    auto key = LODSectionKey::make(0, cx, cy, cz);
+    releaseGPUSection(key);
+
+    // Remove grid section
+    if (grid_)
+        grid_->remove(key);
+}
+
 void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRadius) {
     visibleSections_.clear();
 

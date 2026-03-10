@@ -104,3 +104,74 @@ TEST_F(ChunkStreamingTest, NegativeCoordinates) {
         EXPECT_NE(c.cx, 0);
     }
 }
+
+TEST_F(ChunkStreamingTest, MaxTrackedChunksEvictsFarthest) {
+    StreamingConfig cfg = smallConfig();
+    cfg.baseRadius = 2;
+    cfg.maxLoadsPerTick = 10000;
+    cfg.maxUnloadsPerTick = 10000;
+    cfg.maxTrackedChunks = 10;
+    ChunkStreamingManager mgr(cfg);
+
+    // Load all chunks at origin (5^3 = 125 desired, but cap at 10)
+    auto result = mgr.update(0.0f, 0.0f, 0.0f, 0.0f);
+
+    // After the first update, tracked count should not exceed the cap
+    EXPECT_LE(static_cast<int>(mgr.trackedChunkCount()), cfg.maxTrackedChunks);
+
+    // The excess chunks should appear in toUnload
+    // 125 loaded initially, then evicted down to 10
+    int totalLoaded = static_cast<int>(result.toLoad.size());
+    int totalUnloaded = static_cast<int>(result.toUnload.size());
+    EXPECT_EQ(static_cast<int>(mgr.trackedChunkCount()), totalLoaded - totalUnloaded);
+}
+
+TEST_F(ChunkStreamingTest, MaxTrackedChunksZeroMeansUnlimited) {
+    StreamingConfig cfg = smallConfig();
+    cfg.baseRadius = 2;
+    cfg.maxLoadsPerTick = 10000;
+    cfg.maxTrackedChunks = 0; // unlimited
+    ChunkStreamingManager mgr(cfg);
+
+    auto result = mgr.update(0.0f, 0.0f, 0.0f, 0.0f);
+
+    int side = 2 * 2 + 1;
+    EXPECT_EQ(static_cast<int>(mgr.trackedChunkCount()), side * side * side);
+    EXPECT_TRUE(result.toUnload.empty());
+}
+
+TEST_F(ChunkStreamingTest, MaxTrackedChunksKeepsNearestChunks) {
+    StreamingConfig cfg = smallConfig();
+    cfg.baseRadius = 2;
+    cfg.maxLoadsPerTick = 10000;
+    cfg.maxUnloadsPerTick = 10000;
+    cfg.maxTrackedChunks = 27; // 3^3
+    ChunkStreamingManager mgr(cfg);
+
+    auto result = mgr.update(0.0f, 0.0f, 0.0f, 0.0f);
+
+    // The chunks that survived eviction should all be within radius 1 of center
+    // (3^3 = 27 nearest chunks)
+    EXPECT_EQ(static_cast<int>(mgr.trackedChunkCount()), 27);
+
+    // Evicted chunks should be farther than kept chunks
+    // Verify no evicted chunk is closer than any kept chunk
+    if (!result.toUnload.empty()) {
+        auto distSq = [](const ChunkCoord& c) {
+            return c.cx * c.cx + c.cy * c.cy + c.cz * c.cz;
+        };
+        int minUnloadDist = distSq(result.toUnload.back()); // farthest-first sorted
+        for (const auto& loaded : result.toLoad) {
+            bool wasUnloaded = false;
+            for (const auto& u : result.toUnload) {
+                if (u == loaded) {
+                    wasUnloaded = true;
+                    break;
+                }
+            }
+            if (!wasUnloaded) {
+                EXPECT_LE(distSq(loaded), minUnloadDist);
+            }
+        }
+    }
+}

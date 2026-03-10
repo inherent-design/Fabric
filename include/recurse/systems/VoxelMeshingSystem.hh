@@ -67,6 +67,9 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     /// Clear all GPU meshes (for world reset)
     void clearAllMeshes();
 
+    /// Remove GPU mesh for a single chunk (for streaming unload)
+    void removeChunkMesh(const fabric::ChunkCoord& coord);
+
     const auto& gpuMeshes() const { return gpuMeshes_; }
 
     /// Statistics accessors for debug panel.

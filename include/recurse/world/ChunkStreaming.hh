@@ -17,6 +17,7 @@ struct StreamingConfig {
     float speedScale = 0.5f;
     int maxLoadsPerTick = 4;
     int maxUnloadsPerTick = 4;
+    int maxTrackedChunks = 0; // 0 = unlimited; >0 = hard cap, farthest evicted first
 };
 
 struct ChunkCoord {

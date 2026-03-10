@@ -4,6 +4,7 @@
 #include "recurse/systems/LODSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
+#include "recurse/systems/VoxelMeshingSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 
 #include "fabric/core/AppContext.hh"
@@ -22,6 +23,7 @@ ChunkPipelineSystem::~ChunkPipelineSystem() = default;
 void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     lodSystem_ = ctx.systemRegistry.get<LODSystem>();
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
+    meshingSystem_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
     simSystem_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
     physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
@@ -32,6 +34,7 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     streamConfig.maxRadius = 5;
     streamConfig.maxLoadsPerTick = 2;
     streamConfig.maxUnloadsPerTick = 4;
+    streamConfig.maxTrackedChunks = 512;
     streaming_ = std::make_unique<ChunkStreamingManager>(streamConfig);
 
     // Initial chunk load (ECS entities only, no meshing)
@@ -84,6 +87,14 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
         }
     }
     for (const auto& coord : streamUpdate.toUnload) {
+        // Remove GPU mesh (vertex/index buffers) before simulation data
+        if (meshingSystem_)
+            meshingSystem_->removeChunkMesh(fabric::ChunkCoord{coord.cx, coord.cy, coord.cz});
+
+        // Remove LOD section and GPU resources
+        if (lodSystem_)
+            lodSystem_->onChunkRemoved(coord.cx, coord.cy, coord.cz);
+
         // Remove from simulation grid
         if (simSystem_)
             simSystem_->removeChunk(coord.cx, coord.cy, coord.cz);
