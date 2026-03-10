@@ -20,10 +20,12 @@
 // Complete type headers required by registerSystem<T>() factory instantiation.
 // System headers forward-declare types held in unique_ptr; the factory lambda
 // needs their destructors visible at template instantiation time.
+#include "fabric/platform/PlatformInfo.hh"
 #include "recurse/character/CharacterController.hh"
 #include "recurse/character/FlightController.hh"
 #include "recurse/character/VoxelInteraction.hh"
 #include "recurse/persistence/SaveManager.hh"
+#include "recurse/persistence/WorldRegistry.hh"
 // System includes
 #include "recurse/systems/AIGameSystem.hh"
 #include "recurse/systems/AudioGameSystem.hh"
@@ -87,12 +89,28 @@ fabric::FabricAppDesc buildRecurseDesc() {
     // onInit: cross-cutting setup that spans multiple systems.
     // Key bindings, ECS core components, AppMode observer.
     // System-specific init handled by each system's init().
-    desc.onInit = [](fabric::AppContext& ctx) {
+    // WorldRegistry persists for the app lifetime; shared_ptr captured by onInit lambda.
+    auto worldRegistry = std::make_shared<recurse::WorldRegistry>("");
+
+    desc.onInit = [worldRegistry](fabric::AppContext& ctx) {
         FABRIC_LOG_INFO("Recurse onInit: cross-cutting setup");
 
         auto& ecsWorld = ctx.world;
         auto& dispatcher = ctx.dispatcher;
         auto& timeline = ctx.timeline;
+
+        // Initialize WorldRegistry with platform data directory
+        if (ctx.platformInfo) {
+            std::string worldsDir = ctx.platformInfo->dirs.dataDir + "/worlds";
+            *worldRegistry = recurse::WorldRegistry(worldsDir);
+            FABRIC_LOG_INFO("WorldRegistry initialized: {}", worldsDir);
+        }
+
+        // Wire WorldRegistry to MainMenuSystem
+        auto* mainMenu = ctx.systemRegistry.get<recurse::systems::MainMenuSystem>();
+        if (mainMenu) {
+            mainMenu->setWorldRegistry(worldRegistry.get());
+        }
 
         // ECS core components
         ecsWorld.registerCoreComponents();

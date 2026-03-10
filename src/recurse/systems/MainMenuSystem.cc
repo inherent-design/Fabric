@@ -84,21 +84,18 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
     initRmlDataModel();
 
     // Set up start game callback
-    startGameCallback_ = [this](WorldType type) {
+    startGameCallback_ = [this](WorldType type, int64_t seed) {
         if (!terrain_) {
             FABRIC_LOG_ERROR("MainMenuSystem: Cannot start game - no TerrainSystem");
             return;
         }
 
-        // Generate a random seed
-        int seed = static_cast<int>(std::chrono::steady_clock::now().time_since_epoch().count());
-
-        // Set world generator based on selection
+        // Set world generator based on selection, using the provided seed
         if (type == WorldType::Natural) {
             auto config = fabric::world::NoiseGenConfig{};
-            config.seed = seed;
+            config.seed = static_cast<int>(seed);
             terrain_->setWorldGenerator(std::make_unique<recurse::NaturalWorldGenerator>(config));
-            FABRIC_LOG_INFO("MainMenu: Using MinecraftNoiseGenerator (seed={})", seed);
+            FABRIC_LOG_INFO("MainMenu: Using NaturalWorldGenerator (seed={})", seed);
         } else {
             terrain_->setWorldGenerator(std::make_unique<FlatWorldGenerator>());
             FABRIC_LOG_INFO("MainMenu: Using FlatWorldGenerator");
@@ -535,7 +532,8 @@ void MainMenuSystem::onQuitClicked() {
 void MainMenuSystem::onFlatWorldClicked() {
     FABRIC_LOG_INFO("MainMenu: Flat world selected");
     if (startGameCallback_) {
-        startGameCallback_(WorldType::Flat);
+        auto seed = static_cast<int64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+        startGameCallback_(WorldType::Flat, seed);
     }
     transitionTo(MenuState::Hidden);
 }
@@ -543,7 +541,8 @@ void MainMenuSystem::onFlatWorldClicked() {
 void MainMenuSystem::onMinecraftWorldClicked() {
     FABRIC_LOG_INFO("MainMenu: Minecraft world selected");
     if (startGameCallback_) {
-        startGameCallback_(WorldType::Natural);
+        auto seed = static_cast<int64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+        startGameCallback_(WorldType::Natural, seed);
     }
     transitionTo(MenuState::Hidden);
 }
@@ -600,9 +599,9 @@ void MainMenuSystem::onCreateWorldClicked() {
     FABRIC_LOG_INFO("MainMenu: Created world '{}' (uuid={}, type={}, seed={})", meta.name, meta.uuid,
                     static_cast<int>(meta.type), meta.seed);
 
-    // Start the game with this world type
+    // Start the game with this world type and seed
     if (startGameCallback_) {
-        startGameCallback_(type);
+        startGameCallback_(type, meta.seed);
     }
     transitionTo(MenuState::Hidden);
 }
@@ -660,7 +659,7 @@ void MainMenuSystem::onWorldSelected(const std::string& uuid) {
                     meta->seed);
 
     if (startGameCallback_) {
-        startGameCallback_(meta->type);
+        startGameCallback_(meta->type, meta->seed);
     }
     transitionTo(MenuState::Hidden);
 }

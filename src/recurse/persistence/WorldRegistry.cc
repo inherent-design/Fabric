@@ -10,7 +10,9 @@ namespace fs = std::filesystem;
 namespace recurse {
 
 WorldRegistry::WorldRegistry(const std::string& worldsDir) : worldsDir_(worldsDir) {
-    fs::create_directories(worldsDir_);
+    if (!worldsDir_.empty()) {
+        fs::create_directories(worldsDir_);
+    }
 }
 
 std::vector<WorldMetadata> WorldRegistry::listWorlds() const {

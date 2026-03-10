@@ -71,7 +71,7 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     bool isVisible() const { return menuState_ != MenuState::Hidden; }
 
     // Callbacks for game integration
-    using StartGameCallback = std::function<void(recurse::WorldType)>;
+    using StartGameCallback = std::function<void(recurse::WorldType, int64_t seed)>;
     void setStartGameCallback(StartGameCallback cb) { startGameCallback_ = std::move(cb); }
 
     /// Set the world registry for world management (create, list, delete).
