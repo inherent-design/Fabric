@@ -19,6 +19,7 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/platform/ConfigManager.hh"
+#include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
 
 #include <algorithm>
@@ -52,7 +53,12 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
 }
 
 void ChunkPipelineSystem::doShutdown() {
-    // Flush any pending chunk saves before destroying data
+    // Drain pending async loads before destroying grid data.
+    // Background threads hold raw pointers into write buffers.
+    for (auto& pl : pendingLoads_)
+        pl.result.wait();
+    pendingLoads_.clear();
+
     if (saveService_)
         saveService_->flush();
 
@@ -66,36 +72,48 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
     FABRIC_ZONE_SCOPED_N("chunk_pipeline");
     auto& ecsWorld = ctx.world;
 
-    // Use cached position for streaming (one-frame delay; invisible at chunk scale)
+    // Complete async loads from previous frames before processing new work
+    pollPendingLoads(ctx);
+
     auto streamUpdate = streaming_->update(lastPlayerX_, lastPlayerY_, lastPlayerZ_);
 
     loadsThisFrame_ = static_cast<int>(streamUpdate.toLoad.size());
     unloadsThisFrame_ = static_cast<int>(streamUpdate.toUnload.size());
 
-    // Separate new chunks into disk-loaded and needs-generation
-    std::vector<ChunkCoord> newChunks;
+    // Triage new chunks: already-ready, async-loadable, or needs-generation
+    std::vector<ChunkCoord> readyChunks;
     std::vector<std::tuple<int, int, int>> toGenerate;
     for (const auto& coord : streamUpdate.toLoad) {
         if (chunkEntities_.find(coord) != chunkEntities_.end())
             continue;
-        newChunks.push_back(coord);
 
-        // Chunk may already exist in sim grid (e.g. from generateInitialWorld).
-        // Skip disk load and generation; just create the ECS entity below.
-        if (simSystem_ && simSystem_->simulationGrid().hasChunk(coord.cx, coord.cy, coord.cz))
+        if (simSystem_ && simSystem_->simulationGrid().hasChunk(coord.cx, coord.cy, coord.cz)) {
+            // Already in grid (e.g. generateInitialWorld). Only finalize if Active;
+            // Generating chunks are being loaded asynchronously.
+            auto* slot = simSystem_->simulationGrid().registry().find(coord.cx, coord.cy, coord.cz);
+            if (slot && slot->state == recurse::simulation::ChunkSlotState::Active)
+                readyChunks.push_back(coord);
+            continue;
+        }
+
+        if (hasPendingLoad(coord.cx, coord.cy, coord.cz))
             continue;
 
-        bool loaded = tryLoadChunkFromDisk(coord.cx, coord.cy, coord.cz);
-        if (!loaded)
-            toGenerate.emplace_back(coord.cx, coord.cy, coord.cz);
+        if (dispatchAsyncLoad(coord.cx, coord.cy, coord.cz))
+            continue;
+
+        toGenerate.emplace_back(coord.cx, coord.cy, coord.cz);
     }
 
-    // Parallel batch generation for chunks not loaded from disk
     if (!toGenerate.empty() && simSystem_)
         simSystem_->generateChunksBatch(toGenerate);
 
-    // Sequential finalization: ECS entities + LOD notification
-    for (const auto& coord : newChunks) {
+    // Generated chunks are Active after batch gen (synchronous parallelFor)
+    for (const auto& [cx, cy, cz] : toGenerate)
+        readyChunks.push_back({cx, cy, cz});
+
+    // Create ECS entities for chunks ready this frame
+    for (const auto& coord : readyChunks) {
         if (lodSystem_)
             lodSystem_->onChunkReady(coord.cx, coord.cy, coord.cz);
 
@@ -105,19 +123,22 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
              static_cast<float>((coord.cy + 1) * K_CHUNK_SIZE), static_cast<float>((coord.cz + 1) * K_CHUNK_SIZE)});
         chunkEntities_[coord] = ent;
     }
+
+    // Unload
     for (const auto& coord : streamUpdate.toUnload) {
-        // Save chunk to disk before removing data
+        // If async load in progress, cancel it. The background thread still holds
+        // a pointer to the write buffer, so defer registry removal to pollPendingLoads.
+        if (cancelPendingLoad(coord.cx, coord.cy, coord.cz))
+            continue;
+
         saveChunkToDisk(coord.cx, coord.cy, coord.cz);
 
-        // Remove GPU mesh (vertex/index buffers) before simulation data
         if (meshingSystem_)
             meshingSystem_->removeChunkMesh(fabric::ChunkCoord{coord.cx, coord.cy, coord.cz});
 
-        // Remove LOD section and GPU resources
         if (lodSystem_)
             lodSystem_->onChunkRemoved(coord.cx, coord.cy, coord.cz);
 
-        // Remove from simulation grid
         if (simSystem_)
             simSystem_->removeChunk(coord.cx, coord.cy, coord.cz);
 
@@ -132,7 +153,6 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
         }
     }
 
-    // Update cached position for next frame
     if (charMovement_) {
         const auto& pos = charMovement_->playerPosition();
         lastPlayerX_ = pos.x;
@@ -143,7 +163,6 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
     if (physics_)
         physics_->setPlayerPosition(lastPlayerX_, lastPlayerY_, lastPlayerZ_);
 
-    // LOD ring: track chunks outside full-res radius, inside lod_radius
     int chunkRadius = streaming_ ? streaming_->currentRadius() : 0;
     if (lodRadius_ > chunkRadius) {
         int cx = static_cast<int>(std::floor(lastPlayerX_ / static_cast<float>(K_CHUNK_SIZE)));
@@ -254,46 +273,114 @@ ChunkPipelineDebugInfo ChunkPipelineSystem::debugInfo() const {
     return info;
 }
 
-bool ChunkPipelineSystem::tryLoadChunkFromDisk(int cx, int cy, int cz) {
+bool ChunkPipelineSystem::dispatchAsyncLoad(int cx, int cy, int cz) {
     if (!chunkStore_ || !simSystem_)
         return false;
 
-    // Check for gen data on disk
     if (!chunkStore_->hasGenData(cx, cy, cz))
-        return false;
-
-    auto genBlob = chunkStore_->loadGenData(cx, cy, cz);
-    if (!genBlob)
         return false;
 
     auto& grid = simSystem_->simulationGrid();
     grid.registry().addChunk(cx, cy, cz);
     grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Generating);
 
-    // Decode FCHK and write into grid
-    auto decoded = FilesystemChunkStore::decode(*genBlob);
+    // writeBuffer() auto-materializes the slot
     auto* buf = grid.writeBuffer(cx, cy, cz);
-    if (buf && decoded.cells.size() == sizeof(*buf)) {
-        std::memcpy(buf->data(), decoded.cells.data(), decoded.cells.size());
+    if (!buf) {
+        simSystem_->removeChunk(cx, cy, cz);
+        return false;
     }
 
-    // Apply delta if exists
-    if (chunkStore_->hasDelta(cx, cy, cz)) {
-        auto deltaBlob = chunkStore_->loadDelta(cx, cy, cz);
-        if (deltaBlob) {
-            auto dd = FilesystemChunkStore::decode(*deltaBlob);
-            if (buf && dd.cells.size() == sizeof(*buf)) {
-                std::memcpy(buf->data(), dd.cells.data(), dd.cells.size());
+    auto* store = chunkStore_;
+    auto future = simSystem_->scheduler().submit([store, cx, cy, cz, buf]() -> bool {
+        auto genBlob = store->loadGenData(cx, cy, cz);
+        if (!genBlob)
+            return false;
+
+        auto decoded = FilesystemChunkStore::decode(*genBlob);
+        if (decoded.cells.size() == sizeof(*buf))
+            std::memcpy(buf->data(), decoded.cells.data(), decoded.cells.size());
+
+        if (store->hasDelta(cx, cy, cz)) {
+            auto deltaBlob = store->loadDelta(cx, cy, cz);
+            if (deltaBlob) {
+                auto dd = FilesystemChunkStore::decode(*deltaBlob);
+                if (dd.cells.size() == sizeof(*buf))
+                    std::memcpy(buf->data(), dd.cells.data(), dd.cells.size());
             }
         }
-    }
 
-    grid.syncChunkBuffers(cx, cy, cz);
-    grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
-    simSystem_->activityTracker().setState(recurse::simulation::ChunkPos{cx, cy, cz},
-                                           recurse::simulation::ChunkState::Active);
+        return true;
+    });
 
+    pendingLoads_.push_back({std::move(future), cx, cy, cz, false});
     return true;
+}
+
+void ChunkPipelineSystem::pollPendingLoads(fabric::AppContext& ctx) {
+    auto it = pendingLoads_.begin();
+    while (it != pendingLoads_.end()) {
+        if (it->result.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+            ++it;
+            continue;
+        }
+
+        bool success = it->result.get();
+        int cx = it->cx;
+        int cy = it->cy;
+        int cz = it->cz;
+
+        if (it->cancelled) {
+            if (simSystem_)
+                simSystem_->removeChunk(cx, cy, cz);
+            it = pendingLoads_.erase(it);
+            continue;
+        }
+
+        if (success) {
+            auto& grid = simSystem_->simulationGrid();
+            grid.syncChunkBuffers(cx, cy, cz);
+            grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
+            simSystem_->activityTracker().setState(recurse::simulation::ChunkPos{cx, cy, cz},
+                                                   recurse::simulation::ChunkState::Active);
+
+            if (lodSystem_)
+                lodSystem_->onChunkReady(cx, cy, cz);
+
+            auto& ecsWorld = ctx.world;
+            ChunkCoord coord{cx, cy, cz};
+            auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
+                {static_cast<float>(cx * K_CHUNK_SIZE), static_cast<float>(cy * K_CHUNK_SIZE),
+                 static_cast<float>(cz * K_CHUNK_SIZE), static_cast<float>((cx + 1) * K_CHUNK_SIZE),
+                 static_cast<float>((cy + 1) * K_CHUNK_SIZE), static_cast<float>((cz + 1) * K_CHUNK_SIZE)});
+            chunkEntities_[coord] = ent;
+        } else {
+            // Disk read failed after hasGenData returned true; remove the
+            // half-initialized slot so the streaming manager can retry.
+            if (simSystem_)
+                simSystem_->removeChunk(cx, cy, cz);
+        }
+
+        it = pendingLoads_.erase(it);
+    }
+}
+
+bool ChunkPipelineSystem::cancelPendingLoad(int cx, int cy, int cz) {
+    for (auto& pl : pendingLoads_) {
+        if (pl.cx == cx && pl.cy == cy && pl.cz == cz) {
+            pl.cancelled = true;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ChunkPipelineSystem::hasPendingLoad(int cx, int cy, int cz) const {
+    for (const auto& pl : pendingLoads_) {
+        if (pl.cx == cx && pl.cy == cy && pl.cz == cz)
+            return true;
+    }
+    return false;
 }
 
 void ChunkPipelineSystem::saveChunkToDisk(int cx, int cy, int cz) {

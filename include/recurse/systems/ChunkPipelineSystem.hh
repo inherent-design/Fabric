@@ -4,9 +4,11 @@
 #include "recurse/character/GameConstants.hh"
 #include "recurse/world/ChunkStreaming.hh"
 #include <flecs.h>
+#include <future>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 namespace recurse {
 class ChunkStore;
@@ -84,7 +86,19 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
 
     void updateLODRing(int centerCX, int centerCY, int centerCZ);
 
-    bool tryLoadChunkFromDisk(int cx, int cy, int cz);
+    // Async chunk loading
+    struct PendingChunkLoad {
+        std::future<bool> result;
+        int cx, cy, cz;
+        bool cancelled = false;
+    };
+    std::vector<PendingChunkLoad> pendingLoads_;
+
+    bool dispatchAsyncLoad(int cx, int cy, int cz);
+    void pollPendingLoads(fabric::AppContext& ctx);
+    bool cancelPendingLoad(int cx, int cy, int cz);
+    bool hasPendingLoad(int cx, int cy, int cz) const;
+
     void saveChunkToDisk(int cx, int cy, int cz);
 };
 
