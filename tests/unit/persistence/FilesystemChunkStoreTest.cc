@@ -133,12 +133,14 @@ TEST_F(FilesystemChunkStoreTest, FchkEncodeDecodeRoundTrip) {
     cells[payloadSize - 1] = 0xCD;
 
     auto blob = recurse::FilesystemChunkStore::encode(cells.data(), payloadSize);
-    EXPECT_EQ(blob.size(), sizeof(recurse::FchkHeader) + payloadSize);
+    // v2 blob: header + payload + paletteCount (uint16_t, value 0)
+    EXPECT_EQ(blob.size(), sizeof(recurse::FchkHeader) + payloadSize + sizeof(uint16_t));
 
     auto decoded = recurse::FilesystemChunkStore::decode(blob);
-    EXPECT_EQ(decoded.size(), payloadSize);
-    EXPECT_EQ(decoded[0], 0xAB);
-    EXPECT_EQ(decoded[payloadSize - 1], 0xCD);
+    EXPECT_EQ(decoded.cells.size(), payloadSize);
+    EXPECT_EQ(decoded.cells[0], 0xAB);
+    EXPECT_EQ(decoded.cells[payloadSize - 1], 0xCD);
+    EXPECT_EQ(decoded.paletteEntryCount, 0u);
 }
 
 TEST_F(FilesystemChunkStoreTest, FchkDecodeRejectsBadMagic) {

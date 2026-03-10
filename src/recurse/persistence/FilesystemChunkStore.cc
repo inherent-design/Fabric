@@ -68,23 +68,36 @@ size_t FilesystemChunkStore::genDataSize(int cx, int cy, int cz) const {
 
 // --- FCHK encode/decode ---
 
-ChunkBlob FilesystemChunkStore::encode(const void* cells, size_t byteCount, uint8_t compression, int level) {
+ChunkBlob FilesystemChunkStore::encode(const void* cells, size_t cellsByteCount, uint8_t compression, int level,
+                                       const float* paletteData, uint16_t paletteEntryCount) {
     FchkHeader header;
     header.compression = compression;
 
+    const size_t paletteByteCount = static_cast<size_t>(paletteEntryCount) * 4 * sizeof(float);
+    const size_t postHeaderSize = cellsByteCount + sizeof(uint16_t) + paletteByteCount;
+
+    // Build uncompressed post-header region: voxel payload + paletteCount + palette entries
+    ChunkBlob postHeader(postHeaderSize);
+    std::memcpy(postHeader.data(), cells, cellsByteCount);
+    std::memcpy(postHeader.data() + cellsByteCount, &paletteEntryCount, sizeof(uint16_t));
+    if (paletteByteCount > 0) {
+        std::memcpy(postHeader.data() + cellsByteCount + sizeof(uint16_t), paletteData, paletteByteCount);
+    }
+
     if (compression == 0) {
-        ChunkBlob blob(sizeof(FchkHeader) + byteCount);
+        ChunkBlob blob(sizeof(FchkHeader) + postHeaderSize);
         std::memcpy(blob.data(), &header, sizeof(FchkHeader));
-        std::memcpy(blob.data() + sizeof(FchkHeader), cells, byteCount);
+        std::memcpy(blob.data() + sizeof(FchkHeader), postHeader.data(), postHeaderSize);
         return blob;
     }
 
     if (compression == 1) {
-        size_t bound = ZSTD_compressBound(byteCount);
+        size_t bound = ZSTD_compressBound(postHeaderSize);
         ChunkBlob blob(sizeof(FchkHeader) + bound);
         std::memcpy(blob.data(), &header, sizeof(FchkHeader));
 
-        size_t compressedSize = ZSTD_compress(blob.data() + sizeof(FchkHeader), bound, cells, byteCount, level);
+        size_t compressedSize =
+            ZSTD_compress(blob.data() + sizeof(FchkHeader), bound, postHeader.data(), postHeaderSize, level);
 
         if (ZSTD_isError(compressedSize)) {
             fabric::throwError("zstd compression failed: " + std::string(ZSTD_getErrorName(compressedSize)));
@@ -97,7 +110,7 @@ ChunkBlob FilesystemChunkStore::encode(const void* cells, size_t byteCount, uint
     fabric::throwError("Unsupported FCHK compression type: " + std::to_string(compression));
 }
 
-ChunkBlob FilesystemChunkStore::decode(const ChunkBlob& blob) {
+FchkDecoded FilesystemChunkStore::decode(const ChunkBlob& blob) {
     if (blob.size() < sizeof(FchkHeader)) {
         fabric::throwError("FCHK blob too small: " + std::to_string(blob.size()) + " bytes");
     }
@@ -108,34 +121,78 @@ ChunkBlob FilesystemChunkStore::decode(const ChunkBlob& blob) {
     if (header.magic[0] != 'F' || header.magic[1] != 'C' || header.magic[2] != 'H' || header.magic[3] != 'K') {
         fabric::throwError("FCHK invalid magic");
     }
-    if (header.version != 1) {
+    if (header.version < 1 || header.version > 2) {
         fabric::throwError("FCHK unsupported version: " + std::to_string(header.version));
     }
 
     const uint8_t* payload = blob.data() + sizeof(FchkHeader);
     size_t payloadSize = blob.size() - sizeof(FchkHeader);
 
-    if (header.compression == 0) {
-        return ChunkBlob(payload, payload + payloadSize);
-    }
+    // Decompress post-header region if needed
+    ChunkBlob decompressed;
+    const uint8_t* postHeader = nullptr;
+    size_t postHeaderSize = 0;
 
-    if (header.compression == 1) {
+    if (header.compression == 0) {
+        postHeader = payload;
+        postHeaderSize = payloadSize;
+    } else if (header.compression == 1) {
         unsigned long long decompSize = ZSTD_getFrameContentSize(payload, payloadSize);
         if (decompSize == ZSTD_CONTENTSIZE_UNKNOWN || decompSize == ZSTD_CONTENTSIZE_ERROR) {
             fabric::throwError("FCHK zstd: cannot determine decompressed size");
         }
 
-        ChunkBlob result(static_cast<size_t>(decompSize));
-        size_t actual = ZSTD_decompress(result.data(), result.size(), payload, payloadSize);
+        decompressed.resize(static_cast<size_t>(decompSize));
+        size_t actual = ZSTD_decompress(decompressed.data(), decompressed.size(), payload, payloadSize);
         if (ZSTD_isError(actual)) {
             fabric::throwError("zstd decompression failed: " + std::string(ZSTD_getErrorName(actual)));
         }
 
-        result.resize(actual);
+        decompressed.resize(actual);
+        postHeader = decompressed.data();
+        postHeaderSize = decompressed.size();
+    } else {
+        fabric::throwError("Unsupported FCHK compression: " + std::to_string(header.compression));
+    }
+
+    const size_t cellsByteCount = static_cast<size_t>(header.dimX) * header.dimY * header.dimZ * 4;
+
+    if (postHeaderSize < cellsByteCount) {
+        fabric::throwError("FCHK payload too small for dimensions");
+    }
+
+    FchkDecoded result;
+    result.cells.assign(postHeader, postHeader + cellsByteCount);
+
+    if (header.version == 1) {
+        // v1 fixup: zero out essenceIdx byte (offset 2 within each 4-byte VoxelCell).
+        // Old files have temperature=128 in that byte, which would cause OOB palette lookups.
+        for (size_t i = 2; i < result.cells.size(); i += 4) {
+            result.cells[i] = 0;
+        }
         return result;
     }
 
-    fabric::throwError("Unsupported FCHK compression: " + std::to_string(header.compression));
+    // v2: parse palette section after voxel payload
+    const size_t paletteSectionOffset = cellsByteCount;
+    if (postHeaderSize >= paletteSectionOffset + sizeof(uint16_t)) {
+        std::memcpy(&result.paletteEntryCount, postHeader + paletteSectionOffset, sizeof(uint16_t));
+
+        const size_t paletteByteCount = static_cast<size_t>(result.paletteEntryCount) * 4 * sizeof(float);
+        const size_t expectedSize = paletteSectionOffset + sizeof(uint16_t) + paletteByteCount;
+
+        if (postHeaderSize < expectedSize) {
+            fabric::throwError("FCHK v2 palette section truncated");
+        }
+
+        if (result.paletteEntryCount > 0) {
+            result.paletteData.resize(static_cast<size_t>(result.paletteEntryCount) * 4);
+            std::memcpy(result.paletteData.data(), postHeader + paletteSectionOffset + sizeof(uint16_t),
+                        paletteByteCount);
+        }
+    }
+
+    return result;
 }
 
 // --- Internal helpers ---

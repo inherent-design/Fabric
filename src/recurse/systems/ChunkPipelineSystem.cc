@@ -273,8 +273,8 @@ bool ChunkPipelineSystem::tryLoadChunkFromDisk(int cx, int cy, int cz) {
     // Decode FCHK and write into grid
     auto decoded = FilesystemChunkStore::decode(*genBlob);
     auto* buf = grid.writeBuffer(cx, cy, cz);
-    if (buf && decoded.size() == sizeof(*buf)) {
-        std::memcpy(buf->data(), decoded.data(), decoded.size());
+    if (buf && decoded.cells.size() == sizeof(*buf)) {
+        std::memcpy(buf->data(), decoded.cells.data(), decoded.cells.size());
     }
 
     // Apply delta if exists
@@ -282,8 +282,8 @@ bool ChunkPipelineSystem::tryLoadChunkFromDisk(int cx, int cy, int cz) {
         auto deltaBlob = chunkStore_->loadDelta(cx, cy, cz);
         if (deltaBlob) {
             auto dd = FilesystemChunkStore::decode(*deltaBlob);
-            if (buf && dd.size() == sizeof(*buf)) {
-                std::memcpy(buf->data(), dd.data(), dd.size());
+            if (buf && dd.cells.size() == sizeof(*buf)) {
+                std::memcpy(buf->data(), dd.cells.data(), dd.cells.size());
             }
         }
     }
