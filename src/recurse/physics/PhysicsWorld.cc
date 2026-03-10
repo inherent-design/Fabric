@@ -1,5 +1,6 @@
 #include "recurse/physics/PhysicsWorld.hh"
 #include "fabric/core/Log.hh"
+#include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/physics/JoltCharacterController.hh"
 #include "recurse/simulation/SimulationGrid.hh"
@@ -22,7 +23,90 @@ using namespace fabric;
 namespace recurse {
 
 namespace {
+
 std::once_flag sJoltInitFlag;
+
+constexpr int K_NEIGHBOR_OFF[6][3] = {
+    {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
+};
+
+constexpr float K_HALF = 0.5f;
+constexpr float K_SKIN = 0.025f;
+
+const float K_FACE_OFFSET[6][3] = {
+    {K_HALF, 0.0f, 0.0f},  {-K_HALF, 0.0f, 0.0f}, {0.0f, K_HALF, 0.0f},
+    {0.0f, -K_HALF, 0.0f}, {0.0f, 0.0f, K_HALF},  {0.0f, 0.0f, -K_HALF},
+};
+
+/// Build collision shapes for one chunk. IsSolid: bool(int wx, int wy, int wz).
+/// Pure function; safe for concurrent calls with distinct TempAllocator instances.
+template <typename IsSolid>
+std::vector<recurse::TileShapeResult> buildChunkShapesImpl(int cx, int cy, int cz,
+                                                           const JPH::Ref<JPH::BoxShape> (&faceShapes)[3],
+                                                           IsSolid&& isSolid, JPH::TempAllocator& alloc) {
+    std::vector<recurse::TileShapeResult> results;
+
+    int baseX = cx * recurse::K_CHUNK_SIZE;
+    int baseY = cy * recurse::K_CHUNK_SIZE;
+    int baseZ = cz * recurse::K_CHUNK_SIZE;
+
+    for (int tz = 0; tz < recurse::physics::K_TILES_PER_AXIS; ++tz) {
+        for (int ty = 0; ty < recurse::physics::K_TILES_PER_AXIS; ++ty) {
+            for (int tx = 0; tx < recurse::physics::K_TILES_PER_AXIS; ++tx) {
+                int tileBaseX = baseX + tx * recurse::physics::K_PHYS_TILE_SIZE;
+                int tileBaseY = baseY + ty * recurse::physics::K_PHYS_TILE_SIZE;
+                int tileBaseZ = baseZ + tz * recurse::physics::K_PHYS_TILE_SIZE;
+
+                JPH::StaticCompoundShapeSettings compound;
+                bool hasShape = false;
+
+                for (int lz = 0; lz < recurse::physics::K_PHYS_TILE_SIZE; ++lz) {
+                    for (int ly = 0; ly < recurse::physics::K_PHYS_TILE_SIZE; ++ly) {
+                        for (int lx = 0; lx < recurse::physics::K_PHYS_TILE_SIZE; ++lx) {
+                            int wx = tileBaseX + lx;
+                            int wy = tileBaseY + ly;
+                            int wz = tileBaseZ + lz;
+
+                            if (!isSolid(wx, wy, wz))
+                                continue;
+
+                            for (int face = 0; face < 6; ++face) {
+                                int nx = wx + K_NEIGHBOR_OFF[face][0];
+                                int ny = wy + K_NEIGHBOR_OFF[face][1];
+                                int nz = wz + K_NEIGHBOR_OFF[face][2];
+
+                                if (isSolid(nx, ny, nz))
+                                    continue;
+
+                                JPH::Vec3 localPos(static_cast<float>(lx) + 0.5f + K_FACE_OFFSET[face][0],
+                                                   static_cast<float>(ly) + 0.5f + K_FACE_OFFSET[face][1],
+                                                   static_cast<float>(lz) + 0.5f + K_FACE_OFFSET[face][2]);
+                                compound.AddShape(localPos, JPH::Quat::sIdentity(), faceShapes[face >> 1].GetPtr());
+                                hasShape = true;
+                            }
+                        }
+                    }
+                }
+
+                if (!hasShape)
+                    continue;
+
+                auto result = compound.Create(alloc);
+                if (!result.IsValid())
+                    continue;
+
+                recurse::TileShapeResult tile;
+                tile.shape = result.Get();
+                tile.position = JPH::RVec3(static_cast<float>(tileBaseX), static_cast<float>(tileBaseY),
+                                           static_cast<float>(tileBaseZ));
+                results.push_back(std::move(tile));
+            }
+        }
+    }
+
+    return results;
+}
+
 } // namespace
 
 // Contact listener forwards collision events to user callback
@@ -96,6 +180,10 @@ void PhysicsWorld::init(uint32_t maxBodies, int numThreads) {
     contactListener_ = std::make_unique<ContactListenerImpl>();
     physicsSystem_->SetContactListener(contactListener_.get());
 
+    faceShapes_[0] = new JPH::BoxShape(JPH::Vec3(K_SKIN, K_HALF, K_HALF), 0.0f);
+    faceShapes_[1] = new JPH::BoxShape(JPH::Vec3(K_HALF, K_SKIN, K_HALF), 0.0f);
+    faceShapes_[2] = new JPH::BoxShape(JPH::Vec3(K_HALF, K_HALF, K_SKIN), 0.0f);
+
     initialized_ = true;
     FABRIC_LOG_PHYSICS_INFO("PhysicsWorld initialized (maxBodies={}, threads={})", maxBodies, threads);
 }
@@ -142,6 +230,9 @@ void PhysicsWorld::shutdown() {
 
     // Remove character controllers
     characters_.clear();
+
+    for (auto& s : faceShapes_)
+        s = nullptr;
 
     physicsSystem_.reset();
     contactListener_.reset();
@@ -223,6 +314,28 @@ void PhysicsWorld::removeBody(BodyHandle handle) {
         userBodies_.erase(it);
 }
 
+void PhysicsWorld::registerChunkBodies(const ChunkKey& key, std::vector<TileShapeResult>& tiles,
+                                       std::vector<JPH::BodyID>& outNewBodies) {
+    if (tiles.empty())
+        return;
+
+    auto& bodies = chunkBodies_[key];
+    auto& bi = physicsSystem_->GetBodyInterface();
+
+    for (auto& tile : tiles) {
+        JPH::BodyCreationSettings settings(tile.shape, tile.position, JPH::Quat::sIdentity(), JPH::EMotionType::Static,
+                                           physics::K_LAYER_STATIC);
+        JPH::Body* body = bi.CreateBody(settings);
+        if (!body)
+            continue;
+        bodies.push_back(body->GetID());
+        outNewBodies.push_back(body->GetID());
+    }
+
+    if (bodies.empty())
+        chunkBodies_.erase(key);
+}
+
 void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx, int cy, int cz,
                                          float densityThreshold) {
     if (!initialized_) {
@@ -230,113 +343,22 @@ void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx,
         return;
     }
 
-    FABRIC_LOG_DEBUG("rebuildChunkCollision: Building collision for chunk ({},{},{})", cx, cy, cz);
-
-    // Remove existing collision for this chunk
     removeChunkCollision(cx, cy, cz);
 
-    // Neighbor offsets for 6 faces: +X, -X, +Y, -Y, +Z, -Z
-    constexpr int K_NEIGHBOR_OFF[6][3] = {
-        {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
-    };
-    // Thin box half-extents per face direction (face-normal axis gets thin, others full)
-    constexpr float K_HALF = 0.5f;
-    constexpr float K_SKIN = 0.025f;
-    // halfExtents[face] = {hx, hy, hz}
-    const JPH::Vec3 K_FACE_HALF_EXTENT[6] = {
-        {K_SKIN, K_HALF, K_HALF}, // +X
-        {K_SKIN, K_HALF, K_HALF}, // -X
-        {K_HALF, K_SKIN, K_HALF}, // +Y
-        {K_HALF, K_SKIN, K_HALF}, // -Y
-        {K_HALF, K_HALF, K_SKIN}, // +Z
-        {K_HALF, K_HALF, K_SKIN}, // -Z
-    };
-    // Face center offset from voxel center (0.5 unit along face normal)
-    const float K_FACE_OFFSET[6][3] = {
-        {K_HALF, 0.0f, 0.0f},  {-K_HALF, 0.0f, 0.0f}, {0.0f, K_HALF, 0.0f},
-        {0.0f, -K_HALF, 0.0f}, {0.0f, 0.0f, K_HALF},  {0.0f, 0.0f, -K_HALF},
+    auto isSolid = [&grid, densityThreshold](int wx, int wy, int wz) {
+        return grid.get(wx, wy, wz) >= densityThreshold;
     };
 
-    int baseX = cx * K_CHUNK_SIZE;
-    int baseY = cy * K_CHUNK_SIZE;
-    int baseZ = cz * K_CHUNK_SIZE;
+    auto tiles = buildChunkShapesImpl(cx, cy, cz, faceShapes_, isSolid, *tempAllocator_);
+    std::vector<JPH::BodyID> newBodies;
+    registerChunkBodies({cx, cy, cz}, tiles, newBodies);
 
-    ChunkKey key{cx, cy, cz};
-    auto& bodies = chunkBodies_[key];
-
-    for (int tz = 0; tz < physics::K_TILES_PER_AXIS; ++tz) {
-        for (int ty = 0; ty < physics::K_TILES_PER_AXIS; ++ty) {
-            for (int tx = 0; tx < physics::K_TILES_PER_AXIS; ++tx) {
-                int tileBaseX = baseX + tx * physics::K_PHYS_TILE_SIZE;
-                int tileBaseY = baseY + ty * physics::K_PHYS_TILE_SIZE;
-                int tileBaseZ = baseZ + tz * physics::K_PHYS_TILE_SIZE;
-
-                JPH::StaticCompoundShapeSettings compound;
-                bool hasShape = false;
-
-                for (int lz = 0; lz < physics::K_PHYS_TILE_SIZE; ++lz) {
-                    for (int ly = 0; ly < physics::K_PHYS_TILE_SIZE; ++ly) {
-                        for (int lx = 0; lx < physics::K_PHYS_TILE_SIZE; ++lx) {
-                            int wx = tileBaseX + lx;
-                            int wy = tileBaseY + ly;
-                            int wz = tileBaseZ + lz;
-
-                            float density = grid.get(wx, wy, wz);
-                            if (density < densityThreshold)
-                                continue;
-
-                            // Only emit thin collision quads for exposed faces
-                            for (int face = 0; face < 6; ++face) {
-                                int nx = wx + K_NEIGHBOR_OFF[face][0];
-                                int ny = wy + K_NEIGHBOR_OFF[face][1];
-                                int nz = wz + K_NEIGHBOR_OFF[face][2];
-
-                                if (grid.get(nx, ny, nz) >= densityThreshold)
-                                    continue;
-
-                                auto* boxSettings = new JPH::BoxShapeSettings(K_FACE_HALF_EXTENT[face], 0.0f);
-
-                                // Position: voxel center + face offset, relative to tile origin
-                                JPH::Vec3 localPos(static_cast<float>(lx) + 0.5f + K_FACE_OFFSET[face][0],
-                                                   static_cast<float>(ly) + 0.5f + K_FACE_OFFSET[face][1],
-                                                   static_cast<float>(lz) + 0.5f + K_FACE_OFFSET[face][2]);
-                                compound.AddShape(localPos, JPH::Quat::sIdentity(), boxSettings);
-                                hasShape = true;
-                            }
-                        }
-                    }
-                }
-
-                if (!hasShape)
-                    continue;
-
-                auto result = compound.Create(*tempAllocator_);
-                if (!result.IsValid())
-                    continue;
-
-                JPH::BodyCreationSettings bodySettings(
-                    result.Get(),
-                    JPH::RVec3(static_cast<float>(tileBaseX), static_cast<float>(tileBaseY),
-                               static_cast<float>(tileBaseZ)),
-                    JPH::Quat::sIdentity(), JPH::EMotionType::Static, physics::K_LAYER_STATIC);
-
-                auto& bi = physicsSystem_->GetBodyInterface();
-                JPH::Body* body = bi.CreateBody(bodySettings);
-                if (body == nullptr)
-                    continue;
-
-                bi.AddBody(body->GetID(), JPH::EActivation::DontActivate);
-                bodies.push_back(body->GetID());
-            }
-        }
+    if (!newBodies.empty()) {
+        auto& bi = physicsSystem_->GetBodyInterface();
+        auto state = bi.AddBodiesPrepare(newBodies.data(), static_cast<int>(newBodies.size()));
+        bi.AddBodiesFinalize(newBodies.data(), static_cast<int>(newBodies.size()), state,
+                             JPH::EActivation::DontActivate);
     }
-
-    // Clean up empty entry
-    if (bodies.empty())
-        chunkBodies_.erase(key);
-    else
-        FABRIC_LOG_DEBUG("rebuildChunkCollision: Created {} collision bodies for chunk ({},{},{})", bodies.size(), cx,
-                         cy, cz);
 }
 
 void PhysicsWorld::rebuildChunkCollision(const recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) {
@@ -345,113 +367,66 @@ void PhysicsWorld::rebuildChunkCollision(const recurse::simulation::SimulationGr
         return;
     }
 
-    FABRIC_LOG_DEBUG("rebuildChunkCollision: Building collision for chunk ({},{},{})", cx, cy, cz);
-
-    // Remove existing collision for this chunk
     removeChunkCollision(cx, cy, cz);
 
-    // Neighbor offsets for 6 faces: +X, -X, +Y, -Y, +Z, -Z
-    constexpr int K_NEIGHBOR_OFF[6][3] = {
-        {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
-    };
-    // Thin box half-extents per face direction (face-normal axis gets thin, others full)
-    constexpr float K_HALF = 0.5f;
-    constexpr float K_SKIN = 0.025f;
-    // halfExtents[face] = {hx, hy, hz}
-    const JPH::Vec3 K_FACE_HALF_EXTENT[6] = {
-        {K_SKIN, K_HALF, K_HALF}, // +X
-        {K_SKIN, K_HALF, K_HALF}, // -X
-        {K_HALF, K_SKIN, K_HALF}, // +Y
-        {K_HALF, K_SKIN, K_HALF}, // -Y
-        {K_HALF, K_HALF, K_SKIN}, // +Z
-        {K_HALF, K_HALF, K_SKIN}, // -Z
-    };
-    // Face center offset from voxel center (0.5 unit along face normal)
-    const float K_FACE_OFFSET[6][3] = {
-        {K_HALF, 0.0f, 0.0f},  {-K_HALF, 0.0f, 0.0f}, {0.0f, K_HALF, 0.0f},
-        {0.0f, -K_HALF, 0.0f}, {0.0f, 0.0f, K_HALF},  {0.0f, 0.0f, -K_HALF},
+    auto isSolid = [&grid](int wx, int wy, int wz) {
+        return grid.readCell(wx, wy, wz).materialId != recurse::simulation::material_ids::AIR;
     };
 
-    int baseX = cx * K_CHUNK_SIZE;
-    int baseY = cy * K_CHUNK_SIZE;
-    int baseZ = cz * K_CHUNK_SIZE;
+    auto tiles = buildChunkShapesImpl(cx, cy, cz, faceShapes_, isSolid, *tempAllocator_);
+    std::vector<JPH::BodyID> newBodies;
+    registerChunkBodies({cx, cy, cz}, tiles, newBodies);
 
-    ChunkKey key{cx, cy, cz};
-    auto& bodies = chunkBodies_[key];
+    if (!newBodies.empty()) {
+        auto& bi = physicsSystem_->GetBodyInterface();
+        auto state = bi.AddBodiesPrepare(newBodies.data(), static_cast<int>(newBodies.size()));
+        bi.AddBodiesFinalize(newBodies.data(), static_cast<int>(newBodies.size()), state,
+                             JPH::EActivation::DontActivate);
+    }
+}
 
-    for (int tz = 0; tz < physics::K_TILES_PER_AXIS; ++tz) {
-        for (int ty = 0; ty < physics::K_TILES_PER_AXIS; ++ty) {
-            for (int tx = 0; tx < physics::K_TILES_PER_AXIS; ++tx) {
-                int tileBaseX = baseX + tx * physics::K_PHYS_TILE_SIZE;
-                int tileBaseY = baseY + ty * physics::K_PHYS_TILE_SIZE;
-                int tileBaseZ = baseZ + tz * physics::K_PHYS_TILE_SIZE;
+void PhysicsWorld::rebuildChunkCollisionBatch(const recurse::simulation::SimulationGrid& grid,
+                                              const std::vector<ChunkKey>& chunks, fabric::JobScheduler& scheduler) {
+    FABRIC_ZONE_SCOPED_N("collision_batch");
+    if (!initialized_ || chunks.empty())
+        return;
 
-                JPH::StaticCompoundShapeSettings compound;
-                bool hasShape = false;
+    // Per-worker scratch allocators (1MB each; worst case ~200KB for BVH construction)
+    size_t wc = std::max(size_t(1), scheduler.workerCount());
+    std::vector<std::unique_ptr<JPH::TempAllocatorImpl>> workerAllocs(wc);
+    for (auto& a : workerAllocs)
+        a = std::make_unique<JPH::TempAllocatorImpl>(1 * 1024 * 1024);
 
-                for (int lz = 0; lz < physics::K_PHYS_TILE_SIZE; ++lz) {
-                    for (int ly = 0; ly < physics::K_PHYS_TILE_SIZE; ++ly) {
-                        for (int lx = 0; lx < physics::K_PHYS_TILE_SIZE; ++lx) {
-                            int wx = tileBaseX + lx;
-                            int wy = tileBaseY + ly;
-                            int wz = tileBaseZ + lz;
+    // Phase 1: parallel shape generation
+    std::vector<std::vector<TileShapeResult>> results(chunks.size());
+    {
+        FABRIC_ZONE_SCOPED_N("collision_parallel_gen");
+        scheduler.parallelFor(chunks.size(), [&](size_t jobIdx, size_t workerIdx) {
+            const auto& key = chunks[jobIdx];
+            auto isSolid = [&grid](int wx, int wy, int wz) {
+                return grid.readCell(wx, wy, wz).materialId != recurse::simulation::material_ids::AIR;
+            };
+            results[jobIdx] =
+                buildChunkShapesImpl(key.cx, key.cy, key.cz, faceShapes_, isSolid, *workerAllocs[workerIdx]);
+        });
+    }
 
-                            auto cell = grid.readCell(wx, wy, wz);
-                            if (cell.materialId == recurse::simulation::material_ids::AIR)
-                                continue;
-
-                            // Only emit thin collision quads for exposed faces
-                            for (int face = 0; face < 6; ++face) {
-                                int nx = wx + K_NEIGHBOR_OFF[face][0];
-                                int ny = wy + K_NEIGHBOR_OFF[face][1];
-                                int nz = wz + K_NEIGHBOR_OFF[face][2];
-
-                                if (grid.readCell(nx, ny, nz).materialId != recurse::simulation::material_ids::AIR)
-                                    continue;
-
-                                auto* boxSettings = new JPH::BoxShapeSettings(K_FACE_HALF_EXTENT[face], 0.0f);
-
-                                // Position: voxel center + face offset, relative to tile origin
-                                JPH::Vec3 localPos(static_cast<float>(lx) + 0.5f + K_FACE_OFFSET[face][0],
-                                                   static_cast<float>(ly) + 0.5f + K_FACE_OFFSET[face][1],
-                                                   static_cast<float>(lz) + 0.5f + K_FACE_OFFSET[face][2]);
-                                compound.AddShape(localPos, JPH::Quat::sIdentity(), boxSettings);
-                                hasShape = true;
-                            }
-                        }
-                    }
-                }
-
-                if (!hasShape)
-                    continue;
-
-                auto result = compound.Create(*tempAllocator_);
-                if (!result.IsValid())
-                    continue;
-
-                JPH::BodyCreationSettings bodySettings(
-                    result.Get(),
-                    JPH::RVec3(static_cast<float>(tileBaseX), static_cast<float>(tileBaseY),
-                               static_cast<float>(tileBaseZ)),
-                    JPH::Quat::sIdentity(), JPH::EMotionType::Static, physics::K_LAYER_STATIC);
-
-                auto& bi = physicsSystem_->GetBodyInterface();
-                JPH::Body* body = bi.CreateBody(bodySettings);
-                if (body == nullptr)
-                    continue;
-
-                bi.AddBody(body->GetID(), JPH::EActivation::DontActivate);
-                bodies.push_back(body->GetID());
-            }
+    // Phase 2: sequential body creation + batch broadphase insertion
+    std::vector<JPH::BodyID> allNewBodies;
+    {
+        FABRIC_ZONE_SCOPED_N("collision_register");
+        for (size_t i = 0; i < chunks.size(); ++i) {
+            removeChunkCollision(chunks[i].cx, chunks[i].cy, chunks[i].cz);
+            registerChunkBodies(chunks[i], results[i], allNewBodies);
         }
     }
 
-    // Clean up empty entry
-    if (bodies.empty())
-        chunkBodies_.erase(key);
-    else
-        FABRIC_LOG_DEBUG("rebuildChunkCollision: Created {} collision bodies for chunk ({},{},{})", bodies.size(), cx,
-                         cy, cz);
+    if (!allNewBodies.empty()) {
+        auto& bi = physicsSystem_->GetBodyInterface();
+        auto state = bi.AddBodiesPrepare(allNewBodies.data(), static_cast<int>(allNewBodies.size()));
+        bi.AddBodiesFinalize(allNewBodies.data(), static_cast<int>(allNewBodies.size()), state,
+                             JPH::EActivation::DontActivate);
+    }
 }
 
 void PhysicsWorld::removeChunkCollision(int cx, int cy, int cz) {

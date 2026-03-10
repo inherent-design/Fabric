@@ -23,6 +23,10 @@
 #include <unordered_map>
 #include <vector>
 
+namespace fabric {
+class JobScheduler;
+} // namespace fabric
+
 namespace recurse::simulation {
 class SimulationGrid;
 } // namespace recurse::simulation
@@ -119,6 +123,14 @@ struct ChunkKeyHash {
     }
 };
 
+/// Per-tile output from parallel collision shape generation.
+/// Each tile's compound shape is self-contained; registration with Jolt happens
+/// sequentially after all parallel work completes.
+struct TileShapeResult {
+    JPH::Ref<const JPH::Shape> shape;
+    JPH::RVec3 position;
+};
+
 struct Velocity3 {
     float x, y, z;
 };
@@ -150,8 +162,15 @@ class PhysicsWorld {
 
     void rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx, int cy, int cz, float densityThreshold = 0.5f);
     void rebuildChunkCollision(const recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz);
+
+    /// Parallel collision rebuild for multiple chunks.
+    /// Phase 1: shape generation via JobScheduler::parallelFor (per-worker TempAllocator).
+    /// Phase 2: body creation + batch broadphase insertion on calling thread.
+    void rebuildChunkCollisionBatch(const recurse::simulation::SimulationGrid& grid,
+                                    const std::vector<ChunkKey>& chunks, fabric::JobScheduler& scheduler);
+
     void removeChunkCollision(int cx, int cy, int cz);
-    void clearChunkBodies(); // Remove all chunk collision bodies (for world reset)
+    void clearChunkBodies();
     uint32_t chunkCollisionShapeCount(int cx, int cy, int cz) const;
 
     void setContactCallback(ContactCallback cb);
@@ -199,6 +218,9 @@ class PhysicsWorld {
   private:
     class ContactListenerImpl;
 
+    void registerChunkBodies(const ChunkKey& key, std::vector<TileShapeResult>& tiles,
+                             std::vector<JPH::BodyID>& outNewBodies);
+
     bool initialized_ = false;
     std::unique_ptr<JPH::TempAllocatorImpl> tempAllocator_;
     std::unique_ptr<JPH::JobSystemThreadPool> jobSystem_;
@@ -208,6 +230,9 @@ class PhysicsWorld {
     physics::BPLayerInterface bpLayerInterface_;
     physics::ObjectVsBPFilter objectVsBPFilter_;
     physics::ObjectPairFilter objectPairFilter_;
+
+    // 3 shared face shapes: [0]=X face, [1]=Y face, [2]=Z face. Index via faceIdx >> 1.
+    JPH::Ref<JPH::BoxShape> faceShapes_[3];
 
     // Per-chunk collision bodies (terrain)
     std::unordered_map<ChunkKey, std::vector<JPH::BodyID>, ChunkKeyHash> chunkBodies_;

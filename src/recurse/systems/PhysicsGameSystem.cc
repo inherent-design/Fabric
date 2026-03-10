@@ -14,6 +14,8 @@ namespace recurse::systems {
 void PhysicsGameSystem::doInit(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
+    if (voxelSim_)
+        scheduler_ = &voxelSim_->scheduler();
 
     physicsWorld_.init(4096, 0);
 
@@ -26,23 +28,29 @@ void PhysicsGameSystem::doInit(fabric::AppContext& ctx) {
 
     ragdoll_.init(&physicsWorld_);
 
-    FABRIC_LOG_INFO("PhysicsGameSystem initialized");
+    FABRIC_LOG_INFO("PhysicsGameSystem initialized (scheduler={})", scheduler_ != nullptr);
 }
 
 void PhysicsGameSystem::doShutdown() {
     ragdoll_.shutdown();
     physicsWorld_.shutdown();
     voxelSim_ = nullptr;
+    scheduler_ = nullptr;
 }
 
 void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) {
     FABRIC_ZONE_SCOPED_N("physics_step");
 
     if (!dirtyCollisionChunks_.empty() && voxelSim_) {
-        for (const auto& key : dirtyCollisionChunks_) {
-            physicsWorld_.rebuildChunkCollision(voxelSim_->simulationGrid(), key.cx, key.cy, key.cz);
-        }
+        std::vector<recurse::ChunkKey> chunks(dirtyCollisionChunks_.begin(), dirtyCollisionChunks_.end());
         dirtyCollisionChunks_.clear();
+
+        if (scheduler_) {
+            physicsWorld_.rebuildChunkCollisionBatch(voxelSim_->simulationGrid(), chunks, *scheduler_);
+        } else {
+            for (const auto& key : chunks)
+                physicsWorld_.rebuildChunkCollision(voxelSim_->simulationGrid(), key.cx, key.cy, key.cz);
+        }
     }
 
     physicsWorld_.step(fixedDt);

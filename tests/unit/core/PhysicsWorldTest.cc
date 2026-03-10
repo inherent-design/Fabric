@@ -1,5 +1,8 @@
 #include "recurse/physics/PhysicsWorld.hh"
+#include "fabric/platform/JobScheduler.hh"
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
@@ -796,6 +799,119 @@ TEST(PhysicsWorldTest, DebrisZeroLifetime) {
     auto handle = pw.createDebris(sphere.GetPtr(), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
     EXPECT_FALSE(handle.valid());
     EXPECT_EQ(pw.debrisCount(), 0u);
+
+    pw.shutdown();
+}
+
+// SimulationGrid collision tests
+
+TEST(PhysicsWorldTest, SimGridSingleVoxelProduces6Faces) {
+    PhysicsWorld pw;
+    pw.init();
+
+    recurse::simulation::SimulationGrid grid;
+    grid.materializeChunk(0, 0, 0);
+    grid.writeCell(4, 4, 4, {recurse::simulation::material_ids::STONE});
+    grid.advanceEpoch();
+
+    pw.rebuildChunkCollision(grid, 0, 0, 0);
+    EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 6u);
+
+    pw.shutdown();
+}
+
+TEST(PhysicsWorldTest, SimGridTwoAdjacentVoxels10Faces) {
+    PhysicsWorld pw;
+    pw.init();
+
+    recurse::simulation::SimulationGrid grid;
+    grid.materializeChunk(0, 0, 0);
+    grid.writeCell(4, 4, 4, {recurse::simulation::material_ids::STONE});
+    grid.writeCell(5, 4, 4, {recurse::simulation::material_ids::STONE});
+    grid.advanceEpoch();
+
+    pw.rebuildChunkCollision(grid, 0, 0, 0);
+    EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 10u);
+
+    pw.shutdown();
+}
+
+// Batch collision tests
+
+TEST(PhysicsWorldTest, BatchCollisionMatchesSequential) {
+    recurse::simulation::SimulationGrid grid;
+    grid.materializeChunk(0, 0, 0);
+    grid.materializeChunk(1, 0, 0);
+
+    for (int x = 0; x < 4; ++x)
+        for (int y = 0; y < 4; ++y)
+            for (int z = 0; z < 4; ++z) {
+                grid.writeCell(x, y, z, {recurse::simulation::material_ids::STONE});
+                grid.writeCell(32 + x, y, z, {recurse::simulation::material_ids::STONE});
+            }
+    grid.advanceEpoch();
+
+    // Sequential baseline
+    PhysicsWorld sequential;
+    sequential.init();
+    sequential.rebuildChunkCollision(grid, 0, 0, 0);
+    sequential.rebuildChunkCollision(grid, 1, 0, 0);
+    uint32_t seqCount0 = sequential.chunkCollisionShapeCount(0, 0, 0);
+    uint32_t seqCount1 = sequential.chunkCollisionShapeCount(1, 0, 0);
+    sequential.shutdown();
+
+    // Batch path
+    PhysicsWorld batch;
+    batch.init();
+    fabric::JobScheduler scheduler(2);
+    std::vector<ChunkKey> chunks = {{0, 0, 0}, {1, 0, 0}};
+    batch.rebuildChunkCollisionBatch(grid, chunks, scheduler);
+    uint32_t batchCount0 = batch.chunkCollisionShapeCount(0, 0, 0);
+    uint32_t batchCount1 = batch.chunkCollisionShapeCount(1, 0, 0);
+    batch.shutdown();
+
+    EXPECT_EQ(seqCount0, batchCount0);
+    EXPECT_EQ(seqCount1, batchCount1);
+    EXPECT_GT(seqCount0, 0u);
+}
+
+TEST(PhysicsWorldTest, BatchCollisionEmptyChunks) {
+    recurse::simulation::SimulationGrid grid;
+    grid.materializeChunk(0, 0, 0);
+    grid.advanceEpoch();
+
+    PhysicsWorld pw;
+    pw.init();
+    fabric::JobScheduler scheduler;
+    scheduler.disableForTesting();
+
+    std::vector<ChunkKey> chunks = {{0, 0, 0}};
+    pw.rebuildChunkCollisionBatch(grid, chunks, scheduler);
+    EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 0u);
+
+    pw.shutdown();
+}
+
+TEST(PhysicsWorldTest, BatchCollisionReplacesExisting) {
+    recurse::simulation::SimulationGrid grid;
+    grid.materializeChunk(0, 0, 0);
+    grid.writeCell(4, 4, 4, {recurse::simulation::material_ids::STONE});
+    grid.advanceEpoch();
+
+    PhysicsWorld pw;
+    pw.init();
+    fabric::JobScheduler scheduler;
+    scheduler.disableForTesting();
+
+    std::vector<ChunkKey> chunks = {{0, 0, 0}};
+    pw.rebuildChunkCollisionBatch(grid, chunks, scheduler);
+    EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 6u);
+
+    // Add another voxel and rebuild
+    grid.writeCell(5, 4, 4, {recurse::simulation::material_ids::STONE});
+    grid.advanceEpoch();
+    pw.rebuildChunkCollisionBatch(grid, chunks, scheduler);
+    EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 10u);
 
     pw.shutdown();
 }

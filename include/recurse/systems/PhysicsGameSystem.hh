@@ -6,6 +6,10 @@
 
 #include <unordered_set>
 
+namespace fabric {
+class JobScheduler;
+} // namespace fabric
+
 namespace recurse::systems {
 
 class TerrainSystem;
@@ -40,6 +44,7 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
   private:
     TerrainSystem* terrain_ = nullptr;
     VoxelSimulationSystem* voxelSim_ = nullptr;
+    fabric::JobScheduler* scheduler_ = nullptr;
     PhysicsWorld physicsWorld_;
     Ragdoll ragdoll_;
     std::unordered_set<recurse::ChunkKey, recurse::ChunkKeyHash> dirtyCollisionChunks_;
