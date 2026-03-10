@@ -1,5 +1,10 @@
 #include "recurse/systems/ChunkPipelineSystem.hh"
 #include "recurse/character/GameConstants.hh"
+#include "recurse/persistence/ChunkSaveService.hh"
+#include "recurse/persistence/ChunkStore.hh"
+#include "recurse/persistence/FilesystemChunkStore.hh"
+#include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/LODSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
@@ -15,6 +20,7 @@
 #include "fabric/utils/Profiler.hh"
 
 #include <cmath>
+#include <cstring>
 
 namespace recurse::systems {
 
@@ -57,6 +63,10 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
 }
 
 void ChunkPipelineSystem::doShutdown() {
+    // Flush any pending chunk saves before destroying data
+    if (saveService_)
+        saveService_->flush();
+
     for (auto& [_, entity] : chunkEntities_) {
         entity.destruct();
     }
@@ -75,8 +85,9 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
 
     for (const auto& coord : streamUpdate.toLoad) {
         if (chunkEntities_.find(coord) == chunkEntities_.end()) {
-            // Generate terrain into simulation grid
-            if (simSystem_)
+            // Try loading from disk; fall back to generation
+            bool loaded = tryLoadChunkFromDisk(coord.cx, coord.cy, coord.cz);
+            if (!loaded && simSystem_)
                 simSystem_->generateChunk(coord.cx, coord.cy, coord.cz);
 
             if (lodSystem_)
@@ -90,6 +101,9 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
         }
     }
     for (const auto& coord : streamUpdate.toUnload) {
+        // Save chunk to disk before removing data
+        saveChunkToDisk(coord.cx, coord.cy, coord.cz);
+
         // Remove GPU mesh (vertex/index buffers) before simulation data
         if (meshingSystem_)
             meshingSystem_->removeChunkMesh(fabric::ChunkCoord{coord.cx, coord.cy, coord.cz});
@@ -133,6 +147,69 @@ ChunkPipelineDebugInfo ChunkPipelineSystem::debugInfo() const {
     info.chunksUnloadedThisFrame = unloadsThisFrame_;
     info.currentStreamingRadius = streaming_ ? streaming_->currentRadius() : 0.0f;
     return info;
+}
+
+bool ChunkPipelineSystem::tryLoadChunkFromDisk(int cx, int cy, int cz) {
+    if (!chunkStore_ || !simSystem_)
+        return false;
+
+    // Check for gen data on disk
+    if (!chunkStore_->hasGenData(cx, cy, cz))
+        return false;
+
+    auto genBlob = chunkStore_->loadGenData(cx, cy, cz);
+    if (!genBlob)
+        return false;
+
+    auto& grid = simSystem_->simulationGrid();
+    grid.registry().addChunk(cx, cy, cz);
+    grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Generating);
+
+    // Decode FCHK and write into grid
+    auto [payload, payloadSize] = FilesystemChunkStore::decodeView(*genBlob);
+    auto* buf = grid.writeBuffer(cx, cy, cz);
+    if (buf && payloadSize == sizeof(*buf)) {
+        std::memcpy(buf->data(), payload, payloadSize);
+    }
+
+    // Apply delta if exists
+    if (chunkStore_->hasDelta(cx, cy, cz)) {
+        auto deltaBlob = chunkStore_->loadDelta(cx, cy, cz);
+        if (deltaBlob) {
+            auto [dp, ds] = FilesystemChunkStore::decodeView(*deltaBlob);
+            if (buf && ds == sizeof(*buf)) {
+                std::memcpy(buf->data(), dp, ds);
+            }
+        }
+    }
+
+    grid.syncChunkBuffers(cx, cy, cz);
+    grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
+    simSystem_->activityTracker().setState(recurse::simulation::ChunkPos{cx, cy, cz},
+                                           recurse::simulation::ChunkState::Active);
+
+    return true;
+}
+
+void ChunkPipelineSystem::saveChunkToDisk(int cx, int cy, int cz) {
+    if (!saveService_ || !simSystem_)
+        return;
+
+    auto& grid = simSystem_->simulationGrid();
+    const auto* buf = grid.readBuffer(cx, cy, cz);
+    if (!buf)
+        return;
+
+    // Encode VoxelCell data to FCHK blob and queue for debounced save
+    auto blob = FilesystemChunkStore::encode(buf->data(), sizeof(*buf));
+    // Direct save on unload (no debounce; chunk is about to be destroyed)
+    if (chunkStore_) {
+        if (chunkStore_->hasGenData(cx, cy, cz)) {
+            chunkStore_->saveDelta(cx, cy, cz, blob);
+        } else {
+            chunkStore_->saveGenData(cx, cy, cz, blob);
+        }
+    }
 }
 
 } // namespace recurse::systems

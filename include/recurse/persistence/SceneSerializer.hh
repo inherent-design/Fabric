@@ -89,6 +89,10 @@ struct SceneConfig {
     }
 };
 
+/// @deprecated Chunk serialization replaced by ChunkStore + FCHK format (WS-4).
+/// SceneSerializer remains for entity/timeline serialization until that migrates.
+/// The "chunks" field in SceneConfig is no longer populated by the pipeline.
+///
 /// Serializer for Fabric scene state including entities, chunks, timeline, and player state
 class SceneSerializer {
   public:

@@ -22,6 +22,8 @@ struct SlotInfo {
     size_t sizeBytes = 0;
 };
 
+/// @deprecated Chunk persistence replaced by ChunkStore + ChunkSaveService (WS-4).
+/// SaveManager remains for entity/timeline serialization until that migrates.
 /// Orchestrates full game state capture/restore through named save slots.
 /// Wraps SceneSerializer for the actual serialization and adds a metadata
 /// envelope (version, timestamp, slot name) around each save file.

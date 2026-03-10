@@ -6,7 +6,6 @@
 #include "fabric/core/Event.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
-#include "fabric/world/MinecraftNoiseGenerator.hh"
 #include "recurse/systems/AIGameSystem.hh"
 #include "recurse/systems/AudioGameSystem.hh"
 #include "recurse/systems/CameraGameSystem.hh"
@@ -23,6 +22,7 @@
 #include "recurse/systems/VoxelMeshingSystem.hh"
 #include "recurse/systems/VoxelRenderSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
+#include "recurse/world/NaturalWorldGenerator.hh"
 #include "recurse/world/TestWorldGenerator.hh"
 
 #include <RmlUi/Core/Context.h>
@@ -37,21 +37,6 @@
 namespace recurse::systems {
 
 namespace {
-
-/// Minecraft-style world generator conforming to recurse::WorldGenerator interface
-class MinecraftWorldGenerator : public WorldGenerator {
-  public:
-    explicit MinecraftWorldGenerator(const fabric::world::NoiseGenConfig& config) : noiseGen_(config) {}
-
-    void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override {
-        noiseGen_.generate(grid, recurse::simulation::ChunkPos{cx, cy, cz});
-    }
-
-    std::string name() const override { return "MinecraftWorldGenerator"; }
-
-  private:
-    fabric::world::MinecraftNoiseGenerator noiseGen_;
-};
 
 /// RmlUi event listener for button clicks
 class MenuButtonListener : public Rml::EventListener {
@@ -108,10 +93,10 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
         int seed = static_cast<int>(std::chrono::steady_clock::now().time_since_epoch().count());
 
         // Set world generator based on selection
-        if (type == WorldType::Minecraft) {
+        if (type == WorldType::Natural) {
             auto config = fabric::world::NoiseGenConfig{};
             config.seed = seed;
-            terrain_->setWorldGenerator(std::make_unique<MinecraftWorldGenerator>(config));
+            terrain_->setWorldGenerator(std::make_unique<recurse::NaturalWorldGenerator>(config));
             FABRIC_LOG_INFO("MainMenu: Using MinecraftNoiseGenerator (seed={})", seed);
         } else {
             terrain_->setWorldGenerator(std::make_unique<FlatWorldGenerator>());
@@ -445,7 +430,7 @@ void MainMenuSystem::onFlatWorldClicked() {
 void MainMenuSystem::onMinecraftWorldClicked() {
     FABRIC_LOG_INFO("MainMenu: Minecraft world selected");
     if (startGameCallback_) {
-        startGameCallback_(WorldType::Minecraft);
+        startGameCallback_(WorldType::Natural);
     }
     transitionTo(MenuState::Hidden);
 }

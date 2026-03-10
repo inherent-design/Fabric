@@ -7,6 +7,11 @@
 #include <memory>
 #include <unordered_map>
 
+namespace recurse {
+class ChunkStore;
+class ChunkSaveService;
+} // namespace recurse
+
 namespace recurse::systems {
 
 struct ChunkPipelineDebugInfo {
@@ -45,6 +50,10 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     ChunkStreamingManager& streaming() { return *streaming_; }
     ChunkPipelineDebugInfo debugInfo() const;
 
+    /// Set optional persistence layer. Null = no persistence (generate every time).
+    void setChunkStore(recurse::ChunkStore* store) { chunkStore_ = store; }
+    void setChunkSaveService(recurse::ChunkSaveService* svc) { saveService_ = svc; }
+
   private:
     LODSystem* lodSystem_ = nullptr;
     TerrainSystem* terrain_ = nullptr;
@@ -63,6 +72,13 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
 
     int loadsThisFrame_ = 0;
     int unloadsThisFrame_ = 0;
+
+    // Optional persistence (null if no world loaded)
+    recurse::ChunkStore* chunkStore_ = nullptr;
+    recurse::ChunkSaveService* saveService_ = nullptr;
+
+    bool tryLoadChunkFromDisk(int cx, int cy, int cz);
+    void saveChunkToDisk(int cx, int cy, int cz);
 };
 
 } // namespace recurse::systems

@@ -2,8 +2,10 @@
 
 #include "fabric/core/SystemBase.hh"
 #include "fabric/render/Rendering.hh"
+#include "recurse/world/WorldType.hh"
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
 #include <string>
@@ -13,6 +15,10 @@ namespace fabric {
 class AppModeManager;
 class SystemRegistry;
 } // namespace fabric
+
+namespace recurse {
+class WorldRegistry;
+}
 
 namespace recurse::simulation {
 class SimulationGrid;
@@ -43,12 +49,6 @@ enum class MenuState {
     Hidden       // Game is running, menu not visible
 };
 
-/// World type selection
-enum class WorldType {
-    Flat,     // FlatWorldGenerator - stone below y=32
-    Minecraft // MinecraftNoiseGenerator - procedural terrain
-};
-
 /// Main menu system with splash screen support.
 /// - Splash: array of media + timeout, advances through entries
 /// - Title: Start, Settings, Quit buttons
@@ -69,8 +69,11 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     bool isVisible() const { return menuState_ != MenuState::Hidden; }
 
     // Callbacks for game integration
-    using StartGameCallback = std::function<void(WorldType)>;
+    using StartGameCallback = std::function<void(recurse::WorldType)>;
     void setStartGameCallback(StartGameCallback cb) { startGameCallback_ = std::move(cb); }
+
+    /// Set the world registry for world management (create, list, delete).
+    void setWorldRegistry(recurse::WorldRegistry* reg) { worldRegistry_ = reg; }
 
     // Splash configuration
     void setSplashEntries(std::vector<SplashEntry> entries);
@@ -127,6 +130,9 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     PhysicsGameSystem* physics_ = nullptr;
     fabric::AppModeManager* appModeManager_ = nullptr;
     fabric::SystemRegistry* registry_ = nullptr;
+
+    // World management
+    recurse::WorldRegistry* worldRegistry_ = nullptr;
 
     // Data model bindings
     std::string titleText_ = "RECURSE";

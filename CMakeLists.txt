@@ -221,6 +221,10 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/render/DebugDraw.cc
     src/recurse/render/VoxelRenderer.cc
     # persistence/
+    src/recurse/persistence/WorldMetadata.cc
+    src/recurse/persistence/FilesystemChunkStore.cc
+    src/recurse/persistence/WorldRegistry.cc
+    src/recurse/persistence/ChunkSaveService.cc
     src/recurse/persistence/SaveManager.cc
     src/recurse/persistence/DataLoader.cc
     src/recurse/persistence/SceneSerializer.cc
