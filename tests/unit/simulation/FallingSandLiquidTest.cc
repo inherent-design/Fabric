@@ -316,7 +316,22 @@ TEST_F(FallingSandLiquidTest, WaterDoesNotDisplaceSolids) {
     EXPECT_EQ(grid.readCell(16, 0, 16).materialId, material_ids::STONE);
 }
 
-// 10. Performance: 10K liquid cells under 3ms
+// 10. Liquid flow preserves essenceIdx
+TEST_F(FallingSandLiquidTest, LiquidFlowPreservesEssenceIdx) {
+    VoxelCell water;
+    water.materialId = material_ids::WATER;
+    water.essenceIdx = 7;
+    grid.writeCell(16, 10, 16, water);
+    grid.advanceEpoch();
+
+    runLiquidTick(ChunkPos{0, 0, 0}, 0);
+
+    VoxelCell fallen = grid.readCell(16, 9, 16);
+    EXPECT_EQ(fallen.materialId, material_ids::WATER);
+    EXPECT_EQ(fallen.essenceIdx, 7);
+}
+
+// 11. Performance: 10K liquid cells under 3ms
 TEST_F(FallingSandLiquidTest, PerformanceLiquidSim) {
     buildStoneFloor();
 

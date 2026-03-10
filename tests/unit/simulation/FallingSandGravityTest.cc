@@ -246,7 +246,56 @@ TEST_F(FallingSandGravityTest, NoMovementSleepsChunk) {
     EXPECT_FALSE(changed) << "All-stone chunk should have no gravity movement";
 }
 
-// 10. Performance: 50% powder chunk simulates in < 2ms
+// 10. Gravity preserves essenceIdx
+TEST_F(FallingSandGravityTest, GravityPreservesEssenceIdx) {
+    VoxelCell sand;
+    sand.materialId = material_ids::SAND;
+    sand.essenceIdx = 42;
+    placeCellAndAdvance(16, 31, 16, sand);
+
+    runGravityTick(ChunkPos{0, 0, 0}, 0);
+
+    VoxelCell fallen = grid.readCell(16, 30, 16);
+    EXPECT_EQ(fallen.materialId, material_ids::SAND);
+    EXPECT_EQ(fallen.essenceIdx, 42);
+}
+
+// 11. Displacement swap preserves essenceIdx on both cells
+TEST_F(FallingSandGravityTest, DisplacementSwapPreservesEssenceIdx) {
+    for (int x = 0; x < K_CHUNK_SIZE; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
+            grid.writeCell(x, 0, z, makeMaterial(material_ids::STONE));
+    for (int y = 1; y <= 4; ++y) {
+        grid.writeCell(15, y, 16, makeMaterial(material_ids::STONE));
+        grid.writeCell(17, y, 16, makeMaterial(material_ids::STONE));
+        grid.writeCell(16, y, 15, makeMaterial(material_ids::STONE));
+        grid.writeCell(16, y, 17, makeMaterial(material_ids::STONE));
+    }
+    grid.advanceEpoch();
+
+    VoxelCell sand;
+    sand.materialId = material_ids::SAND;
+    sand.essenceIdx = 10;
+    grid.writeCell(16, 1, 16, sand);
+
+    VoxelCell gravel;
+    gravel.materialId = material_ids::GRAVEL;
+    gravel.essenceIdx = 20;
+    grid.writeCell(16, 2, 16, gravel);
+    grid.advanceEpoch();
+
+    for (uint64_t f = 0; f < 10; ++f)
+        runGravityTick(ChunkPos{0, 0, 0}, f);
+
+    VoxelCell bottom = grid.readCell(16, 1, 16);
+    VoxelCell top = grid.readCell(16, 2, 16);
+    EXPECT_EQ(bottom.materialId, material_ids::GRAVEL);
+    EXPECT_EQ(bottom.essenceIdx, 20);
+    EXPECT_EQ(top.materialId, material_ids::SAND);
+    EXPECT_EQ(top.essenceIdx, 10);
+}
+
+// 12. Performance: 50% powder chunk simulates in < 2ms
 TEST_F(FallingSandGravityTest, PerformanceSingleChunk) {
     // Fill 50% of chunk with sand (checkerboard)
     for (int z = 0; z < K_CHUNK_SIZE; ++z)
