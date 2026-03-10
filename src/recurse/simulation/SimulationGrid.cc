@@ -172,4 +172,18 @@ const ChunkRegistry& SimulationGrid::registry() const {
     return registry_;
 }
 
+recurse::EssencePalette* SimulationGrid::chunkPalette(int cx, int cy, int cz) {
+    auto* slot = registry_.find(cx, cy, cz);
+    if (!slot)
+        return nullptr;
+    return &slot->palette;
+}
+
+const recurse::EssencePalette* SimulationGrid::chunkPalette(int cx, int cy, int cz) const {
+    const auto* slot = registry_.find(cx, cy, cz);
+    if (!slot)
+        return nullptr;
+    return &slot->palette;
+}
+
 } // namespace recurse::simulation

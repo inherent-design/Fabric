@@ -57,17 +57,22 @@ TEST_F(EssencePaletteTest, EpsilonBoundaryDistinguishes) {
     EXPECT_EQ(palette.paletteSize(), 2u);
 }
 
-TEST_F(EssencePaletteTest, PaletteRespectsMaxSize) {
-    EssencePalette small(0.0f); // zero epsilon = no dedup
-    for (int i = 0; i < static_cast<int>(EssencePalette::K_MAX_PALETTE_SIZE); ++i) {
-        float v = static_cast<float>(i) / 100000.0f;
+TEST_F(EssencePaletteTest, PaletteRespectsMaxSizeViaSilentMerge) {
+    // Use a small max to make the test fast
+    EssencePalette small(0.0f, 16); // zero epsilon, max 16
+    for (int i = 0; i < 16; ++i) {
+        float v = static_cast<float>(i);
         small.quantize(Vec4(v, 0.0f, 0.0f, 0.0f));
     }
-    EXPECT_EQ(small.paletteSize(), EssencePalette::K_MAX_PALETTE_SIZE);
-    // Next entry should return overflow sentinel
-    uint16_t overflow = small.quantize(Vec4(999.0f, 999.0f, 999.0f, 999.0f));
-    EXPECT_EQ(overflow, EssencePalette::K_MAX_PALETTE_SIZE);
-    EXPECT_EQ(small.paletteSize(), EssencePalette::K_MAX_PALETTE_SIZE);
+    EXPECT_EQ(small.paletteSize(), 16u);
+    // Next entry triggers silent merge: two closest entries collapse, then new entry added
+    uint16_t idx = small.quantize(Vec4(999.0f, 999.0f, 999.0f, 999.0f));
+    EXPECT_EQ(small.paletteSize(), 16u);
+    // The returned index should be valid (not a sentinel)
+    EXPECT_LT(idx, 16u);
+    // The new entry should be retrievable
+    Vec4 result = small.lookup(idx);
+    EXPECT_FLOAT_EQ(result.x, 999.0f);
 }
 
 TEST_F(EssencePaletteTest, LookupOutOfRangeThrows) {

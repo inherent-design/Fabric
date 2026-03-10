@@ -34,6 +34,10 @@ class SimulationGrid {
     size_t chunkCount() const;
     void clear();
 
+    // Per-chunk palette access
+    recurse::EssencePalette* chunkPalette(int cx, int cy, int cz);
+    const recurse::EssencePalette* chunkPalette(int cx, int cy, int cz) const;
+
     // Direct registry access (for systems needing structural control)
     ChunkRegistry& registry();
     const ChunkRegistry& registry() const;

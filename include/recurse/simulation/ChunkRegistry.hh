@@ -2,6 +2,7 @@
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/world/EssencePalette.hh"
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -37,6 +38,7 @@ enum class ChunkSlotState : uint8_t {
 struct ChunkSlot {
     ChunkSlotState state = ChunkSlotState::Absent;
     ChunkBuffers simBuffers;
+    recurse::EssencePalette palette;
 
     // Pre-resolved raw pointers for zero-overhead worker access (wired by C-1c).
     VoxelCell* writePtr = nullptr;
