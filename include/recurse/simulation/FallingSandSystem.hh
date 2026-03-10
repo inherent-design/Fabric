@@ -20,7 +20,8 @@ class FallingSandSystem {
                         ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
                         BoundaryWriteQueue& boundaryWrites);
 
-    void simulateChunk(ChunkPos pos, SimulationGrid& grid, const GhostCellManager& ghosts,
+    /// Simulate one chunk. Returns true if the chunk settled (no movement; put to sleep).
+    bool simulateChunk(ChunkPos pos, SimulationGrid& grid, const GhostCellManager& ghosts,
                        ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
                        BoundaryWriteQueue& boundaryWrites);
 

@@ -172,13 +172,15 @@ bool FallingSandSystem::simulateLiquid(ChunkPos pos, SimulationGrid& grid, const
     });
 }
 
-void FallingSandSystem::simulateChunk(ChunkPos pos, SimulationGrid& grid, const GhostCellManager& ghosts,
+bool FallingSandSystem::simulateChunk(ChunkPos pos, SimulationGrid& grid, const GhostCellManager& ghosts,
                                       ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
                                       BoundaryWriteQueue& boundaryWrites) {
     bool gravityChanged = simulateGravity(pos, grid, ghosts, tracker, frameIndex, rng, boundaryWrites);
     bool liquidChanged = simulateLiquid(pos, grid, ghosts, tracker, frameIndex, rng, boundaryWrites);
-    if (!gravityChanged && !liquidChanged)
+    bool settled = !gravityChanged && !liquidChanged;
+    if (settled)
         tracker.putToSleep(pos);
+    return settled;
 }
 
 } // namespace recurse::simulation

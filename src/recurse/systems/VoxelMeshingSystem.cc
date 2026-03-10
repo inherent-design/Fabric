@@ -96,6 +96,7 @@ void VoxelMeshingSystem::clearAllMeshes() {
     for (auto& [_, gpuMesh] : gpuMeshes_)
         destroyChunkMesh(gpuMesh);
     gpuMeshes_.clear();
+    emptyChunks_.clear();
     FABRIC_LOG_INFO("VoxelMeshingSystem: cleared {} GPU meshes", count);
 }
 
@@ -150,6 +151,50 @@ void VoxelMeshingSystem::processFrame() {
         // simulation processing; FallingSandSystem will sleep them when settled.
         if (activityTracker_->getState(entry.pos) != recurse::simulation::ChunkState::Active) {
             activityTracker_->putToSleep(entry.pos);
+        }
+    }
+
+    // Second pass: mesh chunks that exist in the grid but have no GPU mesh.
+    // Handles newly-generated chunks that FallingSandSystem put to sleep before
+    // meshing could process them (static terrain has no simulation activity).
+    {
+        FABRIC_ZONE_SCOPED_N("mesh_initial_chunks");
+        int remaining = meshBudget_ - static_cast<int>(activeChunks.size());
+        if (remaining > 0 && simGrid_) {
+            auto allChunks = simGrid_->allChunks();
+            int attempted = 0;
+            for (const auto& [cx, cy, cz] : allChunks) {
+                if (attempted >= remaining)
+                    break;
+                fabric::ChunkCoord coord{cx, cy, cz};
+                if (gpuMeshes_.find(coord) != gpuMeshes_.end())
+                    continue;
+                if (emptyChunks_.find(coord) != emptyChunks_.end())
+                    continue;
+
+                meshChunk(coord);
+                ++attempted;
+
+                if (gpuMeshes_.find(coord) == gpuMeshes_.end()) {
+                    // No mesh produced. If all horizontal neighbors exist, the
+                    // chunk is genuinely empty (all-air or all-solid); mark it so
+                    // we skip it on future scans. If neighbors are missing, the
+                    // mesh was deferred and will be retried next frame.
+                    bool allNeighborsExist = true;
+                    if (requireNeighborsForMeshing_) {
+                        for (int d = 0; d < 4; ++d) {
+                            if (!simGrid_->hasChunk(coord.x + K_HORIZONTAL_NEIGHBORS[d][0], coord.y,
+                                                    coord.z + K_HORIZONTAL_NEIGHBORS[d][2])) {
+                                allNeighborsExist = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (allNeighborsExist) {
+                        emptyChunks_.insert(coord);
+                    }
+                }
+            }
         }
     }
 

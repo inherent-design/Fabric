@@ -44,6 +44,18 @@ void VoxelSimulationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fix
     lastActiveCount_ = fabSim_->activityTracker().collectActiveChunks().size();
     FABRIC_ZONE_VALUE(static_cast<int64_t>(lastActiveCount_));
     fabSim_->tick();
+
+    // Dispatch collision rebuild for chunks that just settled (simulation
+    // moved cells but the event was not emitted during parallel dispatch).
+    if (dispatcher_) {
+        for (const auto& pos : fabSim_->settledChunks()) {
+            fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelSimulationSystem");
+            e.setData("cx", pos.x);
+            e.setData("cy", pos.y);
+            e.setData("cz", pos.z);
+            dispatcher_->dispatchEvent(e);
+        }
+    }
 }
 
 void VoxelSimulationSystem::configureDependencies() {

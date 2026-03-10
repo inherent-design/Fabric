@@ -19,6 +19,9 @@ inline std::tuple<int, int, int> unpackChunkKey(uint64_t key) {
     int cx = static_cast<int>(key >> 42);
     int cy = static_cast<int>((key >> 21) & 0x1FFFFF);
     int cz = static_cast<int>(key & 0x1FFFFF);
+    // Sign-extend all components (X: 22-bit, Y/Z: 21-bit)
+    if (cx & 0x200000)
+        cx |= ~0x3FFFFF;
     if (cy & 0x100000)
         cy |= ~0x1FFFFF;
     if (cz & 0x100000)

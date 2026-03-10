@@ -8,20 +8,24 @@ VoxelSimulationSystem::VoxelSimulationSystem() : sandSystem_(registry_) {}
 void VoxelSimulationSystem::tick() {
     FABRIC_ZONE_SCOPED_N("voxel_sim_tick");
 
-    // 1. Collect active + boundary-dirty chunks
-    auto active = tracker_.collectActiveChunks();
+    settledChunks_.clear();
+
+    // 1. Collect active + boundary-dirty chunks, then filter.
+    // BoundaryDirty chunks need remeshing only (not simulation).
+    // Leave them for VoxelMeshingSystem; simulate only Active chunks.
+    auto collected = tracker_.collectActiveChunks();
+    std::vector<ActiveChunkEntry> active;
+    active.reserve(collected.size());
+    for (const auto& entry : collected) {
+        if (tracker_.getState(entry.pos) == ChunkState::Active)
+            active.push_back(entry);
+    }
     FABRIC_ZONE_VALUE(static_cast<int64_t>(active.size()));
 
     if (active.empty()) {
         // Nothing to simulate; still advance frame
         ++frameIndex_;
         return;
-    }
-
-    // Resolve BoundaryDirty -> Active for chunks that need simulation
-    for (const auto& entry : active) {
-        if (tracker_.getState(entry.pos) == ChunkState::BoundaryDirty)
-            tracker_.resolveBoundaryDirty(entry.pos, true);
     }
 
     // Phase 0: Resolve buffer pointers and build dispatch list
@@ -61,14 +65,24 @@ void VoxelSimulationSystem::tick() {
     }
 
     // Phase 3: Simulate chunks via scheduler (parallel or inline)
-    std::vector<BoundaryWriteQueue> boundaryQueues(scheduler_.workerCount() + 1);
+    size_t workerSlots = scheduler_.workerCount() + 1;
+    std::vector<BoundaryWriteQueue> boundaryQueues(workerSlots);
+    std::vector<std::vector<ChunkPos>> settledPerWorker(workerSlots);
     {
         FABRIC_ZONE_SCOPED_N("phase_3_simulate");
         scheduler_.parallelFor(active.size(), [&](size_t jobIdx, size_t workerIdx) {
             std::mt19937 rng(frameIndex_ + jobIdx);
             const auto& pos = active[jobIdx].pos;
-            sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, frameIndex_, rng, boundaryQueues[workerIdx]);
+            bool settled =
+                sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, frameIndex_, rng, boundaryQueues[workerIdx]);
+            if (settled)
+                settledPerWorker[workerIdx].push_back(pos);
         });
+    }
+
+    // Merge settled lists (single-threaded)
+    for (auto& v : settledPerWorker) {
+        settledChunks_.insert(settledChunks_.end(), v.begin(), v.end());
     }
 
     // Phase 3b: Drain boundary write queues (single-threaded)
@@ -141,6 +155,9 @@ const ChunkActivityTracker& VoxelSimulationSystem::activityTracker() const {
 }
 uint64_t VoxelSimulationSystem::frameIndex() const {
     return frameIndex_;
+}
+const std::vector<ChunkPos>& VoxelSimulationSystem::settledChunks() const {
+    return settledChunks_;
 }
 fabric::JobScheduler& VoxelSimulationSystem::scheduler() {
     return scheduler_;

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace recurse::simulation {
 class ChunkActivityTracker;
@@ -87,6 +88,7 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     std::unique_ptr<recurse::SmoothVertexPool> vertexPool_;
 
     std::unordered_map<fabric::ChunkCoord, ChunkGPUMesh, fabric::ChunkCoordHash> gpuMeshes_;
+    std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> emptyChunks_;
     int meshBudget_ = 50; // Increased from 3 to handle initial load in one frame
     bool gpuUploadEnabled_ = false;
     bool requireNeighborsForMeshing_ = true;
