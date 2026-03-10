@@ -30,6 +30,7 @@
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Core/EventListener.h>
 
 #include <chrono>
@@ -333,6 +334,9 @@ void MainMenuSystem::showWorldSelect() {
 void MainMenuSystem::showWorldCreate() {
     showDocument("assets/ui/new_world.rml");
 
+    // Enable SDL text input so TEXT_INPUT events reach RmlUI
+    SDL_StartTextInput(SDL_GetKeyboardFocus());
+
     // Reset input state
     newWorldName_ = "New World";
     newWorldType_ = "Natural";
@@ -340,31 +344,42 @@ void MainMenuSystem::showWorldCreate() {
 
     if (currentDocument_) {
         auto* typeFlat = currentDocument_->GetElementById("btn_type_flat");
-        if (typeFlat) {
-            typeFlat->AddEventListener(Rml::EventId::Click,
-                                       new MenuButtonListener([this]() { newWorldType_ = "Flat"; }), true);
-        }
-
         auto* typeNatural = currentDocument_->GetElementById("btn_type_natural");
+
+        // Toggle buttons: swap "selected" class and update state
+        if (typeFlat) {
+            typeFlat->AddEventListener(Rml::EventId::Click, new MenuButtonListener([this, typeFlat, typeNatural]() {
+                                           newWorldType_ = "Flat";
+                                           typeFlat->SetClassNames("menu_button toggle selected");
+                                           if (typeNatural)
+                                               typeNatural->SetClassNames("menu_button toggle");
+                                       }),
+                                       true);
+        }
         if (typeNatural) {
-            typeNatural->AddEventListener(Rml::EventId::Click,
-                                          new MenuButtonListener([this]() { newWorldType_ = "Natural"; }), true);
+            typeNatural->AddEventListener(Rml::EventId::Click, new MenuButtonListener([this, typeFlat, typeNatural]() {
+                                              newWorldType_ = "Natural";
+                                              typeNatural->SetClassNames("menu_button toggle selected");
+                                              if (typeFlat)
+                                                  typeFlat->SetClassNames("menu_button toggle");
+                                          }),
+                                          true);
         }
 
         auto* createBtn = currentDocument_->GetElementById("btn_create");
         if (createBtn) {
             createBtn->AddEventListener(Rml::EventId::Click, new MenuButtonListener([this]() {
-                                            // Read input values from RML elements before creating
+                                            // Read live input values via RmlUI form control API
                                             if (currentDocument_) {
-                                                auto* nameInput = currentDocument_->GetElementById("input_name");
-                                                if (nameInput) {
-                                                    newWorldName_ =
-                                                        nameInput->GetAttribute("value", Rml::String("New World"));
-                                                }
-                                                auto* seedInput = currentDocument_->GetElementById("input_seed");
-                                                if (seedInput) {
-                                                    newWorldSeed_ = seedInput->GetAttribute("value", Rml::String(""));
-                                                }
+                                                auto* nameEl = dynamic_cast<Rml::ElementFormControlInput*>(
+                                                    currentDocument_->GetElementById("input_name"));
+                                                if (nameEl)
+                                                    newWorldName_ = nameEl->GetValue();
+
+                                                auto* seedEl = dynamic_cast<Rml::ElementFormControlInput*>(
+                                                    currentDocument_->GetElementById("input_seed"));
+                                                if (seedEl)
+                                                    newWorldSeed_ = seedEl->GetValue();
                                             }
                                             onCreateWorldClicked();
                                         }),
@@ -495,6 +510,9 @@ void MainMenuSystem::showDocument(const std::string& rmlPath) {
 }
 
 void MainMenuSystem::hideCurrentDocument() {
+    // Stop text input when leaving any screen (safe to call even if not started)
+    SDL_StopTextInput(SDL_GetKeyboardFocus());
+
     if (currentDocument_) {
         currentDocument_->Close();
         currentDocument_ = nullptr;

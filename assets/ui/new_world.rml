@@ -9,20 +9,20 @@
                 <h1 class="title_small">New World</h1>
 
                 <div class="form_group">
-                    <label>World Name</label>
+                    <label class="form_label">World Name</label>
                     <input id="input_name" type="text" value="New World" />
                 </div>
 
                 <div class="form_group">
-                    <label>World Type</label>
+                    <label class="form_label">World Type</label>
                     <div class="button_row">
-                        <button id="btn_type_flat" class="menu_button small">Flat</button>
-                        <button id="btn_type_natural" class="menu_button small selected">Natural</button>
+                        <button id="btn_type_flat" class="menu_button toggle"><span>Flat</span></button>
+                        <button id="btn_type_natural" class="menu_button toggle selected"><span>Natural</span></button>
                     </div>
                 </div>
 
                 <div class="form_group">
-                    <label>Seed (optional)</label>
+                    <label class="form_label">Seed (optional)</label>
                     <input id="input_seed" type="text" value="" />
                 </div>
 

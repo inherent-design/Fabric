@@ -111,6 +111,14 @@ body {
     color: #ffffff;
 }
 
+.menu_button.secondary span {
+    color: #888888;
+}
+
+.menu_button.secondary:hover span {
+    color: #ffffff;
+}
+
 .settings_panel {
     width: 350dp;
     margin-bottom: 30dp;
@@ -122,4 +130,85 @@ body {
     color: #666666;
     font-size: 14dp;
     text-align: center;
+}
+
+/* ── Form controls (New World screen) ──────────────────────── */
+
+.form_group {
+    width: 300dp;
+    margin-bottom: 20dp;
+    display: flex;
+    flex-direction: column;
+}
+
+.form_label {
+    font-size: 13dp;
+    color: #999999;
+    margin-bottom: 6dp;
+}
+
+input[type="text"] {
+    width: 100%;
+    height: 36dp;
+    padding: 0dp 10dp;
+    background-color: #1a1a2a;
+    border-width: 1dp;
+    border-color: #555555;
+    color: #ffffff;
+    font-size: 15dp;
+    font-family: "Roboto Mono";
+}
+
+input[type="text"]:focus {
+    border-color: #8888cc;
+    background-color: #222233;
+}
+
+/* ── Toggle buttons (World Type row) ───────────────────────── */
+
+.button_row {
+    display: flex;
+    flex-direction: row;
+    gap: 8dp;
+}
+
+.menu_button.toggle {
+    width: 142dp;
+    height: 38dp;
+    margin-bottom: 0dp;
+    background-color: #2a2a3a;
+    border-color: #555555;
+}
+
+.menu_button.toggle span {
+    color: #999999;
+    font-size: 14dp;
+}
+
+.menu_button.toggle:hover {
+    background-color: #3a3a4a;
+}
+
+.menu_button.toggle:hover span {
+    color: #cccccc;
+}
+
+.menu_button.toggle.selected {
+    background-color: #3a3a5e;
+    border-color: #7777bb;
+}
+
+.menu_button.toggle.selected span {
+    color: #ffffff;
+}
+
+/* ── World list (Saved Worlds screen) ──────────────────────── */
+
+.list_container {
+    width: 300dp;
+    max-height: 320dp;
+    overflow-y: auto;
+    margin-bottom: 24dp;
+    display: flex;
+    flex-direction: column;
 }
