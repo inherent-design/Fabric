@@ -24,6 +24,13 @@ class VoxelRenderer;
 
 namespace recurse::systems {
 
+struct LODDebugInfo {
+    int pendingSections = 0;
+    int gpuResidentSections = 0;
+    int visibleSections = 0;
+    size_t estimatedGpuBytes = 0;
+};
+
 class VoxelRenderSystem;
 
 /// ECS system that manages LOD generation, cascade, selection, and rendering.
@@ -60,6 +67,7 @@ class LODSystem : public fabric::System<LODSystem> {
     size_t gpuResidentCount() const { return gpuSections_.size(); }
     size_t totalSectionCount() const { return grid_ ? grid_->sectionCount() : 0; }
     size_t visibleSectionCount() const { return visibleSections_.size(); }
+    LODDebugInfo debugInfo() const;
 
   private:
     // Build LOD0 section from SimulationGrid chunk data
@@ -77,6 +85,7 @@ class LODSystem : public fabric::System<LODSystem> {
     struct GPUSection {
         fabric::BgfxHandle<bgfx::VertexBufferHandle> vbh;
         fabric::BgfxHandle<bgfx::IndexBufferHandle> ibh;
+        uint32_t vertexCount = 0;
         uint32_t indexCount = 0;
         std::vector<std::array<float, 4>> palette;
         bool resident = false;

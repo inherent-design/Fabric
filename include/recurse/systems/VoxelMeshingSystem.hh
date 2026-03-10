@@ -25,6 +25,12 @@ class SnapMCMesher;
 
 namespace recurse::systems {
 
+struct MeshingDebugInfo {
+    int chunksMeshedThisFrame = 0;
+    int emptyChunksSkipped = 0;
+    int budgetRemaining = 0;
+};
+
 class ShadowRenderSystem;
 class VoxelSimulationSystem;
 
@@ -77,6 +83,7 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     size_t pendingMeshCount() const;
     size_t vertexBufferSize() const;
     size_t indexBufferSize() const;
+    MeshingDebugInfo debugInfo() const;
 
   private:
     void meshChunk(const fabric::ChunkCoord& coord);
@@ -95,6 +102,9 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     int meshBudget_ = 50; // Increased from 3 to handle initial load in one frame
     bool gpuUploadEnabled_ = false;
     bool requireNeighborsForMeshing_ = true;
+
+    int meshedThisFrame_ = 0;
+    int emptySkippedThisFrame_ = 0;
 };
 
 } // namespace recurse::systems

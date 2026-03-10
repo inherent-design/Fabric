@@ -44,6 +44,16 @@ size_t JobScheduler::workerCount() const {
     return workerCount_;
 }
 
+ConcurrencyDebugInfo JobScheduler::debugInfo() const {
+    ConcurrencyDebugInfo info;
+    info.activeWorkers = static_cast<int>(workerCount_);
+    {
+        std::lock_guard<std::mutex> lock(pendingMutex_);
+        info.queuedJobs = static_cast<int>(pendingTasks_.size());
+    }
+    return info;
+}
+
 void JobScheduler::runInline(size_t count, const std::function<void(size_t jobIdx, size_t workerIdx)>& fn) {
     for (size_t i = 0; i < count; ++i)
         fn(i, 0);

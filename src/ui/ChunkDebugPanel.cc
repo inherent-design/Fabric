@@ -28,6 +28,9 @@ void ChunkDebugPanel::init(Rml::Context* context) {
     constructor.Bind("vertex_buffer_mb", &vertexBufferMB_);
     constructor.Bind("index_buffer_mb", &indexBufferMB_);
     constructor.Bind("total_buffer_mb", &totalBufferMB_);
+    constructor.Bind("meshed_this_frame", &meshedThisFrame_);
+    constructor.Bind("empty_chunks_skipped", &emptyChunksSkipped_);
+    constructor.Bind("mesh_budget_remaining", &meshBudgetRemaining_);
 
     modelHandle_ = constructor.GetModelHandle();
 
@@ -49,6 +52,9 @@ void ChunkDebugPanel::update(const ChunkDebugData& data) {
     vertexBufferMB_ = data.vertexBufferMB;
     indexBufferMB_ = data.indexBufferMB;
     totalBufferMB_ = data.vertexBufferMB + data.indexBufferMB;
+    meshedThisFrame_ = data.meshedThisFrame;
+    emptyChunksSkipped_ = data.emptyChunksSkipped;
+    meshBudgetRemaining_ = data.meshBudgetRemaining;
 
     if (modelHandle_) {
         modelHandle_.DirtyAllVariables();

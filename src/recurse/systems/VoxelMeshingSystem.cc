@@ -136,6 +136,9 @@ void VoxelMeshingSystem::processFrame() {
     if (!activityTracker_ || !simGrid_ || !mesher_)
         return;
 
+    meshedThisFrame_ = 0;
+    emptySkippedThisFrame_ = 0;
+
     std::vector<recurse::simulation::ActiveChunkEntry> activeChunks;
     {
         FABRIC_ZONE_SCOPED_N("mesh_collect_active");
@@ -148,10 +151,13 @@ void VoxelMeshingSystem::processFrame() {
     for (const auto& entry : activeChunks) {
         const auto coord = toChunkCoord(entry.pos);
         bool wasAlreadyMeshed = gpuMeshes_.find(coord) != gpuMeshes_.end();
+        size_t meshCountBefore = gpuMeshes_.size();
         {
             FABRIC_ZONE_SCOPED_N("chunk_remesh");
             meshChunk(coord);
         }
+        if (gpuMeshes_.size() > meshCountBefore || (wasAlreadyMeshed && gpuMeshes_.count(coord)))
+            ++meshedThisFrame_;
         // Log if this was a remesh (neighbor notification triggered)
         if (wasAlreadyMeshed) {
             FABRIC_LOG_DEBUG("Remeshed chunk ({},{},{}) - likely neighbor notification", coord.x, coord.y, coord.z);
@@ -178,11 +184,16 @@ void VoxelMeshingSystem::processFrame() {
                 fabric::ChunkCoord coord{cx, cy, cz};
                 if (gpuMeshes_.find(coord) != gpuMeshes_.end())
                     continue;
-                if (emptyChunks_.find(coord) != emptyChunks_.end())
+                if (emptyChunks_.find(coord) != emptyChunks_.end()) {
+                    ++emptySkippedThisFrame_;
                     continue;
+                }
 
+                size_t before = gpuMeshes_.size();
                 meshChunk(coord);
                 ++attempted;
+                if (gpuMeshes_.size() > before)
+                    ++meshedThisFrame_;
 
                 if (gpuMeshes_.find(coord) == gpuMeshes_.end()) {
                     // No mesh produced. If all horizontal neighbors exist, the
@@ -425,6 +436,14 @@ size_t VoxelMeshingSystem::indexBufferSize() const {
         total += gpuMesh.indexCount;
     }
     return total;
+}
+
+MeshingDebugInfo VoxelMeshingSystem::debugInfo() const {
+    MeshingDebugInfo info;
+    info.chunksMeshedThisFrame = meshedThisFrame_;
+    info.emptyChunksSkipped = static_cast<int>(emptyChunks_.size());
+    info.budgetRemaining = meshBudget_ - meshedThisFrame_;
+    return info;
 }
 
 } // namespace recurse::systems

@@ -1,0 +1,14 @@
+<rml>
+<head>
+    <link type="text/rcss" href="chunk_debug.rcss" />
+</head>
+<body data-model="concurrency">
+<div id="chunk-debug-panel" style="top: 520dp;">
+    <div class="section">
+        <div class="section-title">Concurrency</div>
+        <div class="row"><span class="label">Workers: </span><span class="value">{{ active_workers }}</span></div>
+        <div class="row"><span class="label">Queued: </span><span class="value">{{ queued_jobs }}</span></div>
+    </div>
+</div>
+</body>
+</rml>

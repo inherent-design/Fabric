@@ -6,6 +6,7 @@
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/input/InputRouter.hh"
+#include "fabric/platform/JobScheduler.hh"
 #include "fabric/render/Camera.hh"
 #include "fabric/render/SceneView.hh"
 #include "fabric/utils/BVH.hh"
@@ -14,6 +15,7 @@
 #include "recurse/character/MovementFSM.hh"
 #include "recurse/physics/PhysicsWorld.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/ChunkRegistry.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/systems/AIGameSystem.hh"
@@ -21,6 +23,7 @@
 #include "recurse/systems/CameraGameSystem.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/ChunkPipelineSystem.hh"
+#include "recurse/systems/LODSystem.hh"
 #include "recurse/systems/OITRenderSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
@@ -48,12 +51,15 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
     ai_ = ctx.systemRegistry.get<AIGameSystem>();
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
+    lodSystem_ = ctx.systemRegistry.get<LODSystem>();
     meshSystem_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
     debugDraw_.init();
     debugHUD_.init(ctx.rmlContext);
     chunkDebugPanel_.init(ctx.rmlContext);
+    lodStatsPanel_.init(ctx.rmlContext);
+    concurrencyPanel_.init(ctx.rmlContext);
     wailaPanel_.init(ctx.rmlContext);
     hotkeyPanel_.init(ctx.rmlContext);
     btDebugPanel_.init(ctx.rmlContext);
@@ -93,6 +99,8 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
     });
 
     dispatcher.addEventListener("toggle_chunk_debug", [this](fabric::Event&) { chunkDebugPanel_.toggle(); });
+    dispatcher.addEventListener("toggle_lod_stats", [this](fabric::Event&) { lodStatsPanel_.toggle(); });
+    dispatcher.addEventListener("toggle_concurrency", [this](fabric::Event&) { concurrencyPanel_.toggle(); });
 
     dispatcher.addEventListener("toggle_wireframe", [this](fabric::Event&) {
         debugDraw_.toggleWireframe();
@@ -275,6 +283,46 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             debugDraw_.setColor(color);
             debugDraw_.drawWireBox(x0, y0, z0, x1, y1, z1);
         }
+
+        // ChunkSlotState overlay (pipeline lifecycle; inset wireframe)
+        auto& registry = grid.registry();
+        for (auto [cx, cy, cz] : grid.allChunks()) {
+            auto* slot = registry.find(cx, cy, cz);
+            if (!slot || slot->state == recurse::simulation::ChunkSlotState::Absent)
+                continue;
+
+            uint32_t slotColor;
+            switch (slot->state) {
+                case recurse::simulation::ChunkSlotState::Generating:
+                    slotColor = 0xcc00ffff; // Yellow (ABGR)
+                    break;
+                case recurse::simulation::ChunkSlotState::Active:
+                    slotColor = 0xcc00ff00; // Green (ABGR)
+                    break;
+                case recurse::simulation::ChunkSlotState::Draining:
+                    slotColor = 0xcc0000ff; // Red (ABGR)
+                    break;
+                default:
+                    continue;
+            }
+
+            auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
+                static_cast<double>(cx * recurse::K_CHUNK_SIZE), static_cast<double>(cy * recurse::K_CHUNK_SIZE),
+                static_cast<double>(cz * recurse::K_CHUNK_SIZE));
+            auto relOrigin = ctx.camera->cameraRelative(worldOrigin);
+
+            // Inset by 0.5 blocks to distinguish from activity state wireframes
+            constexpr float K_INSET = 0.5f;
+            float x0 = relOrigin.x + K_INSET;
+            float y0 = relOrigin.y + K_INSET;
+            float z0 = relOrigin.z + K_INSET;
+            float x1 = x0 + static_cast<float>(recurse::K_CHUNK_SIZE) - 2.0f * K_INSET;
+            float y1 = y0 + static_cast<float>(recurse::K_CHUNK_SIZE) - 2.0f * K_INSET;
+            float z1 = z0 + static_cast<float>(recurse::K_CHUNK_SIZE) - 2.0f * K_INSET;
+
+            debugDraw_.setColor(slotColor);
+            debugDraw_.drawWireBox(x0, y0, z0, x1, y1, z1);
+        }
     }
 
     debugDraw_.end();
@@ -388,7 +436,32 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         chunkData.vertexBufferMB = static_cast<float>(chunkData.vertexCount) * K_VERTEX_SIZE / K_MB;
         chunkData.indexBufferMB = static_cast<float>(chunkData.indexCount) * K_INDEX_SIZE / K_MB;
 
+        auto meshingInfo = meshSystem_->debugInfo();
+        chunkData.meshedThisFrame = meshingInfo.chunksMeshedThisFrame;
+        chunkData.emptyChunksSkipped = meshingInfo.emptyChunksSkipped;
+        chunkData.meshBudgetRemaining = meshingInfo.budgetRemaining;
+
         chunkDebugPanel_.update(chunkData);
+    }
+
+    // LOD stats panel
+    if (lodStatsPanel_.isVisible() && lodSystem_) {
+        auto lodInfo = lodSystem_->debugInfo();
+        fabric::LODStatsData lodData;
+        lodData.pendingSections = lodInfo.pendingSections;
+        lodData.gpuResidentSections = lodInfo.gpuResidentSections;
+        lodData.visibleSections = lodInfo.visibleSections;
+        lodData.estimatedGpuMB = static_cast<float>(lodInfo.estimatedGpuBytes) / (1024.0f * 1024.0f);
+        lodStatsPanel_.update(lodData);
+    }
+
+    // Concurrency panel
+    if (concurrencyPanel_.isVisible() && voxelSim_) {
+        auto concInfo = voxelSim_->scheduler().debugInfo();
+        fabric::ConcurrencyData concData;
+        concData.activeWorkers = concInfo.activeWorkers;
+        concData.queuedJobs = concInfo.queuedJobs;
+        concurrencyPanel_.update(concData);
     }
 }
 
@@ -396,6 +469,8 @@ void DebugOverlaySystem::doShutdown() {
     devConsole_.shutdown();
     contentBrowser_.shutdown();
     btDebugPanel_.shutdown();
+    concurrencyPanel_.shutdown();
+    lodStatsPanel_.shutdown();
     chunkDebugPanel_.shutdown();
     hotkeyPanel_.shutdown();
     wailaPanel_.shutdown();
@@ -410,6 +485,7 @@ void DebugOverlaySystem::configureDependencies() {
     after<OITRenderSystem>();
     after<CameraGameSystem>();
     after<ChunkPipelineSystem>();
+    after<LODSystem>();
     after<PhysicsGameSystem>();
     after<AudioGameSystem>();
     after<AIGameSystem>();

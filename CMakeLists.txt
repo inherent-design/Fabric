@@ -316,6 +316,8 @@ set(FABRIC_UI_SOURCE_FILES
     src/ui/RmlPanel.cc
     src/ui/DebugHUD.cc
     src/ui/ChunkDebugPanel.cc
+    src/ui/LODStatsPanel.cc
+    src/ui/ConcurrencyPanel.cc
     src/ui/WAILAPanel.cc
     src/ui/HotkeyPanel.cc
     src/ui/ToastManager.cc

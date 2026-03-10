@@ -70,6 +70,9 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
     // Use cached position for streaming (one-frame delay; invisible at chunk scale)
     auto streamUpdate = streaming_->update(lastPlayerX_, lastPlayerY_, lastPlayerZ_, lastSpeed_);
 
+    loadsThisFrame_ = static_cast<int>(streamUpdate.toLoad.size());
+    unloadsThisFrame_ = static_cast<int>(streamUpdate.toUnload.size());
+
     for (const auto& coord : streamUpdate.toLoad) {
         if (chunkEntities_.find(coord) == chunkEntities_.end()) {
             // Generate terrain into simulation grid
@@ -121,6 +124,15 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
 
 void ChunkPipelineSystem::configureDependencies() {
     after<TerrainSystem>();
+}
+
+ChunkPipelineDebugInfo ChunkPipelineSystem::debugInfo() const {
+    ChunkPipelineDebugInfo info;
+    info.trackedChunks = static_cast<int>(chunkEntities_.size());
+    info.chunksLoadedThisFrame = loadsThisFrame_;
+    info.chunksUnloadedThisFrame = unloadsThisFrame_;
+    info.currentStreamingRadius = streaming_ ? streaming_->currentRadius() : 0.0f;
+    return info;
 }
 
 } // namespace recurse::systems

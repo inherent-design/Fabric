@@ -16,6 +16,13 @@
         <div class="row"><span class="label">Vertices: </span><span class="value">{{ vertex_count }}</span></div>
         <div class="row"><span class="label">Indices: </span><span class="value">{{ index_count }}</span></div>
     </div>
+
+    <div class="section">
+        <div class="section-title">Meshing</div>
+        <div class="row"><span class="label">Meshed/frame: </span><span class="value">{{ meshed_this_frame }}</span></div>
+        <div class="row"><span class="label">Empty skipped: </span><span class="value">{{ empty_chunks_skipped }}</span></div>
+        <div class="row"><span class="label">Budget left: </span><span class="value">{{ mesh_budget_remaining }}</span></div>
+    </div>
 </div>
 </body>
 </rml>

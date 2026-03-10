@@ -9,6 +9,13 @@
 
 namespace recurse::systems {
 
+struct ChunkPipelineDebugInfo {
+    int trackedChunks = 0;
+    int chunksLoadedThisFrame = 0;
+    int chunksUnloadedThisFrame = 0;
+    float currentStreamingRadius = 0.0f;
+};
+
 class LODSystem;
 class TerrainSystem;
 class VoxelMeshingSystem;
@@ -36,6 +43,7 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
         return chunkEntities_;
     }
     ChunkStreamingManager& streaming() { return *streaming_; }
+    ChunkPipelineDebugInfo debugInfo() const;
 
   private:
     LODSystem* lodSystem_ = nullptr;
@@ -52,6 +60,9 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     float lastPlayerY_ = K_DEFAULT_SPAWN_Y;
     float lastPlayerZ_ = K_DEFAULT_SPAWN_Z;
     float lastSpeed_ = 0.0f;
+
+    int loadsThisFrame_ = 0;
+    int unloadsThisFrame_ = 0;
 };
 
 } // namespace recurse::systems

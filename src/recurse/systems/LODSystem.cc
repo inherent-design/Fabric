@@ -380,6 +380,7 @@ void LODSystem::uploadSection(LODSectionKey key, const recurse::LODMeshManager::
     gpu.ibh.reset(bgfx::createIndexBuffer(
         bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t)))));
 
+    gpu.vertexCount = static_cast<uint32_t>(mesh.vertices.size());
     gpu.indexCount = static_cast<uint32_t>(mesh.indices.size());
     gpu.palette = mesh.palette;
     gpu.resident = true;
@@ -387,6 +388,23 @@ void LODSystem::uploadSection(LODSectionKey key, const recurse::LODMeshManager::
 
 void LODSystem::releaseGPUSection(LODSectionKey key) {
     gpuSections_.erase(key.value);
+}
+
+LODDebugInfo LODSystem::debugInfo() const {
+    LODDebugInfo info;
+    info.pendingSections = static_cast<int>(pendingChunks_.size());
+    info.gpuResidentSections = static_cast<int>(gpuSections_.size());
+    info.visibleSections = static_cast<int>(visibleSections_.size());
+
+    constexpr size_t K_VERTEX_BYTES = 32; // SmoothVoxelVertex
+    constexpr size_t K_INDEX_BYTES = 4;   // uint32_t
+    size_t totalBytes = 0;
+    for (const auto& [key, gpu] : gpuSections_) {
+        if (gpu.resident)
+            totalBytes += gpu.vertexCount * K_VERTEX_BYTES + gpu.indexCount * K_INDEX_BYTES;
+    }
+    info.estimatedGpuBytes = totalBytes;
+    return info;
 }
 
 } // namespace recurse::systems

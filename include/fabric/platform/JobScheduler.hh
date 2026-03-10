@@ -13,6 +13,11 @@ class TaskScheduler;
 
 namespace fabric {
 
+struct ConcurrencyDebugInfo {
+    int activeWorkers = 0;
+    int queuedJobs = 0;
+};
+
 /// Unified thread pool for parallel dispatch across simulation, meshing,
 /// physics, and persistence. parallelFor() partitions work across workers
 /// using the same batch strategy as the former SimWorkerPool.
@@ -41,6 +46,7 @@ class JobScheduler {
     void submitBackground(std::function<void()> fn);
 
     size_t workerCount() const;
+    ConcurrencyDebugInfo debugInfo() const;
 
   private:
     std::unique_ptr<enki::TaskScheduler> scheduler_;
@@ -51,7 +57,7 @@ class JobScheduler {
     void submitAsync(std::function<void()> work, bool background);
 
     struct PendingTask;
-    std::mutex pendingMutex_;
+    mutable std::mutex pendingMutex_;
     std::vector<std::unique_ptr<PendingTask>> pendingTasks_;
 };
 

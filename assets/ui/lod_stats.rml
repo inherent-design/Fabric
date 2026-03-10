@@ -1,0 +1,16 @@
+<rml>
+<head>
+    <link type="text/rcss" href="chunk_debug.rcss" />
+</head>
+<body data-model="lod_stats">
+<div id="chunk-debug-panel" style="top: 400dp;">
+    <div class="section">
+        <div class="section-title">LOD Stats</div>
+        <div class="row"><span class="label">Pending: </span><span class="value">{{ pending_sections }}</span></div>
+        <div class="row"><span class="label">GPU Resident: </span><span class="value">{{ gpu_resident_sections }}</span></div>
+        <div class="row"><span class="label">Visible: </span><span class="value">{{ visible_sections }}</span></div>
+        <div class="row"><span class="label">Est. GPU: </span><span class="value">{{ estimated_gpu_mb }}</span><span class="label"> MB</span></div>
+    </div>
+</div>
+</body>
+</rml>

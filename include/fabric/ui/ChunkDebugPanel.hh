@@ -15,6 +15,10 @@ struct ChunkDebugData {
     size_t indexCount = 0;
     float vertexBufferMB = 0.0f;
     float indexBufferMB = 0.0f;
+    // Per-frame meshing stats
+    int meshedThisFrame = 0;
+    int emptyChunksSkipped = 0;
+    int meshBudgetRemaining = 0;
 };
 
 class ChunkDebugPanel : public RmlPanel {
@@ -36,6 +40,9 @@ class ChunkDebugPanel : public RmlPanel {
     float vertexBufferMB_ = 0.0f;
     float indexBufferMB_ = 0.0f;
     float totalBufferMB_ = 0.0f;
+    int meshedThisFrame_ = 0;
+    int emptyChunksSkipped_ = 0;
+    int meshBudgetRemaining_ = 0;
 };
 
 } // namespace fabric

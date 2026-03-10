@@ -2,8 +2,10 @@
 
 #include "fabric/core/SystemBase.hh"
 #include "fabric/ui/ChunkDebugPanel.hh"
+#include "fabric/ui/ConcurrencyPanel.hh"
 #include "fabric/ui/DebugHUD.hh"
 #include "fabric/ui/HotkeyPanel.hh"
+#include "fabric/ui/LODStatsPanel.hh"
 #include "fabric/ui/WAILAPanel.hh"
 #include "recurse/ai/BTDebugPanel.hh"
 #include "recurse/render/DebugDraw.hh"
@@ -16,6 +18,7 @@ namespace recurse::systems {
 
 class CameraGameSystem;
 class ChunkPipelineSystem;
+class LODSystem;
 class PhysicsGameSystem;
 class AudioGameSystem;
 class AIGameSystem;
@@ -40,6 +43,8 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
     recurse::DebugDraw& debugDraw() { return debugDraw_; }
     fabric::DebugHUD& debugHUD() { return debugHUD_; }
     fabric::ChunkDebugPanel& chunkDebugPanel() { return chunkDebugPanel_; }
+    fabric::LODStatsPanel& lodStatsPanel() { return lodStatsPanel_; }
+    fabric::ConcurrencyPanel& concurrencyPanel() { return concurrencyPanel_; }
     recurse::BTDebugPanel& btDebugPanel() { return btDebugPanel_; }
     recurse::ContentBrowser& contentBrowser() { return contentBrowser_; }
     recurse::DevConsole& devConsole() { return devConsole_; }
@@ -50,6 +55,8 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
     recurse::DebugDraw debugDraw_;
     fabric::DebugHUD debugHUD_;
     fabric::ChunkDebugPanel chunkDebugPanel_;
+    fabric::LODStatsPanel lodStatsPanel_;
+    fabric::ConcurrencyPanel concurrencyPanel_;
     fabric::WAILAPanel wailaPanel_;
     fabric::HotkeyPanel hotkeyPanel_;
     recurse::BTDebugPanel btDebugPanel_;
@@ -66,6 +73,7 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
     AIGameSystem* ai_ = nullptr;
     TerrainSystem* terrain_ = nullptr;
     CharacterMovementSystem* charMovement_ = nullptr;
+    LODSystem* lodSystem_ = nullptr;
     VoxelMeshingSystem* meshSystem_ = nullptr;
     VoxelSimulationSystem* voxelSim_ = nullptr;
 };
