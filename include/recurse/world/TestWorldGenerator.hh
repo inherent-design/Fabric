@@ -11,6 +11,7 @@ class FlatWorldGenerator : public WorldGenerator {
     explicit FlatWorldGenerator(int groundLevel = 32);
 
     void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
+    uint16_t sampleMaterial(int wx, int wy, int wz) const override;
     std::string name() const override { return "FlatWorldGenerator"; }
 
   private:
@@ -24,6 +25,7 @@ class LayeredWorldGenerator : public WorldGenerator {
     LayeredWorldGenerator(int stoneLevel = 28, int sandDepth = 4);
 
     void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
+    uint16_t sampleMaterial(int wx, int wy, int wz) const override;
     std::string name() const override { return "LayeredWorldGenerator"; }
 
   private:

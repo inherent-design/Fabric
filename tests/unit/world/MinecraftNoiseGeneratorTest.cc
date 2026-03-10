@@ -244,7 +244,40 @@ TEST_F(MinecraftNoiseGenTest, CrossChunkContinuity) {
     EXPECT_LE(maxDiff, 2) << "Boundary height discontinuity too large: " << maxDiff;
 }
 
-// 8. PerformanceSingleChunk
+// 8. SampleMaterialReturnsValidMaterial
+TEST_F(MinecraftNoiseGenTest, SampleMaterialReturnsValidMaterial) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator gen(config);
+
+    // Verify sampleMaterial returns a known material at various positions
+    std::set<MaterialId> valid = {material_ids::AIR, material_ids::STONE, material_ids::DIRT, material_ids::SAND,
+                                  material_ids::WATER};
+
+    for (int x = 0; x < 32; x += 8) {
+        for (int y = -32; y < 128; y += 16) {
+            auto mat = gen.sampleMaterial(x, y, 0);
+            EXPECT_TRUE(valid.count(mat)) << "Unexpected material " << mat << " at y=" << y;
+        }
+    }
+}
+
+// 9. SampleMaterialDeterministic
+TEST_F(MinecraftNoiseGenTest, SampleMaterialDeterministic) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator gen1(config);
+    MinecraftNoiseGenerator gen2(config);
+
+    for (int x = 0; x < 16; x += 4) {
+        for (int y = 0; y < 64; y += 8) {
+            EXPECT_EQ(gen1.sampleMaterial(x, y, 0), gen2.sampleMaterial(x, y, 0))
+                << "Non-deterministic at (" << x << "," << y << ",0)";
+        }
+    }
+}
+
+// 10. PerformanceSingleChunk
 TEST_F(MinecraftNoiseGenTest, PerformanceSingleChunk) {
     NoiseGenConfig config;
     config.seed = 42;

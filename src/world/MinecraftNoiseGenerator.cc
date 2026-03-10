@@ -105,4 +105,24 @@ void MinecraftNoiseGenerator::generate(recurse::simulation::SimulationGrid& grid
     }
 }
 
+uint16_t MinecraftNoiseGenerator::sampleMaterial(int wx, int wy, int wz) const {
+    float fx = static_cast<float>(wx);
+    float fz = static_cast<float>(wz);
+
+    float c = continentalNode_->GenSingle2D(fx * config_.continentalFreq, fz * config_.continentalFreq, config_.seed);
+    float e = erosionNode_->GenSingle2D(fx * config_.erosionFreq, fz * config_.erosionFreq, config_.seed + 1);
+    float p = peaksNode_->GenSingle2D(fx * config_.peaksFreq, fz * config_.peaksFreq, config_.seed + 2);
+
+    float bh = computeBaseHeight(c, e, p);
+    float density = bh - static_cast<float>(wy);
+
+    if (density > 3.0f)
+        return material_ids::STONE;
+    if (density > 0.0f)
+        return selectSurfaceMaterial(0.0f, 0.0f, static_cast<float>(wy));
+    if (static_cast<float>(wy) < config_.seaLevel)
+        return material_ids::WATER;
+    return material_ids::AIR;
+}
+
 } // namespace fabric::world

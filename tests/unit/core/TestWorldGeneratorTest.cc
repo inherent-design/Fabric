@@ -62,6 +62,31 @@ TEST(TestWorldGenerator, LayeredWorldGenerator_StoneAndSand) {
     }
 }
 
+// -- FlatWorldGenerator sampleMaterial ----------------------------------------
+
+TEST(TestWorldGenerator, FlatSampleMaterial_BelowGround_Stone) {
+    FlatWorldGenerator gen(32);
+    EXPECT_EQ(gen.sampleMaterial(0, 0, 0), material_ids::STONE);
+    EXPECT_EQ(gen.sampleMaterial(5, 31, 10), material_ids::STONE);
+}
+
+TEST(TestWorldGenerator, FlatSampleMaterial_AtAndAboveGround_Air) {
+    FlatWorldGenerator gen(32);
+    EXPECT_EQ(gen.sampleMaterial(0, 32, 0), material_ids::AIR);
+    EXPECT_EQ(gen.sampleMaterial(0, 100, 0), material_ids::AIR);
+}
+
+// -- LayeredWorldGenerator sampleMaterial -------------------------------------
+
+TEST(TestWorldGenerator, LayeredSampleMaterial_StoneAndSandAndAir) {
+    LayeredWorldGenerator gen(28, 4);
+    EXPECT_EQ(gen.sampleMaterial(0, 0, 0), material_ids::STONE);
+    EXPECT_EQ(gen.sampleMaterial(0, 27, 0), material_ids::STONE);
+    EXPECT_EQ(gen.sampleMaterial(0, 28, 0), material_ids::SAND);
+    EXPECT_EQ(gen.sampleMaterial(0, 31, 0), material_ids::SAND);
+    EXPECT_EQ(gen.sampleMaterial(0, 32, 0), material_ids::AIR);
+}
+
 // -- Interface ----------------------------------------------------------------
 
 TEST(TestWorldGenerator, WorldGeneratorInterface_Swappable) {

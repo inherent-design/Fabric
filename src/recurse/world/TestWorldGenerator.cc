@@ -2,6 +2,7 @@
 
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
 namespace recurse {
 
@@ -42,6 +43,10 @@ void FlatWorldGenerator::generate(recurse::simulation::SimulationGrid& grid, int
     }
 }
 
+uint16_t FlatWorldGenerator::sampleMaterial(int /*wx*/, int wy, int /*wz*/) const {
+    return (wy < groundLevel_) ? simulation::material_ids::STONE : simulation::material_ids::AIR;
+}
+
 // -- LayeredWorldGenerator ----------------------------------------------------
 
 LayeredWorldGenerator::LayeredWorldGenerator(int stoneLevel, int sandDepth)
@@ -78,6 +83,14 @@ void LayeredWorldGenerator::generate(recurse::simulation::SimulationGrid& grid, 
             }
         }
     }
+}
+
+uint16_t LayeredWorldGenerator::sampleMaterial(int /*wx*/, int wy, int /*wz*/) const {
+    if (wy < stoneLevel_)
+        return simulation::material_ids::STONE;
+    if (wy < stoneLevel_ + sandDepth_)
+        return simulation::material_ids::SAND;
+    return simulation::material_ids::AIR;
 }
 
 } // namespace recurse

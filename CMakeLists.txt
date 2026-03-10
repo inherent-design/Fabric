@@ -238,6 +238,7 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/components/EssenceTypes.cc
 
     # world/ (VP0+ generators)
+    src/recurse/world/WorldGenerator.cc
     src/recurse/world/TestWorldGenerator.cc
 
     # systems/ (SystemBase subclasses, phase-dispatched by SystemRegistry)

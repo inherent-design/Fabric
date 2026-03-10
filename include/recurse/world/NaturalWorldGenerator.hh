@@ -15,6 +15,8 @@ class NaturalWorldGenerator : public WorldGenerator {
         noiseGen_.generate(grid, recurse::simulation::ChunkPos{cx, cy, cz});
     }
 
+    uint16_t sampleMaterial(int wx, int wy, int wz) const override { return noiseGen_.sampleMaterial(wx, wy, wz); }
+
     std::string name() const override { return "NaturalWorldGenerator"; }
 
   private:

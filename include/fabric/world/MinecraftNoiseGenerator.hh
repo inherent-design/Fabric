@@ -23,6 +23,11 @@ class MinecraftNoiseGenerator : public GeneratorInterface {
     void generate(recurse::simulation::SimulationGrid& grid, recurse::simulation::ChunkPos pos) override;
     std::string name() const override { return "MinecraftNoise"; }
 
+    /// Point-query material at a single world coordinate.
+    /// Evaluates 3 noise functions (continental, erosion, peaks) via GenSingle2D
+    /// and applies the same density/material logic as generate().
+    uint16_t sampleMaterial(int wx, int wy, int wz) const;
+
   private:
     NoiseGenConfig config_;
     FastNoise::SmartNode<FastNoise::Simplex> continentalNode_;
