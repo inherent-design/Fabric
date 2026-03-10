@@ -79,6 +79,12 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
         if (chunkEntities_.find(coord) != chunkEntities_.end())
             continue;
         newChunks.push_back(coord);
+
+        // Chunk may already exist in sim grid (e.g. from generateInitialWorld).
+        // Skip disk load and generation; just create the ECS entity below.
+        if (simSystem_ && simSystem_->simulationGrid().hasChunk(coord.cx, coord.cy, coord.cz))
+            continue;
+
         bool loaded = tryLoadChunkFromDisk(coord.cx, coord.cy, coord.cz);
         if (!loaded)
             toGenerate.emplace_back(coord.cx, coord.cy, coord.cz);

@@ -391,9 +391,11 @@ void PhysicsWorld::rebuildChunkCollisionBatch(const recurse::simulation::Simulat
     if (!initialized_ || chunks.empty())
         return;
 
-    // Per-worker scratch allocators (1MB each; worst case ~200KB for BVH construction)
-    size_t wc = std::max(size_t(1), scheduler.workerCount());
-    std::vector<std::unique_ptr<JPH::TempAllocatorImpl>> workerAllocs(wc);
+    // Per-worker scratch allocators (1MB each; worst case ~200KB for BVH construction).
+    // enkiTS thread 0 = calling thread (participates during WaitforTask), so
+    // total thread count is workerCount + 1.
+    size_t allocCount = std::max(size_t(1), scheduler.workerCount() + 1);
+    std::vector<std::unique_ptr<JPH::TempAllocatorImpl>> workerAllocs(allocCount);
     for (auto& a : workerAllocs)
         a = std::make_unique<JPH::TempAllocatorImpl>(1 * 1024 * 1024);
 
