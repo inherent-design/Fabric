@@ -1,7 +1,7 @@
 #include "recurse/render/OITCompositor.hh"
 
 #include "fabric/core/Log.hh"
-#include "fabric/core/Rendering.hh"
+#include "fabric/render/Rendering.hh"
 #include "fabric/utils/Profiler.hh"
 
 // Vulkan-only: suppress all non-SPIR-V shader profiles so

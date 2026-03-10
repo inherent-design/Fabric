@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fabric/core/BgfxHandle.hh"
-#include "fabric/core/HandleMap.hh"
+#include "fabric/render/BgfxHandle.hh"
+#include "fabric/render/HandleMap.hh"
 
 #include <RmlUi/Core/RenderInterface.h>
 

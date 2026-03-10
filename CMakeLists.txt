@@ -133,43 +133,43 @@ include(FabricWebView)
 #------------------------------------------------------------------------------
 set(FABRIC_ENGINE_SOURCE_FILES
     src/core/AppModeManager.cc
-    src/core/Async.cc
-    src/core/BgfxCallback.cc
-    src/core/Camera.cc
+    src/fabric/platform/Async.cc
+    src/fabric/render/BgfxCallback.cc
+    src/fabric/render/Camera.cc
     src/core/Component.cc
-    src/core/ConfigManager.cc
+    src/fabric/platform/ConfigManager.cc
     src/core/ECS.cc
     src/core/Event.cc
-    src/core/InputManager.cc
-    src/core/InputRouter.cc
+    src/fabric/input/InputManager.cc
+    src/fabric/input/InputRouter.cc
     src/core/Lifecycle.cc
     src/core/Log.cc
     src/core/LogConfig.cc
     src/core/Pipeline.cc
-    src/core/Plugin.cc
-    src/core/RenderCaps.cc
-    src/core/Rendering.cc
+    src/fabric/platform/Plugin.cc
+    src/fabric/render/RenderCaps.cc
+    src/fabric/render/Rendering.cc
     src/core/Resource.cc
     src/core/ResourceHub.cc
-    src/core/SceneView.cc
+    src/fabric/render/SceneView.cc
     src/core/Spatial.cc
     src/core/Temporal.cc
-    src/core/InputSource.cc
-    src/core/InputAxis.cc
+    src/fabric/input/InputSource.cc
+    src/fabric/input/InputAxis.cc
     src/core/SystemPhase.cc
     src/core/SystemBase.cc
     src/core/SystemRegistry.cc
-    src/core/InputContext.cc
-    src/core/InputSystem.cc
+    src/fabric/input/InputContext.cc
+    src/fabric/input/InputSystem.cc
     src/core/AssetRegistry.cc
     src/fabric/platform/FabricApp.cc
-    src/core/FileWatcher.cc
+    src/fabric/platform/FileWatcher.cc
     src/core/FilteredConsoleSink.cc
-    src/core/PostProcess.cc
-    src/core/SkyRenderer.cc
+    src/fabric/render/PostProcess.cc
+    src/fabric/render/SkyRenderer.cc
     src/core/SimulationThreadPool.cc
-    src/core/ChunkDirtyTracker.cc
-    src/core/JobScheduler.cc
+    src/fabric/world/ChunkDirtyTracker.cc
+    src/fabric/platform/JobScheduler.cc
 )
 
 #------------------------------------------------------------------------------
@@ -261,7 +261,7 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/systems/LODSystem.cc
 
     # Panini projection post-processing
-    src/core/PaniniPass.cc
+    src/fabric/render/PaniniPass.cc
 )
 
 # Simulation library components (recurse::simulation namespace)

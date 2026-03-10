@@ -7,15 +7,15 @@
 #include "fabric/core/AppModeManager.hh"
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Event.hh"
-#include "fabric/core/InputManager.hh"
-#include "fabric/core/InputRouter.hh"
 #include "fabric/core/Log.hh"
-#include "fabric/core/SceneView.hh"
 #include "fabric/core/SystemPhase.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/core/Temporal.hh"
+#include "fabric/input/InputManager.hh"
+#include "fabric/input/InputRouter.hh"
 #include "fabric/platform/FabricApp.hh"
 #include "fabric/platform/FabricAppDesc.hh"
+#include "fabric/render/SceneView.hh"
 
 // Complete type headers required by registerSystem<T>() factory instantiation.
 // System headers forward-declare types held in unique_ptr; the factory lambda

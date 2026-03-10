@@ -1,5 +1,5 @@
 #include "fabric/core/LogConfig.hh"
-#include "fabric/core/ConfigManager.hh"
+#include "fabric/platform/ConfigManager.hh"
 
 #include <cstdlib>
 #include <filesystem>

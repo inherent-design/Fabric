@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/core/BgfxHandle.hh"
+#include "fabric/render/BgfxHandle.hh"
 
 #include <bgfx/bgfx.h>
 #include <cstdint>

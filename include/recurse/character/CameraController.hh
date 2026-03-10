@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fabric/core/Camera.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/render/Camera.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/world/VoxelRaycast.hh"
 

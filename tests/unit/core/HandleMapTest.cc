@@ -1,4 +1,4 @@
-#include "fabric/core/HandleMap.hh"
+#include "fabric/render/HandleMap.hh"
 #include "fixtures/BgfxNoopFixture.hh"
 #include <bgfx/bgfx.h>
 #include <gtest/gtest.h>

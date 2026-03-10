@@ -1,7 +1,7 @@
 #include "fabric/core/Component.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/Lifecycle.hh"
-#include "fabric/core/Plugin.hh"
+#include "fabric/platform/Plugin.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "fabric/utils/Testing.hh"
 #include <gtest/gtest.h>

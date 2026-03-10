@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fabric/core/ChunkCoord.hh"
 #include "fabric/core/SystemBase.hh"
+#include "fabric/world/ChunkCoord.hh"
 #include "recurse/render/VoxelRenderer.hh"
 
 #include <array>

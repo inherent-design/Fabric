@@ -11,7 +11,7 @@
 #include <behaviortree_cpp/loggers/bt_observer.h>
 #include <flecs.h>
 
-#include "fabric/core/Rendering.hh"
+#include "fabric/render/Rendering.hh"
 #include "fabric/utils/BVH.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/animation/Animation.hh"

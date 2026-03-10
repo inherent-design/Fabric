@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/core/BgfxHandle.hh"
+#include "fabric/render/BgfxHandle.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 #include "recurse/world/VoxelVertex.hh"
 

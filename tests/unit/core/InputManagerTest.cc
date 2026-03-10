@@ -1,4 +1,4 @@
-#include "fabric/core/InputManager.hh"
+#include "fabric/input/InputManager.hh"
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>

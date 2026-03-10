@@ -1,4 +1,4 @@
-#include "fabric/core/Rendering.hh"
+#include "fabric/render/Rendering.hh"
 #include "fabric/utils/Testing.hh"
 #include <cmath>
 #include <gtest/gtest.h>

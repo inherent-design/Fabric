@@ -1,8 +1,8 @@
 #pragma once
 
 #include "fabric/core/Event.hh"
-#include "fabric/core/Rendering.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/render/Rendering.hh"
 
 #include <cstddef>
 #include <vector>

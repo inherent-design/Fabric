@@ -2,7 +2,7 @@
 #include <chrono>
 #include <thread>
 
-#include "fabric/core/Async.hh"
+#include "fabric/platform/Async.hh"
 #include <gtest/gtest.h>
 
 namespace fabric {

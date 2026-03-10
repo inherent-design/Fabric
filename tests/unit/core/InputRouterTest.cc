@@ -1,4 +1,4 @@
-#include "fabric/core/InputRouter.hh"
+#include "fabric/input/InputRouter.hh"
 #include "fabric/ui/BgfxRenderInterface.hh"
 #include "fabric/ui/BgfxSystemInterface.hh"
 

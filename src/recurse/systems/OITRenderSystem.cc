@@ -2,10 +2,10 @@
 #include "recurse/render/OITCompositor.hh"
 
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/Camera.hh"
 #include "fabric/core/Log.hh"
-#include "fabric/core/Rendering.hh"
-#include "fabric/core/SceneView.hh"
+#include "fabric/render/Camera.hh"
+#include "fabric/render/Rendering.hh"
+#include "fabric/render/SceneView.hh"
 #include "recurse/systems/VoxelRenderSystem.hh"
 
 #include <SDL3/SDL.h>

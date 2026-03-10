@@ -1,4 +1,4 @@
-#include "fabric/core/JobScheduler.hh"
+#include "fabric/platform/JobScheduler.hh"
 #include <atomic>
 #include <gtest/gtest.h>
 #include <mutex>

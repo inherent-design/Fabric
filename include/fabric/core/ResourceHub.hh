@@ -1,8 +1,8 @@
 #pragma once
 
-#include "fabric/core/JobScheduler.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/Resource.hh"
+#include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/CoordinatedGraph.hh"
 #include <atomic>
 #include <chrono>

@@ -1,5 +1,5 @@
-#include "fabric/core/PostProcess.hh"
-#include "fabric/core/Rendering.hh"
+#include "fabric/render/PostProcess.hh"
+#include "fabric/render/Rendering.hh"
 #include "recurse/render/OITCompositor.hh"
 #include "recurse/render/ParticleSystem.hh"
 #include "recurse/world/VoxelVertex.hh"

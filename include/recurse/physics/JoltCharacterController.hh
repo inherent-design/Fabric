@@ -6,8 +6,8 @@
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
-#include "fabric/core/Rendering.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/render/Rendering.hh"
 
 #include <memory>
 

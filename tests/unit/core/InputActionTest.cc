@@ -1,4 +1,4 @@
-#include "fabric/core/InputAction.hh"
+#include "fabric/input/InputAction.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;

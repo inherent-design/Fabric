@@ -1,8 +1,8 @@
 #pragma once
 
-#include "fabric/core/BgfxHandle.hh"
-#include "fabric/core/Camera.hh"
 #include "fabric/core/SystemBase.hh"
+#include "fabric/render/BgfxHandle.hh"
+#include "fabric/render/Camera.hh"
 #include "recurse/render/LODGrid.hh"
 #include "recurse/render/LODMeshManager.hh"
 #include "recurse/render/VoxelRenderer.hh"

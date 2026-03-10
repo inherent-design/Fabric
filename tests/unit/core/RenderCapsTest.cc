@@ -1,4 +1,4 @@
-#include "fabric/core/RenderCaps.hh"
+#include "fabric/render/RenderCaps.hh"
 #include "fixtures/BgfxNoopFixture.hh"
 
 #include <gtest/gtest.h>

@@ -1,6 +1,6 @@
 #pragma once
-#include "fabric/core/ChunkCoord.hh"
 #include "fabric/utils/ThreadPoolExecutor.hh"
+#include "fabric/world/ChunkCoord.hh"
 #include <functional>
 #include <future>
 #include <memory>

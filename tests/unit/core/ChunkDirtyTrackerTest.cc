@@ -1,4 +1,4 @@
-#include "fabric/core/ChunkDirtyTracker.hh"
+#include "fabric/world/ChunkDirtyTracker.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;

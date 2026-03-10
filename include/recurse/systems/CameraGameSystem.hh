@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fabric/core/Rendering.hh"
 #include "fabric/core/SystemBase.hh"
+#include "fabric/render/Rendering.hh"
 #include "recurse/character/CameraController.hh"
 
 #include <memory>

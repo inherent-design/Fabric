@@ -1,4 +1,4 @@
-#include "fabric/core/BgfxHandle.hh"
+#include "fabric/render/BgfxHandle.hh"
 #include "fixtures/BgfxNoopFixture.hh"
 #include <bgfx/bgfx.h>
 #include <gtest/gtest.h>

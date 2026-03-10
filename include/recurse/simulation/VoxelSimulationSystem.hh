@@ -1,5 +1,5 @@
 #pragma once
-#include "fabric/core/JobScheduler.hh"
+#include "fabric/platform/JobScheduler.hh"
 #include "recurse/simulation/BoundaryWriteQueue.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/FallingSandSystem.hh"

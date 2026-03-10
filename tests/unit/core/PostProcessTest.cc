@@ -1,4 +1,4 @@
-#include "fabric/core/PostProcess.hh"
+#include "fabric/render/PostProcess.hh"
 #include "fixtures/BgfxNoopFixture.hh"
 
 #include <gtest/gtest.h>

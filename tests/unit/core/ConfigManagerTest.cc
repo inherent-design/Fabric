@@ -6,8 +6,8 @@
 #include <string>
 #include <thread>
 
-#include "fabric/core/ConfigManager.hh"
-#include "fabric/core/DefaultConfig.hh"
+#include "fabric/platform/ConfigManager.hh"
+#include "fabric/platform/DefaultConfig.hh"
 
 namespace fabric {
 

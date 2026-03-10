@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fabric/core/BgfxHandle.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/render/BgfxHandle.hh"
 
 #include <array>
 #include <bgfx/bgfx.h>

@@ -1,4 +1,4 @@
-#include "fabric/core/SkyRenderer.hh"
+#include "fabric/render/SkyRenderer.hh"
 #include "fixtures/BgfxNoopFixture.hh"
 
 #include <gtest/gtest.h>

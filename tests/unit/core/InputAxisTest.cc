@@ -1,4 +1,4 @@
-#include "fabric/core/InputAxis.hh"
+#include "fabric/input/InputAxis.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 #include <limits>

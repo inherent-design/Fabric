@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fabric/core/Rendering.hh"
 #include "fabric/core/SystemBase.hh"
+#include "fabric/render/Rendering.hh"
 #include "recurse/character/CharacterTypes.hh"
 #include "recurse/character/GameConstants.hh"
 #include "recurse/character/MovementFSM.hh"

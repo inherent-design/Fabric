@@ -1,4 +1,4 @@
-#include "fabric/core/Camera.hh"
+#include "fabric/render/Camera.hh"
 #include <cmath>
 #include <gtest/gtest.h>
 

@@ -1,4 +1,4 @@
-#include "fabric/core/FileWatcher.hh"
+#include "fabric/platform/FileWatcher.hh"
 #include <gtest/gtest.h>
 #include <string>
 #include <thread>

@@ -1,4 +1,4 @@
-#include "fabric/core/InputSystem.hh"
+#include "fabric/input/InputSystem.hh"
 #include "fabric/core/Event.hh"
 #include <gtest/gtest.h>
 

@@ -1,11 +1,11 @@
 #include "recurse/systems/CameraGameSystem.hh"
 
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/Camera.hh"
 #include "fabric/core/Event.hh"
-#include "fabric/core/InputManager.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/input/InputManager.hh"
+#include "fabric/render/Camera.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"

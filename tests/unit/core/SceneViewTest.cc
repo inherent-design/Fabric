@@ -1,8 +1,8 @@
-#include "fabric/core/SceneView.hh"
-#include "fabric/core/Camera.hh"
+#include "fabric/render/SceneView.hh"
 #include "fabric/core/ECS.hh"
-#include "fabric/core/Rendering.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/render/Camera.hh"
+#include "fabric/render/Rendering.hh"
 #include "fabric/utils/Testing.hh"
 #include <bx/math.h>
 #include <cmath>
