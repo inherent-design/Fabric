@@ -4,6 +4,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <lz4.h>
 #include <zstd.h>
 
 namespace fs = std::filesystem;
@@ -107,6 +108,24 @@ ChunkBlob FilesystemChunkStore::encode(const void* cells, size_t cellsByteCount,
         return blob;
     }
 
+    if (compression == 2) {
+        int srcSize = static_cast<int>(postHeaderSize);
+        int bound = LZ4_compressBound(srcSize);
+        ChunkBlob blob(sizeof(FchkHeader) + static_cast<size_t>(bound));
+        std::memcpy(blob.data(), &header, sizeof(FchkHeader));
+
+        int compressedSize =
+            LZ4_compress_default(reinterpret_cast<const char*>(postHeader.data()),
+                                 reinterpret_cast<char*>(blob.data() + sizeof(FchkHeader)), srcSize, bound);
+
+        if (compressedSize <= 0) {
+            fabric::throwError("LZ4 compression failed");
+        }
+
+        blob.resize(sizeof(FchkHeader) + static_cast<size_t>(compressedSize));
+        return blob;
+    }
+
     fabric::throwError("Unsupported FCHK compression type: " + std::to_string(compression));
 }
 
@@ -149,6 +168,24 @@ FchkDecoded FilesystemChunkStore::decode(const ChunkBlob& blob) {
         }
 
         decompressed.resize(actual);
+        postHeader = decompressed.data();
+        postHeaderSize = decompressed.size();
+    } else if (header.compression == 2) {
+        // LZ4: decompressed size derived from chunk dimensions
+        size_t expectedCells = static_cast<size_t>(header.dimX) * header.dimY * header.dimZ * 4;
+        // Upper bound: cells + palette count (2) + max palette (65535 * 16)
+        size_t maxDecomp = expectedCells + sizeof(uint16_t) + 65535 * 16;
+        decompressed.resize(maxDecomp);
+
+        int actual =
+            LZ4_decompress_safe(reinterpret_cast<const char*>(payload), reinterpret_cast<char*>(decompressed.data()),
+                                static_cast<int>(payloadSize), static_cast<int>(maxDecomp));
+
+        if (actual < 0) {
+            fabric::throwError("LZ4 decompression failed");
+        }
+
+        decompressed.resize(static_cast<size_t>(actual));
         postHeader = decompressed.data();
         postHeaderSize = decompressed.size();
     } else {

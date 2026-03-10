@@ -121,6 +121,9 @@ include(FabricEnkiTS)
 # zstd - fast lossless compression for chunk persistence
 include(FabricZstd)
 
+# LZ4 - fast compression for hot-path chunk I/O
+include(FabricLZ4)
+
 # SDL3 - cross-platform windowing and input
 include(FabricSDL3)
 
@@ -389,6 +392,7 @@ target_link_libraries(FabricLib
         efsw
         enkiTS
         libzstd_static
+        lz4_static
 )
 
 target_compile_definitions(FabricLib

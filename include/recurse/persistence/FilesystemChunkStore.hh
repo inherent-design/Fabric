@@ -14,7 +14,7 @@ struct FchkHeader {
     uint8_t dimX{32};
     uint8_t dimY{32};
     uint8_t dimZ{32};
-    uint8_t compression{0}; // 0 = none, 1 = zstd, 2 = lz4 (future)
+    uint8_t compression{0}; // 0 = none, 1 = zstd, 2 = lz4
 };
 static_assert(sizeof(FchkHeader) == 10, "FchkHeader must be 10 bytes (packed)");
 
