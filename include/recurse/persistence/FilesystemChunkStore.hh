@@ -13,7 +13,7 @@ struct FchkHeader {
     uint8_t dimX{32};
     uint8_t dimY{32};
     uint8_t dimZ{32};
-    uint8_t compression{0}; // 0 = none, 1 = zstd (future), 2 = lz4 (future)
+    uint8_t compression{0}; // 0 = none, 1 = zstd, 2 = lz4 (future)
 };
 static_assert(sizeof(FchkHeader) == 10, "FchkHeader must be 10 bytes (packed)");
 
@@ -39,12 +39,13 @@ class FilesystemChunkStore : public ChunkStore {
     size_t deltaSize(int cx, int cy, int cz) const override;
     size_t genDataSize(int cx, int cy, int cz) const override;
 
-    /// Encode raw VoxelCell data into FCHK blob (header + payload).
-    static ChunkBlob encode(const void* cells, size_t byteCount);
+    /// Encode raw VoxelCell data into FCHK blob (header + optionally compressed payload).
+    /// compression: 0=none, 1=zstd. level: compression level (ignored when compression=0).
+    static ChunkBlob encode(const void* cells, size_t byteCount, uint8_t compression = 0, int level = 1);
 
-    /// Decode FCHK blob, returning pointer to payload and its size.
-    /// Validates header. Throws on format mismatch.
-    static std::pair<const uint8_t*, size_t> decodeView(const ChunkBlob& blob);
+    /// Decode FCHK blob, returning the decompressed payload.
+    /// Validates header. Decompresses if needed. Throws on format mismatch.
+    static ChunkBlob decode(const ChunkBlob& blob);
 
   private:
     std::string genPath(int cx, int cy, int cz) const;

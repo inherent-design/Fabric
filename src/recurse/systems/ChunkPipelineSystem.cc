@@ -268,19 +268,19 @@ bool ChunkPipelineSystem::tryLoadChunkFromDisk(int cx, int cy, int cz) {
     grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Generating);
 
     // Decode FCHK and write into grid
-    auto [payload, payloadSize] = FilesystemChunkStore::decodeView(*genBlob);
+    auto decoded = FilesystemChunkStore::decode(*genBlob);
     auto* buf = grid.writeBuffer(cx, cy, cz);
-    if (buf && payloadSize == sizeof(*buf)) {
-        std::memcpy(buf->data(), payload, payloadSize);
+    if (buf && decoded.size() == sizeof(*buf)) {
+        std::memcpy(buf->data(), decoded.data(), decoded.size());
     }
 
     // Apply delta if exists
     if (chunkStore_->hasDelta(cx, cy, cz)) {
         auto deltaBlob = chunkStore_->loadDelta(cx, cy, cz);
         if (deltaBlob) {
-            auto [dp, ds] = FilesystemChunkStore::decodeView(*deltaBlob);
-            if (buf && ds == sizeof(*buf)) {
-                std::memcpy(buf->data(), dp, ds);
+            auto dd = FilesystemChunkStore::decode(*deltaBlob);
+            if (buf && dd.size() == sizeof(*buf)) {
+                std::memcpy(buf->data(), dd.data(), dd.size());
             }
         }
     }

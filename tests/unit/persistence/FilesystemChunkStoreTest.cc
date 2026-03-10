@@ -135,21 +135,21 @@ TEST_F(FilesystemChunkStoreTest, FchkEncodeDecodeRoundTrip) {
     auto blob = recurse::FilesystemChunkStore::encode(cells.data(), payloadSize);
     EXPECT_EQ(blob.size(), sizeof(recurse::FchkHeader) + payloadSize);
 
-    auto [ptr, size] = recurse::FilesystemChunkStore::decodeView(blob);
-    EXPECT_EQ(size, payloadSize);
-    EXPECT_EQ(ptr[0], 0xAB);
-    EXPECT_EQ(ptr[payloadSize - 1], 0xCD);
+    auto decoded = recurse::FilesystemChunkStore::decode(blob);
+    EXPECT_EQ(decoded.size(), payloadSize);
+    EXPECT_EQ(decoded[0], 0xAB);
+    EXPECT_EQ(decoded[payloadSize - 1], 0xCD);
 }
 
 TEST_F(FilesystemChunkStoreTest, FchkDecodeRejectsBadMagic) {
     recurse::ChunkBlob blob(20, 0);
     blob[0] = 'X'; // Wrong magic
-    EXPECT_THROW(recurse::FilesystemChunkStore::decodeView(blob), std::exception);
+    EXPECT_THROW(recurse::FilesystemChunkStore::decode(blob), std::exception);
 }
 
 TEST_F(FilesystemChunkStoreTest, FchkDecodeRejectsTooSmall) {
     recurse::ChunkBlob blob(5, 0);
-    EXPECT_THROW(recurse::FilesystemChunkStore::decodeView(blob), std::exception);
+    EXPECT_THROW(recurse::FilesystemChunkStore::decode(blob), std::exception);
 }
 
 TEST_F(FilesystemChunkStoreTest, LoadMissingReturnsNullopt) {

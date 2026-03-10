@@ -4,6 +4,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <zstd.h>
 
 namespace fs = std::filesystem;
 
@@ -67,15 +68,36 @@ size_t FilesystemChunkStore::genDataSize(int cx, int cy, int cz) const {
 
 // --- FCHK encode/decode ---
 
-ChunkBlob FilesystemChunkStore::encode(const void* cells, size_t byteCount) {
+ChunkBlob FilesystemChunkStore::encode(const void* cells, size_t byteCount, uint8_t compression, int level) {
     FchkHeader header;
-    ChunkBlob blob(sizeof(FchkHeader) + byteCount);
-    std::memcpy(blob.data(), &header, sizeof(FchkHeader));
-    std::memcpy(blob.data() + sizeof(FchkHeader), cells, byteCount);
-    return blob;
+    header.compression = compression;
+
+    if (compression == 0) {
+        ChunkBlob blob(sizeof(FchkHeader) + byteCount);
+        std::memcpy(blob.data(), &header, sizeof(FchkHeader));
+        std::memcpy(blob.data() + sizeof(FchkHeader), cells, byteCount);
+        return blob;
+    }
+
+    if (compression == 1) {
+        size_t bound = ZSTD_compressBound(byteCount);
+        ChunkBlob blob(sizeof(FchkHeader) + bound);
+        std::memcpy(blob.data(), &header, sizeof(FchkHeader));
+
+        size_t compressedSize = ZSTD_compress(blob.data() + sizeof(FchkHeader), bound, cells, byteCount, level);
+
+        if (ZSTD_isError(compressedSize)) {
+            fabric::throwError("zstd compression failed: " + std::string(ZSTD_getErrorName(compressedSize)));
+        }
+
+        blob.resize(sizeof(FchkHeader) + compressedSize);
+        return blob;
+    }
+
+    fabric::throwError("Unsupported FCHK compression type: " + std::to_string(compression));
 }
 
-std::pair<const uint8_t*, size_t> FilesystemChunkStore::decodeView(const ChunkBlob& blob) {
+ChunkBlob FilesystemChunkStore::decode(const ChunkBlob& blob) {
     if (blob.size() < sizeof(FchkHeader)) {
         fabric::throwError("FCHK blob too small: " + std::to_string(blob.size()) + " bytes");
     }
@@ -89,12 +111,31 @@ std::pair<const uint8_t*, size_t> FilesystemChunkStore::decodeView(const ChunkBl
     if (header.version != 1) {
         fabric::throwError("FCHK unsupported version: " + std::to_string(header.version));
     }
-    if (header.compression != 0) {
-        fabric::throwError("FCHK compression not supported in v1: " + std::to_string(header.compression));
+
+    const uint8_t* payload = blob.data() + sizeof(FchkHeader);
+    size_t payloadSize = blob.size() - sizeof(FchkHeader);
+
+    if (header.compression == 0) {
+        return ChunkBlob(payload, payload + payloadSize);
     }
 
-    size_t payloadSize = blob.size() - sizeof(FchkHeader);
-    return {blob.data() + sizeof(FchkHeader), payloadSize};
+    if (header.compression == 1) {
+        unsigned long long decompSize = ZSTD_getFrameContentSize(payload, payloadSize);
+        if (decompSize == ZSTD_CONTENTSIZE_UNKNOWN || decompSize == ZSTD_CONTENTSIZE_ERROR) {
+            fabric::throwError("FCHK zstd: cannot determine decompressed size");
+        }
+
+        ChunkBlob result(static_cast<size_t>(decompSize));
+        size_t actual = ZSTD_decompress(result.data(), result.size(), payload, payloadSize);
+        if (ZSTD_isError(actual)) {
+            fabric::throwError("zstd decompression failed: " + std::string(ZSTD_getErrorName(actual)));
+        }
+
+        result.resize(actual);
+        return result;
+    }
+
+    fabric::throwError("Unsupported FCHK compression: " + std::to_string(header.compression));
 }
 
 // --- Internal helpers ---

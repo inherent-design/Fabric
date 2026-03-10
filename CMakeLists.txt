@@ -118,6 +118,9 @@ include(FabricEfsw)
 # enkiTS - task scheduler for parallel dispatch
 include(FabricEnkiTS)
 
+# zstd - fast lossless compression for chunk persistence
+include(FabricZstd)
+
 # SDL3 - cross-platform windowing and input
 include(FabricSDL3)
 
@@ -384,6 +387,7 @@ target_link_libraries(FabricLib
         tomlplusplus::tomlplusplus
         efsw
         enkiTS
+        libzstd_static
 )
 
 target_compile_definitions(FabricLib
