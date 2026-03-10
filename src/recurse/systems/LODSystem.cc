@@ -319,6 +319,20 @@ void LODSystem::requestDirectLOD(int cx, int cy, int cz) {
     pendingDirectChunks_.emplace_back(cx, cy, cz);
 }
 
+void LODSystem::removeSectionFully(int cx, int cy, int cz) {
+    auto matchCoord = [cx, cy, cz](const auto& t) {
+        auto [px, py, pz] = t;
+        return px == cx && py == cy && pz == cz;
+    };
+    std::erase_if(pendingChunks_, matchCoord);
+    std::erase_if(pendingDirectChunks_, matchCoord);
+
+    auto key = LODSectionKey::make(0, cx, cy, cz);
+    releaseGPUSection(key);
+    if (grid_)
+        grid_->remove(key);
+}
+
 void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRadius) {
     visibleSections_.clear();
 

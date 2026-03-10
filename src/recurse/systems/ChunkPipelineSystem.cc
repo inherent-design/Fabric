@@ -174,15 +174,39 @@ void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ
         lodChunks_.insert(c);
     }
 
-    // LOD chunks to unload: tracked but not desired
+    // LOD chunks to unload: entered full-res ring or left LOD ring.
+    // Hysteresis prevents thrash at the boundary: load at lodRadius_,
+    // unload at lodRadius_ + margin.
+    constexpr int K_LOD_HYSTERESIS = 2;
+    int unloadRadius = lodRadius_ + K_LOD_HYSTERESIS;
+
     std::vector<ChunkCoord> toUnload;
     for (const auto& c : lodChunks_) {
-        if (!desired.contains(c))
+        int ddx = c.cx - centerCX;
+        int ddy = c.cy - centerCY;
+        int ddz = c.cz - centerCZ;
+        bool insideFullRes =
+            std::abs(ddx) <= chunkRadius && std::abs(ddy) <= chunkRadius && std::abs(ddz) <= chunkRadius;
+        bool beyondUnload =
+            std::abs(ddx) > unloadRadius || std::abs(ddy) > unloadRadius || std::abs(ddz) > unloadRadius;
+        if (insideFullRes || beyondUnload)
             toUnload.push_back(c);
     }
     for (const auto& c : toUnload) {
-        if (lodSystem_)
-            lodSystem_->onChunkRemoved(c.cx, c.cy, c.cz);
+        if (lodSystem_) {
+            int ddx = c.cx - centerCX;
+            int ddy = c.cy - centerCY;
+            int ddz = c.cz - centerCZ;
+            bool insideFullRes =
+                std::abs(ddx) <= chunkRadius && std::abs(ddy) <= chunkRadius && std::abs(ddz) <= chunkRadius;
+            if (insideFullRes) {
+                // Chunk entered full-res ring; keep section data for LOD cascade
+                lodSystem_->onChunkRemoved(c.cx, c.cy, c.cz);
+            } else {
+                // Chunk left LOD ring entirely; free GPU + grid data
+                lodSystem_->removeSectionFully(c.cx, c.cy, c.cz);
+            }
+        }
         lodChunks_.erase(c);
     }
 }

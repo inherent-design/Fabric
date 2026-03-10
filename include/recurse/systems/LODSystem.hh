@@ -63,6 +63,10 @@ class LODSystem : public fabric::System<LODSystem> {
     /// ring. Uses WorldGenerator::sampleMaterial() instead of SimulationGrid.
     void requestDirectLOD(int cx, int cy, int cz);
 
+    /// Fully remove a LOD section (GPU resources + grid data). Called when
+    /// the section exits the LOD ring and will not be needed again.
+    void removeSectionFully(int cx, int cy, int cz);
+
     // Statistics
     size_t gpuResidentCount() const { return gpuSections_.size(); }
     size_t totalSectionCount() const { return grid_ ? grid_->sectionCount() : 0; }
