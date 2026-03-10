@@ -14,9 +14,11 @@
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelRenderSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
+#include "recurse/world/WorldGenerator.hh"
 
 #include <algorithm>
 #include <cmath>
@@ -51,36 +53,39 @@ void LODSystem::doInit(fabric::AppContext& ctx) {
     auto* renderSystem = ctx.systemRegistry.get<VoxelRenderSystem>();
     if (renderSystem)
         voxelRenderer_ = &renderSystem->voxelRenderer();
+
+    auto* terrainSystem = ctx.systemRegistry.get<TerrainSystem>();
+    if (terrainSystem)
+        worldGen_ = &terrainSystem->worldGenerator();
 }
 
 void LODSystem::doShutdown() {
     gpuSections_.clear();
     visibleSections_.clear();
     pendingChunks_.clear();
+    pendingDirectChunks_.clear();
     simGrid_ = nullptr;
     materials_ = nullptr;
     scheduler_ = nullptr;
     voxelRenderer_ = nullptr;
+    worldGen_ = nullptr;
 
     FABRIC_LOG_INFO("LODSystem shut down");
 }
 
 void LODSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fixedDt*/) {
-    if (!scheduler_ || !simGrid_ || !grid_)
+    if (!scheduler_ || !grid_)
         return;
 
     int dispatchedThisFrame = 0;
     constexpr int K_MAX_PER_FRAME = 10;
 
-    while (!pendingChunks_.empty() && dispatchedThisFrame < K_MAX_PER_FRAME) {
+    // Process full-res LOD0 sections (from SimulationGrid data)
+    while (simGrid_ && !pendingChunks_.empty() && dispatchedThisFrame < K_MAX_PER_FRAME) {
         auto [cx, cy, cz] = pendingChunks_.front();
         pendingChunks_.pop_front();
 
-        // Allocate section on main thread; getOrCreate is not thread-safe
-        int sx = cx;
-        int sy = cy;
-        int sz = cz;
-        auto* section = grid_->getOrCreate(0, sx, sy, sz);
+        auto* section = grid_->getOrCreate(0, cx, cy, cz);
         if (!section)
             continue;
 
@@ -101,6 +106,50 @@ void LODSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fixedDt*/) {
                         auto cell = grid->readCell(wx, wy, wz);
 
                         uint16_t matId = cell.materialId;
+                        uint16_t palIdx = 0;
+                        auto it = std::find(section->palette.begin(), section->palette.end(), matId);
+                        if (it != section->palette.end()) {
+                            palIdx = static_cast<uint16_t>(std::distance(section->palette.begin(), it));
+                        } else {
+                            palIdx = static_cast<uint16_t>(section->palette.size());
+                            section->palette.push_back(matId);
+                        }
+                        section->set(lx, ly, lz, palIdx);
+                    }
+                }
+            }
+
+            section->dirty = true;
+        });
+
+        ++dispatchedThisFrame;
+    }
+
+    // Process direct LOD sections (from WorldGenerator point queries)
+    while (worldGen_ && !pendingDirectChunks_.empty() && dispatchedThisFrame < K_MAX_PER_FRAME) {
+        auto [cx, cy, cz] = pendingDirectChunks_.front();
+        pendingDirectChunks_.pop_front();
+
+        auto* section = grid_->getOrCreate(0, cx, cy, cz);
+        if (!section)
+            continue;
+
+        auto* gen = worldGen_;
+        scheduler_->submitBackground([section, gen, cx, cy, cz]() {
+            section->origin = Vec3i(cx * LODGrid::K_SECTION_WORLD_SIZE, cy * LODGrid::K_SECTION_WORLD_SIZE,
+                                    cz * LODGrid::K_SECTION_WORLD_SIZE);
+            section->palette.clear();
+            section->palette.push_back(1);
+            section->blockIndices.assign(LODSection::K_VOLUME, 0);
+
+            for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
+                for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
+                    for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
+                        int wx = section->origin.x + lx;
+                        int wy = section->origin.y + ly;
+                        int wz = section->origin.z + lz;
+
+                        uint16_t matId = gen->sampleMaterial(wx, wy, wz);
                         uint16_t palIdx = 0;
                         auto it = std::find(section->palette.begin(), section->palette.end(), matId);
                         if (it != section->palette.end()) {
@@ -251,17 +300,23 @@ void LODSystem::onChunkReady(int cx, int cy, int cz) {
 }
 
 void LODSystem::onChunkRemoved(int cx, int cy, int cz) {
-    // Remove pending entry if not yet processed
-    std::erase_if(pendingChunks_, [cx, cy, cz](const auto& t) {
+    // Remove pending entries if not yet processed
+    auto matchCoord = [cx, cy, cz](const auto& t) {
         auto [px, py, pz] = t;
         return px == cx && py == cy && pz == cz;
-    });
+    };
+    std::erase_if(pendingChunks_, matchCoord);
+    std::erase_if(pendingDirectChunks_, matchCoord);
 
     // Release GPU resources (VRAM) but keep LODGrid section data (RAM).
     // Section data persists so parent LOD levels remain valid and the
     // section can be re-uploaded cheaply if the chunk reloads.
     auto key = LODSectionKey::make(0, cx, cy, cz);
     releaseGPUSection(key);
+}
+
+void LODSystem::requestDirectLOD(int cx, int cy, int cz) {
+    pendingDirectChunks_.emplace_back(cx, cy, cz);
 }
 
 void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRadius) {

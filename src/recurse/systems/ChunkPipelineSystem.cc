@@ -170,7 +170,7 @@ void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ
     for (int i = 0; i < loadCount; ++i) {
         const auto& c = toLoad[static_cast<size_t>(i)];
         if (lodSystem_)
-            lodSystem_->onChunkReady(c.cx, c.cy, c.cz);
+            lodSystem_->requestDirectLOD(c.cx, c.cy, c.cz);
         lodChunks_.insert(c);
     }
 

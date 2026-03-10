@@ -20,7 +20,8 @@ class JobScheduler;
 
 namespace recurse {
 class VoxelRenderer;
-}
+class WorldGenerator;
+} // namespace recurse
 
 namespace recurse::systems {
 
@@ -58,6 +59,10 @@ class LODSystem : public fabric::System<LODSystem> {
     void onChunkReady(int cx, int cy, int cz);
     void onChunkRemoved(int cx, int cy, int cz);
 
+    /// Request direct LOD section generation for a chunk outside the full-res
+    /// ring. Uses WorldGenerator::sampleMaterial() instead of SimulationGrid.
+    void requestDirectLOD(int cx, int cy, int cz);
+
     // Statistics
     size_t gpuResidentCount() const { return gpuSections_.size(); }
     size_t totalSectionCount() const { return grid_ ? grid_->sectionCount() : 0; }
@@ -94,13 +99,15 @@ class LODSystem : public fabric::System<LODSystem> {
     const recurse::simulation::MaterialRegistry* materials_ = nullptr;
     fabric::JobScheduler* scheduler_ = nullptr;
     recurse::VoxelRenderer* voxelRenderer_ = nullptr;
+    recurse::WorldGenerator* worldGen_ = nullptr;
 
     // GPU resources
     std::unordered_map<uint64_t, GPUSection> gpuSections_;
     std::vector<VisibleSection> visibleSections_;
 
-    // Pending generation queue
+    // Pending generation queues
     std::deque<std::tuple<int, int, int>> pendingChunks_;
+    std::deque<std::tuple<int, int, int>> pendingDirectChunks_;
 
     // Configuration (read from TOML in doInit; defaults match pre-config values)
     int uploadBudget_ = 50;
