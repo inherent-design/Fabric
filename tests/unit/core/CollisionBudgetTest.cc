@@ -88,24 +88,32 @@ class CollisionBudgetTest : public ::testing::Test {
 };
 
 TEST_F(CollisionBudgetTest, BudgetCapsProcessedChunksPerFrame) {
-    for (int i = 0; i < 20; ++i)
-        materializeActiveChunk(i, 0, 0);
+    // 20 chunks within collision radius (all dist_sq <= 4 from origin)
+    int coords[][3] = {
+        {0, 0, 0},   {1, 0, 0},  {-1, 0, 0}, {0, 1, 0},   {0, -1, 0},  {0, 0, 1},  {0, 0, -1},
+        {1, 1, 0},   {1, -1, 0}, {-1, 1, 0}, {-1, -1, 0}, {1, 0, 1},   {1, 0, -1}, {-1, 0, 1},
+        {-1, 0, -1}, {0, 1, 1},  {0, 1, -1}, {0, -1, 1},  {0, -1, -1}, {2, 0, 0},
+    };
+    constexpr int N = 20;
 
-    for (int i = 0; i < 20; ++i)
-        physics.insertDirtyChunk(i, 0, 0);
+    for (int i = 0; i < N; ++i)
+        materializeActiveChunk(coords[i][0], coords[i][1], coords[i][2]);
+
+    for (int i = 0; i < N; ++i)
+        physics.insertDirtyChunk(coords[i][0], coords[i][1], coords[i][2]);
 
     physics.setPlayerPosition(0.0f, 0.0f, 0.0f);
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
 
     int rebuilt = 0;
-    for (int i = 0; i < 20; ++i) {
-        if (physics.physicsWorld().chunkCollisionShapeCount(i, 0, 0) > 0)
+    for (int i = 0; i < N; ++i) {
+        if (physics.physicsWorld().chunkCollisionShapeCount(coords[i][0], coords[i][1], coords[i][2]) > 0)
             ++rebuilt;
     }
 
     EXPECT_EQ(rebuilt, K_COLLISION_BUDGET_PER_FRAME);
-    EXPECT_EQ(static_cast<int>(physics.dirtyChunks().size()), 20 - K_COLLISION_BUDGET_PER_FRAME);
+    EXPECT_EQ(static_cast<int>(physics.dirtyChunks().size()), N - K_COLLISION_BUDGET_PER_FRAME);
 }
 
 TEST_F(CollisionBudgetTest, NearestChunksProcessedFirst) {
@@ -149,11 +157,18 @@ TEST_F(CollisionBudgetTest, NonActiveChunksFiltered) {
 }
 
 TEST_F(CollisionBudgetTest, OverflowPersistsAcrossFrames) {
-    for (int i = 0; i < 12; ++i)
-        materializeActiveChunk(i, 0, 0);
+    // 12 chunks within collision radius (all dist_sq <= 4 from origin)
+    int coords[][3] = {
+        {0, 0, 0},  {1, 0, 0}, {-1, 0, 0}, {0, 1, 0},  {0, -1, 0},  {0, 0, 1},
+        {0, 0, -1}, {1, 1, 0}, {1, -1, 0}, {-1, 1, 0}, {-1, -1, 0}, {2, 0, 0},
+    };
+    constexpr int N = 12;
 
-    for (int i = 0; i < 12; ++i)
-        physics.insertDirtyChunk(i, 0, 0);
+    for (int i = 0; i < N; ++i)
+        materializeActiveChunk(coords[i][0], coords[i][1], coords[i][2]);
+
+    for (int i = 0; i < N; ++i)
+        physics.insertDirtyChunk(coords[i][0], coords[i][1], coords[i][2]);
 
     physics.setPlayerPosition(0.0f, 0.0f, 0.0f);
     auto ctx = makeCtx();
@@ -162,8 +177,8 @@ TEST_F(CollisionBudgetTest, OverflowPersistsAcrossFrames) {
     EXPECT_EQ(static_cast<int>(physics.dirtyChunks().size()), 4);
 
     int rebuilt = 0;
-    for (int i = 0; i < 12; ++i) {
-        if (physics.physicsWorld().chunkCollisionShapeCount(i, 0, 0) > 0)
+    for (int i = 0; i < N; ++i) {
+        if (physics.physicsWorld().chunkCollisionShapeCount(coords[i][0], coords[i][1], coords[i][2]) > 0)
             ++rebuilt;
     }
     EXPECT_EQ(rebuilt, 8);
@@ -172,9 +187,9 @@ TEST_F(CollisionBudgetTest, OverflowPersistsAcrossFrames) {
     EXPECT_TRUE(physics.dirtyChunks().empty());
 
     rebuilt = 0;
-    for (int i = 0; i < 12; ++i) {
-        if (physics.physicsWorld().chunkCollisionShapeCount(i, 0, 0) > 0)
+    for (int i = 0; i < N; ++i) {
+        if (physics.physicsWorld().chunkCollisionShapeCount(coords[i][0], coords[i][1], coords[i][2]) > 0)
             ++rebuilt;
     }
-    EXPECT_EQ(rebuilt, 12);
+    EXPECT_EQ(rebuilt, N);
 }

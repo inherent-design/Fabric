@@ -45,6 +45,10 @@ void PhysicsGameSystem::doShutdown() {
 void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) {
     FABRIC_ZONE_SCOPED_N("physics_step");
 
+    int pcx = static_cast<int>(std::floor(playerX_ / static_cast<float>(fabric::K_CHUNK_SIZE)));
+    int pcy = static_cast<int>(std::floor(playerY_ / static_cast<float>(fabric::K_CHUNK_SIZE)));
+    int pcz = static_cast<int>(std::floor(playerZ_ / static_cast<float>(fabric::K_CHUNK_SIZE)));
+
     if (!dirtyCollisionChunks_.empty() && voxelSim_) {
         std::vector<recurse::ChunkKey> candidates(dirtyCollisionChunks_.begin(), dirtyCollisionChunks_.end());
         dirtyCollisionChunks_.clear();
@@ -55,9 +59,11 @@ void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) 
             return !slot || slot->state != recurse::simulation::ChunkSlotState::Active;
         });
 
-        int pcx = static_cast<int>(std::floor(playerX_ / static_cast<float>(fabric::K_CHUNK_SIZE)));
-        int pcy = static_cast<int>(std::floor(playerY_ / static_cast<float>(fabric::K_CHUNK_SIZE)));
-        int pcz = static_cast<int>(std::floor(playerZ_ / static_cast<float>(fabric::K_CHUNK_SIZE)));
+        // EF-5a: drop chunks beyond collision radius (not re-inserted to overflow)
+        std::erase_if(candidates, [pcx, pcy, pcz](const recurse::ChunkKey& k) {
+            int dx = k.cx - pcx, dy = k.cy - pcy, dz = k.cz - pcz;
+            return (dx * dx + dy * dy + dz * dz) > (K_COLLISION_RADIUS * K_COLLISION_RADIUS);
+        });
 
         std::sort(candidates.begin(), candidates.end(),
                   [pcx, pcy, pcz](const recurse::ChunkKey& a, const recurse::ChunkKey& b) {
@@ -77,6 +83,32 @@ void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) 
         } else {
             for (const auto& key : toRebuild)
                 physicsWorld_.rebuildChunkCollision(voxelSim_->simulationGrid(), key.cx, key.cy, key.cz);
+        }
+    }
+
+    // EF-5b: proactive cleanup + re-dirty on player chunk transition
+    if (pcx != lastCollisionCX_ || pcy != lastCollisionCY_ || pcz != lastCollisionCZ_) {
+        lastCollisionCX_ = pcx;
+        lastCollisionCY_ = pcy;
+        lastCollisionCZ_ = pcz;
+        physicsWorld_.removeCollisionBeyondRadius(pcx, pcy, pcz, K_COLLISION_RADIUS);
+
+        if (voxelSim_) {
+            auto& registry = voxelSim_->simulationGrid().registry();
+            int r = K_COLLISION_RADIUS;
+            for (int dz = -r; dz <= r; ++dz) {
+                for (int dy = -r; dy <= r; ++dy) {
+                    for (int dx = -r; dx <= r; ++dx) {
+                        if (dx * dx + dy * dy + dz * dz > r * r)
+                            continue;
+                        int ccx = pcx + dx, ccy = pcy + dy, ccz = pcz + dz;
+                        auto* slot = registry.find(ccx, ccy, ccz);
+                        if (slot && slot->state == recurse::simulation::ChunkSlotState::Active &&
+                            !physicsWorld_.hasChunkCollision(ccx, ccy, ccz))
+                            dirtyCollisionChunks_.insert({ccx, ccy, ccz});
+                    }
+                }
+            }
         }
     }
 

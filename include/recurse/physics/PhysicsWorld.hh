@@ -171,6 +171,8 @@ class PhysicsWorld {
 
     void removeChunkCollision(int cx, int cy, int cz);
     void clearChunkBodies();
+    int removeCollisionBeyondRadius(int pcx, int pcy, int pcz, int radius);
+    bool hasChunkCollision(int cx, int cy, int cz) const;
     uint32_t chunkCollisionShapeCount(int cx, int cy, int cz) const;
 
     void setContactCallback(ContactCallback cb);

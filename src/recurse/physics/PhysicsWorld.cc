@@ -464,6 +464,36 @@ void PhysicsWorld::clearChunkBodies() {
     FABRIC_LOG_DEBUG("PhysicsWorld: cleared {} chunk collision bodies", count);
 }
 
+int PhysicsWorld::removeCollisionBeyondRadius(int pcx, int pcy, int pcz, int radius) {
+    if (!initialized_)
+        return 0;
+
+    int r2 = radius * radius;
+    int removed = 0;
+    auto& bi = physicsSystem_->GetBodyInterface();
+    auto it = chunkBodies_.begin();
+    while (it != chunkBodies_.end()) {
+        int dx = it->first.cx - pcx;
+        int dy = it->first.cy - pcy;
+        int dz = it->first.cz - pcz;
+        if (dx * dx + dy * dy + dz * dz > r2) {
+            for (auto& bodyId : it->second) {
+                bi.RemoveBody(bodyId);
+                bi.DestroyBody(bodyId);
+            }
+            it = chunkBodies_.erase(it);
+            ++removed;
+        } else {
+            ++it;
+        }
+    }
+    return removed;
+}
+
+bool PhysicsWorld::hasChunkCollision(int cx, int cy, int cz) const {
+    return chunkBodies_.contains(ChunkKey{cx, cy, cz});
+}
+
 uint32_t PhysicsWorld::chunkCollisionShapeCount(int cx, int cy, int cz) const {
     if (!initialized_)
         return 0;

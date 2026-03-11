@@ -4,6 +4,7 @@
 #include "recurse/physics/PhysicsWorld.hh"
 #include "recurse/physics/Ragdoll.hh"
 
+#include <climits>
 #include <unordered_set>
 
 namespace fabric {
@@ -17,6 +18,7 @@ class VoxelSimulationSystem;
 
 // Per-frame cap; matches scale of meshBudget_ and genBudget_
 inline constexpr int K_COLLISION_BUDGET_PER_FRAME = 8;
+inline constexpr int K_COLLISION_RADIUS = 3;
 
 /// Owns the Jolt PhysicsWorld and Ragdoll subsystem.
 /// Steps physics at fixed rate and rebuilds chunk collision
@@ -62,6 +64,7 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
     Ragdoll ragdoll_;
     std::unordered_set<recurse::ChunkKey, recurse::ChunkKeyHash> dirtyCollisionChunks_;
     float playerX_ = 0.0f, playerY_ = 0.0f, playerZ_ = 0.0f;
+    int lastCollisionCX_ = INT_MIN, lastCollisionCY_ = INT_MIN, lastCollisionCZ_ = INT_MIN;
 };
 
 } // namespace recurse::systems
