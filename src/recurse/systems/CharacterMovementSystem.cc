@@ -5,13 +5,16 @@
 #include "recurse/systems/VoxelSimulationSystem.hh"
 
 #include "fabric/core/AppContext.hh"
+#include "fabric/core/ECS.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/input/InputManager.hh"
+#include "fabric/platform/ConfigManager.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/character/CameraController.hh"
 #include "recurse/character/FlightController.hh"
+#include "recurse/components/StreamSource.hh"
 #include "recurse/physics/JoltCharacterController.hh"
 
 #include <cmath>
@@ -21,6 +24,9 @@ namespace recurse::systems {
 CharacterMovementSystem::~CharacterMovementSystem() = default;
 
 void CharacterMovementSystem::doShutdown() {
+    if (playerEntity_.is_valid())
+        playerEntity_.destruct();
+
     flightCtrl_.reset();
     joltCharCtrl_ = nullptr;
     terrain_ = nullptr;
@@ -121,7 +127,14 @@ void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
         }
     });
 
-    FABRIC_LOG_INFO("CharacterMovementSystem initialized");
+    int streamRadius = ctx.configManager.get<int>("terrain.chunk_radius", 8);
+    playerEntity_ = ctx.world.get()
+                        .entity("player")
+                        .set<fabric::Position>({playerPos_.x, playerPos_.y, playerPos_.z})
+                        .set<recurse::StreamSource>({streamRadius, K_COLLISION_RADIUS});
+
+    FABRIC_LOG_INFO("CharacterMovementSystem initialized (player entity created, stream={}, collision={})",
+                    streamRadius, K_COLLISION_RADIUS);
 }
 
 void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
@@ -242,6 +255,9 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
         if (result.hitY && playerVel_.y > 0.0f)
             playerVel_.y = 0.0f;
     }
+
+    if (playerEntity_.is_valid())
+        playerEntity_.set<fabric::Position>({playerPos_.x, playerPos_.y, playerPos_.z});
 }
 
 void CharacterMovementSystem::configureDependencies() {

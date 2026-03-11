@@ -37,10 +37,16 @@ struct StreamingUpdate {
     std::vector<ChunkCoord> toUnload;
 };
 
+struct FocalPoint {
+    float x, y, z;
+    int radius;
+};
+
 class ChunkStreamingManager {
   public:
     explicit ChunkStreamingManager(const StreamingConfig& config = {});
 
+    StreamingUpdate update(const std::vector<FocalPoint>& sources);
     StreamingUpdate update(float viewX, float viewY, float viewZ);
 
     int currentRadius() const;

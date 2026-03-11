@@ -1,6 +1,7 @@
 #include "recurse/ai/BehaviorAI.hh"
 #include "fabric/core/ECS.hh"
 #include "fabric/core/Log.hh"
+#include "recurse/components/StreamSource.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
@@ -156,6 +157,7 @@ void BehaviorAI::init(flecs::world& world) {
     world.component<AIAnimationMapping>();
     world.component<AIAnimationState>();
     world.component<PerceptionComponent>();
+    world.component<StreamSource>();
 
     factory_.registerNodeType<PatrolAction>("PatrolAction");
     factory_.registerNodeType<ChaseAction>("ChaseAction");

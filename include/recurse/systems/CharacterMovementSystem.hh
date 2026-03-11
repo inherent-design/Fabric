@@ -5,6 +5,8 @@
 #include "recurse/character/CharacterTypes.hh"
 #include "recurse/character/GameConstants.hh"
 #include "recurse/character/MovementFSM.hh"
+
+#include <flecs.h>
 #include <memory>
 
 namespace recurse {
@@ -63,6 +65,7 @@ class CharacterMovementSystem : public fabric::System<CharacterMovementSystem> {
                                                               static_cast<double>(K_DEFAULT_SPAWN_Y),
                                                               static_cast<double>(K_DEFAULT_SPAWN_Z)};
     Velocity playerVel_{};
+    flecs::entity playerEntity_;
 };
 
 } // namespace recurse::systems
