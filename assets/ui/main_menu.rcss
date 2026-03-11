@@ -5,7 +5,11 @@ body {
     font-family: "Commit Mono";
 }
 
-#main_menu {
+#main_menu,
+#world_list,
+#world_select,
+#new_world,
+#settings {
     width: 100%;
     height: 100%;
 }
@@ -82,7 +86,7 @@ body {
 }
 
 .menu_button.wide {
-    width: 300dp;
+    width: 100%;
     height: 60dp;
     display: flex;
     flex-direction: column;
@@ -136,7 +140,7 @@ body {
 /* ── Form controls (New World screen) ──────────────────────── */
 
 .form_group {
-    width: 300dp;
+    width: 100%;
     margin-bottom: 20dp;
     display: flex;
     flex-direction: column;
@@ -151,7 +155,8 @@ body {
 input[type="text"] {
     width: 100%;
     height: 36dp;
-    padding: 0dp 10dp;
+    line-height: 36dp;
+    padding: 0dp 8dp;
     background-color: #1a1a2a;
     border-width: 1dp;
     border-color: #555555;
@@ -174,7 +179,7 @@ input[type="text"]:focus {
 }
 
 .menu_button.toggle {
-    width: 142dp;
+    flex: 1;
     height: 38dp;
     margin-bottom: 0dp;
     background-color: #2a2a3a;
@@ -218,7 +223,6 @@ input[type="text"]:focus {
     display: flex;
     flex-direction: row;
     align-items: center;
-    width: 100%;
     height: 54dp;
     padding: 0dp 12dp;
     margin-bottom: 4dp;
@@ -291,7 +295,8 @@ input[type="text"]:focus {
 .rename_input {
     flex: 1;
     height: 32dp;
-    padding: 0dp 8dp;
+    padding: 6dp 8dp;
+    margin-right: 8dp;
     background-color: #1a1a2a;
     border: 1dp #8888cc;
     color: #ffffff;
