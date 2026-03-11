@@ -409,20 +409,141 @@ void MainMenuSystem::showWorldList() {
                 }
 
                 for (const auto& world : worlds) {
-                    // Create a button element for each world
-                    auto el = container->AppendChild(currentDocument_->CreateElement("button"));
-                    el->SetClassNames("menu_button wide");
-                    el->SetId("world_" + world.uuid);
-
-                    std::string typeStr = (world.type == WorldType::Flat) ? "Flat" : "Natural";
-                    el->SetInnerRML("<span class='btn_title'>" + world.name +
-                                    "</span>"
-                                    "<span class='btn_desc'>" +
-                                    typeStr + " | " + world.lastPlayed + "</span>");
-
+                    auto row = container->AppendChild(currentDocument_->CreateElement("div"));
+                    row->SetClassNames("world_item");
+                    row->SetId("world_" + world.uuid);
                     std::string uuid = world.uuid;
-                    el->AddEventListener(Rml::EventId::Click,
-                                         new MenuButtonListener([this, uuid]() { onWorldSelected(uuid); }), true);
+
+                    if (world.uuid == renamingWorldUUID_) {
+                        row->SetInnerRML(
+                            "<input type='text' id='rename_input' value='" + world.name +
+                            "' class='rename_input' />"
+                            "<button class='action_btn' id='confirm_rename'><span class='icon'>&#xf00c;</span></button>"
+                            "<button class='action_btn' id='cancel_rename'><span "
+                            "class='icon'>&#xf00d;</span></button>");
+
+                        auto* confirmBtn = currentDocument_->GetElementById("confirm_rename");
+                        if (confirmBtn) {
+                            confirmBtn->AddEventListener(Rml::EventId::Click, new MenuButtonListener([this, uuid]() {
+                                                             std::string newName;
+                                                             auto* input =
+                                                                 currentDocument_->GetElementById("rename_input");
+                                                             if (input) {
+                                                                 auto* ctrl =
+                                                                     dynamic_cast<Rml::ElementFormControlInput*>(input);
+                                                                 if (ctrl)
+                                                                     newName = ctrl->GetValue();
+                                                             }
+                                                             renamingWorldUUID_.clear();
+                                                             if (!newName.empty())
+                                                                 onRenameWorldClicked(uuid, newName);
+                                                             else
+                                                                 showWorldList();
+                                                         }),
+                                                         true);
+                        }
+
+                        auto* cancelBtn = currentDocument_->GetElementById("cancel_rename");
+                        if (cancelBtn) {
+                            cancelBtn->AddEventListener(Rml::EventId::Click, new MenuButtonListener([this]() {
+                                                            renamingWorldUUID_.clear();
+                                                            showWorldList();
+                                                        }),
+                                                        true);
+                        }
+
+                        auto* renameInput = currentDocument_->GetElementById("rename_input");
+                        if (renameInput) {
+                            renameInput->Focus();
+                            SDL_StartTextInput(SDL_GetKeyboardFocus());
+                        }
+                    } else if (world.uuid == deletingWorldUUID_) {
+                        row->SetInnerRML(
+                            "<div class='world_info'>"
+                            "<span class='world_name'>" +
+                            world.name +
+                            "</span>"
+                            "<span class='world_meta delete_confirm'>Delete this world?</span>"
+                            "</div>"
+                            "<div class='world_actions' style='visibility: visible;'>"
+                            "<button class='action_btn danger' id='confirm_delete'><span "
+                            "class='icon'>&#xf00c;</span></button>"
+                            "<button class='action_btn' id='cancel_delete'><span class='icon'>&#xf00d;</span></button>"
+                            "</div>");
+
+                        auto* confirmBtn = currentDocument_->GetElementById("confirm_delete");
+                        if (confirmBtn) {
+                            confirmBtn->AddEventListener(Rml::EventId::Click, new MenuButtonListener([this, uuid]() {
+                                                             deletingWorldUUID_.clear();
+                                                             onDeleteWorldClicked(uuid);
+                                                         }),
+                                                         true);
+                        }
+
+                        auto* cancelBtn = currentDocument_->GetElementById("cancel_delete");
+                        if (cancelBtn) {
+                            cancelBtn->AddEventListener(Rml::EventId::Click, new MenuButtonListener([this]() {
+                                                            deletingWorldUUID_.clear();
+                                                            showWorldList();
+                                                        }),
+                                                        true);
+                        }
+                    } else {
+                        std::string typeStr = (world.type == WorldType::Flat) ? "Flat" : "Natural";
+                        row->SetInnerRML("<div class='world_info'>"
+                                         "<span class='world_name'>" +
+                                         world.name +
+                                         "</span>"
+                                         "<span class='world_meta'>" +
+                                         typeStr + " | " + world.lastPlayed +
+                                         "</span>"
+                                         "</div>"
+                                         "<div class='world_actions'>"
+                                         "<button class='action_btn' id='rename_" +
+                                         world.uuid +
+                                         "'><span class='icon'>&#xf304;</span></button>"
+                                         "<button class='action_btn' id='folder_" +
+                                         world.uuid +
+                                         "'><span class='icon'>&#xf07b;</span></button>"
+                                         "<button class='action_btn danger' id='delete_" +
+                                         world.uuid +
+                                         "'><span class='icon'>&#xf1f8;</span></button>"
+                                         "</div>");
+
+                        auto* infoDiv = row->GetFirstChild();
+                        if (infoDiv) {
+                            infoDiv->AddEventListener(Rml::EventId::Click,
+                                                      new MenuButtonListener([this, uuid]() { onWorldSelected(uuid); }),
+                                                      true);
+                        }
+
+                        auto* renameBtn = currentDocument_->GetElementById("rename_" + uuid);
+                        if (renameBtn) {
+                            renameBtn->AddEventListener(Rml::EventId::Click, new MenuButtonListener([this, uuid]() {
+                                                            deletingWorldUUID_.clear();
+                                                            renamingWorldUUID_ = uuid;
+                                                            showWorldList();
+                                                        }),
+                                                        true);
+                        }
+
+                        auto* folderBtn = currentDocument_->GetElementById("folder_" + uuid);
+                        if (folderBtn) {
+                            folderBtn->AddEventListener(
+                                Rml::EventId::Click,
+                                new MenuButtonListener([this, uuid]() { onOpenFolderClicked(uuid); }), true);
+                        }
+
+                        auto* deleteBtn = currentDocument_->GetElementById("delete_" + uuid);
+                        if (deleteBtn) {
+                            deleteBtn->AddEventListener(Rml::EventId::Click, new MenuButtonListener([this, uuid]() {
+                                                            renamingWorldUUID_.clear();
+                                                            deletingWorldUUID_ = uuid;
+                                                            showWorldList();
+                                                        }),
+                                                        true);
+                        }
+                    }
                 }
             }
         }

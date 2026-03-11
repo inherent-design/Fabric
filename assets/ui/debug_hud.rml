@@ -1,5 +1,6 @@
 <rml>
 <head>
+    <link type="text/rcss" href="shared.rcss" />
     <link type="text/rcss" href="debug_hud.rcss" />
 </head>
 <body data-model="debug_hud">

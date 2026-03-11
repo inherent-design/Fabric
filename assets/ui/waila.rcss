@@ -1,27 +1,12 @@
 body {
-    font-family: 'Roboto Mono';
+    font-family: "Commit Mono";
     font-size: 13dp;
     color: #e0e0e0;
-    /* Full viewport container for flexbox positioning */
     width: 100%;
     height: 100%;
-    display: flex;
-    flex-direction: column;
+    pointer-events: none;
 }
 
-/* Full-screen overlay container for positioning UI elements */
-#ui-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    pointer-events: none;  /* Let clicks pass through to game */
-}
-
-/* Top-center container for WAILA */
 #ui-top-center {
     position: fixed;
     top: 8dp;
@@ -30,13 +15,6 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    pointer-events: none;
-}
-
-body {
-    font-family: 'Roboto Mono';
-    font-size: 13dp;
-    color: #e0e0e0;
     pointer-events: none;
 }
 

@@ -156,6 +156,8 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
 
     // World List screen state
     std::string selectedWorldUUID_;
+    std::string renamingWorldUUID_;
+    std::string deletingWorldUUID_;
 };
 
 } // namespace recurse::systems

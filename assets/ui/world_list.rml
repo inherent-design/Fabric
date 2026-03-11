@@ -1,5 +1,6 @@
 <rml>
 <head>
+    <link type="text/rcss" href="shared.rcss" />
     <link type="text/rcss" href="main_menu.rcss" />
 </head>
 <body>

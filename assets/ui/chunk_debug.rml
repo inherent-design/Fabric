@@ -1,5 +1,6 @@
 <rml>
 <head>
+    <link type="text/rcss" href="shared.rcss" />
     <link type="text/rcss" href="chunk_debug.rcss" />
 </head>
 <body data-model="chunk_debug">

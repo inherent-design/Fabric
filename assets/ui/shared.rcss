@@ -1,0 +1,40 @@
+.icon {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-style: normal;
+    display: inline;
+}
+
+.label {
+    color: #888888;
+    display: inline;
+}
+
+.value {
+    color: #ffffff;
+    display: inline;
+}
+
+.value.highlight {
+    color: #66ff66;
+}
+
+.row {
+    display: block;
+    margin-bottom: 3dp;
+}
+
+.section {
+    margin-bottom: 8dp;
+}
+
+.section-title {
+    color: #aaaaaa;
+    font-size: 12dp;
+    margin-top: 0dp;
+    margin-bottom: 4dp;
+    border-bottom: 1dp #ffffff22;
+    padding-bottom: 3dp;
+    text-transform: uppercase;
+    letter-spacing: 1dp;
+}

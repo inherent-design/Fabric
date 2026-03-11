@@ -176,6 +176,18 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/SimulationThreadPool.cc
     src/fabric/world/ChunkDirtyTracker.cc
     src/fabric/platform/JobScheduler.cc
+    # ui/font -- HarfBuzz font engine
+    src/fabric/ui/font/FontEngineInterfaceHarfBuzz.cc
+    src/fabric/ui/font/FontFace.cc
+    src/fabric/ui/font/FontFaceHandleHarfBuzz.cc
+    src/fabric/ui/font/FontFaceLayer.cc
+    src/fabric/ui/font/FontFamily.cc
+    src/fabric/ui/font/FontProvider.cc
+    src/fabric/ui/font/FreeTypeInterface.cc
+    src/fabric/ui/font/TextureLayout.cc
+    src/fabric/ui/font/TextureLayoutRectangle.cc
+    src/fabric/ui/font/TextureLayoutRow.cc
+    src/fabric/ui/font/TextureLayoutTexture.cc
 )
 
 #------------------------------------------------------------------------------
@@ -364,6 +376,8 @@ target_include_directories(FabricLib
         ${bgfx_SOURCE_DIR}/bimg/3rdparty/stb
         ${bgfx_SOURCE_DIR}/bgfx/examples/common
         ${bgfx_SOURCE_DIR}/bgfx/examples/common/debugdraw
+        ${RmlUi_SOURCE_DIR}/Source/Core
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/fabric/ui/font
 )
 
 target_link_libraries(FabricLib
@@ -393,6 +407,8 @@ target_link_libraries(FabricLib
         enkiTS
         libzstd_static
         lz4_static
+        harfbuzz
+        Freetype::Freetype
 )
 
 target_compile_definitions(FabricLib

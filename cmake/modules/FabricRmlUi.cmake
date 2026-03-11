@@ -34,6 +34,32 @@ if(NOT FREETYPE_FOUND)
 endif()
 
 #------------------------------------------------------------------------------
+# HarfBuzz (text shaping, used by custom RmlUi font engine)
+# Must come AFTER FreeType: HarfBuzz auto-detects the `freetype` CMake target.
+#------------------------------------------------------------------------------
+CPMAddPackage(
+    NAME harfbuzz
+    GITHUB_REPOSITORY harfbuzz/harfbuzz
+    GIT_TAG 10.2.0
+    OPTIONS
+        "HB_HAVE_FREETYPE ON"
+        "HB_BUILD_SUBSET OFF"
+        "HB_HAVE_CORETEXT OFF"
+        "HB_HAVE_GLIB OFF"
+        "HB_HAVE_GOBJECT OFF"
+        "HB_HAVE_ICU OFF"
+        "HB_HAVE_CAIRO OFF"
+        "HB_HAVE_GRAPHITE2 OFF"
+        "HB_HAVE_UNISCRIBE OFF"
+        "HB_HAVE_GDI OFF"
+        "HB_HAVE_DIRECTWRITE OFF"
+        "HB_HAVE_INTROSPECTION OFF"
+        "HB_BUILD_UTILS OFF"
+    SYSTEM
+    EXCLUDE_FROM_ALL
+)
+
+#------------------------------------------------------------------------------
 # RmlUi
 #------------------------------------------------------------------------------
 

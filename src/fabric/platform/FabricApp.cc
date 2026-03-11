@@ -20,6 +20,7 @@
 #include "fabric/render/SceneView.hh"
 #include "fabric/ui/BgfxRenderInterface.hh"
 #include "fabric/ui/BgfxSystemInterface.hh"
+#include "fabric/ui/font/FontEngineInterfaceHarfBuzz.hh"
 #include "fabric/utils/Profiler.hh"
 
 #include <RmlUi/Core.h>
@@ -98,6 +99,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
     Rml::Context* rmlContext = nullptr;
     BgfxSystemInterface rmlSystem;
     BgfxRenderInterface rmlRenderer;
+    std::unique_ptr<ui::font::FontEngineInterfaceHarfBuzz> fontEngine;
 
     if (!desc.headless) {
         if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
@@ -152,6 +154,11 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
 
         Rml::SetSystemInterface(&rmlSystem);
         Rml::SetRenderInterface(&rmlRenderer);
+
+        fontEngine = std::make_unique<ui::font::FontEngineInterfaceHarfBuzz>();
+        Rml::SetFontEngineInterface(fontEngine.get());
+        fontEngine->RegisterLanguage("en", "Latn", ui::font::TextFlowDirection::LeftToRight);
+
         Rml::Initialise();
 
         rmlContext = Rml::CreateContext("main", Rml::Vector2i(pw, ph));
@@ -166,9 +173,10 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
             FABRIC_LOG_INFO("RmlUi DPI scale: {:.2f} (window {}x{}, pixels {}x{})", dpiScale, winW, winH, pw, ph);
         }
 
-        if (!Rml::LoadFontFace("assets/fonts/robotomono-regular.ttf", true)) {
-            FABRIC_LOG_WARN("Failed to load RmlUi font: assets/fonts/robotomono-regular.ttf");
-        }
+        Rml::LoadFontFace("assets/fonts/cormorant-garamond-regular.ttf", false, Rml::Style::FontWeight(400));
+        Rml::LoadFontFace("assets/fonts/commit-mono-regular.ttf", true, Rml::Style::FontWeight(400));
+        Rml::LoadFontFace("assets/fonts/commit-mono-bold.ttf", false, Rml::Style::FontWeight(700));
+        Rml::LoadFontFace("assets/fonts/fa-solid-900.ttf", false, Rml::Style::FontWeight(900));
 
         async::init();
     }

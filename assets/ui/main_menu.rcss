@@ -2,7 +2,7 @@ body {
     width: 100%;
     height: 100%;
     background-color: #2a2a3e;
-    font-family: "Roboto Mono";
+    font-family: "Commit Mono";
 }
 
 #main_menu {
@@ -27,6 +27,7 @@ body {
 }
 
 .title {
+    font-family: "Cormorant Garamond";
     font-size: 48dp;
     color: #ffffff;
     margin-bottom: 8dp;
@@ -156,7 +157,7 @@ input[type="text"] {
     border-color: #555555;
     color: #ffffff;
     font-size: 15dp;
-    font-family: "Roboto Mono";
+    font-family: "Commit Mono";
 }
 
 input[type="text"]:focus {
@@ -205,10 +206,95 @@ input[type="text"]:focus {
 /* ── World list (Saved Worlds screen) ──────────────────────── */
 
 .list_container {
-    width: 300dp;
+    width: 420dp;
     max-height: 320dp;
     overflow-y: auto;
     margin-bottom: 24dp;
     display: flex;
     flex-direction: column;
+}
+
+.world_item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    height: 54dp;
+    padding: 0dp 12dp;
+    margin-bottom: 4dp;
+    background-color: #333333;
+    border: 1dp #444444;
+}
+
+.world_item:hover {
+    background-color: #3a3a4a;
+    border-color: #666666;
+}
+
+.world_info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.world_name {
+    color: #ffffff;
+    font-size: 14dp;
+}
+
+.world_meta {
+    color: #666666;
+    font-size: 11dp;
+}
+
+.world_meta.delete_confirm {
+    color: #ff6666;
+}
+
+.world_actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6dp;
+    visibility: hidden;
+}
+
+.world_item:hover .world_actions {
+    visibility: visible;
+}
+
+.action_btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28dp;
+    height: 28dp;
+    background-color: transparent;
+    border: 0dp;
+    color: #888888;
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 14dp;
+    pointer-events: auto;
+}
+
+.action_btn:hover {
+    color: #ffffff;
+    background-color: #555555;
+}
+
+.action_btn.danger:hover {
+    color: #ff6666;
+    background-color: #442222;
+}
+
+.rename_input {
+    flex: 1;
+    height: 32dp;
+    padding: 0dp 8dp;
+    background-color: #1a1a2a;
+    border: 1dp #8888cc;
+    color: #ffffff;
+    font-size: 14dp;
+    font-family: "Commit Mono";
 }
