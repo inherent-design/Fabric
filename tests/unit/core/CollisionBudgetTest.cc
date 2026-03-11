@@ -102,7 +102,7 @@ TEST_F(CollisionBudgetTest, BudgetCapsProcessedChunksPerFrame) {
     for (int i = 0; i < N; ++i)
         physics.insertDirtyChunk(coords[i][0], coords[i][1], coords[i][2]);
 
-    physics.setPlayerPosition(0.0f, 0.0f, 0.0f);
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
 
@@ -117,7 +117,7 @@ TEST_F(CollisionBudgetTest, BudgetCapsProcessedChunksPerFrame) {
 }
 
 TEST_F(CollisionBudgetTest, NearestChunksProcessedFirst) {
-    physics.setPlayerPosition(5.0f * 32.0f + 16.0f, 16.0f, 5.0f * 32.0f + 16.0f);
+    physics.setFocalPoints({{5.0f * 32.0f + 16.0f, 16.0f, 5.0f * 32.0f + 16.0f, K_COLLISION_RADIUS}});
 
     int nearCoords[][3] = {{5, 0, 5}, {4, 0, 5}, {6, 0, 5}};
     int farCoords[][3] = {{0, 0, 0}, {10, 0, 10}, {9, 0, 9}, {1, 0, 1}};
@@ -147,7 +147,7 @@ TEST_F(CollisionBudgetTest, NonActiveChunksFiltered) {
     physics.insertDirtyChunk(0, 0, 0);
     physics.insertDirtyChunk(1, 0, 0);
 
-    physics.setPlayerPosition(0.0f, 0.0f, 0.0f);
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
 
@@ -170,7 +170,7 @@ TEST_F(CollisionBudgetTest, OverflowPersistsAcrossFrames) {
     for (int i = 0; i < N; ++i)
         physics.insertDirtyChunk(coords[i][0], coords[i][1], coords[i][2]);
 
-    physics.setPlayerPosition(0.0f, 0.0f, 0.0f);
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
     auto ctx = makeCtx();
 
     physics.fixedUpdate(ctx, 1.0f / 60.0f);

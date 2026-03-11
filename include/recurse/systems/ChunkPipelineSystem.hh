@@ -1,12 +1,15 @@
 #pragma once
 
+#include "fabric/core/ECS.hh"
 #include "fabric/core/SystemBase.hh"
 #include "recurse/character/GameConstants.hh"
+#include "recurse/components/StreamSource.hh"
 #include "recurse/world/ChunkStreaming.hh"
 #include <climits>
 #include <flecs.h>
 #include <future>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -87,6 +90,8 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     int lastLodCX_ = INT_MIN;
     int lastLodCY_ = INT_MIN;
     int lastLodCZ_ = INT_MIN;
+
+    std::optional<flecs::query<const fabric::Position, const recurse::StreamSource>> streamSourceQuery_;
 
     void updateLODRing(int centerCX, int centerCY, int centerCZ);
 

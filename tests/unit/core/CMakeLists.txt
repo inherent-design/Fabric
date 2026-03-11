@@ -101,4 +101,7 @@ target_sources(UnitTests
   JobSchedulerTest.cc
   LODGridTest.cc
   CollisionBudgetTest.cc
+  CollisionRadiusTest.cc
+  StreamingMultiPositionTest.cc
+  FocalPointCollectionTest.cc
 )

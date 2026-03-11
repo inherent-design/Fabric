@@ -123,6 +123,22 @@ struct ChunkKeyHash {
     }
 };
 
+/// Chunk-coordinate focal point for multi-entity collision radius checks.
+/// Used by removeCollisionBeyondAll to determine which chunks retain collision bodies.
+struct CollisionCenter {
+    int cx, cy, cz, radius;
+    bool operator==(const CollisionCenter&) const = default;
+    bool operator<(const CollisionCenter& o) const {
+        if (cx != o.cx)
+            return cx < o.cx;
+        if (cy != o.cy)
+            return cy < o.cy;
+        if (cz != o.cz)
+            return cz < o.cz;
+        return radius < o.radius;
+    }
+};
+
 /// Per-tile output from parallel collision shape generation.
 /// Each tile's compound shape is self-contained; registration with Jolt happens
 /// sequentially after all parallel work completes.
@@ -171,7 +187,7 @@ class PhysicsWorld {
 
     void removeChunkCollision(int cx, int cy, int cz);
     void clearChunkBodies();
-    int removeCollisionBeyondRadius(int pcx, int pcy, int pcz, int radius);
+    int removeCollisionBeyondAll(const std::vector<CollisionCenter>& centers);
     bool hasChunkCollision(int cx, int cy, int cz) const;
     uint32_t chunkCollisionShapeCount(int cx, int cy, int cz) const;
 

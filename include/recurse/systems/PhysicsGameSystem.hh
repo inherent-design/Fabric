@@ -3,9 +3,11 @@
 #include "fabric/core/SystemBase.hh"
 #include "recurse/physics/PhysicsWorld.hh"
 #include "recurse/physics/Ragdoll.hh"
+#include "recurse/world/ChunkStreaming.hh"
 
 #include <climits>
 #include <unordered_set>
+#include <vector>
 
 namespace fabric {
 class JobScheduler;
@@ -46,7 +48,7 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
     /// to prevent rebuilding collision for a chunk whose simulation data is gone.
     void removeDirtyChunk(int cx, int cy, int cz);
 
-    void setPlayerPosition(float x, float y, float z);
+    void setFocalPoints(const std::vector<recurse::FocalPoint>& points);
 
     const std::unordered_set<recurse::ChunkKey, recurse::ChunkKeyHash>& dirtyChunks() const {
         return dirtyCollisionChunks_;
@@ -63,8 +65,8 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
     PhysicsWorld physicsWorld_;
     Ragdoll ragdoll_;
     std::unordered_set<recurse::ChunkKey, recurse::ChunkKeyHash> dirtyCollisionChunks_;
-    float playerX_ = 0.0f, playerY_ = 0.0f, playerZ_ = 0.0f;
-    int lastCollisionCX_ = INT_MIN, lastCollisionCY_ = INT_MIN, lastCollisionCZ_ = INT_MIN;
+    std::vector<recurse::FocalPoint> focalPoints_;
+    std::vector<recurse::CollisionCenter> lastFocalChunkCoords_;
 };
 
 } // namespace recurse::systems

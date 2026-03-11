@@ -50,9 +50,13 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
 
     lodRadius_ = ctx.configManager.get<int>("lod.radius", 24);
     lodGenBudget_ = ctx.configManager.get<int>("lod.gen_budget", 4);
+
+    streamSourceQuery_ = ctx.world.get().query_builder<const fabric::Position, const recurse::StreamSource>().build();
 }
 
 void ChunkPipelineSystem::doShutdown() {
+    streamSourceQuery_.reset();
+
     // Drain pending async loads before destroying grid data.
     // Background threads hold raw pointers into write buffers.
     for (auto& pl : pendingLoads_)
@@ -75,7 +79,22 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
     // Complete async loads from previous frames before processing new work
     pollPendingLoads(ctx);
 
-    auto streamUpdate = streaming_->update(lastPlayerX_, lastPlayerY_, lastPlayerZ_);
+    // Collect focal points from StreamSource entities
+    std::vector<FocalPoint> streamingFocals;
+    std::vector<FocalPoint> collisionFocals;
+    if (streamSourceQuery_) {
+        streamSourceQuery_->each([&](const fabric::Position& pos, const StreamSource& src) {
+            if (src.streamRadius > 0)
+                streamingFocals.push_back({pos.x, pos.y, pos.z, src.streamRadius});
+            if (src.collisionRadius > 0)
+                collisionFocals.push_back({pos.x, pos.y, pos.z, src.collisionRadius});
+        });
+    }
+
+    if (streamingFocals.empty())
+        streamingFocals.push_back({lastPlayerX_, lastPlayerY_, lastPlayerZ_, streaming_->config().baseRadius});
+
+    auto streamUpdate = streaming_->update(streamingFocals);
 
     loadsThisFrame_ = static_cast<int>(streamUpdate.toLoad.size());
     unloadsThisFrame_ = static_cast<int>(streamUpdate.toUnload.size());
@@ -160,8 +179,11 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
         lastPlayerZ_ = pos.z;
     }
 
-    if (physics_)
-        physics_->setPlayerPosition(lastPlayerX_, lastPlayerY_, lastPlayerZ_);
+    if (physics_) {
+        if (collisionFocals.empty())
+            collisionFocals.push_back({lastPlayerX_, lastPlayerY_, lastPlayerZ_, K_COLLISION_RADIUS});
+        physics_->setFocalPoints(collisionFocals);
+    }
 
     int chunkRadius = streaming_ ? streaming_->currentRadius() : 0;
     if (lodRadius_ > chunkRadius) {
