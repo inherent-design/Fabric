@@ -128,7 +128,7 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_CXX_FLAGS": "-fsanitize=thread",
+                "CMAKE_CXX_FLAGS": "-fsanitize=thread -fsanitize-ignorelist=${sourceDir}/cmake/tsan_ignorelist.txt",
                 "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=thread",
                 "FABRIC_BUILD_TESTS": "ON",
                 "FABRIC_USE_MIMALLOC": "OFF"

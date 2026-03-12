@@ -109,7 +109,6 @@ TEST_F(WorldRegistryTest, OpenChunkStoreCreatesSubdirs) {
 
     auto worldDir = reg.worldPath(meta.uuid);
     EXPECT_TRUE(fs::is_directory(worldDir + "/chunks/gen"));
-    EXPECT_TRUE(fs::is_directory(worldDir + "/chunks/delta"));
 }
 
 TEST_F(WorldRegistryTest, TouchWorldUpdatesLastPlayed) {

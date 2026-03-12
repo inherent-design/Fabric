@@ -17,9 +17,6 @@ namespace recurse {
 ///
 /// Timing: 1.3s debounce (wait for edits to stop), 5s max delay
 /// (force save if editing continuously).
-///
-/// Compaction: after saving a delta, compact if delta size exceeds
-/// threshold (default: same as gen data size).
 class ChunkSaveService {
   public:
     /// Callback to retrieve current chunk data as FCHK-encoded blob.

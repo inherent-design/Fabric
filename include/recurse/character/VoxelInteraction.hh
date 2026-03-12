@@ -2,21 +2,58 @@
 
 #include "fabric/core/Event.hh"
 #include "fabric/render/Rendering.hh"
+#include "recurse/persistence/ChangeSource.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/VoxelRaycast.hh"
+
+#include <cstring>
+#include <vector>
 
 namespace recurse {
 
 // Event name for voxel data changes (formerly in ChunkMeshManager.hh)
 inline constexpr const char* K_VOXEL_CHANGED_EVENT = "voxel_changed";
 
-// Emit a voxel-changed event for the given chunk coordinates.
+/// Per-voxel change detail attached to K_VOXEL_CHANGED_EVENT via setAnyData.
+/// Chunk-level events (physics, generation) omit this; only per-voxel events
+/// (player place/destroy) carry it.
+struct VoxelChangeDetail {
+    int vx, vy, vz;
+    uint32_t oldCell;
+    uint32_t newCell;
+    int32_t playerId;
+    ChangeSource source;
+};
+
+/// Emit a chunk-level voxel-changed event (no per-voxel detail).
 inline void emitVoxelChanged(fabric::EventDispatcher& dispatcher, int cx, int cy, int cz) {
     fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelInteraction");
     e.setData("cx", cx);
     e.setData("cy", cy);
     e.setData("cz", cz);
+    dispatcher.dispatchEvent(e);
+}
+
+/// Emit a voxel-changed event with a single per-voxel change detail.
+inline void emitVoxelChanged(fabric::EventDispatcher& dispatcher, int cx, int cy, int cz,
+                             const VoxelChangeDetail& detail) {
+    fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelInteraction");
+    e.setData("cx", cx);
+    e.setData("cy", cy);
+    e.setData("cz", cz);
+    e.setAnyData("detail", std::vector<VoxelChangeDetail>{detail});
+    dispatcher.dispatchEvent(e);
+}
+
+/// Emit a voxel-changed event with multiple per-voxel details (batch).
+inline void emitVoxelChanged(fabric::EventDispatcher& dispatcher, int cx, int cy, int cz,
+                             std::vector<VoxelChangeDetail> details) {
+    fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelInteraction");
+    e.setData("cx", cx);
+    e.setData("cy", cy);
+    e.setData("cz", cz);
+    e.setAnyData("detail", std::move(details));
     dispatcher.dispatchEvent(e);
 }
 

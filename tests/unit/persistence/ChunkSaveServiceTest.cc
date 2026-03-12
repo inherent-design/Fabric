@@ -1,6 +1,7 @@
 #include "recurse/persistence/ChunkSaveService.hh"
 
 #include "fabric/platform/JobScheduler.hh"
+#include "recurse/persistence/FchkCodec.hh"
 #include "recurse/persistence/FilesystemChunkStore.hh"
 #include <filesystem>
 #include <gtest/gtest.h>
@@ -28,7 +29,7 @@ class ChunkSaveServiceTest : public ::testing::Test {
         constexpr size_t payloadSize = 32 * 32 * 32 * 4;
         std::vector<uint8_t> cells(payloadSize, 0);
         cells[0] = marker;
-        return recurse::FilesystemChunkStore::encode(cells.data(), cells.size());
+        return recurse::FchkCodec::encode(cells.data(), cells.size());
     }
 };
 
@@ -50,8 +51,8 @@ TEST_F(ChunkSaveServiceTest, FlushSavesAllDirtyChunks) {
     svc.flush();
 
     EXPECT_EQ(svc.pendingCount(), 0u);
-    EXPECT_TRUE(store_->hasGenData(0, 0, 0));
-    EXPECT_TRUE(store_->hasGenData(1, 2, 3));
+    EXPECT_TRUE(store_->hasChunk(0, 0, 0));
+    EXPECT_TRUE(store_->hasChunk(1, 2, 3));
 }
 
 TEST_F(ChunkSaveServiceTest, DebounceDelaysSave) {
@@ -61,13 +62,11 @@ TEST_F(ChunkSaveServiceTest, DebounceDelaysSave) {
 
     svc.markDirty(0, 0, 0);
 
-    // Not enough time elapsed; should not save
     svc.update(0.5f);
-    EXPECT_FALSE(store_->hasGenData(0, 0, 0));
+    EXPECT_FALSE(store_->hasChunk(0, 0, 0));
 
-    // Debounce expired
     svc.update(0.6f);
-    EXPECT_TRUE(store_->hasGenData(0, 0, 0));
+    EXPECT_TRUE(store_->hasChunk(0, 0, 0));
 }
 
 TEST_F(ChunkSaveServiceTest, MaxDelayForcesSave) {
@@ -77,33 +76,26 @@ TEST_F(ChunkSaveServiceTest, MaxDelayForcesSave) {
 
     svc.markDirty(0, 0, 0);
 
-    // Keep resetting debounce by marking dirty
     svc.update(1.0f);
-    svc.markDirty(0, 0, 0); // resets lastDirtyAge
+    svc.markDirty(0, 0, 0);
     svc.update(1.0f);
-    svc.markDirty(0, 0, 0); // resets lastDirtyAge again
-    EXPECT_FALSE(store_->hasGenData(0, 0, 0));
+    svc.markDirty(0, 0, 0);
+    EXPECT_FALSE(store_->hasChunk(0, 0, 0));
 
-    // Max delay should force save after 3s total
     svc.update(1.1f);
-    EXPECT_TRUE(store_->hasGenData(0, 0, 0));
+    EXPECT_TRUE(store_->hasChunk(0, 0, 0));
 }
 
-TEST_F(ChunkSaveServiceTest, SecondSaveWritesDelta) {
+TEST_F(ChunkSaveServiceTest, SecondSaveOverwrites) {
     recurse::ChunkSaveService svc(*store_, *jobs_, [&](int, int, int) { return makeFakeBlob(); });
 
-    // First save: gen data
     svc.markDirty(0, 0, 0);
     svc.flush();
-    EXPECT_TRUE(store_->hasGenData(0, 0, 0));
-    EXPECT_FALSE(store_->hasDelta(0, 0, 0));
+    EXPECT_TRUE(store_->hasChunk(0, 0, 0));
 
-    // Second save: delta
     svc.markDirty(0, 0, 0);
     svc.flush();
-    // After compaction (delta >= gen), delta is merged back into gen
-    // So we should have gen data and no delta (compaction fired)
-    EXPECT_TRUE(store_->hasGenData(0, 0, 0));
+    EXPECT_TRUE(store_->hasChunk(0, 0, 0));
 }
 
 TEST_F(ChunkSaveServiceTest, NegativeCoordinates) {
@@ -111,15 +103,13 @@ TEST_F(ChunkSaveServiceTest, NegativeCoordinates) {
 
     svc.markDirty(-3, -7, 5);
     svc.flush();
-    EXPECT_TRUE(store_->hasGenData(-3, -7, 5));
+    EXPECT_TRUE(store_->hasChunk(-3, -7, 5));
 }
 
 TEST_F(ChunkSaveServiceTest, EmptyBlobSkipsSave) {
-    recurse::ChunkSaveService svc(*store_, *jobs_, [&](int, int, int) {
-        return recurse::ChunkBlob{}; // empty
-    });
+    recurse::ChunkSaveService svc(*store_, *jobs_, [&](int, int, int) { return recurse::ChunkBlob{}; });
 
     svc.markDirty(0, 0, 0);
     svc.flush();
-    EXPECT_FALSE(store_->hasGenData(0, 0, 0));
+    EXPECT_FALSE(store_->hasChunk(0, 0, 0));
 }

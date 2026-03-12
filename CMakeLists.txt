@@ -10,7 +10,7 @@ endif()
 project(fabric
     VERSION 0.1.0
     DESCRIPTION "Fabric Engine"
-    LANGUAGES CXX
+    LANGUAGES C CXX
 )
 
 # Add cmake modules path
@@ -123,6 +123,9 @@ include(FabricZstd)
 
 # LZ4 - fast compression for hot-path chunk I/O
 include(FabricLZ4)
+
+# SQLite - embedded database for world persistence
+include(FabricSQLite)
 
 # SDL3 - cross-platform windowing and input
 include(FabricSDL3)
@@ -240,9 +243,15 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/render/VoxelRenderer.cc
     # persistence/
     src/recurse/persistence/WorldMetadata.cc
+    src/recurse/persistence/FchkCodec.cc
     src/recurse/persistence/FilesystemChunkStore.cc
+    src/recurse/persistence/SqliteChunkStore.cc
+    src/recurse/persistence/SqliteTransactionStore.cc
     src/recurse/persistence/WorldRegistry.cc
     src/recurse/persistence/ChunkSaveService.cc
+    src/recurse/persistence/SnapshotScheduler.cc
+    src/recurse/persistence/PruningScheduler.cc
+    src/recurse/persistence/RollbackExecutor.cc
     src/recurse/persistence/SaveManager.cc
     src/recurse/persistence/DataLoader.cc
     src/recurse/persistence/SceneSerializer.cc
@@ -407,6 +416,7 @@ target_link_libraries(FabricLib
         enkiTS
         libzstd_static
         lz4_static
+        sqlite3
         harfbuzz
         Freetype::Freetype
 )

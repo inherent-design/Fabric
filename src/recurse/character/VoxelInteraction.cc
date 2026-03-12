@@ -1,5 +1,7 @@
 #include "recurse/character/VoxelInteraction.hh"
 
+#include <cstring>
+
 using fabric::K_CHUNK_SHIFT;
 
 namespace recurse {
@@ -8,18 +10,33 @@ VoxelInteraction::VoxelInteraction(SimulationGrid& grid, EventDispatcher& dispat
     : grid_(grid), dispatcher_(dispatcher) {}
 
 InteractionResult VoxelInteraction::createMatter(const VoxelHit& hit, MaterialId materialId) {
-    // Place adjacent to hit face via normal
     int x = hit.x + hit.nx;
     int y = hit.y + hit.ny;
     int z = hit.z + hit.nz;
 
-    grid_.writeCellImmediate(x, y, z, VoxelCell{materialId, 0, recurse::simulation::voxel_flags::UPDATED});
+    VoxelCell oldCell = grid_.readCell(x, y, z);
+    VoxelCell newCell{materialId, 0, recurse::simulation::voxel_flags::UPDATED};
+    grid_.writeCellImmediate(x, y, z, newCell);
 
     int cx = x >> K_CHUNK_SHIFT;
     int cy = y >> K_CHUNK_SHIFT;
     int cz = z >> K_CHUNK_SHIFT;
-    emitVoxelChanged(dispatcher_, cx, cy, cz);
 
+    static_assert(sizeof(VoxelCell) == sizeof(uint32_t));
+    uint32_t oldCellU32 = 0, newCellU32 = 0;
+    std::memcpy(&oldCellU32, &oldCell, sizeof(uint32_t));
+    std::memcpy(&newCellU32, &newCell, sizeof(uint32_t));
+
+    VoxelChangeDetail detail{};
+    detail.vx = x & 0x1F;
+    detail.vy = y & 0x1F;
+    detail.vz = z & 0x1F;
+    detail.oldCell = oldCellU32;
+    detail.newCell = newCellU32;
+    detail.playerId = 0;
+    detail.source = ChangeSource::Place;
+
+    emitVoxelChanged(dispatcher_, cx, cy, cz, detail);
     return {true, x, y, z, cx, cy, cz};
 }
 
@@ -28,14 +45,29 @@ InteractionResult VoxelInteraction::destroyMatter(const VoxelHit& hit) {
     int y = hit.y;
     int z = hit.z;
 
-    grid_.writeCellImmediate(
-        x, y, z, VoxelCell{recurse::simulation::material_ids::AIR, 0, recurse::simulation::voxel_flags::UPDATED});
+    VoxelCell oldCell = grid_.readCell(x, y, z);
+    VoxelCell newCell{recurse::simulation::material_ids::AIR, 0, recurse::simulation::voxel_flags::UPDATED};
+    grid_.writeCellImmediate(x, y, z, newCell);
 
     int cx = x >> K_CHUNK_SHIFT;
     int cy = y >> K_CHUNK_SHIFT;
     int cz = z >> K_CHUNK_SHIFT;
-    emitVoxelChanged(dispatcher_, cx, cy, cz);
 
+    static_assert(sizeof(VoxelCell) == sizeof(uint32_t));
+    uint32_t oldCellU32 = 0, newCellU32 = 0;
+    std::memcpy(&oldCellU32, &oldCell, sizeof(uint32_t));
+    std::memcpy(&newCellU32, &newCell, sizeof(uint32_t));
+
+    VoxelChangeDetail detail{};
+    detail.vx = x & 0x1F;
+    detail.vy = y & 0x1F;
+    detail.vz = z & 0x1F;
+    detail.oldCell = oldCellU32;
+    detail.newCell = newCellU32;
+    detail.playerId = 0;
+    detail.source = ChangeSource::Destroy;
+
+    emitVoxelChanged(dispatcher_, cx, cy, cz, detail);
     return {true, x, y, z, cx, cy, cz};
 }
 

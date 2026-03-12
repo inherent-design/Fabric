@@ -116,20 +116,7 @@ void ChunkSaveService::saveChunkSync(int cx, int cy, int cz) {
     if (blob.empty())
         return;
 
-    if (store_.hasGenData(cx, cy, cz)) {
-        // Gen data exists; save as delta (player modification)
-        store_.saveDelta(cx, cy, cz, blob);
-
-        // Compact if delta is at least as large as gen data
-        size_t genSz = store_.genDataSize(cx, cy, cz);
-        size_t deltaSz = store_.deltaSize(cx, cy, cz);
-        if (genSz > 0 && deltaSz >= genSz) {
-            store_.compactChunk(cx, cy, cz);
-        }
-    } else {
-        // First save; write as gen data
-        store_.saveGenData(cx, cy, cz, blob);
-    }
+    store_.saveChunk(cx, cy, cz, blob);
 }
 
 } // namespace recurse

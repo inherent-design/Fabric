@@ -1,0 +1,4 @@
+# SQLite has known benign races in WAL mode. Suppress without weakening
+# Fabric's own TSan coverage.
+# See: https://www.sqlite.org/fts3.html#threading_modes
+src:*sqlite3.c

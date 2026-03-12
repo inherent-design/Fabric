@@ -2,6 +2,8 @@ target_sources(UnitTests
   PRIVATE
   WorldMetadataTest.cc
   FilesystemChunkStoreTest.cc
+  SqliteChunkStoreTest.cc
   WorldRegistryTest.cc
   ChunkSaveServiceTest.cc
+  EditTriggeredSaveTest.cc
 )

@@ -56,6 +56,7 @@ void VoxelSimulationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fix
             e.setData("cx", pos.x);
             e.setData("cy", pos.y);
             e.setData("cz", pos.z);
+            e.setData("source", static_cast<int>(ChangeSource::Physics));
             dispatcher_->dispatchEvent(e);
         }
     }
@@ -107,6 +108,7 @@ void VoxelSimulationSystem::generateInitialWorld() {
         e.setData("cx", cx);
         e.setData("cy", cy);
         e.setData("cz", cz);
+        e.setData("source", static_cast<int>(ChangeSource::Generation));
         dispatcher_->dispatchEvent(e);
     }
 
@@ -163,6 +165,7 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
         e.setData("cx", cx);
         e.setData("cy", cy);
         e.setData("cz", cz);
+        e.setData("source", static_cast<int>(ChangeSource::Generation));
         dispatcher_->dispatchEvent(e);
     }
 
@@ -240,6 +243,7 @@ void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int
             e.setData("cx", cx);
             e.setData("cy", cy);
             e.setData("cz", cz);
+            e.setData("source", static_cast<int>(ChangeSource::Generation));
             dispatcher_->dispatchEvent(e);
         }
     }

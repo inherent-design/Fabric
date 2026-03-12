@@ -1,8 +1,13 @@
 #include "recurse/systems/ChunkPipelineSystem.hh"
 #include "recurse/character/GameConstants.hh"
+#include "recurse/character/VoxelInteraction.hh"
 #include "recurse/persistence/ChunkSaveService.hh"
 #include "recurse/persistence/ChunkStore.hh"
-#include "recurse/persistence/FilesystemChunkStore.hh"
+#include "recurse/persistence/FchkCodec.hh"
+#include "recurse/persistence/PruningScheduler.hh"
+#include "recurse/persistence/SnapshotScheduler.hh"
+#include "recurse/persistence/SqliteChunkStore.hh"
+#include "recurse/persistence/SqliteTransactionStore.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
@@ -23,6 +28,7 @@
 #include "fabric/utils/Profiler.hh"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <tuple>
@@ -52,6 +58,39 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     lodGenBudget_ = ctx.configManager.get<int>("lod.gen_budget", 4);
 
     streamSourceQuery_ = ctx.world.get().query_builder<const fabric::Position, const recurse::StreamSource>().build();
+
+    ctx.dispatcher.addEventListener(K_VOXEL_CHANGED_EVENT, [this](fabric::Event& e) {
+        int cx = e.getData<int>("cx");
+        int cy = e.getData<int>("cy");
+        int cz = e.getData<int>("cz");
+
+        if (saveService_)
+            saveService_->markDirty(cx, cy, cz);
+        if (ownedSnapshotScheduler_)
+            ownedSnapshotScheduler_->markDirty(cx, cy, cz);
+
+        if (transactionStore_ && e.hasAnyData("detail")) {
+            auto details = e.getAnyData<std::vector<VoxelChangeDetail>>("detail");
+            if (!details.empty()) {
+                std::vector<VoxelChange> changes;
+                changes.reserve(details.size());
+                auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                               std::chrono::system_clock::now().time_since_epoch())
+                               .count();
+                for (const auto& d : details) {
+                    VoxelChange vc{};
+                    vc.timestamp = now;
+                    vc.addr = {cx, cy, cz, d.vx, d.vy, d.vz};
+                    vc.oldCell = d.oldCell;
+                    vc.newCell = d.newCell;
+                    vc.playerId = d.playerId;
+                    vc.source = d.source;
+                    changes.push_back(vc);
+                }
+                transactionStore_->logChanges(changes);
+            }
+        }
+    });
 }
 
 void ChunkPipelineSystem::doShutdown() {
@@ -63,8 +102,7 @@ void ChunkPipelineSystem::doShutdown() {
         pl.result.wait();
     pendingLoads_.clear();
 
-    if (saveService_)
-        saveService_->flush();
+    unloadWorld();
 
     for (auto& [_, entity] : chunkEntities_) {
         entity.destruct();
@@ -72,7 +110,7 @@ void ChunkPipelineSystem::doShutdown() {
     chunkEntities_.clear();
 }
 
-void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/) {
+void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     FABRIC_ZONE_SCOPED_N("chunk_pipeline");
     auto& ecsWorld = ctx.world;
 
@@ -184,6 +222,13 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float /*fixedDt*/
             collisionFocals.push_back({lastPlayerX_, lastPlayerY_, lastPlayerZ_, K_COLLISION_RADIUS});
         physics_->setFocalPoints(collisionFocals);
     }
+
+    if (saveService_)
+        saveService_->update(fixedDt);
+    if (ownedSnapshotScheduler_)
+        ownedSnapshotScheduler_->update(fixedDt);
+    if (ownedPruningScheduler_)
+        ownedPruningScheduler_->update(fixedDt);
 
     int chunkRadius = streaming_ ? streaming_->currentRadius() : 0;
     if (lodRadius_ > chunkRadius) {
@@ -307,7 +352,7 @@ bool ChunkPipelineSystem::dispatchAsyncLoad(int cx, int cy, int cz) {
     if (!chunkStore_ || !simSystem_)
         return false;
 
-    if (!chunkStore_->hasGenData(cx, cy, cz))
+    if (!chunkStore_->hasChunk(cx, cy, cz))
         return false;
 
     auto& grid = simSystem_->simulationGrid();
@@ -325,29 +370,16 @@ bool ChunkPipelineSystem::dispatchAsyncLoad(int cx, int cy, int cz) {
     using Result = ChunkPipelineSystem::AsyncLoadResult;
     auto future = simSystem_->scheduler().submit([store, cx, cy, cz, buf]() -> Result {
         Result r;
-        auto genBlob = store->loadGenData(cx, cy, cz);
-        if (!genBlob)
+        auto blob = store->loadChunk(cx, cy, cz);
+        if (!blob)
             return r;
 
-        auto decoded = FilesystemChunkStore::decode(*genBlob);
+        auto decoded = FchkCodec::decode(*blob);
         if (decoded.cells.size() == sizeof(*buf))
             std::memcpy(buf->data(), decoded.cells.data(), decoded.cells.size());
 
         r.paletteData = std::move(decoded.paletteData);
         r.paletteEntryCount = decoded.paletteEntryCount;
-
-        if (store->hasDelta(cx, cy, cz)) {
-            auto deltaBlob = store->loadDelta(cx, cy, cz);
-            if (deltaBlob) {
-                auto dd = FilesystemChunkStore::decode(*deltaBlob);
-                if (dd.cells.size() == sizeof(*buf))
-                    std::memcpy(buf->data(), dd.cells.data(), dd.cells.size());
-                if (dd.paletteEntryCount > 0) {
-                    r.paletteData = std::move(dd.paletteData);
-                    r.paletteEntryCount = dd.paletteEntryCount;
-                }
-            }
-        }
 
         r.success = true;
         return r;
@@ -437,16 +469,55 @@ bool ChunkPipelineSystem::hasPendingLoad(int cx, int cy, int cz) const {
     return false;
 }
 
-void ChunkPipelineSystem::saveChunkToDisk(int cx, int cy, int cz) {
-    if (!saveService_ || !simSystem_)
-        return;
+void ChunkPipelineSystem::loadWorld(const std::string& worldDir, fabric::JobScheduler& scheduler) {
+    unloadWorld();
+
+    ownedStore_ = std::make_unique<SqliteChunkStore>(worldDir);
+
+    auto* sqliteStore = static_cast<SqliteChunkStore*>(ownedStore_.get());
+    ownedTransactionStore_ = std::make_unique<SqliteTransactionStore>(sqliteStore->writerDb(), sqliteStore->readerDb());
+
+    auto provider = [this](int cx, int cy, int cz) -> ChunkBlob {
+        return encodeChunkBlob(cx, cy, cz);
+    };
+    ownedSaveService_ = std::make_unique<ChunkSaveService>(*ownedStore_, scheduler, provider);
+    ownedSnapshotScheduler_ = std::make_unique<SnapshotScheduler>(*ownedTransactionStore_, provider);
+    ownedPruningScheduler_ = std::make_unique<PruningScheduler>(*ownedTransactionStore_);
+
+    chunkStore_ = ownedStore_.get();
+    saveService_ = ownedSaveService_.get();
+    transactionStore_ = ownedTransactionStore_.get();
+
+    FABRIC_LOG_INFO("ChunkPipeline: persistence wired for {}", worldDir);
+}
+
+void ChunkPipelineSystem::unloadWorld() {
+    if (ownedSnapshotScheduler_)
+        ownedSnapshotScheduler_->flush();
+    if (ownedSaveService_)
+        ownedSaveService_->flush();
+    if (ownedTransactionStore_)
+        ownedTransactionStore_->flush();
+
+    ownedSnapshotScheduler_.reset();
+    ownedPruningScheduler_.reset();
+    ownedSaveService_.reset();
+    ownedTransactionStore_.reset();
+    ownedStore_.reset();
+    chunkStore_ = nullptr;
+    saveService_ = nullptr;
+    transactionStore_ = nullptr;
+}
+
+ChunkBlob ChunkPipelineSystem::encodeChunkBlob(int cx, int cy, int cz) {
+    if (!simSystem_)
+        return {};
 
     auto& grid = simSystem_->simulationGrid();
     const auto* buf = grid.readBuffer(cx, cy, cz);
     if (!buf)
-        return;
+        return {};
 
-    // Serialize palette entries to flat float array for FCHK v2
     const float* palettePtr = nullptr;
     uint16_t paletteCount = 0;
     std::vector<float> paletteFloats;
@@ -465,14 +536,18 @@ void ChunkPipelineSystem::saveChunkToDisk(int cx, int cy, int cz) {
         palettePtr = paletteFloats.data();
     }
 
-    auto blob = FilesystemChunkStore::encode(buf->data(), sizeof(*buf), 0, 1, palettePtr, paletteCount);
-    if (chunkStore_) {
-        if (chunkStore_->hasGenData(cx, cy, cz)) {
-            chunkStore_->saveDelta(cx, cy, cz, blob);
-        } else {
-            chunkStore_->saveGenData(cx, cy, cz, blob);
-        }
-    }
+    return FchkCodec::encode(buf->data(), sizeof(*buf), 1, 1, palettePtr, paletteCount);
+}
+
+void ChunkPipelineSystem::saveChunkToDisk(int cx, int cy, int cz) {
+    if (!chunkStore_)
+        return;
+
+    auto blob = encodeChunkBlob(cx, cy, cz);
+    if (blob.empty())
+        return;
+
+    chunkStore_->saveChunk(cx, cy, cz, blob);
 }
 
 } // namespace recurse::systems

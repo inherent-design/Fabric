@@ -31,6 +31,7 @@ class VoxelSimulationSystem;
 class VoxelMeshingSystem;
 class CharacterMovementSystem;
 class PhysicsGameSystem;
+class ChunkPipelineSystem;
 
 /// Splash screen media entry
 struct SplashEntry {
@@ -71,7 +72,8 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     bool isVisible() const { return menuState_ != MenuState::Hidden; }
 
     // Callbacks for game integration
-    using StartGameCallback = std::function<void(recurse::WorldType, int64_t seed)>;
+    using StartGameCallback =
+        std::function<void(recurse::WorldType, int64_t seed, const std::string& uuid, bool isNew)>;
     void setStartGameCallback(StartGameCallback cb) { startGameCallback_ = std::move(cb); }
 
     /// Set the world registry for world management (create, list, delete).
@@ -139,6 +141,7 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     VoxelMeshingSystem* voxelMesh_ = nullptr;
     CharacterMovementSystem* characterMovement_ = nullptr;
     PhysicsGameSystem* physics_ = nullptr;
+    ChunkPipelineSystem* chunkPipeline_ = nullptr;
     fabric::AppModeManager* appModeManager_ = nullptr;
     fabric::SystemRegistry* registry_ = nullptr;
 

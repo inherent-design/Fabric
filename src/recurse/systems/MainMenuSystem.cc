@@ -71,6 +71,7 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
     voxelMesh_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
     characterMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
     physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
+    chunkPipeline_ = ctx.systemRegistry.get<ChunkPipelineSystem>();
     appModeManager_ = ctx.appModeManager;
     registry_ = &ctx.systemRegistry;
     rmlContext_ = ctx.rmlContext;
@@ -85,7 +86,7 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
     initRmlDataModel();
 
     // Set up start game callback
-    startGameCallback_ = [this](WorldType type, int64_t seed) {
+    startGameCallback_ = [this](WorldType type, int64_t seed, const std::string& uuid, bool isNew) {
         if (!terrain_) {
             FABRIC_LOG_ERROR("MainMenuSystem: Cannot start game - no TerrainSystem");
             return;
@@ -102,21 +103,25 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
             FABRIC_LOG_INFO("MainMenu: Using FlatWorldGenerator");
         }
 
-        // Generate the world in VoxelSimulationSystem
-        if (voxelSim_) {
+        // Wire persistence before generation so streaming can save/load chunks
+        if (chunkPipeline_ && worldRegistry_ && !uuid.empty()) {
+            chunkPipeline_->loadWorld(worldRegistry_->worldPath(uuid), voxelSim_->scheduler());
+        }
+
+        // New worlds: generate initial chunks around spawn.
+        // Existing worlds: streaming loads chunks from disk via dispatchAsyncLoad.
+        if (isNew && voxelSim_) {
             voxelSim_->generateInitialWorld();
         }
 
         // Reset player position to spawn point (above generated terrain)
         if (characterMovement_) {
-            // Flat world ground is at y=32, spawn 10 units above
             float spawnY = (type == WorldType::Flat) ? 42.0f : 64.0f;
             characterMovement_->setPlayerPosition(fabric::Vec3f(K_DEFAULT_SPAWN_X, spawnY, K_DEFAULT_SPAWN_Z));
             FABRIC_LOG_INFO("MainMenu: Player position reset to ({}, {}, {})", K_DEFAULT_SPAWN_X, spawnY,
                             K_DEFAULT_SPAWN_Z);
         }
 
-        // World is ready; enable world-dependent systems before entering Game mode.
         setWorldSystemsEnabled(true);
 
         if (appModeManager_) {
@@ -185,6 +190,7 @@ void MainMenuSystem::doShutdown() {
     voxelMesh_ = nullptr;
     characterMovement_ = nullptr;
     physics_ = nullptr;
+    chunkPipeline_ = nullptr;
     appModeManager_ = nullptr;
     registry_ = nullptr;
     FABRIC_LOG_INFO("MainMenuSystem shutdown");
@@ -672,7 +678,12 @@ void MainMenuSystem::onFlatWorldClicked() {
     FABRIC_LOG_INFO("MainMenu: Flat world selected");
     if (startGameCallback_) {
         auto seed = static_cast<int64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
-        startGameCallback_(WorldType::Flat, seed);
+        std::string uuid;
+        if (worldRegistry_) {
+            auto meta = worldRegistry_->createWorld("Quick Play (Flat)", WorldType::Flat, seed);
+            uuid = meta.uuid;
+        }
+        startGameCallback_(WorldType::Flat, seed, uuid, true);
     }
     transitionTo(MenuState::Hidden);
 }
@@ -681,7 +692,12 @@ void MainMenuSystem::onMinecraftWorldClicked() {
     FABRIC_LOG_INFO("MainMenu: Minecraft world selected");
     if (startGameCallback_) {
         auto seed = static_cast<int64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
-        startGameCallback_(WorldType::Natural, seed);
+        std::string uuid;
+        if (worldRegistry_) {
+            auto meta = worldRegistry_->createWorld("Quick Play (Natural)", WorldType::Natural, seed);
+            uuid = meta.uuid;
+        }
+        startGameCallback_(WorldType::Natural, seed, uuid, true);
     }
     transitionTo(MenuState::Hidden);
 }
@@ -738,9 +754,8 @@ void MainMenuSystem::onCreateWorldClicked() {
     FABRIC_LOG_INFO("MainMenu: Created world '{}' (uuid={}, type={}, seed={})", meta.name, meta.uuid,
                     static_cast<int>(meta.type), meta.seed);
 
-    // Start the game with this world type and seed
     if (startGameCallback_) {
-        startGameCallback_(type, meta.seed);
+        startGameCallback_(type, meta.seed, meta.uuid, true);
     }
     transitionTo(MenuState::Hidden);
 }
@@ -798,7 +813,7 @@ void MainMenuSystem::onWorldSelected(const std::string& uuid) {
                     meta->seed);
 
     if (startGameCallback_) {
-        startGameCallback_(meta->type, meta->seed);
+        startGameCallback_(meta->type, meta->seed, uuid, false);
     }
     transitionTo(MenuState::Hidden);
 }
@@ -822,7 +837,11 @@ void MainMenuSystem::onQuitToTitleClicked() {
 }
 
 void MainMenuSystem::resetWorldState() {
-    // Reset all world state before returning to title screen
+    // Flush persistence BEFORE clearing world data. The DataProvider reads from
+    // the simulation grid; grid.clear() would produce empty blobs.
+    if (chunkPipeline_)
+        chunkPipeline_->unloadWorld();
+
     // Order: meshes -> physics -> simulation
     if (voxelMesh_) {
         voxelMesh_->clearAllMeshes();

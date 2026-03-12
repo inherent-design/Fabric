@@ -4,20 +4,25 @@
 #include "fabric/core/SystemBase.hh"
 #include "recurse/character/GameConstants.hh"
 #include "recurse/components/StreamSource.hh"
+#include "recurse/persistence/ChunkSaveService.hh"
+#include "recurse/persistence/ChunkStore.hh"
+#include "recurse/persistence/PruningScheduler.hh"
+#include "recurse/persistence/SnapshotScheduler.hh"
+#include "recurse/persistence/WorldTransactionStore.hh"
 #include "recurse/world/ChunkStreaming.hh"
 #include <climits>
 #include <flecs.h>
 #include <future>
 #include <memory>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
-namespace recurse {
-class ChunkStore;
-class ChunkSaveService;
-} // namespace recurse
+namespace fabric {
+class JobScheduler;
+}
 
 namespace recurse::systems {
 
@@ -61,6 +66,12 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     void setChunkStore(recurse::ChunkStore* store) { chunkStore_ = store; }
     void setChunkSaveService(recurse::ChunkSaveService* svc) { saveService_ = svc; }
 
+    /// Wire persistence for a world directory. Creates owned ChunkStore + ChunkSaveService.
+    void loadWorld(const std::string& worldDir, fabric::JobScheduler& scheduler);
+
+    /// Flush pending saves and tear down persistence. Safe to call when no world is loaded.
+    void unloadWorld();
+
   private:
     LODSystem* lodSystem_ = nullptr;
     TerrainSystem* terrain_ = nullptr;
@@ -79,9 +90,16 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     int loadsThisFrame_ = 0;
     int unloadsThisFrame_ = 0;
 
-    // Optional persistence (null if no world loaded)
+    // Persistence: owned storage created by loadWorld(), torn down by unloadWorld().
+    // Raw pointers alias the owned ptrs (or can be set externally via setChunkStore/setChunkSaveService).
+    std::unique_ptr<recurse::ChunkStore> ownedStore_;
+    std::unique_ptr<recurse::ChunkSaveService> ownedSaveService_;
+    std::unique_ptr<recurse::WorldTransactionStore> ownedTransactionStore_;
+    std::unique_ptr<recurse::SnapshotScheduler> ownedSnapshotScheduler_;
+    std::unique_ptr<recurse::PruningScheduler> ownedPruningScheduler_;
     recurse::ChunkStore* chunkStore_ = nullptr;
     recurse::ChunkSaveService* saveService_ = nullptr;
+    recurse::WorldTransactionStore* transactionStore_ = nullptr;
 
     // LOD ring: chunks outside full-res radius, inside lod_radius
     std::unordered_set<ChunkCoord, ChunkCoordHash> lodChunks_;
@@ -114,6 +132,7 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     bool hasPendingLoad(int cx, int cy, int cz) const;
 
     void saveChunkToDisk(int cx, int cy, int cz);
+    ChunkBlob encodeChunkBlob(int cx, int cy, int cz);
 };
 
 } // namespace recurse::systems
