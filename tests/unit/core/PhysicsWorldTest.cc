@@ -864,7 +864,7 @@ TEST(PhysicsWorldTest, BatchCollisionMatchesSequential) {
     PhysicsWorld batch;
     batch.init();
     fabric::JobScheduler scheduler(2);
-    std::vector<ChunkKey> chunks = {{0, 0, 0}, {1, 0, 0}};
+    std::vector<ChunkCoord> chunks = {{0, 0, 0}, {1, 0, 0}};
     batch.rebuildChunkCollisionBatch(grid, chunks, scheduler);
     uint32_t batchCount0 = batch.chunkCollisionShapeCount(0, 0, 0);
     uint32_t batchCount1 = batch.chunkCollisionShapeCount(1, 0, 0);
@@ -885,7 +885,7 @@ TEST(PhysicsWorldTest, BatchCollisionEmptyChunks) {
     fabric::JobScheduler scheduler;
     scheduler.disableForTesting();
 
-    std::vector<ChunkKey> chunks = {{0, 0, 0}};
+    std::vector<ChunkCoord> chunks = {{0, 0, 0}};
     pw.rebuildChunkCollisionBatch(grid, chunks, scheduler);
     EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 0u);
 
@@ -903,7 +903,7 @@ TEST(PhysicsWorldTest, BatchCollisionReplacesExisting) {
     fabric::JobScheduler scheduler;
     scheduler.disableForTesting();
 
-    std::vector<ChunkKey> chunks = {{0, 0, 0}};
+    std::vector<ChunkCoord> chunks = {{0, 0, 0}};
     pw.rebuildChunkCollisionBatch(grid, chunks, scheduler);
     EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 6u);
 

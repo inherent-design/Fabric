@@ -5,10 +5,6 @@ target_sources(UnitTests
   ErrorHandlingTest.cc
   LoggingTest.cc
   CoordinatedGraphTest.cc
-  BufferPoolTest.cc
-  ImmutableDAGTest.cc
   BVHTest.cc
-  ThreadPoolExecutorTest.cc
-  TimeoutLockTest.cc
   AsyncTest.cc
 )

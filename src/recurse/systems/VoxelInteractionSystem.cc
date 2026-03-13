@@ -60,10 +60,10 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
                 interactionCooldown_ = K_INTERACTION_RATE;
                 if (voxelSim_) {
                     using namespace recurse::simulation;
-                    voxelSim_->activityTracker().notifyBoundaryChange(ChunkPos{r.cx, r.cy, r.cz});
+                    voxelSim_->activityTracker().notifyBoundaryChange(ChunkCoord{r.cx, r.cy, r.cz});
                     for (int i = 0; i < 6; ++i) {
-                        ChunkPos neighbor{r.cx + K_FACE_NEIGHBORS[i][0], r.cy + K_FACE_NEIGHBORS[i][1],
-                                          r.cz + K_FACE_NEIGHBORS[i][2]};
+                        ChunkCoord neighbor{r.cx + K_FACE_NEIGHBORS[i][0], r.cy + K_FACE_NEIGHBORS[i][1],
+                                            r.cz + K_FACE_NEIGHBORS[i][2]};
                         if (voxelSim_->simulationGrid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
                             voxelSim_->activityTracker().notifyBoundaryChange(neighbor);
                         }
@@ -82,10 +82,10 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
                     using namespace recurse::simulation;
                     // Target chunk needs Active (not BoundaryDirty) so
                     // FallingSandSystem processes it before meshing sleeps it.
-                    voxelSim_->activityTracker().setState(ChunkPos{r.cx, r.cy, r.cz}, ChunkState::Active);
+                    voxelSim_->activityTracker().setState(ChunkCoord{r.cx, r.cy, r.cz}, ChunkState::Active);
                     for (int i = 0; i < 6; ++i) {
-                        ChunkPos neighbor{r.cx + K_FACE_NEIGHBORS[i][0], r.cy + K_FACE_NEIGHBORS[i][1],
-                                          r.cz + K_FACE_NEIGHBORS[i][2]};
+                        ChunkCoord neighbor{r.cx + K_FACE_NEIGHBORS[i][0], r.cy + K_FACE_NEIGHBORS[i][1],
+                                            r.cz + K_FACE_NEIGHBORS[i][2]};
                         if (voxelSim_->simulationGrid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
                             voxelSim_->activityTracker().notifyBoundaryChange(neighbor);
                         }

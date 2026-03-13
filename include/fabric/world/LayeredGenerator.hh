@@ -14,7 +14,7 @@ struct LayerDef {
 class LayeredGenerator : public GeneratorInterface {
   public:
     explicit LayeredGenerator(std::vector<LayerDef> layers);
-    void generate(SimulationGrid& grid, ChunkPos pos) override;
+    void generate(SimulationGrid& grid, ChunkCoord pos) override;
     std::string name() const override { return "Layered"; }
 
   private:

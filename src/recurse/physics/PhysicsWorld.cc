@@ -314,7 +314,7 @@ void PhysicsWorld::removeBody(BodyHandle handle) {
         userBodies_.erase(it);
 }
 
-void PhysicsWorld::registerChunkBodies(const ChunkKey& key, std::vector<TileShapeResult>& tiles,
+void PhysicsWorld::registerChunkBodies(const ChunkCoord& key, std::vector<TileShapeResult>& tiles,
                                        std::vector<JPH::BodyID>& outNewBodies) {
     if (tiles.empty())
         return;
@@ -386,7 +386,7 @@ void PhysicsWorld::rebuildChunkCollision(const recurse::simulation::SimulationGr
 }
 
 void PhysicsWorld::rebuildChunkCollisionBatch(const recurse::simulation::SimulationGrid& grid,
-                                              const std::vector<ChunkKey>& chunks, fabric::JobScheduler& scheduler) {
+                                              const std::vector<ChunkCoord>& chunks, fabric::JobScheduler& scheduler) {
     FABRIC_ZONE_SCOPED_N("collision_batch");
     if (!initialized_ || chunks.empty())
         return;
@@ -408,8 +408,7 @@ void PhysicsWorld::rebuildChunkCollisionBatch(const recurse::simulation::Simulat
             auto isSolid = [&grid](int wx, int wy, int wz) {
                 return grid.readCell(wx, wy, wz).materialId != recurse::simulation::material_ids::AIR;
             };
-            results[jobIdx] =
-                buildChunkShapesImpl(key.cx, key.cy, key.cz, faceShapes_, isSolid, *workerAllocs[workerIdx]);
+            results[jobIdx] = buildChunkShapesImpl(key.x, key.y, key.z, faceShapes_, isSolid, *workerAllocs[workerIdx]);
         });
     }
 
@@ -418,7 +417,7 @@ void PhysicsWorld::rebuildChunkCollisionBatch(const recurse::simulation::Simulat
     {
         FABRIC_ZONE_SCOPED_N("collision_register");
         for (size_t i = 0; i < chunks.size(); ++i) {
-            removeChunkCollision(chunks[i].cx, chunks[i].cy, chunks[i].cz);
+            removeChunkCollision(chunks[i].x, chunks[i].y, chunks[i].z);
             registerChunkBodies(chunks[i], results[i], allNewBodies);
         }
     }
@@ -435,7 +434,7 @@ void PhysicsWorld::removeChunkCollision(int cx, int cy, int cz) {
     if (!initialized_)
         return;
 
-    ChunkKey key{cx, cy, cz};
+    ChunkCoord key{cx, cy, cz};
     auto it = chunkBodies_.find(key);
     if (it == chunkBodies_.end())
         return;
@@ -474,9 +473,9 @@ int PhysicsWorld::removeCollisionBeyondAll(const std::vector<CollisionCenter>& c
     while (it != chunkBodies_.end()) {
         bool withinAny = false;
         for (const auto& c : centers) {
-            int dx = it->first.cx - c.cx;
-            int dy = it->first.cy - c.cy;
-            int dz = it->first.cz - c.cz;
+            int dx = it->first.x - c.cx;
+            int dy = it->first.y - c.cy;
+            int dz = it->first.z - c.cz;
             if (dx * dx + dy * dy + dz * dz <= c.radius * c.radius) {
                 withinAny = true;
                 break;
@@ -497,14 +496,14 @@ int PhysicsWorld::removeCollisionBeyondAll(const std::vector<CollisionCenter>& c
 }
 
 bool PhysicsWorld::hasChunkCollision(int cx, int cy, int cz) const {
-    return chunkBodies_.contains(ChunkKey{cx, cy, cz});
+    return chunkBodies_.contains(ChunkCoord{cx, cy, cz});
 }
 
 uint32_t PhysicsWorld::chunkCollisionShapeCount(int cx, int cy, int cz) const {
     if (!initialized_)
         return 0;
 
-    ChunkKey key{cx, cy, cz};
+    ChunkCoord key{cx, cy, cz};
     auto it = chunkBodies_.find(key);
     if (it == chunkBodies_.end())
         return 0;

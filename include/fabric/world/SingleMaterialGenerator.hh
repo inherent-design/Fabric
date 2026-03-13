@@ -7,7 +7,7 @@ namespace fabric::world {
 class SingleMaterialGenerator : public GeneratorInterface {
   public:
     explicit SingleMaterialGenerator(recurse::simulation::VoxelCell cell);
-    void generate(SimulationGrid& grid, ChunkPos pos) override;
+    void generate(SimulationGrid& grid, ChunkCoord pos) override;
     std::string name() const override { return "SingleMaterial"; }
 
   private:

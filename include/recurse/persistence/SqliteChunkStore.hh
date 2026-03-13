@@ -2,6 +2,7 @@
 
 #include "recurse/persistence/ChunkStore.hh"
 #include <memory>
+#include <mutex>
 #include <string>
 
 // Forward-declare sqlite3 types to avoid exposing sqlite3.h in the header.
@@ -61,10 +62,15 @@ class SqliteChunkStore : public ChunkStore {
     sqlite3* writerDb_ = nullptr;
     sqlite3* readerDb_ = nullptr;
 
-    // Writer prepared statements
+    // Serializes concurrent reader access (async loads from worker threads +
+    // hasChunk from main thread). Hold time <1ms per read; contention bounded
+    // by ChunkPipelineSystem's async load budget.
+    mutable std::mutex readerMutex_;
+
+    // Writer prepared statements (single-thread access via ChunkSaveService batch dispatch)
     sqlite3_stmt* stmtSave_ = nullptr;
 
-    // Reader prepared statements
+    // Reader prepared statements (guarded by readerMutex_)
     sqlite3_stmt* stmtHas_ = nullptr;
     sqlite3_stmt* stmtLoad_ = nullptr;
     sqlite3_stmt* stmtSize_ = nullptr;

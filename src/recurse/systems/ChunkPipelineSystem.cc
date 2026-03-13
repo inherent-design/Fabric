@@ -36,7 +36,9 @@
 
 namespace recurse::systems {
 
-ChunkPipelineSystem::~ChunkPipelineSystem() = default;
+ChunkPipelineSystem::~ChunkPipelineSystem() {
+    unloadWorld();
+}
 
 void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     lodSystem_ = ctx.systemRegistry.get<LODSystem>();
@@ -49,8 +51,8 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     // Chunk streaming — stress test: push render distance
     StreamingConfig streamConfig;
     streamConfig.baseRadius = ctx.configManager.get<int>("terrain.chunk_radius", 8);
-    streamConfig.maxLoadsPerTick = 4;
-    streamConfig.maxUnloadsPerTick = 8;
+    streamConfig.maxLoadsPerTick = 64;
+    streamConfig.maxUnloadsPerTick = 32;
     streamConfig.maxTrackedChunks = 4096;
     streaming_ = std::make_unique<ChunkStreamingManager>(streamConfig);
 
@@ -95,19 +97,7 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
 
 void ChunkPipelineSystem::doShutdown() {
     streamSourceQuery_.reset();
-
-    // Drain pending async loads before destroying grid data.
-    // Background threads hold raw pointers into write buffers.
-    for (auto& pl : pendingLoads_)
-        pl.result.wait();
-    pendingLoads_.clear();
-
     unloadWorld();
-
-    for (auto& [_, entity] : chunkEntities_) {
-        entity.destruct();
-    }
-    chunkEntities_.clear();
 }
 
 void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
@@ -137,29 +127,54 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     loadsThisFrame_ = static_cast<int>(streamUpdate.toLoad.size());
     unloadsThisFrame_ = static_cast<int>(streamUpdate.toUnload.size());
 
-    // Triage new chunks: already-ready, async-loadable, or needs-generation
+    // Triage new chunks: already-ready, async-loadable, or needs-generation.
+    // Budget caps prevent frame stalls when loading worlds with many saved chunks.
+    // Chunks beyond the async budget are untracked so the streaming manager retries them.
+    constexpr int K_MAX_ASYNC_DISPATCHES_PER_FRAME = 32;
+    int asyncDispatched = 0;
+
     std::vector<ChunkCoord> readyChunks;
     std::vector<std::tuple<int, int, int>> toGenerate;
-    for (const auto& coord : streamUpdate.toLoad) {
+    size_t triageEnd = streamUpdate.toLoad.size();
+    for (size_t i = 0; i < streamUpdate.toLoad.size(); ++i) {
+        const auto& coord = streamUpdate.toLoad[i];
+
         if (chunkEntities_.find(coord) != chunkEntities_.end())
             continue;
 
-        if (simSystem_ && simSystem_->simulationGrid().hasChunk(coord.cx, coord.cy, coord.cz)) {
-            // Already in grid (e.g. generateInitialWorld). Only finalize if Active;
-            // Generating chunks are being loaded asynchronously.
-            auto* slot = simSystem_->simulationGrid().registry().find(coord.cx, coord.cy, coord.cz);
+        if (simSystem_ && simSystem_->simulationGrid().hasChunk(coord.x, coord.y, coord.z)) {
+            auto* slot = simSystem_->simulationGrid().registry().find(coord.x, coord.y, coord.z);
             if (slot && slot->state == recurse::simulation::ChunkSlotState::Active)
                 readyChunks.push_back(coord);
             continue;
         }
 
-        if (hasPendingLoad(coord.cx, coord.cy, coord.cz))
+        if (hasPendingLoad(coord.x, coord.y, coord.z))
             continue;
 
-        if (dispatchAsyncLoad(coord.cx, coord.cy, coord.cz))
-            continue;
+        if (asyncDispatched < K_MAX_ASYNC_DISPATCHES_PER_FRAME) {
+            if (dispatchAsyncLoad(coord.x, coord.y, coord.z)) {
+                ++asyncDispatched;
+                continue;
+            }
+            // Not in DB; fall through to generation
+            toGenerate.emplace_back(coord.x, coord.y, coord.z);
+        } else {
+            // Async budget exhausted; untrack remaining so they retry next frame
+            triageEnd = i;
+            break;
+        }
+    }
 
-        toGenerate.emplace_back(coord.cx, coord.cy, coord.cz);
+    if (streaming_) {
+        size_t deferred = streamUpdate.toLoad.size() - triageEnd;
+        for (size_t i = triageEnd; i < streamUpdate.toLoad.size(); ++i)
+            streaming_->untrack(streamUpdate.toLoad[i]);
+        if (deferred > 0 || asyncDispatched > 0 || !toGenerate.empty()) {
+            FABRIC_LOG_DEBUG("triage: load={} async={} gen={} ready={} deferred={} unload={}",
+                             streamUpdate.toLoad.size(), asyncDispatched, toGenerate.size(), readyChunks.size(),
+                             deferred, streamUpdate.toUnload.size());
+        }
     }
 
     if (!toGenerate.empty() && simSystem_)
@@ -172,12 +187,12 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     // Create ECS entities for chunks ready this frame
     for (const auto& coord : readyChunks) {
         if (lodSystem_)
-            lodSystem_->onChunkReady(coord.cx, coord.cy, coord.cz);
+            lodSystem_->onChunkReady(coord.x, coord.y, coord.z);
 
         auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
-            {static_cast<float>(coord.cx * K_CHUNK_SIZE), static_cast<float>(coord.cy * K_CHUNK_SIZE),
-             static_cast<float>(coord.cz * K_CHUNK_SIZE), static_cast<float>((coord.cx + 1) * K_CHUNK_SIZE),
-             static_cast<float>((coord.cy + 1) * K_CHUNK_SIZE), static_cast<float>((coord.cz + 1) * K_CHUNK_SIZE)});
+            {static_cast<float>(coord.x * K_CHUNK_SIZE), static_cast<float>(coord.y * K_CHUNK_SIZE),
+             static_cast<float>(coord.z * K_CHUNK_SIZE), static_cast<float>((coord.x + 1) * K_CHUNK_SIZE),
+             static_cast<float>((coord.y + 1) * K_CHUNK_SIZE), static_cast<float>((coord.z + 1) * K_CHUNK_SIZE)});
         chunkEntities_[coord] = ent;
     }
 
@@ -185,23 +200,29 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     for (const auto& coord : streamUpdate.toUnload) {
         // If async load in progress, cancel it. The background thread still holds
         // a pointer to the write buffer, so defer registry removal to pollPendingLoads.
-        if (cancelPendingLoad(coord.cx, coord.cy, coord.cz))
+        if (cancelPendingLoad(coord.x, coord.y, coord.z))
             continue;
 
-        saveChunkToDisk(coord.cx, coord.cy, coord.cz);
+        if (saveService_) {
+            auto blob = encodeChunkBlob(coord.x, coord.y, coord.z);
+            if (!blob.empty())
+                saveService_->enqueuePrepared(coord.x, coord.y, coord.z, std::move(blob));
+        } else {
+            saveChunkToDisk(coord.x, coord.y, coord.z);
+        }
 
         if (meshingSystem_)
-            meshingSystem_->removeChunkMesh(fabric::ChunkCoord{coord.cx, coord.cy, coord.cz});
+            meshingSystem_->removeChunkMesh(coord);
 
         if (lodSystem_)
-            lodSystem_->onChunkRemoved(coord.cx, coord.cy, coord.cz);
+            lodSystem_->onChunkRemoved(coord.x, coord.y, coord.z);
 
         if (simSystem_)
-            simSystem_->removeChunk(coord.cx, coord.cy, coord.cz);
+            simSystem_->removeChunk(coord.x, coord.y, coord.z);
 
         if (physics_) {
-            physics_->removeDirtyChunk(coord.cx, coord.cy, coord.cz);
-            physics_->physicsWorld().removeChunkCollision(coord.cx, coord.cy, coord.cz);
+            physics_->removeDirtyChunk(coord.x, coord.y, coord.z);
+            physics_->physicsWorld().removeChunkCollision(coord.x, coord.y, coord.z);
         }
 
         if (auto it = chunkEntities_.find(coord); it != chunkEntities_.end()) {
@@ -260,9 +281,9 @@ void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ
                 ChunkCoord c{centerCX + dx, centerCY + dy, centerCZ + dz};
 
                 if (terrain_) {
-                    int surfaceMax = terrain_->worldGenerator().maxSurfaceHeight(c.cx, c.cz);
-                    int chunkBottomY = c.cy * K_CHUNK_SIZE;
-                    int chunkTopY = (c.cy + 1) * K_CHUNK_SIZE;
+                    int surfaceMax = terrain_->worldGenerator().maxSurfaceHeight(c.x, c.z);
+                    int chunkBottomY = c.y * K_CHUNK_SIZE;
+                    int chunkTopY = (c.y + 1) * K_CHUNK_SIZE;
                     if (chunkBottomY > surfaceMax || chunkTopY < surfaceMax - K_CHUNK_SIZE)
                         continue;
                 }
@@ -281,9 +302,9 @@ void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ
 
     // Sort by distance (nearest first)
     auto distSq = [&](const ChunkCoord& c) {
-        int ddx = c.cx - centerCX;
-        int ddy = c.cy - centerCY;
-        int ddz = c.cz - centerCZ;
+        int ddx = c.x - centerCX;
+        int ddy = c.y - centerCY;
+        int ddz = c.z - centerCZ;
         return ddx * ddx + ddy * ddy + ddz * ddz;
     };
     std::sort(toLoad.begin(), toLoad.end(),
@@ -294,7 +315,7 @@ void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ
     for (int i = 0; i < loadCount; ++i) {
         const auto& c = toLoad[static_cast<size_t>(i)];
         if (lodSystem_)
-            lodSystem_->requestDirectLOD(c.cx, c.cy, c.cz);
+            lodSystem_->requestDirectLOD(c.x, c.y, c.z);
         lodChunks_.insert(c);
     }
 
@@ -306,9 +327,9 @@ void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ
 
     std::vector<ChunkCoord> toUnload;
     for (const auto& c : lodChunks_) {
-        int ddx = c.cx - centerCX;
-        int ddy = c.cy - centerCY;
-        int ddz = c.cz - centerCZ;
+        int ddx = c.x - centerCX;
+        int ddy = c.y - centerCY;
+        int ddz = c.z - centerCZ;
         bool insideFullRes =
             std::abs(ddx) <= chunkRadius && std::abs(ddy) <= chunkRadius && std::abs(ddz) <= chunkRadius;
         bool beyondUnload =
@@ -318,17 +339,17 @@ void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ
     }
     for (const auto& c : toUnload) {
         if (lodSystem_) {
-            int ddx = c.cx - centerCX;
-            int ddy = c.cy - centerCY;
-            int ddz = c.cz - centerCZ;
+            int ddx = c.x - centerCX;
+            int ddy = c.y - centerCY;
+            int ddz = c.z - centerCZ;
             bool insideFullRes =
                 std::abs(ddx) <= chunkRadius && std::abs(ddy) <= chunkRadius && std::abs(ddz) <= chunkRadius;
             if (insideFullRes) {
                 // Chunk entered full-res ring; keep section data for LOD cascade
-                lodSystem_->onChunkRemoved(c.cx, c.cy, c.cz);
+                lodSystem_->onChunkRemoved(c.x, c.y, c.z);
             } else {
                 // Chunk left LOD ring entirely; free GPU + grid data
-                lodSystem_->removeSectionFully(c.cx, c.cy, c.cz);
+                lodSystem_->removeSectionFully(c.x, c.y, c.z);
             }
         }
         lodChunks_.erase(c);
@@ -390,6 +411,9 @@ bool ChunkPipelineSystem::dispatchAsyncLoad(int cx, int cy, int cz) {
 }
 
 void ChunkPipelineSystem::pollPendingLoads(fabric::AppContext& ctx) {
+    constexpr int K_MAX_LOAD_COMPLETIONS_PER_FRAME = 16;
+    int completed = 0;
+
     auto it = pendingLoads_.begin();
     while (it != pendingLoads_.end()) {
         if (it->result.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
@@ -413,7 +437,7 @@ void ChunkPipelineSystem::pollPendingLoads(fabric::AppContext& ctx) {
             auto& grid = simSystem_->simulationGrid();
             grid.syncChunkBuffers(cx, cy, cz);
             grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
-            simSystem_->activityTracker().setState(recurse::simulation::ChunkPos{cx, cy, cz},
+            simSystem_->activityTracker().setState(fabric::ChunkCoord{cx, cy, cz},
                                                    recurse::simulation::ChunkState::Active);
 
             // Reconstruct palette from decoded FCHK data
@@ -448,6 +472,8 @@ void ChunkPipelineSystem::pollPendingLoads(fabric::AppContext& ctx) {
         }
 
         it = pendingLoads_.erase(it);
+        if (++completed >= K_MAX_LOAD_COMPLETIONS_PER_FRAME)
+            break;
     }
 }
 
@@ -492,6 +518,14 @@ void ChunkPipelineSystem::loadWorld(const std::string& worldDir, fabric::JobSche
 }
 
 void ChunkPipelineSystem::unloadWorld() {
+    // Drain pending async loads first. Background futures hold raw pointers
+    // to the store and write buffers; destroying those before the futures
+    // complete is use-after-free.
+    for (auto& pl : pendingLoads_)
+        pl.result.wait();
+    pendingLoads_.clear();
+
+    // Flush persistence while grid data is still valid.
     if (ownedSnapshotScheduler_)
         ownedSnapshotScheduler_->flush();
     if (ownedSaveService_)
@@ -507,6 +541,21 @@ void ChunkPipelineSystem::unloadWorld() {
     chunkStore_ = nullptr;
     saveService_ = nullptr;
     transactionStore_ = nullptr;
+
+    // Destroy stale ECS entities so re-entry doesn't skip already-tracked coords.
+    for (auto& [_, entity] : chunkEntities_)
+        entity.destruct();
+    chunkEntities_.clear();
+
+    // Reset streaming so the manager re-discovers chunks on next update().
+    if (streaming_)
+        streaming_->clear();
+
+    // Reset LOD ring state.
+    lodChunks_.clear();
+    lastLodCX_ = INT_MIN;
+    lastLodCY_ = INT_MIN;
+    lastLodCZ_ = INT_MIN;
 }
 
 ChunkBlob ChunkPipelineSystem::encodeChunkBlob(int cx, int cy, int cz) {

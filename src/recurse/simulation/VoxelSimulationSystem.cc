@@ -42,7 +42,7 @@ void VoxelSimulationSystem::tick() {
     // Phase 2: Sync ghost cells for all active chunks
     {
         FABRIC_ZONE_SCOPED_N("phase_2_ghost_sync");
-        std::vector<ChunkPos> positions;
+        std::vector<ChunkCoord> positions;
         positions.reserve(active.size());
         for (const auto& entry : active)
             positions.push_back(entry.pos);
@@ -67,7 +67,7 @@ void VoxelSimulationSystem::tick() {
     // Phase 3: Simulate chunks via scheduler (parallel or inline)
     size_t workerSlots = scheduler_.workerCount() + 1;
     std::vector<BoundaryWriteQueue> boundaryQueues(workerSlots);
-    std::vector<std::vector<ChunkPos>> settledPerWorker(workerSlots);
+    std::vector<std::vector<ChunkCoord>> settledPerWorker(workerSlots);
     {
         FABRIC_ZONE_SCOPED_N("phase_3_simulate");
         scheduler_.parallelFor(active.size(), [&](size_t jobIdx, size_t workerIdx) {
@@ -112,12 +112,12 @@ void VoxelSimulationSystem::propagateDirty(const std::vector<ActiveChunkEntry>& 
         // If chunk is still active (had movement), notify all 6 face-neighbors
         if (tracker_.getState(entry.pos) == ChunkState::Active) {
             const auto& p = entry.pos;
-            tracker_.notifyBoundaryChange(ChunkPos{p.x + 1, p.y, p.z});
-            tracker_.notifyBoundaryChange(ChunkPos{p.x - 1, p.y, p.z});
-            tracker_.notifyBoundaryChange(ChunkPos{p.x, p.y + 1, p.z});
-            tracker_.notifyBoundaryChange(ChunkPos{p.x, p.y - 1, p.z});
-            tracker_.notifyBoundaryChange(ChunkPos{p.x, p.y, p.z + 1});
-            tracker_.notifyBoundaryChange(ChunkPos{p.x, p.y, p.z - 1});
+            tracker_.notifyBoundaryChange(ChunkCoord{p.x + 1, p.y, p.z});
+            tracker_.notifyBoundaryChange(ChunkCoord{p.x - 1, p.y, p.z});
+            tracker_.notifyBoundaryChange(ChunkCoord{p.x, p.y + 1, p.z});
+            tracker_.notifyBoundaryChange(ChunkCoord{p.x, p.y - 1, p.z});
+            tracker_.notifyBoundaryChange(ChunkCoord{p.x, p.y, p.z + 1});
+            tracker_.notifyBoundaryChange(ChunkCoord{p.x, p.y, p.z - 1});
         }
     }
 }
@@ -156,7 +156,7 @@ const ChunkActivityTracker& VoxelSimulationSystem::activityTracker() const {
 uint64_t VoxelSimulationSystem::frameIndex() const {
     return frameIndex_;
 }
-const std::vector<ChunkPos>& VoxelSimulationSystem::settledChunks() const {
+const std::vector<ChunkCoord>& VoxelSimulationSystem::settledChunks() const {
     return settledChunks_;
 }
 fabric::JobScheduler& VoxelSimulationSystem::scheduler() {

@@ -100,7 +100,7 @@ TEST_F(WorldRegistryTest, RenameWorldUpdatesToml) {
     EXPECT_EQ(found->name, "NewName");
 }
 
-TEST_F(WorldRegistryTest, OpenChunkStoreCreatesSubdirs) {
+TEST_F(WorldRegistryTest, OpenChunkStoreCreatesDatabase) {
     recurse::WorldRegistry reg(worldsDir_);
     auto meta = reg.createWorld("ChunkTest", recurse::WorldType::Natural, 7);
 
@@ -108,7 +108,7 @@ TEST_F(WorldRegistryTest, OpenChunkStoreCreatesSubdirs) {
     ASSERT_NE(store, nullptr);
 
     auto worldDir = reg.worldPath(meta.uuid);
-    EXPECT_TRUE(fs::is_directory(worldDir + "/chunks/gen"));
+    EXPECT_TRUE(fs::exists(worldDir + "/world.db"));
 }
 
 TEST_F(WorldRegistryTest, TouchWorldUpdatesLastPlayed) {

@@ -15,21 +15,21 @@ TEST_F(ChunkActivityTrackerTest, DefaultStateSleeping) {
 
 // 2. Active round-trip
 TEST_F(ChunkActivityTrackerTest, SetStateActiveAndQuery) {
-    ChunkPos pos{1, 2, 3};
+    ChunkCoord pos{1, 2, 3};
     tracker.setState(pos, ChunkState::Active);
     EXPECT_EQ(tracker.getState(pos), ChunkState::Active);
 }
 
 // 3. notifyBoundaryChange: Sleeping -> BoundaryDirty
 TEST_F(ChunkActivityTrackerTest, SleepingToBoundaryDirty) {
-    ChunkPos pos{0, 0, 0};
+    ChunkCoord pos{0, 0, 0};
     tracker.notifyBoundaryChange(pos);
     EXPECT_EQ(tracker.getState(pos), ChunkState::BoundaryDirty);
 }
 
 // 4. Active becomes BoundaryDirty on notify (so it re-meshes)
 TEST_F(ChunkActivityTrackerTest, ActiveRemainsOnNotify) {
-    ChunkPos pos{0, 0, 0};
+    ChunkCoord pos{0, 0, 0};
     tracker.setState(pos, ChunkState::Active);
     tracker.notifyBoundaryChange(pos);
     EXPECT_EQ(tracker.getState(pos), ChunkState::BoundaryDirty);
@@ -37,7 +37,7 @@ TEST_F(ChunkActivityTrackerTest, ActiveRemainsOnNotify) {
 
 // 5. resolve(false) -> Sleeping
 TEST_F(ChunkActivityTrackerTest, BoundaryDirtyResolveToSleeping) {
-    ChunkPos pos{0, 0, 0};
+    ChunkCoord pos{0, 0, 0};
     tracker.setState(pos, ChunkState::BoundaryDirty);
     tracker.resolveBoundaryDirty(pos, false);
     EXPECT_EQ(tracker.getState(pos), ChunkState::Sleeping);
@@ -45,7 +45,7 @@ TEST_F(ChunkActivityTrackerTest, BoundaryDirtyResolveToSleeping) {
 
 // 6. resolve(true) -> Active
 TEST_F(ChunkActivityTrackerTest, BoundaryDirtyResolveToActive) {
-    ChunkPos pos{0, 0, 0};
+    ChunkCoord pos{0, 0, 0};
     tracker.setState(pos, ChunkState::BoundaryDirty);
     tracker.resolveBoundaryDirty(pos, true);
     EXPECT_EQ(tracker.getState(pos), ChunkState::Active);
@@ -53,7 +53,7 @@ TEST_F(ChunkActivityTrackerTest, BoundaryDirtyResolveToActive) {
 
 // 7. (0,0,0) = bit 0; (31,31,31) = bit 63
 TEST_F(ChunkActivityTrackerTest, SubRegionBitmaskCornerBits) {
-    ChunkPos pos{0, 0, 0};
+    ChunkCoord pos{0, 0, 0};
 
     tracker.markSubRegionActive(pos, 0, 0, 0);
     uint64_t mask = tracker.getSubRegionMask(pos);
@@ -68,7 +68,7 @@ TEST_F(ChunkActivityTrackerTest, SubRegionBitmaskCornerBits) {
 
 // 8. Two distant voxels = 2 bits
 TEST_F(ChunkActivityTrackerTest, SubRegionBitmaskMultipleBits) {
-    ChunkPos pos{0, 0, 0};
+    ChunkCoord pos{0, 0, 0};
     tracker.markSubRegionActive(pos, 0, 0, 0);    // bit 0
     tracker.markSubRegionActive(pos, 31, 31, 31); // bit 63
     uint64_t mask = tracker.getSubRegionMask(pos);
@@ -111,7 +111,7 @@ TEST_F(ChunkActivityTrackerTest, BudgetCapLimits) {
 
 // 11. Sleeping + mask = 0
 TEST_F(ChunkActivityTrackerTest, PutToSleepClearsMask) {
-    ChunkPos pos{0, 0, 0};
+    ChunkCoord pos{0, 0, 0};
     tracker.setState(pos, ChunkState::Active);
     tracker.markSubRegionActive(pos, 4, 4, 4);
     EXPECT_NE(tracker.getSubRegionMask(pos), 0u);

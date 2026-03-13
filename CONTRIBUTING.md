@@ -150,6 +150,65 @@ CMakePresets.json               # 13 configure presets (1 hidden base, 12 visibl
 mise.toml                       # Task runner and tool management
 ```
 
+## Design Principles
+
+### Operations as values
+
+State mutations are expressed as data structures, not direct function calls. Instead of calling a method on a resource from inside a worker thread closure, submit an operation struct to an executor that owns the resource.
+
+```cpp
+// Instead of this (side effect in closure, raw pointer capture):
+scheduler.submit([store, cx, cy, cz]() {
+    store->loadChunk(cx, cy, cz);  // store might be destroyed
+});
+
+// Do this (operation is data, executor owns lifetime):
+pipeline.submit(LoadChunk{cx, cy, cz});
+// Executor resolves the operation; owns the store.
+```
+
+This makes operations inspectable, batchable, cancellable, and replayable. Lifetime management is centralized in the executor, not distributed across closures.
+
+### Compile-time correctness
+
+Use C++20 features to push validation to compile time:
+
+- **Concepts** for constraining template parameters at API boundaries
+- **`constexpr`/`consteval`** for compile-time computation and validation
+- **Phantom types** for encoding state in the type system (a `ChunkRef<Active>` exposes different methods than `ChunkRef<Loading>`)
+- **`requires` clauses** as precondition documentation that the compiler enforces
+
+```cpp
+// State encoded in the type; invalid usage is a compile error
+auto active = executor.resolve(Activate{coord});
+const auto& buf = active.readBuffer();   // OK: Active chunks are readable
+// loading.readBuffer();                 // COMPILE ERROR: Loading chunks are not
+```
+
+Use runtime checks only for inherently dynamic state (I/O results, user input, network).
+
+### RAII session boundaries
+
+Group related resources into a session object whose destructor guarantees complete cleanup. This prevents the class of bugs where teardown forgets to clean up some state.
+
+```cpp
+// WorldSession owns: store, save service, ECS entities, pending loads, streaming state
+// Destroying the session drains futures, flushes persistence, clears everything.
+std::unique_ptr<WorldSession> session_;
+void loadWorld(...) { session_ = std::make_unique<WorldSession>(...); }
+void unloadWorld() { session_.reset(); }  // complete by construction
+```
+
+### Error composition
+
+Operations that can fail declare their error types. Composed operations merge error channels automatically. Do not create ad-hoc `FooResult` structs; use the shared `Result<T>` type (and `TypedResult<A, Es...>` once available).
+
+### Engine/game separation
+
+`fabric::` is the engine; `recurse::` is the game. The dependency is strictly one-way: game code depends on engine code, never reverse. Engine code must not reference game-specific types, constants, or assumptions.
+
+When adding engine features, ask: "Would a second game on Fabric need this?" If yes, it belongs in `fabric::`. If no, it belongs in `recurse::`.
+
 ## Code Style
 
 ### Files

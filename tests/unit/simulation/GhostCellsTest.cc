@@ -37,8 +37,8 @@ class GhostCellsTest : public ::testing::Test {
 
 // 1. Ghost[+X][0][0] copies neighbor's local (0,0,0)
 TEST_F(GhostCellsTest, SyncCopiesNeighborBoundary) {
-    ChunkPos origin{0, 0, 0};
-    ChunkPos neighbor{1, 0, 0}; // +X neighbor
+    ChunkCoord origin{0, 0, 0};
+    ChunkCoord neighbor{1, 0, 0}; // +X neighbor
 
     grid.fillChunk(0, 0, 0, VoxelCell{});
     grid.fillChunk(1, 0, 0, VoxelCell{});
@@ -56,7 +56,7 @@ TEST_F(GhostCellsTest, SyncCopiesNeighborBoundary) {
 
 // 2. Ghost reads from read buffer, not write buffer
 TEST_F(GhostCellsTest, GhostReflectsReadBuffer) {
-    ChunkPos origin{0, 0, 0};
+    ChunkCoord origin{0, 0, 0};
 
     grid.fillChunk(0, 0, 0, VoxelCell{});
     grid.fillChunk(1, 0, 0, VoxelCell{});
@@ -77,7 +77,7 @@ TEST_F(GhostCellsTest, GhostReflectsReadBuffer) {
 
 // 3. Missing neighbor returns Air
 TEST_F(GhostCellsTest, MissingNeighborReturnsAir) {
-    ChunkPos origin{0, 0, 0};
+    ChunkCoord origin{0, 0, 0};
     grid.fillChunk(0, 0, 0, VoxelCell{});
     // No +X neighbor loaded
 
@@ -89,7 +89,7 @@ TEST_F(GhostCellsTest, MissingNeighborReturnsAir) {
 
 // 4. All 6 faces copy correct neighbor slices
 TEST_F(GhostCellsTest, AllSixFacesCorrect) {
-    ChunkPos origin{0, 0, 0};
+    ChunkCoord origin{0, 0, 0};
 
     // Fill all 7 chunks
     grid.fillChunk(0, 0, 0, VoxelCell{});
@@ -147,7 +147,7 @@ TEST_F(GhostCellsTest, AllSixFacesCorrect) {
 
 // 5. Resync after modification picks up new values
 TEST_F(GhostCellsTest, ResyncUpdatesValues) {
-    ChunkPos origin{0, 0, 0};
+    ChunkCoord origin{0, 0, 0};
 
     grid.fillChunk(0, 0, 0, VoxelCell{});
     grid.fillChunk(1, 0, 0, VoxelCell{});
@@ -178,7 +178,7 @@ TEST_F(GhostCellsTest, GhostCellCount) {
 
 // 7. readGhost maps out-of-bounds correctly
 TEST_F(GhostCellsTest, ReadGhostMapsOutOfBounds) {
-    ChunkPos origin{0, 0, 0};
+    ChunkCoord origin{0, 0, 0};
 
     grid.fillChunk(0, 0, 0, VoxelCell{});
     grid.fillChunk(-1, 0, 0, VoxelCell{});
@@ -203,8 +203,8 @@ TEST_F(GhostCellsTest, ReadGhostMapsOutOfBounds) {
 
 // 8. Negative chunk coordinates work correctly
 TEST_F(GhostCellsTest, NegativeChunkCoordinates) {
-    ChunkPos origin{-1, -1, -1};
-    ChunkPos neighborPosX{0, -1, -1};
+    ChunkCoord origin{-1, -1, -1};
+    ChunkCoord neighborPosX{0, -1, -1};
 
     grid.fillChunk(-1, -1, -1, VoxelCell{});
     grid.fillChunk(0, -1, -1, VoxelCell{});

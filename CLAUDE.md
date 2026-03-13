@@ -190,6 +190,8 @@ CLI: `--log.level=debug`, `--log.render=trace`, `--log.include=physics`.
 - `Result<T>` template for error-code returns without exceptions: `Result<T>::ok(val)`, `Result<T>::error(code, msg)`, `.isOk()`, `.value()`, `.valueOr(default)`
 - `Result<void>` specialization for operations with no return value
 
+**Direction:** The existing `Result<T>` will be superseded by `TypedResult<A, Es...>` (see Programming Model below). New code should still use `Result<T>` until the migration; do not introduce new ad-hoc `FooResult` structs. If an operation can fail in multiple distinct ways, document the error modes in comments and plan for typed error channels.
+
 ## Async
 
 The `fabric::async` namespace (`fabric/core/Async.hh`) provides a cooperative async subsystem built on standalone Asio with C++20 coroutines:
@@ -457,6 +459,117 @@ perf(meshing): parallel chunk meshing via JobScheduler
 - No em-dashes, en-dashes, or double-hyphens in prose
 - No emojis, no superlatives, no flattery, no preamble
 - Technical reference tone; precision over poetry
+
+## Programming model
+
+Fabric is migrating toward an effect-like programming model. The target architecture has three pillars: ops-as-values, phantom type-state, and centralized execution. These are not yet implemented; this section describes the direction so new code aligns with it and avoids introducing patterns that conflict.
+
+Reference: `~/.atlas/integrator/reports/fabric/effect-cpp-proposal-2026-03-02.md`
+
+### Ops-as-values
+
+State mutations are expressed as data, not direct function calls. Instead of calling `store->loadChunk(cx, cy, cz)` inside a lambda on a worker thread, submit a `LoadChunk{cx, cy, cz}` value to an executor. The executor owns the resource, controls lifetime, and resolves operations in batch.
+
+```cpp
+// Target pattern: operation is a struct, not a side effect
+struct LoadChunk {
+    ChunkCoord coord;
+    using RequiresState = Unknown;
+    using Returns = ChunkRef<Loading>;
+    using Errors = TypeList<IOError, NotFound>;
+};
+
+// Executor resolves the operation; owns the store lifetime
+auto result = ctx.resolve(LoadChunk{coord});
+```
+
+Benefits: operations are inspectable (debug/logging), batchable (one transaction for N ops), cancellable (drop from queue), reorderable (priority sort), replayable (deterministic testing). Lifetime management is centralized in the executor, not distributed across N closures capturing raw pointers.
+
+Reads also go through the executor for model uniformity, but are resolved synchronously (no queue overhead):
+
+```cpp
+// Reads: synchronous resolution, zero-copy
+auto buf = ctx.resolve(ReadBuffer{coord});
+// Returns Result<const VoxelBuffer*, NotFound>
+```
+
+### Phantom type-state
+
+Chunk lifecycle states are encoded in the type system at API boundaries. Internal storage is type-erased (variant or enum). The type constrains what callers can do with a handle.
+
+```cpp
+// ChunkRef<Active> exposes readBuffer(), palette()
+// ChunkRef<Loading> exposes progress()
+// Compile error if you call readBuffer() on a Loading chunk
+
+// State transitions return the new type
+auto active = ctx.resolve(Activate{coord});
+// active : Result<ChunkRef<Active>, ActivateError>
+```
+
+Operations carry their state requirements as type parameters. The executor validates that the current runtime state matches the required state before resolution.
+
+### Centralized execution
+
+Every interaction with world state (reads and mutations) goes through a context/executor. This provides a single enforcement point for:
+
+- Lifetime safety (executor owns resources; callers never hold raw pointers to stores)
+- Concurrency contracts (executor decides what runs on which thread)
+- State validation (executor checks preconditions before resolving ops)
+- Observability (executor logs all operations for debugging)
+
+The executor resolves reads synchronously (direct return, no allocation) and mutations asynchronously (queued, batched, deferred). The operation is always a value; the resolution strategy is an implementation detail.
+
+### TypedResult
+
+`TypedResult<A, Es...>` replaces ad-hoc result/error patterns. `A` is the success type; `Es...` are the possible error types (tagged, `std::variant`-backed). Operations compose via `flatMap`, which merges error channels at compile time.
+
+```cpp
+auto r = ctx.resolve(LoadChunk{coord})
+    .flatMap([](auto ref) { return decode(ref); })
+    .flatMap([](auto data) { return decompress(data); });
+// r : TypedResult<VoxelData, IOError, NotFound, DecodeError, ZstdError>
+```
+
+`Never` sentinel indicates infallible operations. Error channel merging is automatic and deduplicated at the type level.
+
+### RAII session boundaries
+
+Per-world state is owned by a session object whose destructor guarantees complete cleanup. `WorldSession` owns the chunk store, save service, transaction store, ECS entities, streaming state, and pending async work. Destroying the session drains all futures, flushes persistence, and clears all associated state.
+
+```cpp
+std::unique_ptr<WorldSession> session_;
+void loadWorld(...) { session_ = std::make_unique<WorldSession>(...); }
+void unloadWorld() { session_.reset(); } // complete teardown by construction
+```
+
+This pattern applies to any resource group with a shared lifecycle (audio sessions, network connections, editor undo stacks).
+
+### Compile-time enforcement
+
+Prefer `constexpr`, `consteval`, concepts, and template constraints over runtime checks. Push invariant validation to compile time where the state is statically known. Use runtime guards with logging only where state is inherently dynamic (chunk lifecycle transitions driven by I/O completion).
+
+The Zig comptime mental model applies: if the information exists at compile time, validate it there. C++20 provides concepts, `requires` clauses, `consteval`, and `if constexpr` for this.
+
+## Multi-project readiness
+
+Fabric is the engine; Recurse is one game. Someone's (a Pokemon platform) will be a second game on Fabric. All engine code must be game-agnostic.
+
+Current violations to address:
+- `K_CHUNK_SIZE` defined in engine headers but semantically game-specific
+- Voxel-specific types in `fabric::` that belong in `recurse::`
+- `fabric/core/` contains 27 headers spanning unrelated domains (ECS, cameras, audio, physics)
+
+Resolved violations:
+- `ChunkCoord` 4-way duplication unified to single `fabric::ChunkCoord{x,y,z}` in Wave 1b (2026-03-13)
+
+The `fabric::`/`recurse::` boundary must be a clean API surface that a second game can depend on without importing Recurse-specific types.
+
+## Dead code
+
+Removed in Wave 1a/1c (2026-03-13): Plugin.hh/.cc, FileWatcher, BufferPool.hh, ArgumentParser.hh, SyntaxTree.hh, Token.hh, SimulationThreadPool, ThreadPoolExecutor, ImmutableDAG, TimeoutLock, Codec.hh, Command.hh, Pipeline.hh, ChunkDirtyTracker, FilesystemChunkStore, and 14 associated test files. 3,828 lines total.
+
+No known dead code modules remain. If new dead code is discovered, list here with callers and size.
 
 ## Breaking circular dependencies
 

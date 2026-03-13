@@ -33,7 +33,7 @@ LODSection* LODGrid::getOrCreate(int level, int sx, int sy, int sz) {
 
     auto* ptr = section.get();
     sections_[key.value] = std::move(section);
-    FABRIC_LOG_DEBUG("LODGrid: Created section level={} ({},{},{})", level, sx, sy, sz);
+    FABRIC_LOG_TRACE("LODGrid: Created section level={} ({},{},{})", level, sx, sy, sz);
     return ptr;
 }
 
@@ -70,7 +70,7 @@ void LODGrid::tryBuildParent(int childLevel, int cx, int cy, int cz) {
     // Downsample children into parent
     downsample(*parent, children);
 
-    FABRIC_LOG_DEBUG("LODGrid: Built parent level={} ({},{},{}) from 8 children", parentLevel, px, py, pz);
+    FABRIC_LOG_TRACE("LODGrid: Built parent level={} ({},{},{}) from 8 children", parentLevel, px, py, pz);
 
     // Recursively try to build grandparent
     tryBuildParent(parentLevel, px, py, pz);
@@ -159,7 +159,7 @@ void LODGrid::remove(LODSectionKey key) {
     auto it = sections_.find(key.value);
     if (it != sections_.end()) {
         sections_.erase(it);
-        FABRIC_LOG_DEBUG("LODGrid: Removed section level={} ({},{},{})", key.level(), key.x(), key.y(), key.z());
+        FABRIC_LOG_TRACE("LODGrid: Removed section level={} ({},{},{})", key.level(), key.x(), key.y(), key.z());
     }
 }
 

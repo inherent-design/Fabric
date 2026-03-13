@@ -20,10 +20,10 @@
 
 // Compiled SPIR-V shader bytecode generated at build time from .sc sources.
 #include "spv/fs_panini.sc.bin.h"
-#include "spv/vs_panini.sc.bin.h"
+#include "spv/vs_fullscreen.sc.bin.h"
 
-static const bgfx::EmbeddedShader s_paniniShaders[] = {BGFX_EMBEDDED_SHADER(vs_panini), BGFX_EMBEDDED_SHADER(fs_panini),
-                                                       BGFX_EMBEDDED_SHADER_END()};
+static const bgfx::EmbeddedShader s_paniniShaders[] = {BGFX_EMBEDDED_SHADER(vs_fullscreen),
+                                                       BGFX_EMBEDDED_SHADER(fs_panini), BGFX_EMBEDDED_SHADER_END()};
 
 // Fullscreen triangle vertices in clip space.
 static const float s_fullscreenVertices[] = {
@@ -203,7 +203,7 @@ void PaniniPass::cycleStrength() {
 void PaniniPass::initPrograms() {
     bgfx::RendererType::Enum type = bgfx::getRendererType();
 
-    program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_paniniShaders, type, "vs_panini"),
+    program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_paniniShaders, type, "vs_fullscreen"),
                                        bgfx::createEmbeddedShader(s_paniniShaders, type, "fs_panini"), true));
 
     u_sceneTex_.reset(bgfx::createUniform("s_sceneTex", bgfx::UniformType::Sampler));

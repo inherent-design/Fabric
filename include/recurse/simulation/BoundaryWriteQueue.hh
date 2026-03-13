@@ -10,7 +10,7 @@ struct BoundaryWrite {
     VoxelCell writeCell;
     int srcWx, srcWy, srcWz;
     VoxelCell undoCell;
-    ChunkPos neighborChunk;
+    ChunkCoord neighborChunk;
 };
 
 using BoundaryWriteQueue = std::vector<BoundaryWrite>;

@@ -25,9 +25,9 @@ TEST_F(StreamingMultiPositionTest, SingleSourceCompat) {
 
     std::set<std::tuple<int, int, int>> singleSet, multiSet;
     for (const auto& c : singlePos.toLoad)
-        singleSet.insert({c.cx, c.cy, c.cz});
+        singleSet.insert({c.x, c.y, c.z});
     for (const auto& c : multiPos.toLoad)
-        multiSet.insert({c.cx, c.cy, c.cz});
+        multiSet.insert({c.x, c.y, c.z});
     EXPECT_EQ(singleSet, multiSet);
 }
 
@@ -77,13 +77,13 @@ TEST_F(StreamingMultiPositionTest, UnloadRequiresAllSourcesBeyond) {
 
     bool unloaded2 = false;
     for (const auto& c : result.toUnload) {
-        if (c.cx == 2 && c.cy == 0 && c.cz == 0)
+        if (c.x == 2 && c.y == 0 && c.z == 0)
             unloaded2 = true;
     }
     // Chunk (1,0,0) is within both sources; should NOT appear in unload
     bool unloaded1 = false;
     for (const auto& c : result.toUnload) {
-        if (c.cx == 1 && c.cy == 0 && c.cz == 0)
+        if (c.x == 1 && c.y == 0 && c.z == 0)
             unloaded1 = true;
     }
 
@@ -103,10 +103,10 @@ TEST_F(StreamingMultiPositionTest, MinDistSortMultiSource) {
     // With budget=5, first 5 loaded chunks should be the nearest to either source
     if (result.toLoad.size() >= 2) {
         auto minDistSq = [](const ChunkCoord& c, int sx1, int sx2) {
-            int d1 = c.cx - sx1;
-            int d1sq = d1 * d1 + c.cy * c.cy + c.cz * c.cz;
-            int d2 = c.cx - sx2;
-            int d2sq = d2 * d2 + c.cy * c.cy + c.cz * c.cz;
+            int d1 = c.x - sx1;
+            int d1sq = d1 * d1 + c.y * c.y + c.z * c.z;
+            int d2 = c.x - sx2;
+            int d2sq = d2 * d2 + c.y * c.y + c.z * c.z;
             return std::min(d1sq, d2sq);
         };
         for (size_t i = 1; i < result.toLoad.size(); ++i) {
@@ -133,7 +133,7 @@ TEST_F(StreamingMultiPositionTest, SourceRemovalTriggersUnload) {
     // Chunks around (20,0,0) should appear in unload
     int unloadedFromB = 0;
     for (const auto& c : result.toUnload) {
-        if (std::abs(c.cx - 20) <= 1 && std::abs(c.cy) <= 1 && std::abs(c.cz) <= 1)
+        if (std::abs(c.x - 20) <= 1 && std::abs(c.y) <= 1 && std::abs(c.z) <= 1)
             ++unloadedFromB;
     }
     EXPECT_EQ(unloadedFromB, 27) << "All 3x3x3 chunks exclusive to removed source should unload";
@@ -160,10 +160,10 @@ TEST_F(StreamingMultiPositionTest, BudgetEvictionMultiSource) {
     // Evicted chunks should be farther from both sources than any kept chunk
     if (!result.toUnload.empty()) {
         auto minDistSq = [](const ChunkCoord& c, int sx1, int sx2) {
-            int d1 = c.cx - sx1;
-            int d1sq = d1 * d1 + c.cy * c.cy + c.cz * c.cz;
-            int d2 = c.cx - sx2;
-            int d2sq = d2 * d2 + c.cy * c.cy + c.cz * c.cz;
+            int d1 = c.x - sx1;
+            int d1sq = d1 * d1 + c.y * c.y + c.z * c.z;
+            int d2 = c.x - sx2;
+            int d2sq = d2 * d2 + c.y * c.y + c.z * c.z;
             return std::min(d1sq, d2sq);
         };
 
@@ -184,8 +184,8 @@ TEST_F(StreamingMultiPositionTest, BudgetEvictionMultiSource) {
         }
 
         for (const auto& c : result.toUnload) {
-            EXPECT_GE(minDistSq(c, 0, 3), maxKeptDist) << "Evicted chunk at (" << c.cx << "," << c.cy << "," << c.cz
-                                                       << ") should be farther than any kept chunk";
+            EXPECT_GE(minDistSq(c, 0, 3), maxKeptDist)
+                << "Evicted chunk at (" << c.x << "," << c.y << "," << c.z << ") should be farther than any kept chunk";
         }
     }
 }

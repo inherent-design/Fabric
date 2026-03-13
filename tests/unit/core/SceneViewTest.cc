@@ -4,6 +4,7 @@
 #include "fabric/render/Camera.hh"
 #include "fabric/render/Rendering.hh"
 #include "fabric/utils/Testing.hh"
+#include "fabric/world/ChunkCoord.hh"
 #include <bx/math.h>
 #include <cmath>
 #include <gtest/gtest.h>
@@ -329,22 +330,8 @@ TEST_F(FrustumCullerTest, ChunkVisibilityChangesWithCameraMovement) {
 }
 
 TEST_F(FrustumCullerTest, ChunkEntityMapAndVisibilitySetFilterGpuMeshKeys) {
-    struct ChunkCoord {
-        int cx;
-        int cy;
-        int cz;
-
-        bool operator==(const ChunkCoord&) const = default;
-    };
-
-    struct ChunkCoordHash {
-        size_t operator()(const ChunkCoord& coord) const noexcept {
-            size_t h1 = std::hash<int>{}(coord.cx);
-            size_t h2 = std::hash<int>{}(coord.cy);
-            size_t h3 = std::hash<int>{}(coord.cz);
-            return h1 ^ (h2 << 1) ^ (h3 << 2);
-        }
-    };
+    using ChunkCoord = fabric::ChunkCoord;
+    using ChunkCoordHash = fabric::ChunkCoordHash;
 
     Camera camera;
     camera.setPerspective(60.0f, 1.0f, 0.1f, 1000.0f, true);

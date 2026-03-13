@@ -1,6 +1,7 @@
 #pragma once
 
 #include "recurse/world/WorldType.hh"
+#include <cmath>
 #include <cstdint>
 #include <string>
 
@@ -14,6 +15,12 @@ struct WorldMetadata {
     int64_t seed{0};        // terrain generation seed
     std::string createdAt;  // ISO 8601 timestamp
     std::string lastPlayed; // ISO 8601 timestamp
+
+    // Player state. NaN = not set (use default spawn).
+    float playerX{0.0f / 0.0f};
+    float playerY{0.0f / 0.0f};
+    float playerZ{0.0f / 0.0f};
+    bool hasPlayerPosition() const;
 
     /// Read metadata from a world.toml file. Throws FabricException on parse failure.
     static WorldMetadata fromTOML(const std::string& path);

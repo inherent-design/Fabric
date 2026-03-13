@@ -215,6 +215,7 @@ void SqliteChunkStore::execSql(sqlite3* db, const char* sql) {
 // ---------------------------------------------------------------------------
 
 bool SqliteChunkStore::hasChunk(int cx, int cy, int cz) const {
+    std::lock_guard lock(readerMutex_);
     sqlite3_bind_int(stmtHas_, 1, cx);
     sqlite3_bind_int(stmtHas_, 2, cy);
     sqlite3_bind_int(stmtHas_, 3, cz);
@@ -225,6 +226,7 @@ bool SqliteChunkStore::hasChunk(int cx, int cy, int cz) const {
 }
 
 std::optional<ChunkBlob> SqliteChunkStore::loadChunk(int cx, int cy, int cz) const {
+    std::lock_guard lock(readerMutex_);
     sqlite3_bind_int(stmtLoad_, 1, cx);
     sqlite3_bind_int(stmtLoad_, 2, cy);
     sqlite3_bind_int(stmtLoad_, 3, cz);
@@ -262,6 +264,7 @@ void SqliteChunkStore::saveChunk(int cx, int cy, int cz, const ChunkBlob& data) 
 }
 
 size_t SqliteChunkStore::chunkSize(int cx, int cy, int cz) const {
+    std::lock_guard lock(readerMutex_);
     sqlite3_bind_int(stmtSize_, 1, cx);
     sqlite3_bind_int(stmtSize_, 2, cy);
     sqlite3_bind_int(stmtSize_, 3, cz);

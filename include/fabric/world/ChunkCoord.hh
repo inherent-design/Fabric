@@ -6,7 +6,7 @@ namespace fabric {
 
 struct ChunkCoord {
     int32_t x{0}, y{0}, z{0};
-    bool operator==(const ChunkCoord& o) const { return x == o.x && y == o.y && z == o.z; }
+    bool operator==(const ChunkCoord&) const = default;
 };
 
 struct ChunkCoordHash {

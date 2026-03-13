@@ -96,7 +96,7 @@ void VoxelSimulationSystem::generateInitialWorld() {
                 }
                 grid.syncChunkBuffers(cx, cy, cz);
                 grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
-                tracker.setState(recurse::simulation::ChunkPos{cx, cy, cz}, recurse::simulation::ChunkState::Active);
+                tracker.setState(recurse::simulation::ChunkCoord{cx, cy, cz}, recurse::simulation::ChunkState::Active);
                 generatedChunks.emplace_back(cx, cy, cz);
             }
         }
@@ -156,7 +156,7 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
     }
     grid.syncChunkBuffers(cx, cy, cz);
     grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
-    fabSim_->activityTracker().setState(recurse::simulation::ChunkPos{cx, cy, cz},
+    fabSim_->activityTracker().setState(recurse::simulation::ChunkCoord{cx, cy, cz},
                                         recurse::simulation::ChunkState::Active);
 
     // Initialize Jolt physics collision for this chunk (always dispatch, even for sentinels)
@@ -173,16 +173,16 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
     // Corner vertices sample across diagonal chunks, so diagonal neighbors must also remesh.
     int notifiedCount = 0;
     for (int d = 0; d < 10; ++d) {
-        recurse::simulation::ChunkPos neighbor{cx + K_FACE_DIAGONAL_NEIGHBORS[d][0],
-                                               cy + K_FACE_DIAGONAL_NEIGHBORS[d][1],
-                                               cz + K_FACE_DIAGONAL_NEIGHBORS[d][2]};
+        recurse::simulation::ChunkCoord neighbor{cx + K_FACE_DIAGONAL_NEIGHBORS[d][0],
+                                                 cy + K_FACE_DIAGONAL_NEIGHBORS[d][1],
+                                                 cz + K_FACE_DIAGONAL_NEIGHBORS[d][2]};
         if (fabSim_->grid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
             fabSim_->activityTracker().notifyBoundaryChange(neighbor);
             ++notifiedCount;
         }
     }
     if (notifiedCount > 0) {
-        FABRIC_LOG_DEBUG("Notified {} existing neighbors (face+diagonal) after loading chunk ({},{},{})", notifiedCount,
+        FABRIC_LOG_TRACE("Notified {} existing neighbors (face+diagonal) after loading chunk ({},{},{})", notifiedCount,
                          cx, cy, cz);
     }
 }
@@ -236,7 +236,7 @@ void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int
     for (const auto& [cx, cy, cz] : chunks) {
         grid.syncChunkBuffers(cx, cy, cz);
         grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
-        tracker.setState(recurse::simulation::ChunkPos{cx, cy, cz}, recurse::simulation::ChunkState::Active);
+        tracker.setState(recurse::simulation::ChunkCoord{cx, cy, cz}, recurse::simulation::ChunkState::Active);
 
         if (dispatcher_) {
             fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelSimulationSystem");
@@ -251,16 +251,16 @@ void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int
     for (const auto& [cx, cy, cz] : chunks) {
         int notifiedCount = 0;
         for (int d = 0; d < 10; ++d) {
-            recurse::simulation::ChunkPos neighbor{cx + K_FACE_DIAGONAL_NEIGHBORS[d][0],
-                                                   cy + K_FACE_DIAGONAL_NEIGHBORS[d][1],
-                                                   cz + K_FACE_DIAGONAL_NEIGHBORS[d][2]};
+            recurse::simulation::ChunkCoord neighbor{cx + K_FACE_DIAGONAL_NEIGHBORS[d][0],
+                                                     cy + K_FACE_DIAGONAL_NEIGHBORS[d][1],
+                                                     cz + K_FACE_DIAGONAL_NEIGHBORS[d][2]};
             if (fabSim_->grid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
                 fabSim_->activityTracker().notifyBoundaryChange(neighbor);
                 ++notifiedCount;
             }
         }
         if (notifiedCount > 0) {
-            FABRIC_LOG_DEBUG("Notified {} existing neighbors (face+diagonal) after batch-loading chunk ({},{},{})",
+            FABRIC_LOG_TRACE("Notified {} existing neighbors (face+diagonal) after batch-loading chunk ({},{},{})",
                              notifiedCount, cx, cy, cz);
         }
     }
@@ -272,11 +272,11 @@ void VoxelSimulationSystem::removeChunk(int cx, int cy, int cz) {
     if (!fabSim_)
         return;
     auto* slot = fabSim_->grid().registry().find(cx, cy, cz);
-    if (slot) {
+    if (slot && slot->state == recurse::simulation::ChunkSlotState::Active) {
         fabSim_->grid().registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Draining);
     }
     fabSim_->grid().removeChunk(cx, cy, cz);
-    fabSim_->activityTracker().remove(recurse::simulation::ChunkPos{cx, cy, cz});
+    fabSim_->activityTracker().remove(recurse::simulation::ChunkCoord{cx, cy, cz});
 }
 
 void VoxelSimulationSystem::resetWorld() {

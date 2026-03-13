@@ -41,7 +41,7 @@ StreamingUpdate ChunkStreamingManager::update(const std::vector<FocalPoint>& sou
             int scx = static_cast<int>(std::floor(src.x / static_cast<float>(K_CHUNK_SIZE)));
             int scy = static_cast<int>(std::floor(src.y / static_cast<float>(K_CHUNK_SIZE)));
             int scz = static_cast<int>(std::floor(src.z / static_cast<float>(K_CHUNK_SIZE)));
-            int dx = c.cx - scx, dy = c.cy - scy, dz = c.cz - scz;
+            int dx = c.x - scx, dy = c.y - scy, dz = c.z - scz;
             int d = dx * dx + dy * dy + dz * dz;
             if (d < best)
                 best = d;
@@ -69,13 +69,16 @@ StreamingUpdate ChunkStreamingManager::update(const std::vector<FocalPoint>& sou
 
     StreamingUpdate result;
 
-    int loadCount = std::min(static_cast<int>(newChunks.size()), config_.maxLoadsPerTick);
+    int loadCount = config_.maxLoadsPerTick > 0 ? std::min(static_cast<int>(newChunks.size()), config_.maxLoadsPerTick)
+                                                : static_cast<int>(newChunks.size());
     for (int i = 0; i < loadCount; ++i) {
         result.toLoad.push_back(newChunks[static_cast<size_t>(i)]);
         tracked_.insert(newChunks[static_cast<size_t>(i)]);
     }
 
-    int unloadCount = std::min(static_cast<int>(oldChunks.size()), config_.maxUnloadsPerTick);
+    int unloadCount = config_.maxUnloadsPerTick > 0
+                          ? std::min(static_cast<int>(oldChunks.size()), config_.maxUnloadsPerTick)
+                          : static_cast<int>(oldChunks.size());
     for (int i = 0; i < unloadCount; ++i) {
         result.toUnload.push_back(oldChunks[static_cast<size_t>(i)]);
         tracked_.erase(oldChunks[static_cast<size_t>(i)]);
@@ -116,6 +119,15 @@ size_t ChunkStreamingManager::trackedChunkCount() const {
 
 const StreamingConfig& ChunkStreamingManager::config() const {
     return config_;
+}
+
+void ChunkStreamingManager::clear() {
+    tracked_.clear();
+    currentRadius_ = 0;
+}
+
+void ChunkStreamingManager::untrack(const ChunkCoord& c) {
+    tracked_.erase(c);
 }
 
 } // namespace recurse

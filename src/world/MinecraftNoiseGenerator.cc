@@ -39,7 +39,7 @@ MaterialId MinecraftNoiseGenerator::selectSurfaceMaterial(float temp, float humi
     return material_ids::DIRT;
 }
 
-void MinecraftNoiseGenerator::generate(recurse::simulation::SimulationGrid& grid, recurse::simulation::ChunkPos pos) {
+void MinecraftNoiseGenerator::generate(recurse::simulation::SimulationGrid& grid, recurse::simulation::ChunkCoord pos) {
     grid.materializeChunk(pos.x, pos.y, pos.z);
     auto* buf = grid.writeBuffer(pos.x, pos.y, pos.z);
     if (!buf)

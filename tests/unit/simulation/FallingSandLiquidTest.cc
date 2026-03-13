@@ -23,11 +23,11 @@ class FallingSandLiquidTest : public ::testing::Test {
     void SetUp() override {
         grid.fillChunk(0, 0, 0, VoxelCell{});
         grid.materializeChunk(0, 0, 0);
-        tracker.setState(ChunkPos{0, 0, 0}, ChunkState::Active);
+        tracker.setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
         for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
             for (int ly = 0; ly < K_CHUNK_SIZE; ly += 8)
                 for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
-                    tracker.markSubRegionActive(ChunkPos{0, 0, 0}, lx, ly, lz);
+                    tracker.markSubRegionActive(ChunkCoord{0, 0, 0}, lx, ly, lz);
     }
 
     VoxelCell makeMaterial(MaterialId id) {
@@ -36,13 +36,13 @@ class FallingSandLiquidTest : public ::testing::Test {
         return c;
     }
 
-    void runLiquidTick(ChunkPos pos, uint64_t frame) {
+    void runLiquidTick(ChunkCoord pos, uint64_t frame) {
         ghosts.syncGhostCells(pos, grid);
         system.simulateLiquid(pos, grid, ghosts, tracker, frame, rng, boundaryWrites);
         grid.advanceEpoch();
     }
 
-    void runChunkTick(ChunkPos pos, uint64_t frame) {
+    void runChunkTick(ChunkCoord pos, uint64_t frame) {
         ghosts.syncGhostCells(pos, grid);
         system.simulateChunk(pos, grid, ghosts, tracker, frame, rng, boundaryWrites);
         grid.advanceEpoch();
@@ -87,7 +87,7 @@ TEST_F(FallingSandLiquidTest, WaterFallsInAir) {
     grid.writeCell(16, 10, 16, makeMaterial(material_ids::WATER));
     grid.advanceEpoch();
 
-    runLiquidTick(ChunkPos{0, 0, 0}, 0);
+    runLiquidTick(ChunkCoord{0, 0, 0}, 0);
 
     EXPECT_EQ(grid.readCell(16, 9, 16).materialId, material_ids::WATER);
     EXPECT_EQ(grid.readCell(16, 10, 16).materialId, material_ids::AIR);
@@ -102,7 +102,7 @@ TEST_F(FallingSandLiquidTest, WaterFlowsHorizontally) {
 
     // Run several ticks -- water should spread
     for (uint64_t f = 0; f < 10; ++f)
-        runLiquidTick(ChunkPos{0, 0, 0}, f);
+        runLiquidTick(ChunkCoord{0, 0, 0}, f);
 
     // With immediate-mode reads, water cascades multiple cells per tick
     // (scan sees its own writes). After 10 ticks, water is far from origin.
@@ -129,7 +129,7 @@ TEST_F(FallingSandLiquidTest, WaterFillsContainer) {
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 50; ++f)
-        runChunkTick(ChunkPos{0, 0, 0}, f);
+        runChunkTick(ChunkCoord{0, 0, 0}, f);
 
     // Water should have settled at bottom (y=1)
     int bottomWater = countMaterial(material_ids::WATER, 11, 13, 1, 1, 11, 13);
@@ -176,8 +176,8 @@ TEST_F(FallingSandLiquidTest, WaterFindsLevel) {
     int totalBefore = countMaterial(material_ids::WATER, 0, 31, 0, 31, 0, 31);
 
     for (uint64_t f = 0; f < 200; ++f) {
-        tracker.setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-        runChunkTick(ChunkPos{0, 0, 0}, f);
+        tracker.setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+        runChunkTick(ChunkCoord{0, 0, 0}, f);
     }
 
     // Water should have distributed to both sides
@@ -200,7 +200,7 @@ TEST_F(FallingSandLiquidTest, WaterBlockedByWalls) {
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 50; ++f)
-        runChunkTick(ChunkPos{0, 0, 0}, f);
+        runChunkTick(ChunkCoord{0, 0, 0}, f);
 
     // No water should escape the box
     int insideWater = countMaterial(material_ids::WATER, 11, 13, 1, 3, 11, 13);
@@ -216,7 +216,7 @@ TEST_F(FallingSandLiquidTest, CrossChunkHorizontalFlow) {
     // Set up chunk(-1,0,0)
     grid.fillChunk(-1, 0, 0, VoxelCell{});
     grid.materializeChunk(-1, 0, 0);
-    tracker.setState(ChunkPos{-1, 0, 0}, ChunkState::Active);
+    tracker.setState(ChunkCoord{-1, 0, 0}, ChunkState::Active);
 
     // Stone floor in both chunks
     for (int x = -32; x < 32; ++x)
@@ -230,8 +230,8 @@ TEST_F(FallingSandLiquidTest, CrossChunkHorizontalFlow) {
 
     // Run several ticks on chunk (0,0,0)
     for (uint64_t f = 0; f < 20; ++f) {
-        ghosts.syncGhostCells(ChunkPos{0, 0, 0}, grid);
-        system.simulateLiquid(ChunkPos{0, 0, 0}, grid, ghosts, tracker, f, rng, boundaryWrites);
+        ghosts.syncGhostCells(ChunkCoord{0, 0, 0}, grid);
+        system.simulateLiquid(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, f, rng, boundaryWrites);
         // Drain deferred cross-chunk writes
         for (const auto& bw : boundaryWrites) {
             if (!grid.writeCellIfExists(bw.dstWx, bw.dstWy, bw.dstWz, bw.writeCell))
@@ -256,7 +256,7 @@ TEST_F(FallingSandLiquidTest, ViscosityLimitsFlowRate) {
     grid.advanceEpoch();
 
     // After 1 tick, water can move at most 1 cell horizontally
-    runLiquidTick(ChunkPos{0, 0, 0}, 0);
+    runLiquidTick(ChunkCoord{0, 0, 0}, 0);
 
     // Check that water hasn't moved more than 1 cell from origin
     bool foundFarWater = false;
@@ -290,8 +290,8 @@ TEST_F(FallingSandLiquidTest, WaterConservation) {
     EXPECT_EQ(initialCount, 100);
 
     for (uint64_t f = 0; f < 100; ++f) {
-        tracker.setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-        runChunkTick(ChunkPos{0, 0, 0}, f);
+        tracker.setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+        runChunkTick(ChunkCoord{0, 0, 0}, f);
     }
 
     int finalCount = countMaterial(material_ids::WATER, 0, 31, 0, 31, 0, 31);
@@ -308,8 +308,8 @@ TEST_F(FallingSandLiquidTest, WaterDoesNotDisplaceSolids) {
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 20; ++f) {
-        tracker.setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-        runChunkTick(ChunkPos{0, 0, 0}, f);
+        tracker.setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+        runChunkTick(ChunkCoord{0, 0, 0}, f);
     }
 
     EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::STONE);
@@ -324,7 +324,7 @@ TEST_F(FallingSandLiquidTest, LiquidFlowPreservesEssenceIdx) {
     grid.writeCell(16, 10, 16, water);
     grid.advanceEpoch();
 
-    runLiquidTick(ChunkPos{0, 0, 0}, 0);
+    runLiquidTick(ChunkCoord{0, 0, 0}, 0);
 
     VoxelCell fallen = grid.readCell(16, 9, 16);
     EXPECT_EQ(fallen.materialId, material_ids::WATER);
@@ -344,10 +344,10 @@ TEST_F(FallingSandLiquidTest, PerformanceLiquidSim) {
             }
     grid.advanceEpoch();
 
-    ghosts.syncGhostCells(ChunkPos{0, 0, 0}, grid);
+    ghosts.syncGhostCells(ChunkCoord{0, 0, 0}, grid);
 
     auto start = std::chrono::high_resolution_clock::now();
-    system.simulateLiquid(ChunkPos{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
+    system.simulateLiquid(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();

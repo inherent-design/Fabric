@@ -19,11 +19,11 @@
 // Compiled SPIR-V shader bytecode generated at build time from .sc sources.
 #include "spv/fs_oit_accum.sc.bin.h"
 #include "spv/fs_oit_composite.sc.bin.h"
+#include "spv/vs_fullscreen.sc.bin.h"
 #include "spv/vs_oit_accum.sc.bin.h"
-#include "spv/vs_oit_composite.sc.bin.h"
 
 static const bgfx::EmbeddedShader s_oitShaders[] = {
-    BGFX_EMBEDDED_SHADER(vs_oit_accum), BGFX_EMBEDDED_SHADER(fs_oit_accum), BGFX_EMBEDDED_SHADER(vs_oit_composite),
+    BGFX_EMBEDDED_SHADER(vs_oit_accum), BGFX_EMBEDDED_SHADER(fs_oit_accum), BGFX_EMBEDDED_SHADER(vs_fullscreen),
     BGFX_EMBEDDED_SHADER(fs_oit_composite), BGFX_EMBEDDED_SHADER_END()};
 
 // Fullscreen triangle vertices in clip space (same as PostProcess).
@@ -198,7 +198,7 @@ void OITCompositor::initPrograms() {
     auto accumFs = bgfx::createEmbeddedShader(s_oitShaders, type, "fs_oit_accum");
     accumProgram_.reset(bgfx::createProgram(accumVs, accumFs, true));
 
-    auto compositeVs = bgfx::createEmbeddedShader(s_oitShaders, type, "vs_oit_composite");
+    auto compositeVs = bgfx::createEmbeddedShader(s_oitShaders, type, "vs_fullscreen");
     auto compositeFs = bgfx::createEmbeddedShader(s_oitShaders, type, "fs_oit_composite");
     compositeProgram_.reset(bgfx::createProgram(compositeVs, compositeFs, true));
 

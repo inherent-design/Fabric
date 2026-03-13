@@ -100,7 +100,7 @@ std::vector<ChunkDispatchEntry> ChunkRegistry::buildDispatchList(ChunkSlotState 
     for (auto& [key, slot] : slots_) {
         if (slot.state == filter) {
             auto [cx, cy, cz] = unpackChunkKey(key);
-            result.push_back({ChunkPos{cx, cy, cz}, &slot});
+            result.push_back({ChunkCoord{cx, cy, cz}, &slot});
         }
     }
     return result;

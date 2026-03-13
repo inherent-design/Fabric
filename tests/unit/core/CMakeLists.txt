@@ -6,14 +6,11 @@ target_sources(UnitTests
   EventTest.cc
   ResourceHubTest.cc
   LifecycleTest.cc
-  PluginTest.cc
-  CommandTest.cc
   ResourceTest.cc
   SpatialTest.cc
   StateMachineTest.cc
   TemporalTest.cc
   JsonTypesTest.cc
-  PipelineTest.cc
   RenderingTest.cc
   RenderCapsTest.cc
   CameraTest.cc
@@ -56,7 +53,6 @@ target_sources(UnitTests
   DebugDrawTest.cc
   SkyRendererTest.cc
   VertexPoolTest.cc
-  FileWatcherTest.cc
   PostProcessTest.cc
   DevConsoleTest.cc
   ParticleSystemTest.cc
@@ -85,7 +81,6 @@ target_sources(UnitTests
   InputContextTest.cc
   InputSystemTest.cc
   ChunkedGridInterpolationTest.cc
-  SimulationThreadPoolTest.cc
   ChunkDensityCacheTest.cc
   GradientNormalsTest.cc
   SmoothVertexPoolTest.cc
@@ -95,7 +90,6 @@ target_sources(UnitTests
   VoxelMeshingSystemTest.cc
   CrossChunkBoundaryTest.cc
   EssenceTypesTest.cc
-  ChunkDirtyTrackerTest.cc
   BgfxHandleTest.cc
   HandleMapTest.cc
   JobSchedulerTest.cc

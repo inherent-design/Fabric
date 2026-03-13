@@ -49,7 +49,7 @@ struct ChunkSlot {
 };
 
 struct ChunkDispatchEntry {
-    ChunkPos pos;
+    ChunkCoord pos;
     ChunkSlot* slot;
 };
 

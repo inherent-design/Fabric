@@ -179,12 +179,12 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
     if (debugDraw_.hasFlag(recurse::DebugDrawFlags::CollisionShapes)) {
         debugDraw_.setColor(0xff00ff00); // green (ABGR)
         for (const auto& [coord, ent] : chunks_->chunkEntities()) {
-            if (physics_->physicsWorld().chunkCollisionShapeCount(coord.cx, coord.cy, coord.cz) > 0) {
+            if (physics_->physicsWorld().chunkCollisionShapeCount(coord.x, coord.y, coord.z) > 0) {
                 // Convert to camera-relative coordinates
-                auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
-                    static_cast<double>(coord.cx * recurse::K_CHUNK_SIZE),
-                    static_cast<double>(coord.cy * recurse::K_CHUNK_SIZE),
-                    static_cast<double>(coord.cz * recurse::K_CHUNK_SIZE));
+                auto worldOrigin =
+                    fabric::Vector3<double, fabric::Space::World>(static_cast<double>(coord.x * recurse::K_CHUNK_SIZE),
+                                                                  static_cast<double>(coord.y * recurse::K_CHUNK_SIZE),
+                                                                  static_cast<double>(coord.z * recurse::K_CHUNK_SIZE));
                 auto relOrigin = ctx.camera->cameraRelative(worldOrigin);
 
                 float x0 = relOrigin.x;
@@ -205,9 +205,9 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         int idx = 0;
         for (const auto& [coord, ent] : chunks_->chunkEntities()) {
             // Use world coordinates for BVH construction
-            float x0 = static_cast<float>(coord.cx * recurse::K_CHUNK_SIZE);
-            float y0 = static_cast<float>(coord.cy * recurse::K_CHUNK_SIZE);
-            float z0 = static_cast<float>(coord.cz * recurse::K_CHUNK_SIZE);
+            float x0 = static_cast<float>(coord.x * recurse::K_CHUNK_SIZE);
+            float y0 = static_cast<float>(coord.y * recurse::K_CHUNK_SIZE);
+            float z0 = static_cast<float>(coord.z * recurse::K_CHUNK_SIZE);
             float x1 = x0 + static_cast<float>(recurse::K_CHUNK_SIZE);
             float y1 = y0 + static_cast<float>(recurse::K_CHUNK_SIZE);
             float z1 = z0 + static_cast<float>(recurse::K_CHUNK_SIZE);
@@ -247,7 +247,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         auto& grid = voxelSim_->simulationGrid();
 
         for (auto [cx, cy, cz] : grid.allChunks()) {
-            recurse::simulation::ChunkPos pos{cx, cy, cz};
+            recurse::simulation::ChunkCoord pos{cx, cy, cz};
             auto state = tracker.getState(pos);
 
             // State-based colors (ABGR format)

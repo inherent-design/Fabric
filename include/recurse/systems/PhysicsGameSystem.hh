@@ -50,7 +50,7 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
 
     void setFocalPoints(const std::vector<recurse::FocalPoint>& points);
 
-    const std::unordered_set<recurse::ChunkKey, recurse::ChunkKeyHash>& dirtyChunks() const {
+    const std::unordered_set<recurse::ChunkCoord, recurse::ChunkCoordHash>& dirtyChunks() const {
         return dirtyCollisionChunks_;
     }
 
@@ -64,7 +64,7 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
     fabric::JobScheduler* scheduler_ = nullptr;
     PhysicsWorld physicsWorld_;
     Ragdoll ragdoll_;
-    std::unordered_set<recurse::ChunkKey, recurse::ChunkKeyHash> dirtyCollisionChunks_;
+    std::unordered_set<recurse::ChunkCoord, recurse::ChunkCoordHash> dirtyCollisionChunks_;
     std::vector<recurse::FocalPoint> focalPoints_;
     std::vector<recurse::CollisionCenter> lastFocalChunkCoords_;
 };

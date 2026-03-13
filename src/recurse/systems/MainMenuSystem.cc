@@ -1,5 +1,6 @@
 #include "recurse/systems/MainMenuSystem.hh"
 #include "recurse/character/GameConstants.hh"
+#include "recurse/persistence/WorldMetadata.hh"
 #include "recurse/persistence/WorldRegistry.hh"
 
 #include "fabric/core/AppContext.hh"
@@ -103,6 +104,8 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
             FABRIC_LOG_INFO("MainMenu: Using FlatWorldGenerator");
         }
 
+        activeWorldUUID_ = uuid;
+
         // Wire persistence before generation so streaming can save/load chunks
         if (chunkPipeline_ && worldRegistry_ && !uuid.empty()) {
             chunkPipeline_->loadWorld(worldRegistry_->worldPath(uuid), voxelSim_->scheduler());
@@ -114,12 +117,19 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
             voxelSim_->generateInitialWorld();
         }
 
-        // Reset player position to spawn point (above generated terrain)
+        // Restore player position from world.toml, or use default spawn
         if (characterMovement_) {
-            float spawnY = (type == WorldType::Flat) ? 42.0f : 64.0f;
-            characterMovement_->setPlayerPosition(fabric::Vec3f(K_DEFAULT_SPAWN_X, spawnY, K_DEFAULT_SPAWN_Z));
-            FABRIC_LOG_INFO("MainMenu: Player position reset to ({}, {}, {})", K_DEFAULT_SPAWN_X, spawnY,
-                            K_DEFAULT_SPAWN_Z);
+            auto meta = worldRegistry_ ? worldRegistry_->getWorld(uuid) : std::nullopt;
+            if (!isNew && meta && meta->hasPlayerPosition()) {
+                characterMovement_->setPlayerPosition(fabric::Vec3f(meta->playerX, meta->playerY, meta->playerZ));
+                FABRIC_LOG_INFO("MainMenu: Restored player position ({}, {}, {})", meta->playerX, meta->playerY,
+                                meta->playerZ);
+            } else {
+                float spawnY = (type == WorldType::Flat) ? 42.0f : 64.0f;
+                characterMovement_->setPlayerPosition(fabric::Vec3f(K_DEFAULT_SPAWN_X, spawnY, K_DEFAULT_SPAWN_Z));
+                FABRIC_LOG_INFO("MainMenu: Player position set to spawn ({}, {}, {})", K_DEFAULT_SPAWN_X, spawnY,
+                                K_DEFAULT_SPAWN_Z);
+            }
         }
 
         setWorldSystemsEnabled(true);
@@ -179,6 +189,7 @@ void MainMenuSystem::initRmlDataModel() {
 }
 
 void MainMenuSystem::doShutdown() {
+    resetWorldState();
     hideCurrentDocument();
     if (rmlContext_ && dataModelHandle_) {
         rmlContext_->RemoveDataModel("main_menu");
@@ -837,6 +848,21 @@ void MainMenuSystem::onQuitToTitleClicked() {
 }
 
 void MainMenuSystem::resetWorldState() {
+    // Save player position to world.toml before tearing down
+    if (worldRegistry_ && !activeWorldUUID_.empty()) {
+        auto meta = worldRegistry_->getWorld(activeWorldUUID_);
+        if (meta && characterMovement_) {
+            auto pos = characterMovement_->playerPosition();
+            meta->playerX = pos.x;
+            meta->playerY = pos.y;
+            meta->playerZ = pos.z;
+            meta->lastPlayed = WorldMetadata::nowISO8601();
+            meta->toTOML(worldRegistry_->worldPath(activeWorldUUID_) + "/world.toml");
+            FABRIC_LOG_INFO("MainMenu: Saved player position ({}, {}, {})", pos.x, pos.y, pos.z);
+        }
+        activeWorldUUID_.clear();
+    }
+
     // Flush persistence BEFORE clearing world data. The DataProvider reads from
     // the simulation grid; grid.clear() would produce empty blobs.
     if (chunkPipeline_)
@@ -861,7 +887,7 @@ void MainMenuSystem::resetWorldState() {
 
 void MainMenuSystem::onExitToDesktopClicked() {
     FABRIC_LOG_INFO("MainMenu: Exit to Desktop clicked");
-    // Signal app to quit
+    resetWorldState();
     SDL_Event quitEvent;
     quitEvent.type = SDL_EVENT_QUIT;
     SDL_PushEvent(&quitEvent);

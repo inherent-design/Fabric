@@ -32,7 +32,7 @@ class VoxelSimulationSystem {
 
     /// Chunks that settled (no movement) during the last tick().
     /// Used by the outer system to dispatch collision rebuild events.
-    const std::vector<ChunkPos>& settledChunks() const;
+    const std::vector<ChunkCoord>& settledChunks() const;
 
   private:
     MaterialRegistry registry_;
@@ -43,7 +43,7 @@ class VoxelSimulationSystem {
     fabric::JobScheduler scheduler_;
     uint64_t frameIndex_ = 0;
     std::mt19937 rng_{42};
-    std::vector<ChunkPos> settledChunks_;
+    std::vector<ChunkCoord> settledChunks_;
 
     void propagateDirty(const std::vector<ActiveChunkEntry>& active);
     void drainBoundaryWrites(std::vector<BoundaryWriteQueue>& queues);

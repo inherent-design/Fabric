@@ -23,12 +23,12 @@ class FallingSandGravityTest : public ::testing::Test {
     void SetUp() override {
         grid.fillChunk(0, 0, 0, VoxelCell{});
         grid.materializeChunk(0, 0, 0);
-        tracker.setState(ChunkPos{0, 0, 0}, ChunkState::Active);
+        tracker.setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
         // Mark all sub-regions active
         for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
             for (int ly = 0; ly < K_CHUNK_SIZE; ly += 8)
                 for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
-                    tracker.markSubRegionActive(ChunkPos{0, 0, 0}, lx, ly, lz);
+                    tracker.markSubRegionActive(ChunkCoord{0, 0, 0}, lx, ly, lz);
     }
 
     VoxelCell makeMaterial(MaterialId id) {
@@ -42,7 +42,7 @@ class FallingSandGravityTest : public ::testing::Test {
         grid.advanceEpoch();
     }
 
-    void runGravityTick(ChunkPos pos, uint64_t frame) {
+    void runGravityTick(ChunkCoord pos, uint64_t frame) {
         ghosts.syncGhostCells(pos, grid);
         system.simulateGravity(pos, grid, ghosts, tracker, frame, rng, boundaryWrites);
         grid.advanceEpoch();
@@ -53,7 +53,7 @@ class FallingSandGravityTest : public ::testing::Test {
 TEST_F(FallingSandGravityTest, SandFallsOnePerTick) {
     placeCellAndAdvance(16, 31, 16, makeMaterial(material_ids::SAND));
 
-    runGravityTick(ChunkPos{0, 0, 0}, 0);
+    runGravityTick(ChunkCoord{0, 0, 0}, 0);
 
     EXPECT_EQ(grid.readCell(16, 30, 16).materialId, material_ids::SAND);
     EXPECT_EQ(grid.readCell(16, 31, 16).materialId, material_ids::AIR);
@@ -72,7 +72,7 @@ TEST_F(FallingSandGravityTest, SandFallsToGround) {
 
     // Run 10 ticks -- sand should fall from y=10 to y=1 (above stone)
     for (uint64_t f = 0; f < 10; ++f)
-        runGravityTick(ChunkPos{0, 0, 0}, f);
+        runGravityTick(ChunkCoord{0, 0, 0}, f);
 
     EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::SAND);
     EXPECT_EQ(grid.readCell(16, 0, 16).materialId, material_ids::STONE);
@@ -99,7 +99,7 @@ TEST_F(FallingSandGravityTest, SandStacksOnSand) {
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 15; ++f)
-        runGravityTick(ChunkPos{0, 0, 0}, f);
+        runGravityTick(ChunkCoord{0, 0, 0}, f);
 
     EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::SAND);
     EXPECT_EQ(grid.readCell(16, 2, 16).materialId, material_ids::SAND);
@@ -116,7 +116,7 @@ TEST_F(FallingSandGravityTest, PowderCascadeDiagonal) {
 
     // Run several ticks; sand cannot fall (stone below), should cascade diagonal
     for (uint64_t f = 0; f < 5; ++f)
-        runGravityTick(ChunkPos{0, 0, 0}, f);
+        runGravityTick(ChunkCoord{0, 0, 0}, f);
 
     // Sand should NOT be at (16,1,16) anymore -- it cascaded
     EXPECT_NE(grid.readCell(16, 1, 16).materialId, material_ids::SAND);
@@ -127,7 +127,7 @@ TEST_F(FallingSandGravityTest, StoneDoesNotFall) {
     placeCellAndAdvance(16, 16, 16, makeMaterial(material_ids::STONE));
 
     for (uint64_t f = 0; f < 100; ++f)
-        runGravityTick(ChunkPos{0, 0, 0}, f);
+        runGravityTick(ChunkCoord{0, 0, 0}, f);
 
     EXPECT_EQ(grid.readCell(16, 16, 16).materialId, material_ids::STONE);
 }
@@ -153,7 +153,7 @@ TEST_F(FallingSandGravityTest, DensityOrdering) {
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 10; ++f)
-        runGravityTick(ChunkPos{0, 0, 0}, f);
+        runGravityTick(ChunkCoord{0, 0, 0}, f);
 
     // Gravel (density 170) should be below sand (density 130)
     EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::GRAVEL);
@@ -174,7 +174,7 @@ TEST_F(FallingSandGravityTest, DirectionAlternationSymmetry) {
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 100; ++f)
-        runGravityTick(ChunkPos{0, 0, 0}, f);
+        runGravityTick(ChunkCoord{0, 0, 0}, f);
 
     // Count sand on each side of x=16
     int leftCount = 0, rightCount = 0;
@@ -203,19 +203,19 @@ TEST_F(FallingSandGravityTest, CrossChunkFalling) {
     // Set up chunk (0,1,0) and chunk (0,0,0)
     grid.fillChunk(0, 1, 0, VoxelCell{});
     grid.materializeChunk(0, 1, 0);
-    tracker.setState(ChunkPos{0, 1, 0}, ChunkState::Active);
+    tracker.setState(ChunkCoord{0, 1, 0}, ChunkState::Active);
     for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
         for (int ly = 0; ly < K_CHUNK_SIZE; ly += 8)
             for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
-                tracker.markSubRegionActive(ChunkPos{0, 1, 0}, lx, ly, lz);
+                tracker.markSubRegionActive(ChunkCoord{0, 1, 0}, lx, ly, lz);
 
     // Sand at chunk(0,1,0) local y=0 = world y=32
     grid.writeCell(16, 32, 16, makeMaterial(material_ids::SAND));
     grid.advanceEpoch();
 
     // Simulate chunk(0,1,0) -- sand at y=32 should fall to y=31 (chunk 0,0,0)
-    ghosts.syncGhostCells(ChunkPos{0, 1, 0}, grid);
-    system.simulateGravity(ChunkPos{0, 1, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
+    ghosts.syncGhostCells(ChunkCoord{0, 1, 0}, grid);
+    system.simulateGravity(ChunkCoord{0, 1, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
     // Drain deferred cross-chunk writes
     for (const auto& bw : boundaryWrites) {
         if (!grid.writeCellIfExists(bw.dstWx, bw.dstWy, bw.dstWz, bw.writeCell))
@@ -237,10 +237,10 @@ TEST_F(FallingSandGravityTest, NoMovementSleepsChunk) {
                 grid.writeCell(x, y, z, makeMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
-    tracker.setState(ChunkPos{0, 0, 0}, ChunkState::Active);
+    tracker.setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
 
-    ghosts.syncGhostCells(ChunkPos{0, 0, 0}, grid);
-    bool changed = system.simulateGravity(ChunkPos{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
+    ghosts.syncGhostCells(ChunkCoord{0, 0, 0}, grid);
+    bool changed = system.simulateGravity(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
     grid.advanceEpoch();
 
     EXPECT_FALSE(changed) << "All-stone chunk should have no gravity movement";
@@ -253,7 +253,7 @@ TEST_F(FallingSandGravityTest, GravityPreservesEssenceIdx) {
     sand.essenceIdx = 42;
     placeCellAndAdvance(16, 31, 16, sand);
 
-    runGravityTick(ChunkPos{0, 0, 0}, 0);
+    runGravityTick(ChunkCoord{0, 0, 0}, 0);
 
     VoxelCell fallen = grid.readCell(16, 30, 16);
     EXPECT_EQ(fallen.materialId, material_ids::SAND);
@@ -285,7 +285,7 @@ TEST_F(FallingSandGravityTest, DisplacementSwapPreservesEssenceIdx) {
     grid.advanceEpoch();
 
     for (uint64_t f = 0; f < 10; ++f)
-        runGravityTick(ChunkPos{0, 0, 0}, f);
+        runGravityTick(ChunkCoord{0, 0, 0}, f);
 
     VoxelCell bottom = grid.readCell(16, 1, 16);
     VoxelCell top = grid.readCell(16, 2, 16);
@@ -305,10 +305,10 @@ TEST_F(FallingSandGravityTest, PerformanceSingleChunk) {
                     grid.writeCell(x, y, z, makeMaterial(material_ids::SAND));
     grid.advanceEpoch();
 
-    ghosts.syncGhostCells(ChunkPos{0, 0, 0}, grid);
+    ghosts.syncGhostCells(ChunkCoord{0, 0, 0}, grid);
 
     auto start = std::chrono::high_resolution_clock::now();
-    system.simulateGravity(ChunkPos{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
+    system.simulateGravity(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto ms = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();

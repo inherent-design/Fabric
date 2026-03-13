@@ -147,6 +147,7 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
 
     // World management
     recurse::WorldRegistry* worldRegistry_ = nullptr;
+    std::string activeWorldUUID_;
 
     // Data model bindings
     std::string titleText_ = "RECURSE";

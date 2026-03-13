@@ -163,7 +163,7 @@ TEST_F(MinecraftNoiseGenTest, DeterministicSameSeed) {
     MinecraftNoiseGenerator gen1(config);
     MinecraftNoiseGenerator gen2(config);
 
-    ChunkPos pos{1, 1, 1};
+    ChunkCoord pos{1, 1, 1};
     gen1.generate(grid1, pos);
     gen2.generate(grid2, pos);
     grid1.advanceEpoch();
@@ -196,7 +196,7 @@ TEST_F(MinecraftNoiseGenTest, DifferentSeeds) {
     MinecraftNoiseGenerator gen1(config1);
     MinecraftNoiseGenerator gen2(config2);
 
-    ChunkPos pos{0, 1, 0};
+    ChunkCoord pos{0, 1, 0};
     gen1.generate(grid1, pos);
     gen2.generate(grid2, pos);
     grid1.advanceEpoch();

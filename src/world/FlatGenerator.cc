@@ -7,7 +7,7 @@ using namespace recurse::simulation;
 
 FlatGenerator::FlatGenerator(int surfaceHeight) : surfaceHeight_(surfaceHeight) {}
 
-void FlatGenerator::generate(SimulationGrid& grid, ChunkPos pos) {
+void FlatGenerator::generate(SimulationGrid& grid, ChunkCoord pos) {
     int baseY = pos.y * K_CHUNK_SIZE;
     int topY = baseY + K_CHUNK_SIZE - 1;
 

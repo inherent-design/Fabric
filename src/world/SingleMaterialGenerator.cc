@@ -4,7 +4,7 @@ namespace fabric::world {
 
 SingleMaterialGenerator::SingleMaterialGenerator(recurse::simulation::VoxelCell cell) : cell_(cell) {}
 
-void SingleMaterialGenerator::generate(SimulationGrid& grid, ChunkPos pos) {
+void SingleMaterialGenerator::generate(SimulationGrid& grid, ChunkCoord pos) {
     grid.fillChunk(pos.x, pos.y, pos.z, cell_);
 }
 

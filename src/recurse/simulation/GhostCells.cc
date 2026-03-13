@@ -26,7 +26,7 @@ static VoxelCell readNeighborCell(const SimulationGrid& grid, int cx, int cy, in
     return (*buf)[localIndex(lx, ly, lz)];
 }
 
-void GhostCellManager::syncGhostCells(ChunkPos pos, const SimulationGrid& grid) {
+void GhostCellManager::syncGhostCells(ChunkCoord pos, const SimulationGrid& grid) {
     auto& store = stores_[pos];
 
     // +X face: neighbor (cx+1), sample local x=0, u=ly, v=lz
@@ -72,12 +72,12 @@ void GhostCellManager::syncGhostCells(ChunkPos pos, const SimulationGrid& grid) 
     }
 }
 
-void GhostCellManager::syncAll(const std::vector<ChunkPos>& chunks, const SimulationGrid& grid) {
+void GhostCellManager::syncAll(const std::vector<ChunkCoord>& chunks, const SimulationGrid& grid) {
     for (const auto& pos : chunks)
         syncGhostCells(pos, grid);
 }
 
-VoxelCell GhostCellManager::readGhost(ChunkPos pos, int lx, int ly, int lz) const {
+VoxelCell GhostCellManager::readGhost(ChunkCoord pos, int lx, int ly, int lz) const {
     auto it = stores_.find(pos);
     if (it == stores_.end())
         return VoxelCell{};
@@ -107,11 +107,11 @@ VoxelCell GhostCellManager::readGhost(ChunkPos pos, int lx, int ly, int lz) cons
     return VoxelCell{};
 }
 
-GhostCellStore& GhostCellManager::getStore(ChunkPos pos) {
+GhostCellStore& GhostCellManager::getStore(ChunkCoord pos) {
     return stores_[pos];
 }
 
-void GhostCellManager::remove(ChunkPos pos) {
+void GhostCellManager::remove(ChunkCoord pos) {
     stores_.erase(pos);
 }
 

@@ -3,6 +3,7 @@
 #include "recurse/persistence/ChunkStore.hh"
 #include <chrono>
 #include <functional>
+#include <future>
 #include <mutex>
 #include <unordered_map>
 
@@ -23,6 +24,7 @@ class ChunkSaveService {
     using DataProvider = std::function<ChunkBlob(int cx, int cy, int cz)>;
 
     ChunkSaveService(ChunkStore& store, fabric::JobScheduler& jobs, DataProvider provider);
+    ~ChunkSaveService();
 
     /// Mark a chunk as modified. Resets the debounce timer for that chunk.
     void markDirty(int cx, int cy, int cz);
@@ -32,6 +34,10 @@ class ChunkSaveService {
 
     /// Save all dirty chunks immediately (synchronous). Call on shutdown.
     void flush();
+
+    /// Queue a pre-encoded blob for the next batch save.
+    /// Used by the unload loop to avoid touching writerDb_ on the main thread.
+    void enqueuePrepared(int cx, int cy, int cz, ChunkBlob blob);
 
     /// Number of chunks currently awaiting save.
     size_t pendingCount() const;
@@ -50,8 +56,8 @@ class ChunkSaveService {
     using ChunkKey = int64_t;
     static ChunkKey makeKey(int cx, int cy, int cz);
 
-    void saveChunk(int cx, int cy, int cz);
-    void saveChunkSync(int cx, int cy, int cz);
+    void dispatchBatch(std::vector<std::tuple<int, int, int>> chunks);
+    void waitForBatch();
 
     ChunkStore& store_;
     fabric::JobScheduler& jobs_;
@@ -59,6 +65,8 @@ class ChunkSaveService {
 
     mutable std::mutex mutex_;
     std::unordered_map<ChunkKey, DirtyEntry> dirty_;
+    std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> preparedBlobs_;
+    std::future<void> batchFuture_;
 };
 
 } // namespace recurse

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/world/ChunkCoord.hh"
 #include <Jolt/Jolt.h>
 
 #include <Jolt/Core/JobSystemThreadPool.h>
@@ -108,20 +109,8 @@ struct BodyHandle {
     bool valid() const { return !id.IsInvalid(); }
 };
 
-// Chunk coordinate key for collision shape tracking
-struct ChunkKey {
-    int cx, cy, cz;
-    bool operator==(const ChunkKey& o) const { return cx == o.cx && cy == o.cy && cz == o.cz; }
-};
-
-struct ChunkKeyHash {
-    size_t operator()(const ChunkKey& k) const {
-        size_t h = static_cast<size_t>(k.cx) * 73856093u;
-        h ^= static_cast<size_t>(k.cy) * 19349669u;
-        h ^= static_cast<size_t>(k.cz) * 83492791u;
-        return h;
-    }
-};
+using fabric::ChunkCoord;
+using fabric::ChunkCoordHash;
 
 /// Chunk-coordinate focal point for multi-entity collision radius checks.
 /// Used by removeCollisionBeyondAll to determine which chunks retain collision bodies.
@@ -183,7 +172,7 @@ class PhysicsWorld {
     /// Phase 1: shape generation via JobScheduler::parallelFor (per-worker TempAllocator).
     /// Phase 2: body creation + batch broadphase insertion on calling thread.
     void rebuildChunkCollisionBatch(const recurse::simulation::SimulationGrid& grid,
-                                    const std::vector<ChunkKey>& chunks, fabric::JobScheduler& scheduler);
+                                    const std::vector<ChunkCoord>& chunks, fabric::JobScheduler& scheduler);
 
     void removeChunkCollision(int cx, int cy, int cz);
     void clearChunkBodies();
@@ -236,7 +225,7 @@ class PhysicsWorld {
   private:
     class ContactListenerImpl;
 
-    void registerChunkBodies(const ChunkKey& key, std::vector<TileShapeResult>& tiles,
+    void registerChunkBodies(const ChunkCoord& key, std::vector<TileShapeResult>& tiles,
                              std::vector<JPH::BodyID>& outNewBodies);
 
     bool initialized_ = false;
@@ -253,7 +242,7 @@ class PhysicsWorld {
     JPH::Ref<JPH::BoxShape> faceShapes_[3];
 
     // Per-chunk collision bodies (terrain)
-    std::unordered_map<ChunkKey, std::vector<JPH::BodyID>, ChunkKeyHash> chunkBodies_;
+    std::unordered_map<ChunkCoord, std::vector<JPH::BodyID>, ChunkCoordHash> chunkBodies_;
 
     // All user-created bodies (static + dynamic via public API)
     std::vector<JPH::BodyID> userBodies_;

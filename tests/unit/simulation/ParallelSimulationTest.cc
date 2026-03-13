@@ -13,7 +13,7 @@ class ParallelSimulationTest : public ::testing::Test {
         return c;
     }
 
-    void markAllSubRegions(ChunkActivityTracker& tracker, ChunkPos pos) {
+    void markAllSubRegions(ChunkActivityTracker& tracker, ChunkCoord pos) {
         for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
             for (int ly = 0; ly < K_CHUNK_SIZE; ly += 8)
                 for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
@@ -25,8 +25,8 @@ class ParallelSimulationTest : public ::testing::Test {
         for (int cx = 0; cx < numChunksX; ++cx) {
             sim.grid().fillChunk(cx, 0, 0, VoxelCell{});
             sim.grid().materializeChunk(cx, 0, 0);
-            sim.activityTracker().setState(ChunkPos{cx, 0, 0}, ChunkState::Active);
-            markAllSubRegions(sim.activityTracker(), ChunkPos{cx, 0, 0});
+            sim.activityTracker().setState(ChunkCoord{cx, 0, 0}, ChunkState::Active);
+            markAllSubRegions(sim.activityTracker(), ChunkCoord{cx, 0, 0});
 
             // Stone floor
             int baseX = cx * K_CHUNK_SIZE;
@@ -44,8 +44,8 @@ class ParallelSimulationTest : public ::testing::Test {
     void runTicks(VoxelSimulationSystem& sim, int numChunksX, int ticks) {
         for (int t = 0; t < ticks; ++t) {
             for (int cx = 0; cx < numChunksX; ++cx) {
-                sim.activityTracker().setState(ChunkPos{cx, 0, 0}, ChunkState::Active);
-                markAllSubRegions(sim.activityTracker(), ChunkPos{cx, 0, 0});
+                sim.activityTracker().setState(ChunkCoord{cx, 0, 0}, ChunkState::Active);
+                markAllSubRegions(sim.activityTracker(), ChunkCoord{cx, 0, 0});
             }
             sim.tick();
         }
@@ -141,8 +141,8 @@ TEST_F(ParallelSimulationTest, NoDeadlock100Chunks) {
     for (int cx = 0; cx < K_CHUNKS; ++cx) {
         sim.grid().fillChunk(cx, 0, 0, VoxelCell{});
         sim.grid().materializeChunk(cx, 0, 0);
-        sim.activityTracker().setState(ChunkPos{cx, 0, 0}, ChunkState::Active);
-        markAllSubRegions(sim.activityTracker(), ChunkPos{cx, 0, 0});
+        sim.activityTracker().setState(ChunkCoord{cx, 0, 0}, ChunkState::Active);
+        markAllSubRegions(sim.activityTracker(), ChunkCoord{cx, 0, 0});
 
         int baseX = cx * K_CHUNK_SIZE;
         for (int x = baseX; x < baseX + K_CHUNK_SIZE; ++x)
@@ -155,8 +155,8 @@ TEST_F(ParallelSimulationTest, NoDeadlock100Chunks) {
     auto start = std::chrono::steady_clock::now();
     for (int t = 0; t < 3; ++t) {
         for (int cx = 0; cx < K_CHUNKS; ++cx) {
-            sim.activityTracker().setState(ChunkPos{cx, 0, 0}, ChunkState::Active);
-            markAllSubRegions(sim.activityTracker(), ChunkPos{cx, 0, 0});
+            sim.activityTracker().setState(ChunkCoord{cx, 0, 0}, ChunkState::Active);
+            markAllSubRegions(sim.activityTracker(), ChunkCoord{cx, 0, 0});
         }
         sim.tick();
     }
@@ -189,8 +189,8 @@ TEST_F(ParallelSimulationTest, GravityTestsStillPass) {
     sim.grid().advanceEpoch();
 
     for (int i = 0; i < 15; ++i) {
-        sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-        markAllSubRegions(sim.activityTracker(), ChunkPos{0, 0, 0});
+        sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+        markAllSubRegions(sim.activityTracker(), ChunkCoord{0, 0, 0});
         sim.tick();
     }
 
@@ -220,8 +220,8 @@ TEST_F(ParallelSimulationTest, LiquidTestsStillPass) {
     sim.grid().advanceEpoch();
 
     for (int i = 0; i < 50; ++i) {
-        sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-        markAllSubRegions(sim.activityTracker(), ChunkPos{0, 0, 0});
+        sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+        markAllSubRegions(sim.activityTracker(), ChunkCoord{0, 0, 0});
         sim.tick();
     }
 
@@ -257,10 +257,10 @@ TEST_F(ParallelSimulationTest, BoundaryWriteQueueCrossChunkSand) {
     sim.grid().advanceEpoch();
 
     for (int tick = 0; tick < 5; ++tick) {
-        sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-        sim.activityTracker().setState(ChunkPos{0, -1, 0}, ChunkState::Active);
-        markAllSubRegions(sim.activityTracker(), ChunkPos{0, 0, 0});
-        markAllSubRegions(sim.activityTracker(), ChunkPos{0, -1, 0});
+        sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+        sim.activityTracker().setState(ChunkCoord{0, -1, 0}, ChunkState::Active);
+        markAllSubRegions(sim.activityTracker(), ChunkCoord{0, 0, 0});
+        markAllSubRegions(sim.activityTracker(), ChunkCoord{0, -1, 0});
         sim.tick();
     }
 

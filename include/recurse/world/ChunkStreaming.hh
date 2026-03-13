@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/world/ChunkCoord.hh"
 #include "fabric/world/ChunkedGrid.hh"
 
 #include <algorithm>
@@ -9,27 +10,15 @@
 
 namespace recurse {
 
+using fabric::ChunkCoord;
+using fabric::ChunkCoordHash;
 using fabric::ChunkedGrid;
 
 struct StreamingConfig {
     int baseRadius = 8;
     int maxLoadsPerTick = 4;
     int maxUnloadsPerTick = 4;
-    int maxTrackedChunks = 0; // 0 = unlimited; >0 = hard cap, farthest evicted first
-};
-
-struct ChunkCoord {
-    int cx, cy, cz;
-    bool operator==(const ChunkCoord& o) const = default;
-};
-
-struct ChunkCoordHash {
-    size_t operator()(const ChunkCoord& c) const {
-        auto h1 = std::hash<int>{}(c.cx);
-        auto h2 = std::hash<int>{}(c.cy);
-        auto h3 = std::hash<int>{}(c.cz);
-        return h1 ^ (h2 * 2654435761u) ^ (h3 * 40503u);
-    }
+    int maxTrackedChunks = 0;
 };
 
 struct StreamingUpdate {
@@ -52,6 +41,12 @@ class ChunkStreamingManager {
     int currentRadius() const;
     size_t trackedChunkCount() const;
     const StreamingConfig& config() const;
+
+    /// Drop all tracked state. Call between world loads.
+    void clear();
+
+    /// Remove a single chunk from tracked state so it re-enters toLoad next frame.
+    void untrack(const ChunkCoord& c);
 
   private:
     StreamingConfig config_;

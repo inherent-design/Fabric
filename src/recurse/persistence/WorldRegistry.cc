@@ -2,7 +2,7 @@
 
 #include "fabric/utils/ErrorHandling.hh"
 #include "recurse/persistence/ChunkStore.hh"
-#include "recurse/persistence/FilesystemChunkStore.hh"
+#include "recurse/persistence/SqliteChunkStore.hh"
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -107,7 +107,7 @@ std::unique_ptr<ChunkStore> WorldRegistry::openChunkStore(const std::string& uui
     if (!fs::is_directory(dir)) {
         fabric::throwError("World directory not found: " + dir);
     }
-    return std::make_unique<FilesystemChunkStore>(dir);
+    return std::make_unique<SqliteChunkStore>(dir);
 }
 
 std::string WorldRegistry::worldPath(const std::string& uuid) const {

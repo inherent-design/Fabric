@@ -29,14 +29,14 @@ struct GhostCellStore {
 
 class GhostCellManager {
   public:
-    void syncGhostCells(ChunkPos pos, const SimulationGrid& grid);
-    void syncAll(const std::vector<ChunkPos>& chunks, const SimulationGrid& grid);
-    VoxelCell readGhost(ChunkPos pos, int lx, int ly, int lz) const;
-    GhostCellStore& getStore(ChunkPos pos);
-    void remove(ChunkPos pos);
+    void syncGhostCells(ChunkCoord pos, const SimulationGrid& grid);
+    void syncAll(const std::vector<ChunkCoord>& chunks, const SimulationGrid& grid);
+    VoxelCell readGhost(ChunkCoord pos, int lx, int ly, int lz) const;
+    GhostCellStore& getStore(ChunkCoord pos);
+    void remove(ChunkCoord pos);
 
   private:
-    std::unordered_map<ChunkPos, GhostCellStore, ChunkPosHash> stores_;
+    std::unordered_map<ChunkCoord, GhostCellStore, ChunkCoordHash> stores_;
 };
 
 } // namespace recurse::simulation

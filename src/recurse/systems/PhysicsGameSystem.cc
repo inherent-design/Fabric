@@ -55,29 +55,29 @@ void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) 
     }
 
     if (!dirtyCollisionChunks_.empty() && voxelSim_ && !currentFocalCoords.empty()) {
-        std::vector<recurse::ChunkKey> candidates(dirtyCollisionChunks_.begin(), dirtyCollisionChunks_.end());
+        std::vector<recurse::ChunkCoord> candidates(dirtyCollisionChunks_.begin(), dirtyCollisionChunks_.end());
         dirtyCollisionChunks_.clear();
 
         auto& registry = voxelSim_->simulationGrid().registry();
-        std::erase_if(candidates, [&registry](const recurse::ChunkKey& k) {
-            auto* slot = registry.find(k.cx, k.cy, k.cz);
+        std::erase_if(candidates, [&registry](const recurse::ChunkCoord& k) {
+            auto* slot = registry.find(k.x, k.y, k.z);
             return !slot || slot->state != recurse::simulation::ChunkSlotState::Active;
         });
 
         // Drop chunks beyond ALL focal points' collision radii
-        std::erase_if(candidates, [&currentFocalCoords](const recurse::ChunkKey& k) {
+        std::erase_if(candidates, [&currentFocalCoords](const recurse::ChunkCoord& k) {
             for (const auto& c : currentFocalCoords) {
-                int dx = k.cx - c.cx, dy = k.cy - c.cy, dz = k.cz - c.cz;
+                int dx = k.x - c.cx, dy = k.y - c.cy, dz = k.z - c.cz;
                 if (dx * dx + dy * dy + dz * dz <= c.radius * c.radius)
                     return false;
             }
             return true;
         });
 
-        auto minDist = [&currentFocalCoords](const recurse::ChunkKey& k) {
+        auto minDist = [&currentFocalCoords](const recurse::ChunkCoord& k) {
             int best = INT_MAX;
             for (const auto& c : currentFocalCoords) {
-                int dx = k.cx - c.cx, dy = k.cy - c.cy, dz = k.cz - c.cz;
+                int dx = k.x - c.cx, dy = k.y - c.cy, dz = k.z - c.cz;
                 int d = dx * dx + dy * dy + dz * dz;
                 if (d < best)
                     best = d;
@@ -85,10 +85,10 @@ void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) 
             return best;
         };
         std::sort(candidates.begin(), candidates.end(),
-                  [&](const recurse::ChunkKey& a, const recurse::ChunkKey& b) { return minDist(a) < minDist(b); });
+                  [&](const recurse::ChunkCoord& a, const recurse::ChunkCoord& b) { return minDist(a) < minDist(b); });
 
         int limit = std::min(static_cast<int>(candidates.size()), K_COLLISION_BUDGET_PER_FRAME);
-        std::vector<recurse::ChunkKey> toRebuild(candidates.begin(), candidates.begin() + limit);
+        std::vector<recurse::ChunkCoord> toRebuild(candidates.begin(), candidates.begin() + limit);
 
         for (int i = limit; i < static_cast<int>(candidates.size()); ++i)
             dirtyCollisionChunks_.insert(candidates[static_cast<size_t>(i)]);
@@ -97,7 +97,7 @@ void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) 
             physicsWorld_.rebuildChunkCollisionBatch(voxelSim_->simulationGrid(), toRebuild, *scheduler_);
         } else {
             for (const auto& key : toRebuild)
-                physicsWorld_.rebuildChunkCollision(voxelSim_->simulationGrid(), key.cx, key.cy, key.cz);
+                physicsWorld_.rebuildChunkCollision(voxelSim_->simulationGrid(), key.x, key.y, key.z);
         }
     }
 

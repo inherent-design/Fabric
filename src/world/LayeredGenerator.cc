@@ -7,7 +7,7 @@ using namespace recurse::simulation;
 
 LayeredGenerator::LayeredGenerator(std::vector<LayerDef> layers) : layers_(std::move(layers)) {}
 
-void LayeredGenerator::generate(SimulationGrid& grid, ChunkPos pos) {
+void LayeredGenerator::generate(SimulationGrid& grid, ChunkCoord pos) {
     int baseY = pos.y * K_CHUNK_SIZE;
 
     // Default fill is Air

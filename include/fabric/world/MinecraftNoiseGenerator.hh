@@ -20,7 +20,7 @@ struct NoiseGenConfig {
 class MinecraftNoiseGenerator : public GeneratorInterface {
   public:
     explicit MinecraftNoiseGenerator(const NoiseGenConfig& config = {});
-    void generate(recurse::simulation::SimulationGrid& grid, recurse::simulation::ChunkPos pos) override;
+    void generate(recurse::simulation::SimulationGrid& grid, recurse::simulation::ChunkCoord pos) override;
     std::string name() const override { return "MinecraftNoise"; }
 
     /// Point-query material at a single world coordinate.

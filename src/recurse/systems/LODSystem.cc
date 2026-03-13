@@ -201,7 +201,7 @@ void LODSystem::render(fabric::AppContext& ctx) {
             if (!mesh.empty()) {
                 uploadSection(key, mesh);
                 ++uploaded;
-                FABRIC_LOG_DEBUG("LODSystem: Uploaded section level={} ({},{},{}) verts={}", section.level, key.x(),
+                FABRIC_LOG_TRACE("LODSystem: Uploaded section level={} ({},{},{}) verts={}", section.level, key.x(),
                                  key.y(), key.z(), mesh.vertices.size());
             }
         }

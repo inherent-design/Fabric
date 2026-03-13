@@ -1,5 +1,6 @@
 #include "recurse/persistence/ChunkSaveService.hh"
 
+#include "fabric/core/Log.hh"
 #include "fabric/platform/JobScheduler.hh"
 #include <algorithm>
 #include <vector>
@@ -8,6 +9,10 @@ namespace recurse {
 
 ChunkSaveService::ChunkSaveService(ChunkStore& store, fabric::JobScheduler& jobs, DataProvider provider)
     : store_(store), jobs_(jobs), provider_(std::move(provider)) {}
+
+ChunkSaveService::~ChunkSaveService() {
+    waitForBatch();
+}
 
 void ChunkSaveService::markDirty(int cx, int cy, int cz) {
     std::lock_guard lock(mutex_);
@@ -53,14 +58,33 @@ void ChunkSaveService::update(float dt) {
         }
     }
 
-    std::sort(toSave.begin(), toSave.end());
-    for (auto& [cx, cy, cz] : toSave) {
-        saveChunk(cx, cy, cz);
+    if (!toSave.empty()) {
+        std::sort(toSave.begin(), toSave.end());
+        dispatchBatch(std::move(toSave));
+    }
+}
+
+void ChunkSaveService::enqueuePrepared(int cx, int cy, int cz, ChunkBlob blob) {
+    std::lock_guard lock(mutex_);
+    preparedBlobs_.push_back({fabric::ChunkCoord{cx, cy, cz}, std::move(blob)});
+    dirty_.erase(makeKey(cx, cy, cz));
+}
+
+void ChunkSaveService::waitForBatch() {
+    if (batchFuture_.valid()) {
+        try {
+            batchFuture_.get();
+        } catch (const std::exception& e) {
+            FABRIC_LOG_ERROR("Background save batch failed: {}", e.what());
+        }
     }
 }
 
 void ChunkSaveService::flush() {
+    waitForBatch();
+
     std::vector<std::tuple<int, int, int>> toSave;
+    std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> prepared;
 
     {
         std::lock_guard lock(mutex_);
@@ -77,11 +101,24 @@ void ChunkSaveService::flush() {
 
             toSave.emplace_back(cx, cy, cz);
         }
+        prepared = std::move(preparedBlobs_);
     }
 
     std::sort(toSave.begin(), toSave.end());
+
+    std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> entries;
+    entries.reserve(toSave.size() + prepared.size());
     for (auto& [cx, cy, cz] : toSave) {
-        saveChunkSync(cx, cy, cz);
+        auto blob = provider_(cx, cy, cz);
+        if (!blob.empty()) {
+            entries.push_back({fabric::ChunkCoord{cx, cy, cz}, std::move(blob)});
+        }
+    }
+    for (auto& entry : prepared)
+        entries.push_back(std::move(entry));
+
+    if (!entries.empty()) {
+        store_.saveBatch(entries);
     }
 
     std::lock_guard lock(mutex_);
@@ -101,22 +138,38 @@ ChunkSaveService::ChunkKey ChunkSaveService::makeKey(int cx, int cy, int cz) {
     return (pack(cx) << 42) | (pack(cy) << 21) | pack(cz);
 }
 
-void ChunkSaveService::saveChunk(int cx, int cy, int cz) {
-    jobs_.submitBackground([this, cx, cy, cz]() {
-        saveChunkSync(cx, cy, cz);
+void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chunks) {
+    waitForBatch();
+
+    std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> prepared;
+    {
+        std::lock_guard lock(mutex_);
+        prepared = std::move(preparedBlobs_);
+    }
+
+    batchFuture_ = jobs_.submit([this, batch = std::move(chunks), prepared = std::move(prepared)]() mutable {
+        std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> entries;
+        entries.reserve(batch.size() + prepared.size());
+
+        for (auto& [cx, cy, cz] : batch) {
+            auto blob = provider_(cx, cy, cz);
+            if (!blob.empty()) {
+                entries.push_back({fabric::ChunkCoord{cx, cy, cz}, std::move(blob)});
+            }
+        }
+
+        for (auto& entry : prepared)
+            entries.push_back(std::move(entry));
+
+        if (!entries.empty()) {
+            store_.saveBatch(entries);
+        }
 
         std::lock_guard lock(mutex_);
-        auto key = makeKey(cx, cy, cz);
-        dirty_.erase(key);
+        for (auto& [cx, cy, cz] : batch) {
+            dirty_.erase(makeKey(cx, cy, cz));
+        }
     });
-}
-
-void ChunkSaveService::saveChunkSync(int cx, int cy, int cz) {
-    auto blob = provider_(cx, cy, cz);
-    if (blob.empty())
-        return;
-
-    store_.saveChunk(cx, cy, cz, blob);
 }
 
 } // namespace recurse

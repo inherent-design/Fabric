@@ -154,8 +154,6 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/Lifecycle.cc
     src/core/Log.cc
     src/core/LogConfig.cc
-    src/core/Pipeline.cc
-    src/fabric/platform/Plugin.cc
     src/fabric/render/RenderCaps.cc
     src/fabric/render/Rendering.cc
     src/core/Resource.cc
@@ -172,12 +170,9 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/fabric/input/InputSystem.cc
     src/core/AssetRegistry.cc
     src/fabric/platform/FabricApp.cc
-    src/fabric/platform/FileWatcher.cc
     src/core/FilteredConsoleSink.cc
     src/fabric/render/PostProcess.cc
     src/fabric/render/SkyRenderer.cc
-    src/core/SimulationThreadPool.cc
-    src/fabric/world/ChunkDirtyTracker.cc
     src/fabric/platform/JobScheduler.cc
     # ui/font -- HarfBuzz font engine
     src/fabric/ui/font/FontEngineInterfaceHarfBuzz.cc
@@ -244,7 +239,6 @@ set(RECURSE_GAME_SOURCE_FILES
     # persistence/
     src/recurse/persistence/WorldMetadata.cc
     src/recurse/persistence/FchkCodec.cc
-    src/recurse/persistence/FilesystemChunkStore.cc
     src/recurse/persistence/SqliteChunkStore.cc
     src/recurse/persistence/SqliteTransactionStore.cc
     src/recurse/persistence/WorldRegistry.cc
@@ -319,25 +313,15 @@ set(FABRIC_WORLD_SOURCE_FILES
 # Utils library components
 set(FABRIC_UTILS_SOURCE_FILES
     src/utils/ErrorHandling.cc
-    src/utils/ThreadPoolExecutor.cc
     src/utils/Utils.cc
 )
 
-# Parser library components
-set(FABRIC_PARSER_SOURCE_FILES
-    src/parser/ArgumentParser.cc
-    src/parser/SyntaxTree.cc
-)
 
 # Platform library components
 set(FABRIC_PLATFORM_SOURCE_FILES
     src/platform/PlatformInfo.cc
     src/platform/WindowDesc.cc
     src/platform/CursorManager.cc
-)
-
-# Codec library components (header-only; source list kept for future additions)
-set(FABRIC_CODEC_SOURCE_FILES
 )
 
 # UI library components
@@ -369,8 +353,6 @@ add_library(FabricLib STATIC
     ${RECURSE_GAME_SOURCE_FILES}
     ${FABRIC_UTILS_SOURCE_FILES}
     ${FABRIC_PLATFORM_SOURCE_FILES}
-    ${FABRIC_PARSER_SOURCE_FILES}
-    ${FABRIC_CODEC_SOURCE_FILES}
     ${FABRIC_UI_SOURCE_FILES}
     ${FABRIC_BGFX_DEBUGDRAW_SOURCE}
 )

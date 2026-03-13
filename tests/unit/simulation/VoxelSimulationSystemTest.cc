@@ -25,11 +25,11 @@ class VoxelSimulationSystemTest : public ::testing::Test {
         // Set up a single chunk at origin
         sim.grid().fillChunk(0, 0, 0, VoxelCell{});
         sim.grid().materializeChunk(0, 0, 0);
-        sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-        markAllSubRegions(ChunkPos{0, 0, 0});
+        sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+        markAllSubRegions(ChunkCoord{0, 0, 0});
     }
 
-    void markAllSubRegions(ChunkPos pos) {
+    void markAllSubRegions(ChunkCoord pos) {
         for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
             for (int ly = 0; ly < K_CHUNK_SIZE; ly += 8)
                 for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
@@ -105,8 +105,8 @@ TEST_F(VoxelSimulationSystemTest, SandFallsOverTicks) {
     placeCellAndAdvance(16, 10, 16, makeMaterial(material_ids::SAND));
 
     for (int i = 0; i < 15; ++i) {
-        sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-        markAllSubRegions(ChunkPos{0, 0, 0});
+        sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+        markAllSubRegions(ChunkCoord{0, 0, 0});
         sim.tick();
     }
 
@@ -125,8 +125,8 @@ TEST_F(VoxelSimulationSystemTest, WaterFillsCavity) {
     sim.grid().advanceEpoch();
 
     for (int i = 0; i < 50; ++i) {
-        sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-        markAllSubRegions(ChunkPos{0, 0, 0});
+        sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+        markAllSubRegions(ChunkCoord{0, 0, 0});
         sim.tick();
     }
 
@@ -148,11 +148,11 @@ TEST_F(VoxelSimulationSystemTest, SleepingNotSimulated) {
                 sim.grid().writeCell(x, y, z, makeMaterial(material_ids::STONE));
     sim.grid().advanceEpoch();
 
-    sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
+    sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
     sim.tick();
 
     // After tick, chunk should be sleeping (no movement happened)
-    EXPECT_EQ(sim.activityTracker().getState(ChunkPos{0, 0, 0}), ChunkState::Sleeping);
+    EXPECT_EQ(sim.activityTracker().getState(ChunkCoord{0, 0, 0}), ChunkState::Sleeping);
 
     // Second tick: sleeping chunk should not be collected
     uint64_t frameBefore = sim.frameIndex();
@@ -167,8 +167,8 @@ TEST_F(VoxelSimulationSystemTest, ActiveCountTracking) {
 
     // Place sand -- chunk becomes active
     placeCellAndAdvance(16, 5, 16, makeMaterial(material_ids::SAND));
-    sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-    markAllSubRegions(ChunkPos{0, 0, 0});
+    sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+    markAllSubRegions(ChunkCoord{0, 0, 0});
 
     auto activeNow = sim.activityTracker().collectActiveChunks();
     EXPECT_GE(activeNow.size(), 1u);
@@ -176,15 +176,15 @@ TEST_F(VoxelSimulationSystemTest, ActiveCountTracking) {
     // Run ticks until sand settles (should settle on stone floor)
     for (int i = 0; i < 30; ++i) {
         // Re-activate if went to sleep (sand still falling)
-        if (sim.activityTracker().getState(ChunkPos{0, 0, 0}) != ChunkState::Active) {
-            sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-            markAllSubRegions(ChunkPos{0, 0, 0});
+        if (sim.activityTracker().getState(ChunkCoord{0, 0, 0}) != ChunkState::Active) {
+            sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+            markAllSubRegions(ChunkCoord{0, 0, 0});
         }
         sim.tick();
     }
 
     // After many ticks with only one sand grain on a floor, chunk should go to sleep
-    EXPECT_EQ(sim.activityTracker().getState(ChunkPos{0, 0, 0}), ChunkState::Sleeping);
+    EXPECT_EQ(sim.activityTracker().getState(ChunkCoord{0, 0, 0}), ChunkState::Sleeping);
 }
 
 // 6. Empty world (no chunks) doesn't crash
@@ -222,8 +222,8 @@ TEST_F(VoxelSimulationSystemTest, MatterConservation) {
     EXPECT_EQ(initialSand, 20);
 
     for (int i = 0; i < 50; ++i) {
-        sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-        markAllSubRegions(ChunkPos{0, 0, 0});
+        sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+        markAllSubRegions(ChunkCoord{0, 0, 0});
         sim.tick();
     }
 
@@ -295,7 +295,7 @@ TEST(RecurseVoxelSimSystemTest, LiquidFlowsHorizontally) {
     };
 
     int initialWater = countWater();
-    sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
+    sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
 
     for (int i = 0; i < 30; ++i)
         sim.tick();
@@ -312,7 +312,7 @@ TEST(RecurseVoxelSimSystemTest, WakeOnNeighborActivity) {
 
     grid.fillChunk(0, 0, 0, VoxelCell{material_ids::STONE});
     grid.advanceEpoch();
-    sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Sleeping);
+    sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Sleeping);
 
     for (int x = K_CHUNK_SIZE; x < K_CHUNK_SIZE * 2; ++x)
         for (int z = 0; z < K_CHUNK_SIZE; ++z)
@@ -321,12 +321,12 @@ TEST(RecurseVoxelSimSystemTest, WakeOnNeighborActivity) {
 
     grid.writeCell(K_CHUNK_SIZE, 5, 16, VoxelCell{material_ids::SAND});
     grid.advanceEpoch();
-    sim.activityTracker().setState(ChunkPos{1, 0, 0}, ChunkState::Active);
+    sim.activityTracker().setState(ChunkCoord{1, 0, 0}, ChunkState::Active);
 
     for (int i = 0; i < 10; ++i)
         sim.tick();
 
-    auto stateA = sim.activityTracker().getState(ChunkPos{0, 0, 0});
+    auto stateA = sim.activityTracker().getState(ChunkCoord{0, 0, 0});
     EXPECT_NE(stateA, ChunkState::Sleeping) << "Neighbor activity should wake sleeping chunk";
 }
 
@@ -342,8 +342,8 @@ TEST(RecurseVoxelSimSystemTest, GhostCellCopyCorrectness) {
     grid.materializeChunk(0, 0, 0);
     grid.materializeChunk(1, 0, 0);
 
-    sim.activityTracker().setState(ChunkPos{0, 0, 0}, ChunkState::Active);
-    sim.activityTracker().setState(ChunkPos{1, 0, 0}, ChunkState::Active);
+    sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
+    sim.activityTracker().setState(ChunkCoord{1, 0, 0}, ChunkState::Active);
 
     sim.tick();
 

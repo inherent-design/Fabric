@@ -43,6 +43,12 @@ WorldMetadata WorldMetadata::fromTOML(const std::string& path) {
     meta.createdAt = tbl["created_at"].value_or(std::string{});
     meta.lastPlayed = tbl["last_played"].value_or(std::string{});
 
+    if (auto player = tbl["player"]; player.is_table()) {
+        meta.playerX = player["x"].value_or(0.0f / 0.0f);
+        meta.playerY = player["y"].value_or(0.0f / 0.0f);
+        meta.playerZ = player["z"].value_or(0.0f / 0.0f);
+    }
+
     if (meta.uuid.empty()) {
         fabric::throwError("world.toml missing uuid: " + path);
     }
@@ -60,11 +66,23 @@ void WorldMetadata::toTOML(const std::string& path) const {
         {"last_played", lastPlayed},
     };
 
+    if (hasPlayerPosition()) {
+        tbl.insert("player", toml::table{
+                                 {"x", static_cast<double>(playerX)},
+                                 {"y", static_cast<double>(playerY)},
+                                 {"z", static_cast<double>(playerZ)},
+                             });
+    }
+
     std::ofstream out(path);
     if (!out.is_open()) {
         fabric::throwError("Failed to open world.toml for writing: " + path);
     }
     out << tbl;
+}
+
+bool WorldMetadata::hasPlayerPosition() const {
+    return !std::isnan(playerX) && !std::isnan(playerY) && !std::isnan(playerZ);
 }
 
 std::string WorldMetadata::generateUUID() {

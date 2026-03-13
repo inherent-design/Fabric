@@ -12,7 +12,7 @@ class NaturalWorldGenerator : public WorldGenerator {
     explicit NaturalWorldGenerator(const fabric::world::NoiseGenConfig& config) : noiseGen_(config) {}
 
     void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override {
-        noiseGen_.generate(grid, recurse::simulation::ChunkPos{cx, cy, cz});
+        noiseGen_.generate(grid, recurse::simulation::ChunkCoord{cx, cy, cz});
     }
 
     void generateToBuffer(recurse::simulation::VoxelCell* buffer, int cx, int cy, int cz) override {

@@ -33,10 +33,6 @@ using fabric::K_HORIZONTAL_NEIGHBORS;
 
 namespace {
 
-fabric::ChunkCoord toChunkCoord(const recurse::simulation::ChunkPos& pos) {
-    return fabric::ChunkCoord{pos.x, pos.y, pos.z};
-}
-
 uint16_t unpackMaterialId(uint32_t packedMaterial) {
     return static_cast<uint16_t>(packedMaterial & 0xFFFFu);
 }
@@ -145,7 +141,7 @@ void VoxelMeshingSystem::processFrame() {
     std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> scheduled;
 
     for (const auto& entry : activeChunks) {
-        auto coord = toChunkCoord(entry.pos);
+        auto coord = entry.pos;
         toMesh.push_back(coord);
         scheduled.insert(coord);
     }

@@ -4,44 +4,36 @@
 
 namespace recurse::simulation {
 
-size_t ChunkPosHash::operator()(const ChunkPos& p) const {
-    // Combine x, y, z with bit shifts + XOR
-    auto h = static_cast<size_t>(p.x);
-    h ^= static_cast<size_t>(p.y) << 13 ^ static_cast<size_t>(p.y) >> 19;
-    h ^= static_cast<size_t>(p.z) << 26 ^ static_cast<size_t>(p.z) >> 6;
-    return h;
-}
-
-void ChunkActivityTracker::setState(ChunkPos pos, ChunkState state) {
+void ChunkActivityTracker::setState(ChunkCoord pos, ChunkState state) {
     chunks_[pos].state = state;
 }
 
-ChunkState ChunkActivityTracker::getState(ChunkPos pos) const {
+ChunkState ChunkActivityTracker::getState(ChunkCoord pos) const {
     auto it = chunks_.find(pos);
     if (it == chunks_.end())
         return ChunkState::Sleeping;
     return it->second.state;
 }
 
-void ChunkActivityTracker::markSubRegionActive(ChunkPos pos, int lx, int ly, int lz) {
+void ChunkActivityTracker::markSubRegionActive(ChunkCoord pos, int lx, int ly, int lz) {
     int bitIndex = (lx >> 3) + (ly >> 3) * 4 + (lz >> 3) * 16;
     chunks_[pos].subRegionMask |= (uint64_t{1} << bitIndex);
 }
 
-uint64_t ChunkActivityTracker::getSubRegionMask(ChunkPos pos) const {
+uint64_t ChunkActivityTracker::getSubRegionMask(ChunkCoord pos) const {
     auto it = chunks_.find(pos);
     if (it == chunks_.end())
         return 0;
     return it->second.subRegionMask;
 }
 
-void ChunkActivityTracker::clearSubRegionMask(ChunkPos pos) {
+void ChunkActivityTracker::clearSubRegionMask(ChunkCoord pos) {
     auto it = chunks_.find(pos);
     if (it != chunks_.end())
         it->second.subRegionMask = 0;
 }
 
-void ChunkActivityTracker::notifyBoundaryChange(ChunkPos neighborPos) {
+void ChunkActivityTracker::notifyBoundaryChange(ChunkCoord neighborPos) {
     auto& info = chunks_[neighborPos];
     // Wake sleeping chunks OR mark active chunks for boundary re-mesh
     if (info.state == ChunkState::Sleeping || info.state == ChunkState::Active)
@@ -54,7 +46,7 @@ void ChunkActivityTracker::setReferencePoint(int wx, int wy, int wz) {
     refZ_ = wz;
 }
 
-SimPriority ChunkActivityTracker::computePriority(ChunkPos pos) const {
+SimPriority ChunkActivityTracker::computePriority(ChunkCoord pos) const {
     // Convert reference point to chunk coordinates (floor division via shift)
     int refCx = refX_ >> 5; // K_CHUNK_SHIFT = 5
     int refCy = refY_ >> 5;
@@ -90,7 +82,7 @@ std::vector<ActiveChunkEntry> ChunkActivityTracker::collectActiveChunks(int budg
     return result;
 }
 
-void ChunkActivityTracker::putToSleep(ChunkPos pos) {
+void ChunkActivityTracker::putToSleep(ChunkCoord pos) {
     auto it = chunks_.find(pos);
     if (it != chunks_.end()) {
         it->second.state = ChunkState::Sleeping;
@@ -98,14 +90,14 @@ void ChunkActivityTracker::putToSleep(ChunkPos pos) {
     }
 }
 
-void ChunkActivityTracker::resolveBoundaryDirty(ChunkPos pos, bool needsSimulation) {
+void ChunkActivityTracker::resolveBoundaryDirty(ChunkCoord pos, bool needsSimulation) {
     auto it = chunks_.find(pos);
     if (it != chunks_.end()) {
         it->second.state = needsSimulation ? ChunkState::Active : ChunkState::Sleeping;
     }
 }
 
-void ChunkActivityTracker::remove(ChunkPos pos) {
+void ChunkActivityTracker::remove(ChunkCoord pos) {
     chunks_.erase(pos);
 }
 

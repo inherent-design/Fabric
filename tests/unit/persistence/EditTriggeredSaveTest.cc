@@ -3,7 +3,7 @@
 #include "recurse/character/VoxelInteraction.hh"
 #include "recurse/persistence/ChunkSaveService.hh"
 #include "recurse/persistence/FchkCodec.hh"
-#include "recurse/persistence/FilesystemChunkStore.hh"
+#include "recurse/persistence/SqliteChunkStore.hh"
 #include <filesystem>
 #include <gtest/gtest.h>
 
@@ -15,7 +15,7 @@ class EditTriggeredSaveTest : public ::testing::Test {
         tmpDir_ = fs::temp_directory_path() / "fabric_test_edit_save";
         fs::remove_all(tmpDir_);
         worldDir_ = (tmpDir_ / "testworld").string();
-        store_ = std::make_unique<recurse::FilesystemChunkStore>(worldDir_);
+        store_ = std::make_unique<recurse::SqliteChunkStore>(worldDir_);
         jobs_ = std::make_unique<fabric::JobScheduler>(1);
         jobs_->disableForTesting();
     }
@@ -23,7 +23,7 @@ class EditTriggeredSaveTest : public ::testing::Test {
 
     fs::path tmpDir_;
     std::string worldDir_;
-    std::unique_ptr<recurse::FilesystemChunkStore> store_;
+    std::unique_ptr<recurse::SqliteChunkStore> store_;
     std::unique_ptr<fabric::JobScheduler> jobs_;
 
     static recurse::ChunkBlob makeFakeBlob(uint8_t marker = 0xAA) {

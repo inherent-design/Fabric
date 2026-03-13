@@ -59,9 +59,9 @@ TEST_F(ChunkStreamingTest, PrioritizesNearestChunks) {
     if (result.toLoad.size() >= 2) {
         int centerCX = 0, centerCY = 0, centerCZ = 0;
         auto distSq = [&](const ChunkCoord& c) {
-            int dx = c.cx - centerCX;
-            int dy = c.cy - centerCY;
-            int dz = c.cz - centerCZ;
+            int dx = c.x - centerCX;
+            int dy = c.y - centerCY;
+            int dz = c.z - centerCZ;
             return dx * dx + dy * dy + dz * dz;
         };
         for (size_t i = 1; i < result.toLoad.size(); ++i) {
@@ -90,7 +90,7 @@ TEST_F(ChunkStreamingTest, NegativeCoordinates) {
     EXPECT_FALSE(result.toLoad.empty());
 
     for (const auto& c : result.toLoad) {
-        EXPECT_NE(c.cx, 0);
+        EXPECT_NE(c.x, 0);
     }
 }
 
@@ -147,7 +147,7 @@ TEST_F(ChunkStreamingTest, MaxTrackedChunksKeepsNearestChunks) {
     // Verify no evicted chunk is closer than any kept chunk
     if (!result.toUnload.empty()) {
         auto distSq = [](const ChunkCoord& c) {
-            return c.cx * c.cx + c.cy * c.cy + c.cz * c.cz;
+            return c.x * c.x + c.y * c.y + c.z * c.z;
         };
         int minUnloadDist = distSq(result.toUnload.back()); // farthest-first sorted
         for (const auto& loaded : result.toLoad) {
