@@ -128,14 +128,19 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     unloadsThisFrame_ = static_cast<int>(streamUpdate.toUnload.size());
 
     // Triage new chunks: already-ready, async-loadable, or needs-generation.
-    // Budget caps prevent frame stalls when loading worlds with many saved chunks.
-    // Chunks beyond the async budget are untracked so the streaming manager retries them.
-    constexpr int K_MAX_ASYNC_DISPATCHES_PER_FRAME = 32;
-    int asyncDispatched = 0;
+    // Separate budgets prevent load-budget exhaustion from starving generation (K34).
+    // Bounding-box pre-filter skips DB lookup for coords outside saved region (K35).
+    constexpr int K_MAX_ASYNC_LOADS_PER_FRAME = 32;
+    constexpr int K_MAX_GENERATES_PER_FRAME = 512;
+    int loadsDispatched = 0;
+    int generatesQueued = 0;
 
     std::vector<ChunkCoord> readyChunks;
     std::vector<std::tuple<int, int, int>> toGenerate;
     size_t triageEnd = streamUpdate.toLoad.size();
+
+    auto* sqliteStore = dynamic_cast<SqliteChunkStore*>(chunkStore_);
+
     for (size_t i = 0; i < streamUpdate.toLoad.size(); ++i) {
         const auto& coord = streamUpdate.toLoad[i];
 
@@ -152,15 +157,24 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
         if (hasPendingLoad(coord.x, coord.y, coord.z))
             continue;
 
-        if (asyncDispatched < K_MAX_ASYNC_DISPATCHES_PER_FRAME) {
+        // Bounding-box pre-filter: skip DB lookup for coords outside saved region.
+        // Non-SQLite stores conservatively assume all coords might be saved.
+        bool maybeInDb = chunkStore_ && (!sqliteStore || sqliteStore->isInSavedRegion(coord.x, coord.y, coord.z));
+
+        if (maybeInDb && loadsDispatched < K_MAX_ASYNC_LOADS_PER_FRAME) {
             if (dispatchAsyncLoad(coord.x, coord.y, coord.z)) {
-                ++asyncDispatched;
+                ++loadsDispatched;
                 continue;
             }
-            // Not in DB; fall through to generation
+            // hasChunk returned false; fall through to generation
+        }
+
+        // Generation path (separate budget)
+        if (generatesQueued < K_MAX_GENERATES_PER_FRAME) {
             toGenerate.emplace_back(coord.x, coord.y, coord.z);
+            ++generatesQueued;
         } else {
-            // Async budget exhausted; untrack remaining so they retry next frame
+            // Both budgets exhausted; untrack remaining
             triageEnd = i;
             break;
         }
@@ -170,9 +184,9 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
         size_t deferred = streamUpdate.toLoad.size() - triageEnd;
         for (size_t i = triageEnd; i < streamUpdate.toLoad.size(); ++i)
             streaming_->untrack(streamUpdate.toLoad[i]);
-        if (deferred > 0 || asyncDispatched > 0 || !toGenerate.empty()) {
-            FABRIC_LOG_DEBUG("triage: load={} async={} gen={} ready={} deferred={} unload={}",
-                             streamUpdate.toLoad.size(), asyncDispatched, toGenerate.size(), readyChunks.size(),
+        if (deferred > 0 || loadsDispatched > 0 || !toGenerate.empty()) {
+            FABRIC_LOG_DEBUG("triage: load={} dbLoads={} gen={} ready={} deferred={} unload={}",
+                             streamUpdate.toLoad.size(), loadsDispatched, toGenerate.size(), readyChunks.size(),
                              deferred, streamUpdate.toUnload.size());
         }
     }

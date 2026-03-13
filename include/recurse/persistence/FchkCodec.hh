@@ -24,7 +24,7 @@ struct FchkDecoded {
     uint16_t paletteEntryCount{0};  ///< Number of palette entries (0 for v1).
 };
 
-/// Shared FCHK v2 codec. Used by FilesystemChunkStore, SqliteChunkStore, and tests.
+/// Shared FCHK v2 codec. Used by SqliteChunkStore and tests.
 struct FchkCodec {
     /// Encode raw VoxelCell data into FCHK v2 blob.
     /// When paletteData is non-null and paletteEntryCount > 0, palette is appended after the

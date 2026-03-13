@@ -34,7 +34,7 @@ class WorldRegistry {
     /// Rename a world (updates display name in world.toml).
     bool renameWorld(const std::string& uuid, const std::string& newName);
 
-    /// Open a FilesystemChunkStore for the given world UUID.
+    /// Open a ChunkStore for the given world UUID.
     std::unique_ptr<ChunkStore> openChunkStore(const std::string& uuid) const;
 
     /// Filesystem path for a world directory.
