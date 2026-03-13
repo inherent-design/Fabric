@@ -18,7 +18,9 @@ class SimulationGrid {
     void writeCellImmediate(int wx, int wy, int wz, VoxelCell cell);
     void advanceEpoch();
     void syncChunkBuffers(int cx, int cy, int cz);
+    void syncChunkBuffersFrom(int cx, int cy, int cz, int srcBufferIndex);
     uint64_t currentEpoch() const;
+    int currentWriteIndex() const;
 
     // Chunk-level API (unchanged signatures, delegates to registry_)
     void fillChunk(int cx, int cy, int cz, VoxelCell fill);

@@ -74,13 +74,16 @@ void SimulationGrid::writeCellImmediate(int wx, int wy, int wz, VoxelCell cell) 
 }
 
 void SimulationGrid::syncChunkBuffers(int cx, int cy, int cz) {
+    syncChunkBuffersFrom(cx, cy, cz, writeIndex());
+}
+
+void SimulationGrid::syncChunkBuffersFrom(int cx, int cy, int cz, int srcBufferIndex) {
     auto* slot = registry_.find(cx, cy, cz);
     if (!slot || !slot->isMaterialized())
         return;
-    int wi = writeIndex();
     for (int i = 0; i < ChunkBuffers::K_COUNT; ++i) {
-        if (i != wi)
-            *slot->simBuffers.buffers[i] = *slot->simBuffers.buffers[wi];
+        if (i != srcBufferIndex)
+            *slot->simBuffers.buffers[i] = *slot->simBuffers.buffers[srcBufferIndex];
     }
     slot->copyCountdown = 0;
 }
@@ -99,6 +102,10 @@ void SimulationGrid::advanceEpoch() {
 
 uint64_t SimulationGrid::currentEpoch() const {
     return epoch_;
+}
+
+int SimulationGrid::currentWriteIndex() const {
+    return writeIndex();
 }
 
 void SimulationGrid::fillChunk(int cx, int cy, int cz, VoxelCell fill) {

@@ -428,7 +428,10 @@ bool ChunkPipelineSystem::dispatchAsyncLoad(int cx, int cy, int cz) {
     grid.registry().addChunk(cx, cy, cz);
     grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Generating);
 
-    // writeBuffer() auto-materializes the slot
+    // writeBuffer() auto-materializes the slot; record which buffer index
+    // the pointer refers to so pollPendingLoads can sync from the correct
+    // source after epochs advance during the async load.
+    int bufIdx = grid.currentWriteIndex();
     auto* buf = grid.writeBuffer(cx, cy, cz);
     if (!buf) {
         simSystem_->removeChunk(cx, cy, cz);
@@ -454,7 +457,7 @@ bool ChunkPipelineSystem::dispatchAsyncLoad(int cx, int cy, int cz) {
         return r;
     });
 
-    pendingLoads_.push_back({std::move(future), cx, cy, cz, false});
+    pendingLoads_.push_back({std::move(future), cx, cy, cz, bufIdx, false});
     return true;
 }
 
@@ -483,7 +486,7 @@ void ChunkPipelineSystem::pollPendingLoads(fabric::AppContext& ctx) {
 
         if (loadResult.success) {
             auto& grid = simSystem_->simulationGrid();
-            grid.syncChunkBuffers(cx, cy, cz);
+            grid.syncChunkBuffersFrom(cx, cy, cz, it->bufferIndex);
             grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
             simSystem_->activityTracker().setState(fabric::ChunkCoord{cx, cy, cz},
                                                    recurse::simulation::ChunkState::Active);

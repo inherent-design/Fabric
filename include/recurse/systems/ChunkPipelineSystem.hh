@@ -126,6 +126,7 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     struct PendingChunkLoad {
         std::future<AsyncLoadResult> result;
         int cx, cy, cz;
+        int bufferIndex = 0;
         bool cancelled = false;
     };
     std::vector<PendingChunkLoad> pendingLoads_;
