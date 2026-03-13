@@ -18,9 +18,10 @@ using fabric::packChunkKey;
 using fabric::unpackChunkKey;
 
 struct ChunkBuffers {
-    /// Set to 3 to enable triple-buffering (eliminates advanceEpoch copy target
-    /// contention; does NOT eliminate the copy itself). See D-26.
-    static constexpr int K_COUNT = 2;
+    /// Triple-buffered: epoch advance copies only dirty chunks (D-26, D-42).
+    /// K_COUNT=3 eliminates read/write contention; copyCountdown eliminates
+    /// copies for stable chunks (~95% of materialized set).
+    static constexpr int K_COUNT = 3;
     using Buffer = std::array<VoxelCell, K_CHUNK_VOLUME>;
     std::unique_ptr<Buffer> buffers[K_COUNT];
     VoxelCell fillValue{};
@@ -43,6 +44,12 @@ struct ChunkSlot {
     // Pre-resolved raw pointers for zero-overhead worker access (wired by C-1c).
     VoxelCell* writePtr = nullptr;
     const VoxelCell* readPtr = nullptr;
+
+    /// Dirty tracking for advanceEpoch. When a chunk is written (simulation,
+    /// boundary drain, voxel interaction), set to K_COUNT-1. advanceEpoch
+    /// copies write->next_write_target and decrements. After K_COUNT-1 clean
+    /// epochs, all buffers converge and no further copies occur.
+    uint8_t copyCountdown{0};
 
     void materialize() { simBuffers.materialize(); }
     bool isMaterialized() const { return simBuffers.isMaterialized(); }

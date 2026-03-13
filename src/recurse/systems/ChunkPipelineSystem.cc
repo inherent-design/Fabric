@@ -104,6 +104,17 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     FABRIC_ZONE_SCOPED_N("chunk_pipeline");
     auto& ecsWorld = ctx.world;
 
+    auto now = std::chrono::steady_clock::now();
+    if (lastFrameTime_ != std::chrono::steady_clock::time_point{}) {
+        float dtMs = std::chrono::duration<float, std::milli>(now - lastFrameTime_).count();
+        if (dtMs > 1.0f)
+            frameTimeEma_ = frameTimeEma_ * 0.9f + dtMs * 0.1f;
+    }
+    lastFrameTime_ = now;
+
+    if (streaming_)
+        streaming_->updateBudget(frameTimeEma_);
+
     // Complete async loads from previous frames before processing new work
     pollPendingLoads(ctx);
 
@@ -279,42 +290,72 @@ void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ
 
     if (centerCX == lastLodCX_ && centerCY == lastLodCY_ && centerCZ == lastLodCZ_)
         return;
+
+    int chunkRadius = streaming_ ? streaming_->currentRadius() : 0;
+
+    int dx = centerCX - lastLodCX_;
+    int dy = centerCY - lastLodCY_;
+    int dz = centerCZ - lastLodCZ_;
+    bool isTeleport = lastLodCX_ == INT_MIN || std::abs(dx) > 1 || std::abs(dy) > 1 || std::abs(dz) > 1;
+
     lastLodCX_ = centerCX;
     lastLodCY_ = centerCY;
     lastLodCZ_ = centerCZ;
 
-    int chunkRadius = streaming_ ? streaming_->currentRadius() : 0;
-
-    std::unordered_set<ChunkCoord, ChunkCoordHash> desired;
-    for (int dz = -lodRadius_; dz <= lodRadius_; ++dz) {
-        for (int dy = -lodRadius_; dy <= lodRadius_; ++dy) {
-            for (int dx = -lodRadius_; dx <= lodRadius_; ++dx) {
-                if (std::abs(dx) <= chunkRadius && std::abs(dy) <= chunkRadius && std::abs(dz) <= chunkRadius)
-                    continue;
-
-                ChunkCoord c{centerCX + dx, centerCY + dy, centerCZ + dz};
-
-                if (terrain_) {
-                    int surfaceMax = terrain_->worldGenerator().maxSurfaceHeight(c.x, c.z);
-                    int chunkBottomY = c.y * K_CHUNK_SIZE;
-                    int chunkTopY = (c.y + 1) * K_CHUNK_SIZE;
-                    if (chunkBottomY > surfaceMax || chunkTopY < surfaceMax - K_CHUNK_SIZE)
-                        continue;
-                }
-
-                desired.insert(c);
-            }
+    // Terrain surface test for LOD candidate filtering.
+    auto isLodCandidate = [&](const ChunkCoord& c) -> bool {
+        int ddx = c.x - centerCX;
+        int ddy = c.y - centerCY;
+        int ddz = c.z - centerCZ;
+        if (std::abs(ddx) <= chunkRadius && std::abs(ddy) <= chunkRadius && std::abs(ddz) <= chunkRadius)
+            return false;
+        if (terrain_) {
+            int surfaceMax = terrain_->worldGenerator().maxSurfaceHeight(c.x, c.z);
+            int chunkBottomY = c.y * K_CHUNK_SIZE;
+            int chunkTopY = (c.y + 1) * K_CHUNK_SIZE;
+            if (chunkBottomY > surfaceMax || chunkTopY < surfaceMax - K_CHUNK_SIZE)
+                return false;
         }
-    }
+        return true;
+    };
 
-    // LOD chunks to load: in desired but not tracked
+    // Collect new candidates. For single-step movement, scan only the leading
+    // edge slabs (O(r^2) per axis). For teleports, fall back to full O(r^3).
     std::vector<ChunkCoord> toLoad;
-    for (const auto& c : desired) {
-        if (!lodChunks_.contains(c))
-            toLoad.push_back(c);
+
+    if (isTeleport) {
+        for (int ddz = -lodRadius_; ddz <= lodRadius_; ++ddz)
+            for (int ddy = -lodRadius_; ddy <= lodRadius_; ++ddy)
+                for (int ddx = -lodRadius_; ddx <= lodRadius_; ++ddx) {
+                    ChunkCoord c{centerCX + ddx, centerCY + ddy, centerCZ + ddz};
+                    if (isLodCandidate(c) && !lodChunks_.contains(c))
+                        toLoad.push_back(c);
+                }
+    } else {
+        auto scanSlab = [&](int axis, int sign) {
+            int edge = sign > 0 ? lodRadius_ : -lodRadius_;
+            for (int a = -lodRadius_; a <= lodRadius_; ++a) {
+                for (int b = -lodRadius_; b <= lodRadius_; ++b) {
+                    ChunkCoord c{};
+                    if (axis == 0)
+                        c = {centerCX + edge, centerCY + a, centerCZ + b};
+                    else if (axis == 1)
+                        c = {centerCX + a, centerCY + edge, centerCZ + b};
+                    else
+                        c = {centerCX + a, centerCY + b, centerCZ + edge};
+                    if (isLodCandidate(c) && !lodChunks_.contains(c))
+                        toLoad.push_back(c);
+                }
+            }
+        };
+        if (dx != 0)
+            scanSlab(0, dx);
+        if (dy != 0)
+            scanSlab(1, dy);
+        if (dz != 0)
+            scanSlab(2, dz);
     }
 
-    // Sort by distance (nearest first)
     auto distSq = [&](const ChunkCoord& c) {
         int ddx = c.x - centerCX;
         int ddy = c.y - centerCY;
@@ -324,7 +365,6 @@ void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ
     std::sort(toLoad.begin(), toLoad.end(),
               [&](const ChunkCoord& a, const ChunkCoord& b) { return distSq(a) < distSq(b); });
 
-    // Rate-limit loads
     int loadCount = std::min(static_cast<int>(toLoad.size()), lodGenBudget_);
     for (int i = 0; i < loadCount; ++i) {
         const auto& c = toLoad[static_cast<size_t>(i)];
@@ -333,9 +373,6 @@ void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ
         lodChunks_.insert(c);
     }
 
-    // LOD chunks to unload: entered full-res ring or left LOD ring.
-    // Hysteresis prevents thrash at the boundary: load at lodRadius_,
-    // unload at lodRadius_ + margin.
     constexpr int K_LOD_HYSTERESIS = 2;
     int unloadRadius = lodRadius_ + K_LOD_HYSTERESIS;
 
@@ -358,13 +395,10 @@ void ChunkPipelineSystem::updateLODRing(int centerCX, int centerCY, int centerCZ
             int ddz = c.z - centerCZ;
             bool insideFullRes =
                 std::abs(ddx) <= chunkRadius && std::abs(ddy) <= chunkRadius && std::abs(ddz) <= chunkRadius;
-            if (insideFullRes) {
-                // Chunk entered full-res ring; keep section data for LOD cascade
+            if (insideFullRes)
                 lodSystem_->onChunkRemoved(c.x, c.y, c.z);
-            } else {
-                // Chunk left LOD ring entirely; free GPU + grid data
+            else
                 lodSystem_->removeSectionFully(c.x, c.y, c.z);
-            }
         }
         lodChunks_.erase(c);
     }

@@ -7,7 +7,8 @@ using fabric::K_CHUNK_SIZE;
 
 namespace recurse {
 
-ChunkStreamingManager::ChunkStreamingManager(const StreamingConfig& config) : config_(config) {}
+ChunkStreamingManager::ChunkStreamingManager(const StreamingConfig& config)
+    : config_(config), adaptiveBudget_(config.maxLoadsPerTick) {}
 
 StreamingUpdate ChunkStreamingManager::update(float viewX, float viewY, float viewZ) {
     return update({{viewX, viewY, viewZ, config_.baseRadius}});
@@ -69,8 +70,9 @@ StreamingUpdate ChunkStreamingManager::update(const std::vector<FocalPoint>& sou
 
     StreamingUpdate result;
 
-    int loadCount = config_.maxLoadsPerTick > 0 ? std::min(static_cast<int>(newChunks.size()), config_.maxLoadsPerTick)
-                                                : static_cast<int>(newChunks.size());
+    int budget = adaptiveBudget_ > 0 ? adaptiveBudget_ : config_.maxLoadsPerTick;
+    int loadCount =
+        budget > 0 ? std::min(static_cast<int>(newChunks.size()), budget) : static_cast<int>(newChunks.size());
     for (int i = 0; i < loadCount; ++i) {
         result.toLoad.push_back(newChunks[static_cast<size_t>(i)]);
         tracked_.insert(newChunks[static_cast<size_t>(i)]);
@@ -121,9 +123,26 @@ const StreamingConfig& ChunkStreamingManager::config() const {
     return config_;
 }
 
+void ChunkStreamingManager::updateBudget(float frameTimeMs) {
+    constexpr float K_TARGET_HIGH = 16.0f;
+    constexpr float K_TARGET_LOW = 10.0f;
+    constexpr int K_FLOOR = 4;
+    int ceiling = config_.maxLoadsPerTick * 4;
+
+    if (frameTimeMs > K_TARGET_HIGH)
+        adaptiveBudget_ = std::max(K_FLOOR, adaptiveBudget_ * 3 / 4);
+    else if (frameTimeMs < K_TARGET_LOW)
+        adaptiveBudget_ = std::min(ceiling, adaptiveBudget_ + 2);
+}
+
+int ChunkStreamingManager::currentBudget() const {
+    return adaptiveBudget_;
+}
+
 void ChunkStreamingManager::clear() {
     tracked_.clear();
     currentRadius_ = 0;
+    adaptiveBudget_ = config_.maxLoadsPerTick;
 }
 
 void ChunkStreamingManager::untrack(const ChunkCoord& c) {

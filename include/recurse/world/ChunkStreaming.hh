@@ -38,7 +38,13 @@ class ChunkStreamingManager {
     StreamingUpdate update(const std::vector<FocalPoint>& sources);
     StreamingUpdate update(float viewX, float viewY, float viewZ);
 
+    /// AIMD budget update. Call once per frame with the measured frame time.
+    /// Decreases multiplicatively when frame time exceeds target, increases
+    /// additively when headroom is available. Floor=4, ceiling=4x config max.
+    void updateBudget(float frameTimeMs);
+
     int currentRadius() const;
+    int currentBudget() const;
     size_t trackedChunkCount() const;
     const StreamingConfig& config() const;
 
@@ -51,6 +57,7 @@ class ChunkStreamingManager {
   private:
     StreamingConfig config_;
     int currentRadius_ = 0;
+    int adaptiveBudget_ = 0;
     std::unordered_set<ChunkCoord, ChunkCoordHash> tracked_;
 };
 

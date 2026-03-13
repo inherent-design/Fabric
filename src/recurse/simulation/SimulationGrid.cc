@@ -45,6 +45,7 @@ void SimulationGrid::writeCell(int wx, int wy, int wz, VoxelCell cell) {
         slot.materialize();
     int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
     (*slot.simBuffers.buffers[writeIndex()])[idx] = cell;
+    slot.copyCountdown = ChunkBuffers::K_COUNT - 1;
 }
 
 bool SimulationGrid::writeCellIfExists(int wx, int wy, int wz, VoxelCell cell) {
@@ -57,6 +58,7 @@ bool SimulationGrid::writeCellIfExists(int wx, int wy, int wz, VoxelCell cell) {
         return false;
     int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
     (*slot->simBuffers.buffers[writeIndex()])[idx] = cell;
+    slot->copyCountdown = ChunkBuffers::K_COUNT - 1;
     return true;
 }
 
@@ -80,16 +82,18 @@ void SimulationGrid::syncChunkBuffers(int cx, int cy, int cz) {
         if (i != wi)
             *slot->simBuffers.buffers[i] = *slot->simBuffers.buffers[wi];
     }
+    slot->copyCountdown = 0;
 }
 
 void SimulationGrid::advanceEpoch() {
-    // Copy the write buffer into the buffer that will serve as next epoch's
-    // write target. For K_COUNT=2 this is the current read buffer; for
-    // K_COUNT=3 it would be the free buffer (enabling concurrent reads).
     int src = writeIndex();
     int dst = static_cast<int>((epoch_ + 2) % ChunkBuffers::K_COUNT);
-    registry_.forEachMaterialized(
-        [src, dst](ChunkSlot& slot) { *slot.simBuffers.buffers[dst] = *slot.simBuffers.buffers[src]; });
+    registry_.forEachMaterialized([src, dst](ChunkSlot& slot) {
+        if (slot.copyCountdown == 0)
+            return;
+        *slot.simBuffers.buffers[dst] = *slot.simBuffers.buffers[src];
+        --slot.copyCountdown;
+    });
     ++epoch_;
 }
 

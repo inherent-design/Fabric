@@ -10,6 +10,7 @@
 #include "recurse/persistence/SnapshotScheduler.hh"
 #include "recurse/persistence/WorldTransactionStore.hh"
 #include "recurse/world/ChunkStreaming.hh"
+#include <chrono>
 #include <climits>
 #include <flecs.h>
 #include <future>
@@ -89,6 +90,9 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
 
     int loadsThisFrame_ = 0;
     int unloadsThisFrame_ = 0;
+
+    std::chrono::steady_clock::time_point lastFrameTime_{};
+    float frameTimeEma_{16.0f};
 
     // Persistence: owned storage created by loadWorld(), torn down by unloadWorld().
     // Raw pointers alias the owned ptrs (or can be set externally via setChunkStore/setChunkSaveService).

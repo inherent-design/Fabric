@@ -75,8 +75,13 @@ void VoxelSimulationSystem::tick() {
             const auto& pos = active[jobIdx].pos;
             bool settled =
                 sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, frameIndex_, rng, boundaryQueues[workerIdx]);
-            if (settled)
+            if (settled) {
                 settledPerWorker[workerIdx].push_back(pos);
+            } else {
+                auto* slot = grid_.registry().find(pos.x, pos.y, pos.z);
+                if (slot)
+                    slot->copyCountdown = ChunkBuffers::K_COUNT - 1;
+            }
         });
     }
 
