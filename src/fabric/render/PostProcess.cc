@@ -134,6 +134,10 @@ bgfx::FrameBufferHandle PostProcess::hdrFramebuffer() const {
     return hdrFb_.get();
 }
 
+void PostProcess::setOutputTarget(bgfx::FrameBufferHandle fb) {
+    outputTarget_ = fb;
+}
+
 void PostProcess::render(uint8_t baseViewId) {
     FABRIC_ZONE_SCOPED_N("PostProcess::render");
 
@@ -188,7 +192,7 @@ void PostProcess::render(uint8_t baseViewId) {
         uint8_t view = baseViewId + K_BLUR_PASSES;
         bgfx::setViewName(view, "Tonemap");
         bgfx::setViewRect(view, 0, 0, width_, height_);
-        bgfx::setViewFrameBuffer(view, BGFX_INVALID_HANDLE); // backbuffer
+        bgfx::setViewFrameBuffer(view, outputTarget_);
         bgfx::setViewClear(view, BGFX_CLEAR_NONE);
 
         float tonemapParams[4] = {intensity_, exposure_, 0.0f, 0.0f};

@@ -53,6 +53,9 @@ class PostProcess {
     // into hdrFramebuffer(). Writes final result to the default backbuffer.
     void render(uint8_t baseViewId = 200);
 
+    // Set output framebuffer for the tonemap pass. BGFX_INVALID_HANDLE = backbuffer.
+    void setOutputTarget(bgfx::FrameBufferHandle fb);
+
   private:
     static constexpr uint16_t K_BLUR_PASSES = 4;
 
@@ -90,6 +93,7 @@ class PostProcess {
     float intensity_ = 0.5f;
     float exposure_ = 1.0f;
     bool initialized_ = false;
+    bgfx::FrameBufferHandle outputTarget_ = BGFX_INVALID_HANDLE;
 };
 
 } // namespace fabric

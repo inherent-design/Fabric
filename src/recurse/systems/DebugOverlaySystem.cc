@@ -246,15 +246,6 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         auto& tracker = voxelSim_->activityTracker();
         auto& grid = voxelSim_->simulationGrid();
 
-        constexpr int K_CHUNK_DEBUG_VIS_RADIUS = 6;
-        constexpr int K_VIS_RADIUS_SQ = K_CHUNK_DEBUG_VIS_RADIUS * K_CHUNK_DEBUG_VIS_RADIUS;
-        constexpr float K_MIN_ALPHA_FRACTION = 0.2f;
-
-        auto camWorldPos = ctx.camera->worldPositionD();
-        int camChunkX = static_cast<int>(std::floor(camWorldPos.x / recurse::K_CHUNK_SIZE));
-        int camChunkY = static_cast<int>(std::floor(camWorldPos.y / recurse::K_CHUNK_SIZE));
-        int camChunkZ = static_cast<int>(std::floor(camWorldPos.z / recurse::K_CHUNK_SIZE));
-
         for (auto [cx, cy, cz] : grid.allChunks()) {
             recurse::simulation::ChunkCoord pos{cx, cy, cz};
             auto state = tracker.getState(pos);
@@ -262,32 +253,18 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             if (state == recurse::simulation::ChunkState::Sleeping)
                 continue;
 
-            int dx = cx - camChunkX;
-            int dy = cy - camChunkY;
-            int dz = cz - camChunkZ;
-            int distSq = dx * dx + dy * dy + dz * dz;
-            if (distSq > K_VIS_RADIUS_SQ)
-                continue;
-
-            float t = static_cast<float>(distSq) / static_cast<float>(K_VIS_RADIUS_SQ);
-            float alphaFrac = 1.0f - t * (1.0f - K_MIN_ALPHA_FRACTION);
-
-            uint32_t baseColor;
+            uint32_t color;
             switch (state) {
                 case recurse::simulation::ChunkState::Active:
-                    baseColor = 0xcc4de666; // Bright green
+                    color = 0xcc4de666; // Bright green
                     break;
                 case recurse::simulation::ChunkState::BoundaryDirty:
-                    baseColor = 0xb3cc33ff; // Yellow-orange
+                    color = 0xb3cc33ff; // Yellow-orange
                     break;
                 default:
-                    baseColor = 0x80808080; // Gray
+                    color = 0x80808080; // Gray
                     break;
             }
-
-            auto baseAlpha = static_cast<uint8_t>(baseColor >> 24);
-            auto newAlpha = static_cast<uint8_t>(static_cast<float>(baseAlpha) * alphaFrac);
-            uint32_t color = (baseColor & 0x00FFFFFFu) | (static_cast<uint32_t>(newAlpha) << 24);
 
             auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
                 static_cast<double>(cx * recurse::K_CHUNK_SIZE), static_cast<double>(cy * recurse::K_CHUNK_SIZE),
@@ -316,31 +293,17 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
                 slot->state == recurse::simulation::ChunkSlotState::Active)
                 continue;
 
-            int dx = cx - camChunkX;
-            int dy = cy - camChunkY;
-            int dz = cz - camChunkZ;
-            int distSq = dx * dx + dy * dy + dz * dz;
-            if (distSq > K_VIS_RADIUS_SQ)
-                continue;
-
-            float t = static_cast<float>(distSq) / static_cast<float>(K_VIS_RADIUS_SQ);
-            float alphaFrac = 1.0f - t * (1.0f - K_MIN_ALPHA_FRACTION);
-
-            uint32_t baseSlotColor;
+            uint32_t slotColor;
             switch (slot->state) {
                 case recurse::simulation::ChunkSlotState::Generating:
-                    baseSlotColor = 0xcc00ffff; // Yellow (ABGR)
+                    slotColor = 0xcc00ffff; // Yellow (ABGR)
                     break;
                 case recurse::simulation::ChunkSlotState::Draining:
-                    baseSlotColor = 0xcc0000ff; // Red (ABGR)
+                    slotColor = 0xcc0000ff; // Red (ABGR)
                     break;
                 default:
                     continue;
             }
-
-            auto baseAlpha = static_cast<uint8_t>(baseSlotColor >> 24);
-            auto newAlpha = static_cast<uint8_t>(static_cast<float>(baseAlpha) * alphaFrac);
-            uint32_t slotColor = (baseSlotColor & 0x00FFFFFFu) | (static_cast<uint32_t>(newAlpha) << 24);
 
             auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
                 static_cast<double>(cx * recurse::K_CHUNK_SIZE), static_cast<double>(cy * recurse::K_CHUNK_SIZE),

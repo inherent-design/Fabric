@@ -26,8 +26,8 @@ enum class ProjectionMode {
 //   viewId_     = sky dome (clear color+depth, fullscreen triangle)
 //   viewId_+1   = opaque geometry pass (depth write on)
 //   viewId_+2   = transparent geometry pass (depth write off, alpha blend, back-to-front)
-//   199         = projection correction (Panini/Equirect/Fisheye)
 //   200..205    = post-process chain (bright, blur x4, tonemap)
+//   210         = projection correction (Panini; writes to backbuffer)
 //   240..243    = shadows
 class SceneView {
   public:
@@ -56,6 +56,7 @@ class SceneView {
     Camera& camera();
     SkyRenderer& skyRenderer();
     PostProcess& postProcess();
+    PaniniPass& paniniPass();
     const std::vector<flecs::entity>& visibleEntities() const;
     const std::vector<flecs::entity>& transparentEntities() const;
     const std::vector<flecs::entity>& opaqueEntities() const;
@@ -73,7 +74,11 @@ class SceneView {
 
     // Camera projection mode
     ProjectionMode projectionMode() const;
-    void cycleProjectionMode(); // Alt+C: Panini -> Equirect -> Panini
+    void cycleProjectionMode(); // Alt+C: Perspective <-> Panini
+
+    // Base perspective FOV (used when projection mode is Perspective).
+    // When Panini is active, camera FOV switches to paniniPass().fovDeg().
+    void setPerspectiveFOV(float degrees);
 
   private:
     uint8_t viewId_;
@@ -93,10 +98,13 @@ class SceneView {
 
     // Projection correction pass (Panini/Equirect)
     PaniniPass paniniPass_;
-    ProjectionMode projectionMode_ = ProjectionMode::Panini; // Default to Panini
+    BgfxHandle<bgfx::FrameBufferHandle> projectionFb_;
+    ProjectionMode projectionMode_ = ProjectionMode::Panini;
+    float perspectiveFovDeg_ = 60.0f;
 
-    // Build a DrawCall for an entity and add it to the given render list with the given view ID
     void buildDrawCall(flecs::entity entity, uint8_t viewId, RenderList& list);
+    void createProjectionFb(uint16_t width, uint16_t height);
+    void updateCameraFOV();
 };
 
 } // namespace fabric

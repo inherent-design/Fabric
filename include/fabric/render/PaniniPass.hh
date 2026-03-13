@@ -11,7 +11,7 @@ namespace fabric {
 // Reads scene color texture and applies cylindrical projection correction
 // for high-FOV rendering (120-150 degrees) without edge distortion.
 //
-// Pipeline order: scene render -> Panini -> bloom -> tonemap
+// Pipeline order: scene render -> bloom -> tonemap -> Panini -> backbuffer
 class PaniniPass {
   public:
     PaniniPass();
@@ -44,6 +44,7 @@ class PaniniPass {
     void setVerticalCompensation(float s); // -1.0 to 1.0, default 0.0
 
     bool isEnabled() const;
+    float fovDeg() const;
 
     // Toggle enabled state
     void cycleEnabled();
@@ -70,7 +71,7 @@ class PaniniPass {
     // Configuration state
     bool enabled_ = false;      // OFF by default, toggle with F6
     float strength_ = 0.5f;     // D parameter: 0=rectilinear, 1=full Panini
-    float fovDeg_ = 150.0f;     // Vertical FOV in degrees
+    float fovDeg_ = 128.0f;     // Vertical FOV in degrees
     float fill_ = 1.0f;         // Fill zoom to remove empty corners
     float verticalComp_ = 0.0f; // Vertical compensation factor
 

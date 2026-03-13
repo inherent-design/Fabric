@@ -8,7 +8,7 @@
 namespace fabric {
 
 namespace {
-constexpr uint8_t K_PROJECTION_VIEW_ID = 199; // View ID for Panini/Equirect projection
+constexpr uint8_t K_PROJECTION_VIEW_ID = 210;
 }
 
 SceneView::SceneView(uint8_t viewId, Camera& camera, flecs::world& world)
@@ -116,21 +116,25 @@ void SceneView::render() {
         bgfx::touch(transparentViewId());
     }
 
-    // 9. Projection correction (Panini/Equirect/Fisheye) at viewId 199
-    //    When enabled, reads HDR framebuffer and applies correction before bloom.
-    bgfx::TextureHandle inputTex = BGFX_INVALID_HANDLE;
-    if (postProcess_.isValid() && paniniPass_.isValid()) {
-        inputTex = bgfx::getTexture(postProcess_.hdrFramebuffer(), 0);
-
-        // Apply Panini projection (or pass-through if disabled/mode != Panini)
-        bool applyProjection = (projectionMode_ == ProjectionMode::Panini);
-        paniniPass_.setEnabled(applyProjection);
-        paniniPass_.execute(inputTex, K_PROJECTION_VIEW_ID);
-    }
-
-    // 10. Post-process: bright extract -> blur -> tonemap to backbuffer
+    // 9. Post-process: bright extract -> blur -> tonemap
     if (postProcess_.isValid()) {
+        bool applyProjection =
+            paniniPass_.isValid() && projectionFb_.isValid() && projectionMode_ == ProjectionMode::Panini;
+
+        if (applyProjection) {
+            postProcess_.setOutputTarget(projectionFb_.get());
+        } else {
+            bgfx::FrameBufferHandle backbuffer = BGFX_INVALID_HANDLE;
+            postProcess_.setOutputTarget(backbuffer);
+        }
         postProcess_.render(200);
+
+        // 10. Panini projection (reads tonemapped output, writes to backbuffer)
+        if (applyProjection) {
+            auto projTex = bgfx::getTexture(projectionFb_.get(), 0);
+            paniniPass_.setEnabled(true);
+            paniniPass_.execute(projTex, K_PROJECTION_VIEW_ID);
+        }
     }
 }
 
@@ -173,38 +177,69 @@ const std::vector<flecs::entity>& SceneView::opaqueEntities() const {
 void SceneView::setViewport(uint16_t width, uint16_t height) {
     viewWidth_ = width;
     viewHeight_ = height;
+    if (postProcess_.isValid()) {
+        postProcess_.resize(width, height);
+        paniniPass_.resize(width, height);
+        projectionFb_.reset();
+        createProjectionFb(width, height);
+    }
+    updateCameraFOV();
 }
 
 void SceneView::enablePostProcess(uint16_t width, uint16_t height) {
     postProcess_.init(width, height);
     paniniPass_.init(width, height);
+    createProjectionFb(width, height);
 }
 
 void SceneView::cycleProjectionMode() {
-    // Cycle: Perspective -> Panini -> Equirect -> Perspective (repeat)
-    // TODO(ProjectionMode): Add Fisheye, Isometric, VRStereo modes when implemented
     switch (projectionMode_) {
         case ProjectionMode::Perspective:
             projectionMode_ = ProjectionMode::Panini;
-            paniniPass_.setEnabled(true);
-            FABRIC_LOG_INFO("Projection mode: Panini");
+            FABRIC_LOG_INFO("Projection mode: Panini (FOV {})", paniniPass_.fovDeg());
             break;
         case ProjectionMode::Panini:
-            projectionMode_ = ProjectionMode::Equirect;
-            paniniPass_.setEnabled(false);
-            FABRIC_LOG_INFO("Projection mode: Equirect");
+            projectionMode_ = ProjectionMode::Perspective;
+            FABRIC_LOG_INFO("Projection mode: Perspective (FOV {})", perspectiveFovDeg_);
             break;
+        // Equirect not yet implemented; skip in cycle, re-add when shader exists
         case ProjectionMode::Equirect:
             projectionMode_ = ProjectionMode::Perspective;
-            paniniPass_.setEnabled(false);
-            FABRIC_LOG_INFO("Projection mode: Perspective");
+            FABRIC_LOG_INFO("Projection mode: Perspective (FOV {})", perspectiveFovDeg_);
             break;
     }
-    // FIXME(ProjectionMode): Fisheye, Isometric, VRStereo not yet implemented
+    updateCameraFOV();
 }
 
 ProjectionMode SceneView::projectionMode() const {
     return projectionMode_;
+}
+
+PaniniPass& SceneView::paniniPass() {
+    return paniniPass_;
+}
+
+void SceneView::createProjectionFb(uint16_t width, uint16_t height) {
+    if (width == 0 || height == 0)
+        return;
+    projectionFb_.reset(bgfx::createFrameBuffer(width, height, bgfx::TextureFormat::RGBA8,
+                                                BGFX_TEXTURE_RT | BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP));
+}
+
+void SceneView::setPerspectiveFOV(float degrees) {
+    perspectiveFovDeg_ = degrees;
+    updateCameraFOV();
+}
+
+void SceneView::updateCameraFOV() {
+    if (viewWidth_ == 0 || viewHeight_ == 0)
+        return;
+    float fov = perspectiveFovDeg_;
+    if (projectionMode_ == ProjectionMode::Panini && paniniPass_.isValid()) {
+        fov = paniniPass_.fovDeg();
+    }
+    float aspect = static_cast<float>(viewWidth_) / static_cast<float>(viewHeight_);
+    camera_.setPerspective(fov, aspect, camera_.nearPlane(), camera_.farPlane(), bgfx::getCaps()->homogeneousDepth);
 }
 
 } // namespace fabric

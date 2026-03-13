@@ -178,6 +178,10 @@ bool PaniniPass::isEnabled() const {
     return enabled_;
 }
 
+float PaniniPass::fovDeg() const {
+    return fovDeg_;
+}
+
 void PaniniPass::cycleEnabled() {
     enabled_ = !enabled_;
     FABRIC_LOG_INFO("PaniniPass toggled: {}", enabled_ ? "ON" : "OFF");

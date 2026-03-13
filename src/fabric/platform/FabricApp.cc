@@ -219,6 +219,16 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         appModeManager = std::make_unique<AppModeManager>();
         sceneView = std::make_unique<SceneView>(0, *camera, world.get());
         sceneView->setViewport(static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
+        sceneView->enablePostProcess(static_cast<uint16_t>(pw), static_cast<uint16_t>(ph));
+        {
+            auto& pp = sceneView->paniniPass();
+            pp.setStrength(static_cast<float>(configManager.get<double>("panini.strength", 0.5)));
+            pp.setFOV(static_cast<float>(configManager.get<double>("panini.fov", 150.0)));
+            pp.setFill(static_cast<float>(configManager.get<double>("panini.fill", 1.0)));
+            pp.setVerticalCompensation(
+                static_cast<float>(configManager.get<double>("panini.vertical_compensation", 0.0)));
+        }
+        sceneView->setPerspectiveFOV(72.0f);
 
         platformInfoPtr = std::make_unique<PlatformInfo>();
         platformInfoPtr->populate();
@@ -349,9 +359,6 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
                         bgfx::reset(w, h, BGFX_RESET_VSYNC | BGFX_RESET_HIDPI);
                         bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(w), static_cast<uint16_t>(h));
                         sceneView->setViewport(static_cast<uint16_t>(w), static_cast<uint16_t>(h));
-                        float newAspect = static_cast<float>(w) / static_cast<float>(h);
-                        bool homogNdc = bgfx::getCaps()->homogeneousDepth;
-                        camera->setPerspective(60.0f, newAspect, 0.1f, 1000.0f, homogNdc);
                         rmlContext->SetDimensions(Rml::Vector2i(static_cast<int>(w), static_cast<int>(h)));
 
                         // Update DPI scale ratio on resize
@@ -442,6 +449,10 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
     systemRegistry.shutdownAll();
 
     if (!desc.headless) {
+        // Release bgfx-owning objects before destroying the context.
+        // SceneView holds framebuffers, programs, and uniforms via BgfxHandle.
+        sceneView.reset();
+
         Rml::Shutdown();
         rmlRenderer.shutdown();
         bgfx::shutdown();

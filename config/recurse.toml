@@ -19,8 +19,8 @@ max_level = 6            # highest LOD level (LOD1 to LOD6)
 base_radius = 10.0       # LOD1 starts at base_radius * 32 blocks from camera
 
 [panini]
-enabled = false
+enabled = true
 strength = 0.5
-fov = 150.0
+fov = 128.0
 fill = 1.0
 vertical_compensation = 0.0
