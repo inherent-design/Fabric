@@ -9,6 +9,7 @@ void VoxelSimulationSystem::tick() {
     FABRIC_ZONE_SCOPED_N("voxel_sim_tick");
 
     settledChunks_.clear();
+    physicsChanges_.clear();
 
     // 1. Collect active + boundary-dirty chunks, then filter.
     // BoundaryDirty chunks need remeshing only (not simulation).
@@ -68,13 +69,14 @@ void VoxelSimulationSystem::tick() {
     size_t workerSlots = scheduler_.workerCount() + 1;
     std::vector<BoundaryWriteQueue> boundaryQueues(workerSlots);
     std::vector<std::vector<ChunkCoord>> settledPerWorker(workerSlots);
+    std::vector<std::vector<CellSwap>> cellSwapsPerWorker(workerSlots);
     {
         FABRIC_ZONE_SCOPED_N("phase_3_simulate");
         scheduler_.parallelFor(active.size(), [&](size_t jobIdx, size_t workerIdx) {
             std::mt19937 rng(frameIndex_ + jobIdx);
             const auto& pos = active[jobIdx].pos;
-            bool settled =
-                sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, frameIndex_, rng, boundaryQueues[workerIdx]);
+            bool settled = sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, frameIndex_, rng,
+                                                     boundaryQueues[workerIdx], cellSwapsPerWorker[workerIdx]);
             if (settled) {
                 settledPerWorker[workerIdx].push_back(pos);
             } else {
@@ -85,9 +87,14 @@ void VoxelSimulationSystem::tick() {
         });
     }
 
-    // Merge settled lists (single-threaded)
+    // Merge settled lists and cell swaps (single-threaded)
     for (auto& v : settledPerWorker) {
         settledChunks_.insert(settledChunks_.end(), v.begin(), v.end());
+    }
+    for (auto& swaps : cellSwapsPerWorker) {
+        for (auto& swap : swaps) {
+            physicsChanges_[swap.chunk].push_back(swap);
+        }
     }
 
     // Phase 3b: Drain boundary write queues (single-threaded)

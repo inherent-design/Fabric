@@ -1,6 +1,6 @@
 #include "recurse/persistence/ChunkSaveService.hh"
 
-#include "fabric/platform/JobScheduler.hh"
+#include "fabric/platform/WriterQueue.hh"
 #include "recurse/persistence/FchkCodec.hh"
 #include "recurse/persistence/SqliteChunkStore.hh"
 #include <filesystem>
@@ -15,15 +15,13 @@ class ChunkSaveServiceTest : public ::testing::Test {
         fs::remove_all(tmpDir_);
         worldDir_ = (tmpDir_ / "testworld").string();
         store_ = std::make_unique<recurse::SqliteChunkStore>(worldDir_);
-        jobs_ = std::make_unique<fabric::JobScheduler>(1);
-        jobs_->disableForTesting();
     }
     void TearDown() override { fs::remove_all(tmpDir_); }
 
     fs::path tmpDir_;
     std::string worldDir_;
     std::unique_ptr<recurse::SqliteChunkStore> store_;
-    std::unique_ptr<fabric::JobScheduler> jobs_;
+    fabric::platform::WriterQueue writerQueue_;
 
     static recurse::ChunkBlob makeFakeBlob(uint8_t marker = 0xAA) {
         constexpr size_t payloadSize = 32 * 32 * 32 * 4;
@@ -34,7 +32,7 @@ class ChunkSaveServiceTest : public ::testing::Test {
 };
 
 TEST_F(ChunkSaveServiceTest, MarkDirtyIncreasesPendingCount) {
-    recurse::ChunkSaveService svc(*store_, *jobs_, [&](int, int, int) { return makeFakeBlob(); });
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
 
     EXPECT_EQ(svc.pendingCount(), 0u);
     svc.markDirty(0, 0, 0);
@@ -44,7 +42,7 @@ TEST_F(ChunkSaveServiceTest, MarkDirtyIncreasesPendingCount) {
 }
 
 TEST_F(ChunkSaveServiceTest, FlushSavesAllDirtyChunks) {
-    recurse::ChunkSaveService svc(*store_, *jobs_, [&](int, int, int) { return makeFakeBlob(); });
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
 
     svc.markDirty(0, 0, 0);
     svc.markDirty(1, 2, 3);
@@ -56,7 +54,7 @@ TEST_F(ChunkSaveServiceTest, FlushSavesAllDirtyChunks) {
 }
 
 TEST_F(ChunkSaveServiceTest, DebounceDelaysSave) {
-    recurse::ChunkSaveService svc(*store_, *jobs_, [&](int, int, int) { return makeFakeBlob(); });
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
     svc.debounceSeconds = 1.0f;
     svc.maxDelaySeconds = 5.0f;
 
@@ -66,11 +64,12 @@ TEST_F(ChunkSaveServiceTest, DebounceDelaysSave) {
     EXPECT_FALSE(store_->hasChunk(0, 0, 0));
 
     svc.update(0.6f);
+    writerQueue_.drain();
     EXPECT_TRUE(store_->hasChunk(0, 0, 0));
 }
 
 TEST_F(ChunkSaveServiceTest, MaxDelayForcesSave) {
-    recurse::ChunkSaveService svc(*store_, *jobs_, [&](int, int, int) { return makeFakeBlob(); });
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
     svc.debounceSeconds = 2.0f;
     svc.maxDelaySeconds = 3.0f;
 
@@ -83,11 +82,12 @@ TEST_F(ChunkSaveServiceTest, MaxDelayForcesSave) {
     EXPECT_FALSE(store_->hasChunk(0, 0, 0));
 
     svc.update(1.1f);
+    writerQueue_.drain();
     EXPECT_TRUE(store_->hasChunk(0, 0, 0));
 }
 
 TEST_F(ChunkSaveServiceTest, SecondSaveOverwrites) {
-    recurse::ChunkSaveService svc(*store_, *jobs_, [&](int, int, int) { return makeFakeBlob(); });
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
 
     svc.markDirty(0, 0, 0);
     svc.flush();
@@ -99,7 +99,7 @@ TEST_F(ChunkSaveServiceTest, SecondSaveOverwrites) {
 }
 
 TEST_F(ChunkSaveServiceTest, NegativeCoordinates) {
-    recurse::ChunkSaveService svc(*store_, *jobs_, [&](int, int, int) { return makeFakeBlob(); });
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
 
     svc.markDirty(-3, -7, 5);
     svc.flush();
@@ -107,7 +107,7 @@ TEST_F(ChunkSaveServiceTest, NegativeCoordinates) {
 }
 
 TEST_F(ChunkSaveServiceTest, EmptyBlobSkipsSave) {
-    recurse::ChunkSaveService svc(*store_, *jobs_, [&](int, int, int) { return recurse::ChunkBlob{}; });
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return recurse::ChunkBlob{}; });
 
     svc.markDirty(0, 0, 0);
     svc.flush();

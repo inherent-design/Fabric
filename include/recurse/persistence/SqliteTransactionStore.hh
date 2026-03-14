@@ -12,6 +12,10 @@ namespace recurse {
 ///
 /// Takes raw sqlite3 handles from SqliteChunkStore; does not own them.
 /// Writer handle for inserts/deletes, reader handle for queries.
+///
+/// @invariant Writer methods (logChanges, saveSnapshot, prune) must only be
+/// called from WriterQueue context. Reader methods (queryChanges, countChanges,
+/// loadSnapshot, rollback) use readerDb_ and are safe from any thread.
 class SqliteTransactionStore : public WorldTransactionStore {
   public:
     /// Attach to an existing SQLite database. Takes raw handles; does not own them.

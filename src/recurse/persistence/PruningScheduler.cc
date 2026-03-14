@@ -1,11 +1,13 @@
 #include "recurse/persistence/PruningScheduler.hh"
 
 #include "fabric/core/Log.hh"
+#include "fabric/platform/WriterQueue.hh"
 #include <chrono>
 
 namespace recurse {
 
-PruningScheduler::PruningScheduler(WorldTransactionStore& txStore) : txStore_(txStore) {}
+PruningScheduler::PruningScheduler(WorldTransactionStore& txStore, fabric::platform::WriterQueue& writerQueue)
+    : txStore_(txStore), writerQueue_(writerQueue) {}
 
 void PruningScheduler::update(float dt) {
     elapsed_ += dt;
@@ -23,10 +25,11 @@ void PruningScheduler::pruneNow() {
     int64_t changeCutoff = now - changeRetentionMs;
     int64_t snapshotCutoff = now - snapshotRetentionMs;
 
-    txStore_.prune(changeCutoff, snapshotCutoff);
-
-    FABRIC_LOG_INFO("PruningScheduler: pruned changes before {}ms, snapshots before {}ms", changeCutoff,
-                    snapshotCutoff);
+    writerQueue_.submit([this, changeCutoff, snapshotCutoff]() {
+        txStore_.prune(changeCutoff, snapshotCutoff);
+        FABRIC_LOG_INFO("PruningScheduler: pruned changes before {}ms, snapshots before {}ms", changeCutoff,
+                        snapshotCutoff);
+    });
 }
 
 } // namespace recurse

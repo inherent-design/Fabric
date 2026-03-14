@@ -3,18 +3,17 @@
 #include "recurse/persistence/ChunkStore.hh"
 #include <chrono>
 #include <functional>
-#include <future>
 #include <mutex>
 #include <unordered_map>
 
-namespace fabric {
-class JobScheduler;
+namespace fabric::platform {
+class WriterQueue;
 }
 
 namespace recurse {
 
 /// Debounced chunk save service. Tracks per-chunk dirty state and
-/// batches writes to ChunkStore via JobScheduler background jobs.
+/// batches writes to ChunkStore via WriterQueue serialization.
 ///
 /// Timing: 1.3s debounce (wait for edits to stop), 5s max delay
 /// (force save if editing continuously).
@@ -23,7 +22,7 @@ class ChunkSaveService {
     /// Callback to retrieve current chunk data as FCHK-encoded blob.
     using DataProvider = std::function<ChunkBlob(int cx, int cy, int cz)>;
 
-    ChunkSaveService(ChunkStore& store, fabric::JobScheduler& jobs, DataProvider provider);
+    ChunkSaveService(ChunkStore& store, fabric::platform::WriterQueue& writerQueue, DataProvider provider);
     ~ChunkSaveService();
 
     /// Mark a chunk as modified. Resets the debounce timer for that chunk.
@@ -57,16 +56,14 @@ class ChunkSaveService {
     static ChunkKey makeKey(int cx, int cy, int cz);
 
     void dispatchBatch(std::vector<std::tuple<int, int, int>> chunks);
-    void waitForBatch();
 
     ChunkStore& store_;
-    fabric::JobScheduler& jobs_;
+    fabric::platform::WriterQueue& writerQueue_;
     DataProvider provider_;
 
     mutable std::mutex mutex_;
     std::unordered_map<ChunkKey, DirtyEntry> dirty_;
     std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> preparedBlobs_;
-    std::future<void> batchFuture_;
 };
 
 } // namespace recurse

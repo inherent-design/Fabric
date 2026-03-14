@@ -3,6 +3,7 @@
 #include "recurse/simulation/GhostCells.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelSimulationSystem.hh"
 #include <chrono>
 #include <gtest/gtest.h>
 #include <random>
@@ -18,6 +19,7 @@ class FallingSandGravityTest : public ::testing::Test {
     GhostCellManager ghosts;
     FallingSandSystem system{registry};
     BoundaryWriteQueue boundaryWrites;
+    std::vector<CellSwap> cellSwaps;
     std::mt19937 rng{42};
 
     void SetUp() override {
@@ -44,7 +46,7 @@ class FallingSandGravityTest : public ::testing::Test {
 
     void runGravityTick(ChunkCoord pos, uint64_t frame) {
         ghosts.syncGhostCells(pos, grid);
-        system.simulateGravity(pos, grid, ghosts, tracker, frame, rng, boundaryWrites);
+        system.simulateGravity(pos, grid, ghosts, tracker, frame, rng, boundaryWrites, cellSwaps);
         grid.advanceEpoch();
     }
 };
@@ -215,7 +217,7 @@ TEST_F(FallingSandGravityTest, CrossChunkFalling) {
 
     // Simulate chunk(0,1,0) -- sand at y=32 should fall to y=31 (chunk 0,0,0)
     ghosts.syncGhostCells(ChunkCoord{0, 1, 0}, grid);
-    system.simulateGravity(ChunkCoord{0, 1, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
+    system.simulateGravity(ChunkCoord{0, 1, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites, cellSwaps);
     // Drain deferred cross-chunk writes
     for (const auto& bw : boundaryWrites) {
         if (!grid.writeCellIfExists(bw.dstWx, bw.dstWy, bw.dstWz, bw.writeCell))
@@ -240,7 +242,8 @@ TEST_F(FallingSandGravityTest, NoMovementSleepsChunk) {
     tracker.setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
 
     ghosts.syncGhostCells(ChunkCoord{0, 0, 0}, grid);
-    bool changed = system.simulateGravity(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
+    bool changed =
+        system.simulateGravity(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites, cellSwaps);
     grid.advanceEpoch();
 
     EXPECT_FALSE(changed) << "All-stone chunk should have no gravity movement";
@@ -308,7 +311,7 @@ TEST_F(FallingSandGravityTest, PerformanceSingleChunk) {
     ghosts.syncGhostCells(ChunkCoord{0, 0, 0}, grid);
 
     auto start = std::chrono::high_resolution_clock::now();
-    system.simulateGravity(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
+    system.simulateGravity(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites, cellSwaps);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto ms = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();

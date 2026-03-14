@@ -1,17 +1,17 @@
 #include "recurse/persistence/ChunkSaveService.hh"
 
 #include "fabric/core/Log.hh"
-#include "fabric/platform/JobScheduler.hh"
+#include "fabric/platform/WriterQueue.hh"
 #include <algorithm>
 #include <vector>
 
 namespace recurse {
 
-ChunkSaveService::ChunkSaveService(ChunkStore& store, fabric::JobScheduler& jobs, DataProvider provider)
-    : store_(store), jobs_(jobs), provider_(std::move(provider)) {}
+ChunkSaveService::ChunkSaveService(ChunkStore& store, fabric::platform::WriterQueue& writerQueue, DataProvider provider)
+    : store_(store), writerQueue_(writerQueue), provider_(std::move(provider)) {}
 
 ChunkSaveService::~ChunkSaveService() {
-    waitForBatch();
+    writerQueue_.drain();
 }
 
 void ChunkSaveService::markDirty(int cx, int cy, int cz) {
@@ -70,18 +70,8 @@ void ChunkSaveService::enqueuePrepared(int cx, int cy, int cz, ChunkBlob blob) {
     dirty_.erase(makeKey(cx, cy, cz));
 }
 
-void ChunkSaveService::waitForBatch() {
-    if (batchFuture_.valid()) {
-        try {
-            batchFuture_.get();
-        } catch (const std::exception& e) {
-            FABRIC_LOG_ERROR("Background save batch failed: {}", e.what());
-        }
-    }
-}
-
 void ChunkSaveService::flush() {
-    waitForBatch();
+    writerQueue_.drain();
 
     std::vector<std::tuple<int, int, int>> toSave;
     std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> prepared;
@@ -139,15 +129,13 @@ ChunkSaveService::ChunkKey ChunkSaveService::makeKey(int cx, int cy, int cz) {
 }
 
 void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chunks) {
-    waitForBatch();
-
     std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> prepared;
     {
         std::lock_guard lock(mutex_);
         prepared = std::move(preparedBlobs_);
     }
 
-    batchFuture_ = jobs_.submit([this, batch = std::move(chunks), prepared = std::move(prepared)]() mutable {
+    writerQueue_.submit([this, batch = std::move(chunks), prepared = std::move(prepared)]() mutable {
         std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> entries;
         entries.reserve(batch.size() + prepared.size());
 

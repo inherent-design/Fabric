@@ -5,6 +5,12 @@
 #include "recurse/persistence/WorldTransactionStore.hh"
 #include <functional>
 #include <unordered_set>
+#include <utility>
+#include <vector>
+
+namespace fabric::platform {
+class WriterQueue;
+}
 
 namespace recurse {
 
@@ -17,7 +23,8 @@ class SnapshotScheduler {
   public:
     using DataProvider = std::function<ChunkBlob(int cx, int cy, int cz)>;
 
-    SnapshotScheduler(WorldTransactionStore& txStore, DataProvider provider);
+    SnapshotScheduler(WorldTransactionStore& txStore, fabric::platform::WriterQueue& writerQueue,
+                      DataProvider provider);
 
     /// Mark a chunk as modified since last snapshot.
     void markDirty(int cx, int cy, int cz);
@@ -39,6 +46,7 @@ class SnapshotScheduler {
     void snapshotAll();
 
     WorldTransactionStore& txStore_;
+    fabric::platform::WriterQueue& writerQueue_;
     DataProvider provider_;
     std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> dirty_;
     float elapsed_{0.0f};

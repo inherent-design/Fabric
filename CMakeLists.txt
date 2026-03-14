@@ -246,6 +246,7 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/persistence/ChunkSaveService.cc
     src/recurse/persistence/SnapshotScheduler.cc
     src/recurse/persistence/PruningScheduler.cc
+    src/recurse/persistence/WorldSession.cc
     src/recurse/persistence/RollbackExecutor.cc
     src/recurse/persistence/SaveManager.cc
     src/recurse/persistence/DataLoader.cc

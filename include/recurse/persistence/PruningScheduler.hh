@@ -3,6 +3,10 @@
 #include "recurse/persistence/WorldTransactionStore.hh"
 #include <cstdint>
 
+namespace fabric::platform {
+class WriterQueue;
+}
+
 namespace recurse {
 
 inline constexpr float K_PRUNE_INTERVAL_SECONDS = 3600.0f;
@@ -14,7 +18,7 @@ inline constexpr int64_t K_SNAPSHOT_RETENTION_MS = 7LL * 24 * 60 * 60 * 1000;
 /// entries older than the configured retention windows.
 class PruningScheduler {
   public:
-    explicit PruningScheduler(WorldTransactionStore& txStore);
+    PruningScheduler(WorldTransactionStore& txStore, fabric::platform::WriterQueue& writerQueue);
 
     /// Called each frame. Accumulates elapsed time and triggers prune
     /// when interval is reached.
@@ -34,6 +38,7 @@ class PruningScheduler {
 
   private:
     WorldTransactionStore& txStore_;
+    fabric::platform::WriterQueue& writerQueue_;
     float elapsed_{0.0f};
 };
 

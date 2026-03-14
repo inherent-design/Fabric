@@ -16,8 +16,8 @@ namespace recurse {
 inline constexpr const char* K_VOXEL_CHANGED_EVENT = "voxel_changed";
 
 /// Per-voxel change detail attached to K_VOXEL_CHANGED_EVENT via setAnyData.
-/// Chunk-level events (physics, generation) omit this; only per-voxel events
-/// (player place/destroy) carry it.
+/// Carried by player place/destroy events and physics simulation events.
+/// Generation events omit this (snapshot system covers; massive volume).
 struct VoxelChangeDetail {
     int vx, vy, vz;
     uint32_t oldCell;

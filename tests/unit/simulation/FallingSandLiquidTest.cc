@@ -3,6 +3,7 @@
 #include "recurse/simulation/GhostCells.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelSimulationSystem.hh"
 #include <chrono>
 #include <gtest/gtest.h>
 #include <random>
@@ -18,6 +19,7 @@ class FallingSandLiquidTest : public ::testing::Test {
     GhostCellManager ghosts;
     FallingSandSystem system{registry};
     BoundaryWriteQueue boundaryWrites;
+    std::vector<CellSwap> cellSwaps;
     std::mt19937 rng{42};
 
     void SetUp() override {
@@ -38,13 +40,13 @@ class FallingSandLiquidTest : public ::testing::Test {
 
     void runLiquidTick(ChunkCoord pos, uint64_t frame) {
         ghosts.syncGhostCells(pos, grid);
-        system.simulateLiquid(pos, grid, ghosts, tracker, frame, rng, boundaryWrites);
+        system.simulateLiquid(pos, grid, ghosts, tracker, frame, rng, boundaryWrites, cellSwaps);
         grid.advanceEpoch();
     }
 
     void runChunkTick(ChunkCoord pos, uint64_t frame) {
         ghosts.syncGhostCells(pos, grid);
-        system.simulateChunk(pos, grid, ghosts, tracker, frame, rng, boundaryWrites);
+        system.simulateChunk(pos, grid, ghosts, tracker, frame, rng, boundaryWrites, cellSwaps);
         grid.advanceEpoch();
     }
 
@@ -231,7 +233,7 @@ TEST_F(FallingSandLiquidTest, CrossChunkHorizontalFlow) {
     // Run several ticks on chunk (0,0,0)
     for (uint64_t f = 0; f < 20; ++f) {
         ghosts.syncGhostCells(ChunkCoord{0, 0, 0}, grid);
-        system.simulateLiquid(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, f, rng, boundaryWrites);
+        system.simulateLiquid(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, f, rng, boundaryWrites, cellSwaps);
         // Drain deferred cross-chunk writes
         for (const auto& bw : boundaryWrites) {
             if (!grid.writeCellIfExists(bw.dstWx, bw.dstWy, bw.dstWz, bw.writeCell))
@@ -347,7 +349,7 @@ TEST_F(FallingSandLiquidTest, PerformanceLiquidSim) {
     ghosts.syncGhostCells(ChunkCoord{0, 0, 0}, grid);
 
     auto start = std::chrono::high_resolution_clock::now();
-    system.simulateLiquid(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites);
+    system.simulateLiquid(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites, cellSwaps);
     auto end = std::chrono::high_resolution_clock::now();
 
     auto us = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();

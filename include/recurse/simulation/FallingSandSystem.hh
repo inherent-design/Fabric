@@ -5,8 +5,11 @@
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include <random>
+#include <vector>
 
 namespace recurse::simulation {
+
+struct CellSwap;
 
 class FallingSandSystem {
   public:
@@ -14,16 +17,16 @@ class FallingSandSystem {
 
     bool simulateGravity(ChunkCoord pos, SimulationGrid& grid, const GhostCellManager& ghosts,
                          ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
-                         BoundaryWriteQueue& boundaryWrites);
+                         BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps);
 
     bool simulateLiquid(ChunkCoord pos, SimulationGrid& grid, const GhostCellManager& ghosts,
                         ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
-                        BoundaryWriteQueue& boundaryWrites);
+                        BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps);
 
     /// Simulate one chunk. Returns true if the chunk settled (no movement; put to sleep).
     bool simulateChunk(ChunkCoord pos, SimulationGrid& grid, const GhostCellManager& ghosts,
                        ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
-                       BoundaryWriteQueue& boundaryWrites);
+                       BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps);
 
   private:
     const MaterialRegistry& registry_;
@@ -35,7 +38,7 @@ class FallingSandSystem {
 
     void writeSwap(ChunkCoord pos, int srcLx, int srcLy, int srcLz, int dstLx, int dstLy, int dstLz, VoxelCell srcCell,
                    VoxelCell dstCell, SimulationGrid& grid, ChunkActivityTracker& tracker,
-                   BoundaryWriteQueue& boundaryWrites) const;
+                   BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps) const;
 };
 
 } // namespace recurse::simulation

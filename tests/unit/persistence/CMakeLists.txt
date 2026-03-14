@@ -5,4 +5,5 @@ target_sources(UnitTests
   WorldRegistryTest.cc
   ChunkSaveServiceTest.cc
   EditTriggeredSaveTest.cc
+  WorldSessionIntegrationTest.cc
 )

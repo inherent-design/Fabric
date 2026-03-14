@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fabric/render/RenderCaps.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/render/RenderCaps.hh"
 #include <algorithm>
 #include <array>
 #include <cstdint>

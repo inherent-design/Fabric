@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fabric/input/InputContext.hh"
 #include "fabric/core/SystemBase.hh"
+#include "fabric/input/InputContext.hh"
 #include <array>
 #include <functional>
 #include <memory>

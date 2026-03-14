@@ -7,6 +7,7 @@ target_sources(UnitTests
   GhostCellsTest.cc
   FallingSandGravityTest.cc
   FallingSandLiquidTest.cc
+  FallingSandPhysicsChangeTest.cc
   VoxelSimulationSystemTest.cc
   ParallelSimulationTest.cc
 )
