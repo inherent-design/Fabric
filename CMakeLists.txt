@@ -174,6 +174,7 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/fabric/render/PostProcess.cc
     src/fabric/render/SkyRenderer.cc
     src/fabric/platform/JobScheduler.cc
+    src/fabric/platform/WriterQueue.cc
     # ui/font -- HarfBuzz font engine
     src/fabric/ui/font/FontEngineInterfaceHarfBuzz.cc
     src/fabric/ui/font/FontFace.cc
