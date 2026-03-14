@@ -185,6 +185,21 @@ void BehaviorAI::shutdown() {
     initialized_ = false;
 }
 
+void BehaviorAI::clearWorldState() {
+    observers_.clear();
+    btQuery_.reset();
+    animQuery_.reset();
+    spatialIndex_.clear();
+
+    // Rebuild queries against the surviving world so update() resumes.
+    if (world_) {
+        btQuery_ = world_->query_builder<BehaviorTreeComponent, AIStateComponent>().build();
+        animQuery_ = world_->query_builder<AIStateComponent, AIAnimationMapping, AIAnimationState>().build();
+    }
+
+    FABRIC_LOG_DEBUG("BehaviorAI: per-world state cleared");
+}
+
 void BehaviorAI::update(float dt) {
     if (!initialized_ || !world_)
         return;

@@ -150,6 +150,11 @@ class BehaviorAI {
     void shutdown();
     void update(float dt);
 
+    /// Clear per-world query and observer state. Leaves factory_ and
+    /// world_ intact (both are app-scoped). Queries are rebuilt lazily
+    /// on the next init() call after world transition.
+    void clearWorldState();
+
     BT::BehaviorTreeFactory& factory();
     BT::Tree loadBehaviorTree(const std::string& xml);
     flecs::entity createNPC(const std::string& treeXml);

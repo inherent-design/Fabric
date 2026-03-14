@@ -63,6 +63,9 @@ class ParticleSystem {
     // viewMtx/projMtx are float[16] from Camera.
     void render(const float* viewMtx, const float* projMtx, uint16_t width, uint16_t height);
 
+    /// Kill all active particles. GPU resources are retained.
+    void clear();
+
     size_t activeCount() const;
     bool isValid() const;
 

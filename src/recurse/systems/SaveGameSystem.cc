@@ -20,6 +20,16 @@ void SaveGameSystem::doShutdown() {
     FABRIC_LOG_INFO("SaveGameSystem shut down");
 }
 
+void SaveGameSystem::onWorldBegin() {
+    // Save state initialized on world load; no action needed.
+}
+
+void SaveGameSystem::onWorldEnd() {
+    if (saveManager_)
+        saveManager_->resetWorldState();
+    toastManager_.clear();
+}
+
 void SaveGameSystem::doInit(fabric::AppContext& ctx) {
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();

@@ -29,6 +29,15 @@ void ParticleGameSystem::doShutdown() {
     FABRIC_LOG_INFO("ParticleGameSystem shut down");
 }
 
+void ParticleGameSystem::onWorldBegin() {
+    // Particles spawn reactively; no initialization needed.
+}
+
+void ParticleGameSystem::onWorldEnd() {
+    particleSystem_.clear();
+    debrisPool_.clear();
+}
+
 void ParticleGameSystem::configureDependencies() {
     // No dependencies; particles are self-contained
 }

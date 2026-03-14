@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/ui/ToastManager.hh"
 #include "recurse/persistence/SceneSerializer.hh"
 #include <memory>
@@ -16,7 +17,7 @@ class CharacterMovementSystem;
 
 /// Owns save/load orchestration, autosave timer, and toast notifications.
 /// Registers F5 (quicksave) and F9 (quickload) key callbacks during init.
-class SaveGameSystem : public fabric::System<SaveGameSystem> {
+class SaveGameSystem : public fabric::System<SaveGameSystem>, public fabric::WorldAware {
   public:
     SaveGameSystem() = default;
     ~SaveGameSystem() override;
@@ -26,6 +27,9 @@ class SaveGameSystem : public fabric::System<SaveGameSystem> {
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
 
     void configureDependencies() override;
+
+    void onWorldBegin() override;
+    void onWorldEnd() override;
 
     fabric::ToastManager& toastManager() { return toastManager_; }
     const fabric::ToastManager& toastManager() const { return toastManager_; }

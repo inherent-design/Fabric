@@ -138,6 +138,11 @@ bool SaveManager::deleteSlot(const std::string& slotName) {
     return removed;
 }
 
+void SaveManager::resetWorldState() {
+    autosaveTimer_ = 0.0f;
+    autosaveIndex_ = 0;
+}
+
 void SaveManager::enableAutosave(float intervalSeconds) {
     autosaveEnabled_ = true;
     autosaveInterval_ = intervalSeconds;

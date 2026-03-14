@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include <cstddef>
 #include <memory>
 #include <tuple>
@@ -25,7 +26,7 @@ class TerrainSystem;
 
 /// Wraps the fabric-level VoxelSimulationSystem as a System<> in FixedUpdate.
 /// Runs after TerrainSystem. Delegates tick() to the fabric orchestration loop.
-class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
+class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem>, public fabric::WorldAware {
   public:
     VoxelSimulationSystem();
     ~VoxelSimulationSystem() override;
@@ -34,6 +35,9 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     void doShutdown() override;
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
     void configureDependencies() override;
+
+    void onWorldBegin() override;
+    void onWorldEnd() override;
 
     /// Read-only access for VoxelMeshingSystem, ChunkPipelineSystem, DebugOverlaySystem
     recurse::simulation::SimulationGrid& simulationGrid();

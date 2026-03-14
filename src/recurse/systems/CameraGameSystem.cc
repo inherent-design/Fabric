@@ -41,6 +41,16 @@ void CameraGameSystem::update(fabric::AppContext& ctx, float dt) {
     cameraCtrl_->update(playerPosD, dt, &voxelSim_->simulationGrid());
 }
 
+void CameraGameSystem::onWorldBegin() {
+    // Camera state reset to defaults for the new world.
+    if (cameraCtrl_)
+        cameraCtrl_->reset();
+}
+
+void CameraGameSystem::onWorldEnd() {
+    // Reset handled in onWorldBegin; no teardown needed.
+}
+
 void CameraGameSystem::doShutdown() {
     cameraCtrl_.reset();
     voxelSim_ = nullptr;

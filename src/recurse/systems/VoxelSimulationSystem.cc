@@ -84,6 +84,14 @@ void VoxelSimulationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fix
     }
 }
 
+void VoxelSimulationSystem::onWorldBegin() {
+    // World generation is triggered explicitly by MainMenuSystem.
+}
+
+void VoxelSimulationSystem::onWorldEnd() {
+    resetWorld();
+}
+
 void VoxelSimulationSystem::configureDependencies() {
     after<TerrainSystem>();
     after<ChunkPipelineSystem>();

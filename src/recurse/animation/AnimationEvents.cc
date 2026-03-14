@@ -17,6 +17,12 @@ void AnimationEvents::shutdown() {
     callback_ = nullptr;
 }
 
+void AnimationEvents::clear() {
+    clips_.clear();
+    nextClipId_ = 1;
+    callback_ = nullptr;
+}
+
 ClipId AnimationEvents::registerClip(const std::string& name) {
     ClipId id = nextClipId_++;
     clips_[id] = ClipData{name, {}};

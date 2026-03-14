@@ -26,6 +26,15 @@ void AIGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) {
     behaviorAI_.update(fixedDt);
 }
 
+void AIGameSystem::onWorldBegin() {
+    // AI state is initialized lazily; no action needed.
+}
+
+void AIGameSystem::onWorldEnd() {
+    behaviorAI_.clearWorldState();
+    animEvents_.clear();
+}
+
 void AIGameSystem::configureDependencies() {
     // No dependencies; AI runs independently
 }

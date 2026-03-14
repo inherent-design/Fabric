@@ -41,6 +41,9 @@ class AnimationEvents {
     void init();
     void shutdown();
 
+    /// Clear all per-world clip state: registered clips, ID counter, callback.
+    void clear();
+
     ClipId registerClip(const std::string& name);
     void addMarker(ClipId clip, const AnimEventMarker& marker);
     void clearMarkers(ClipId clip);

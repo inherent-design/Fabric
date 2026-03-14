@@ -266,6 +266,10 @@ void ParticleSystem::render(const float* viewMtx, const float* projMtx, uint16_t
     bgfx::submit(K_VIEW_ID, program_.get());
 }
 
+void ParticleSystem::clear() {
+    activeCount_ = 0;
+}
+
 size_t ParticleSystem::activeCount() const {
     return activeCount_;
 }

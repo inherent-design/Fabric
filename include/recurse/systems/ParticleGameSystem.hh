@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "recurse/render/ParticleSystem.hh"
 #include "recurse/simulation/DebrisPool.hh"
 
@@ -10,12 +11,15 @@ namespace recurse::systems {
 /// Runs during FixedUpdate. Exposes renderParticles() for the Render phase
 /// caller (VoxelRenderSystem) since particle billboard submission requires
 /// camera matrices available only at render time.
-class ParticleGameSystem : public fabric::System<ParticleGameSystem> {
+class ParticleGameSystem : public fabric::System<ParticleGameSystem>, public fabric::WorldAware {
   public:
     void doInit(fabric::AppContext& ctx) override;
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
     void doShutdown() override;
     void configureDependencies() override;
+
+    void onWorldBegin() override;
+    void onWorldEnd() override;
 
     /// Called by the Render phase to submit particle billboard draws.
     void renderParticles(const float* viewMtx, const float* projMtx, uint16_t width, uint16_t height);

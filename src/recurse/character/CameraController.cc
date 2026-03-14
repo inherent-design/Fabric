@@ -131,6 +131,14 @@ void CameraController::setUnlockPitch(bool unlock) {
     config_.unlockPitch = unlock;
 }
 
+void CameraController::reset() {
+    yaw_ = 0.0f;
+    pitch_ = 0.0f;
+    mode_ = CameraMode::FirstPerson;
+    actualDistance_ = config_.orbitDistance;
+    cachedPositionD_ = {};
+}
+
 CameraConfig& CameraController::config() {
     return config_;
 }

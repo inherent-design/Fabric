@@ -50,6 +50,9 @@ class SaveManager {
     /// Enable rotating autosave between autosave_0 and autosave_1.
     void enableAutosave(float intervalSeconds = 300.0f);
 
+    /// Reset per-world timer and index state. Does not clear saveDirectory_.
+    void resetWorldState();
+
     /// Call each frame (or fixed tick). Decrements the autosave timer and
     /// triggers a save when the interval elapses.
     void tickAutosave(float dt, SceneSerializer& serializer, World& world, Timeline& timeline,

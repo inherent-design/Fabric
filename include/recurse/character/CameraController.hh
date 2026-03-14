@@ -77,6 +77,9 @@ class CameraController {
 
     void setUnlockPitch(bool unlock);
 
+    /// Reset per-world orientation state to defaults.
+    void reset();
+
     CameraConfig& config();
 
   private:
