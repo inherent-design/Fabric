@@ -27,6 +27,21 @@ void Ragdoll::shutdown() {
     ragdolls_.clear();
 }
 
+void Ragdoll::clear() {
+    if (!physics_)
+        return;
+
+    // Destroy all ragdoll instances using the same pattern as destroyRagdoll
+    for (auto& [id, inst] : ragdolls_) {
+        for (auto& ch : inst.constraints)
+            physics_->removeConstraint(ch);
+        for (auto& bh : inst.bodies)
+            physics_->removeBody(bh);
+    }
+    ragdolls_.clear();
+    nextId_ = 1;
+}
+
 RagdollHandle Ragdoll::createRagdoll(int jointCount, const float* bindPoseMatrices) {
     if (physics_ == nullptr || jointCount <= 0 || bindPoseMatrices == nullptr)
         return RagdollHandle{0};

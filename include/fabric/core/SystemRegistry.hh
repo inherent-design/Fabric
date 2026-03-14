@@ -62,6 +62,18 @@ class SystemRegistry {
         return static_cast<T*>(base);
     }
 
+    /// Iterate all systems in resolved init order.
+    /// Callback receives each SystemBase reference.
+    /// No-op if resolve() has not been called.
+    template <typename Fn> void forEachInInitOrder(Fn&& fn) const {
+        for (const auto& typeId : initOrder_) {
+            auto it = systems_.find(typeId);
+            if (it != systems_.end()) {
+                fn(*it->second.system);
+            }
+        }
+    }
+
     /// Debug info for all registered systems.
     struct SystemInfo {
         std::string name;

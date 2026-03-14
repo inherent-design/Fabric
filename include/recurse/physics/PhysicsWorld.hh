@@ -176,6 +176,13 @@ class PhysicsWorld {
 
     void removeChunkCollision(int cx, int cy, int cz);
     void clearChunkBodies();
+
+    /// Reset all per-world physics state.
+    /// Removes all chunk collision bodies, user bodies, debris,
+    /// constraints, and character controllers. Called by
+    /// PhysicsGameSystem::onWorldEnd().
+    void resetWorldState();
+
     int removeCollisionBeyondAll(const std::vector<CollisionCenter>& centers);
     bool hasChunkCollision(int cx, int cy, int cz) const;
     uint32_t chunkCollisionShapeCount(int cx, int cy, int cz) const;

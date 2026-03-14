@@ -305,12 +305,12 @@ void VoxelSimulationSystem::resetWorld() {
     if (!fabSim_)
         return;
 
-    // Clear all simulation state
     fabSim_->grid().clear();
     fabSim_->activityTracker().clear();
+    fabSim_->resetWorldState();
     lastActiveCount_ = 0;
 
-    FABRIC_LOG_INFO("VoxelSimulationSystem: World reset (grid and tracker cleared)");
+    FABRIC_LOG_INFO("VoxelSimulationSystem: world reset complete");
 }
 
 } // namespace recurse::systems

@@ -463,6 +463,52 @@ void PhysicsWorld::clearChunkBodies() {
     FABRIC_LOG_DEBUG("PhysicsWorld: cleared {} chunk collision bodies", count);
 }
 
+void PhysicsWorld::resetWorldState() {
+    if (!initialized_)
+        return;
+
+    // Constraints reference bodies; remove them first
+    for (auto& [id, constraint] : constraints_) {
+        if (constraint) {
+            physicsSystem_->RemoveConstraint(constraint);
+        }
+    }
+    constraints_.clear();
+    nextConstraintId_ = 1;
+
+    // Chunk collision bodies
+    clearChunkBodies();
+
+    // User-created bodies (static + dynamic via public API)
+    {
+        auto& bi = physicsSystem_->GetBodyInterface();
+        for (auto& bodyId : userBodies_) {
+            if (!bodyId.IsInvalid()) {
+                bi.RemoveBody(bodyId);
+                bi.DestroyBody(bodyId);
+            }
+        }
+    }
+    userBodies_.clear();
+
+    // Debris bodies
+    {
+        auto& bi = physicsSystem_->GetBodyInterface();
+        for (auto& entry : debris_) {
+            if (!entry.bodyId.IsInvalid()) {
+                bi.RemoveBody(entry.bodyId);
+                bi.DestroyBody(entry.bodyId);
+            }
+        }
+    }
+    debris_.clear();
+
+    // Character controllers (unique_ptr handles JoltCharacterController cleanup)
+    characters_.clear();
+
+    FABRIC_LOG_INFO("PhysicsWorld: reset all per-world state");
+}
+
 int PhysicsWorld::removeCollisionBeyondAll(const std::vector<CollisionCenter>& centers) {
     if (!initialized_ || centers.empty())
         return 0;

@@ -41,6 +41,12 @@ class VoxelSimulationSystem {
     const ChunkActivityTracker& activityTracker() const;
     uint64_t frameIndex() const;
 
+    /// Reset all per-world simulation state.
+    /// Clears ghost cells, physics change records, settled list,
+    /// and resets the frame counter. Grid and tracker are left to
+    /// the caller (outer system clears them separately).
+    void resetWorldState();
+
     /// Chunks that settled (no movement) during the last tick().
     /// Used by the outer system to dispatch collision rebuild events.
     const std::vector<ChunkCoord>& settledChunks() const;

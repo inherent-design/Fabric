@@ -35,6 +35,9 @@ class GhostCellManager {
     GhostCellStore& getStore(ChunkCoord pos);
     void remove(ChunkCoord pos);
 
+    /// Remove all ghost cell stores. Called during world reset.
+    void clear() { stores_.clear(); }
+
   private:
     std::unordered_map<ChunkCoord, GhostCellStore, ChunkCoordHash> stores_;
 };

@@ -168,6 +168,7 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/SystemPhase.cc
     src/core/SystemBase.cc
     src/core/SystemRegistry.cc
+    src/core/WorldLifecycle.cc
     src/fabric/input/InputContext.cc
     src/fabric/input/InputSystem.cc
     src/fabric/resource/AssetRegistry.cc

@@ -175,4 +175,11 @@ fabric::JobScheduler& VoxelSimulationSystem::scheduler() {
     return scheduler_;
 }
 
+void VoxelSimulationSystem::resetWorldState() {
+    ghosts_.clear();
+    settledChunks_.clear();
+    physicsChanges_.clear();
+    frameIndex_ = 0;
+}
+
 } // namespace recurse::simulation

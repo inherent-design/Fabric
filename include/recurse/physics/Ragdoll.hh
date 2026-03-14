@@ -24,6 +24,10 @@ class Ragdoll {
     void init(PhysicsWorld* physics);
     void shutdown();
 
+    /// Destroy all ragdoll instances and reset ID counter.
+    /// Called during world transition cleanup.
+    void clear();
+
     RagdollHandle createRagdoll(int jointCount, const float* bindPoseMatrices);
     void destroyRagdoll(RagdollHandle handle);
 
