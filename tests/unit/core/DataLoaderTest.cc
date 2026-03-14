@@ -6,12 +6,14 @@
 #include "recurse/persistence/DataLoader.hh"
 
 using namespace recurse;
+using fabric::fx::IOError;
+using fabric::fx::NotFound;
+using fabric::fx::StateError;
 
 namespace fabric {
 
 class DataLoaderTest : public ::testing::Test {
   protected:
-    // Write a temp TOML file for file-based tests
     std::filesystem::path writeTempFile(const std::string& content, const std::string& name = "test.toml") {
         auto dir = std::filesystem::temp_directory_path() / "fabric_test";
         std::filesystem::create_directories(dir);
@@ -38,7 +40,7 @@ TEST_F(DataLoaderTest, ParseValidToml) {
         speed = 3.14
         active = true
     )");
-    ASSERT_TRUE(result.isOk());
+    ASSERT_TRUE(result.isSuccess());
     auto& loader = result.value();
 
     EXPECT_EQ(loader.getString("player.name").value(), "Ada");
@@ -49,35 +51,34 @@ TEST_F(DataLoaderTest, ParseValidToml) {
 
 TEST_F(DataLoaderTest, ParseMalformedToml) {
     auto result = DataLoader::parse("[invalid\nno_closing_bracket");
-    ASSERT_TRUE(result.isError());
-    EXPECT_EQ(result.code(), ErrorCode::Internal);
-    // Error message should contain line info
-    EXPECT_NE(result.message().find(":"), std::string::npos);
+    ASSERT_TRUE(result.isFailure());
+    auto& err = result.error<IOError>();
+    EXPECT_NE(err.ctx.message.find(":"), std::string::npos);
 }
 
 TEST_F(DataLoaderTest, MissingKey) {
     auto result = DataLoader::parse("[section]\nkey = 1");
-    ASSERT_TRUE(result.isOk());
+    ASSERT_TRUE(result.isSuccess());
     auto& loader = result.value();
 
     auto missing = loader.getString("section.nonexistent");
-    EXPECT_TRUE(missing.isError());
-    EXPECT_EQ(missing.code(), ErrorCode::NotFound);
+    EXPECT_TRUE(missing.isFailure());
+    EXPECT_EQ(missing.error<NotFound>().key, "section.nonexistent");
 }
 
 TEST_F(DataLoaderTest, TypeMismatch) {
     auto result = DataLoader::parse("[data]\nvalue = \"text\"");
-    ASSERT_TRUE(result.isOk());
+    ASSERT_TRUE(result.isSuccess());
     auto& loader = result.value();
 
     auto asInt = loader.getInt("data.value");
-    EXPECT_TRUE(asInt.isError());
-    EXPECT_EQ(asInt.code(), ErrorCode::InvalidState);
+    EXPECT_TRUE(asInt.isFailure());
+    EXPECT_EQ(asInt.error<StateError>().expected, "integer");
 }
 
 TEST_F(DataLoaderTest, HasKey) {
     auto result = DataLoader::parse("[a]\nb = 1");
-    ASSERT_TRUE(result.isOk());
+    ASSERT_TRUE(result.isSuccess());
     auto& loader = result.value();
 
     EXPECT_TRUE(loader.hasKey("a.b"));
@@ -91,11 +92,11 @@ TEST_F(DataLoaderTest, StringArray) {
         [item]
         tags = ["fire", "rare", "quest"]
     )");
-    ASSERT_TRUE(result.isOk());
+    ASSERT_TRUE(result.isSuccess());
     auto& loader = result.value();
 
     auto tags = loader.getStringArray("item.tags");
-    ASSERT_TRUE(tags.isOk());
+    ASSERT_TRUE(tags.isSuccess());
     EXPECT_EQ(tags.value().size(), 3u);
     EXPECT_EQ(tags.value()[0], "fire");
     EXPECT_EQ(tags.value()[2], "quest");
@@ -106,17 +107,17 @@ TEST_F(DataLoaderTest, StringArrayTypeMismatch) {
         [item]
         tags = [1, 2, 3]
     )");
-    ASSERT_TRUE(result.isOk());
+    ASSERT_TRUE(result.isSuccess());
     auto tags = result.value().getStringArray("item.tags");
-    EXPECT_TRUE(tags.isError());
-    EXPECT_EQ(tags.code(), ErrorCode::InvalidState);
+    EXPECT_TRUE(tags.isFailure());
+    EXPECT_EQ(tags.error<StateError>().expected, "string[]");
 }
 
 TEST_F(DataLoaderTest, FloatAcceptsInteger) {
     auto result = DataLoader::parse("[d]\nv = 10");
-    ASSERT_TRUE(result.isOk());
+    ASSERT_TRUE(result.isSuccess());
     auto f = result.value().getFloat("d.v");
-    ASSERT_TRUE(f.isOk());
+    ASSERT_TRUE(f.isSuccess());
     EXPECT_DOUBLE_EQ(f.value(), 10.0);
 }
 
@@ -125,15 +126,15 @@ TEST_F(DataLoaderTest, FloatAcceptsInteger) {
 TEST_F(DataLoaderTest, LoadFromFile) {
     auto path = writeTempFile("[test]\nvalue = 99");
     auto result = DataLoader::load(path);
-    ASSERT_TRUE(result.isOk());
+    ASSERT_TRUE(result.isSuccess());
     EXPECT_EQ(result.value().getInt("test.value").value(), 99);
     EXPECT_NE(result.value().sourceName().find("test.toml"), std::string::npos);
 }
 
 TEST_F(DataLoaderTest, LoadMissingFile) {
     auto result = DataLoader::load("/nonexistent/path/missing.toml");
-    ASSERT_TRUE(result.isError());
-    EXPECT_EQ(result.code(), ErrorCode::NotFound);
+    ASSERT_TRUE(result.isFailure());
+    EXPECT_NE(result.error<NotFound>().key.find("missing.toml"), std::string::npos);
 }
 
 // -- DataRegistry --
@@ -143,14 +144,14 @@ TEST_F(DataLoaderTest, RegistryCachesResult) {
     DataRegistry registry;
 
     auto first = registry.get(path);
-    ASSERT_TRUE(first.isOk());
+    ASSERT_TRUE(first.isSuccess());
     auto* ptr1 = first.value();
 
     auto second = registry.get(path);
-    ASSERT_TRUE(second.isOk());
+    ASSERT_TRUE(second.isSuccess());
     auto* ptr2 = second.value();
 
-    EXPECT_EQ(ptr1, ptr2); // Same pointer = cache hit
+    EXPECT_EQ(ptr1, ptr2);
     EXPECT_EQ(registry.size(), 1u);
 }
 
@@ -159,14 +160,13 @@ TEST_F(DataLoaderTest, RegistryReload) {
     DataRegistry registry;
 
     auto first = registry.get(path);
-    ASSERT_TRUE(first.isOk());
+    ASSERT_TRUE(first.isSuccess());
     EXPECT_EQ(first.value()->getInt("data.version").value(), 1);
 
-    // Overwrite file with new content
     writeTempFile("[data]\nversion = 2");
 
     auto reloaded = registry.reload(path);
-    ASSERT_TRUE(reloaded.isOk());
+    ASSERT_TRUE(reloaded.isSuccess());
     EXPECT_EQ(reloaded.value()->getInt("data.version").value(), 2);
     EXPECT_EQ(registry.size(), 1u);
 }
@@ -199,7 +199,7 @@ TEST_F(DataLoaderTest, RegistryClear) {
 
 TEST_F(DataLoaderTest, ItemSchemaLoads) {
     auto result = DataLoader::load("data/schema/item.toml");
-    ASSERT_TRUE(result.isOk()) << result.message();
+    ASSERT_TRUE(result.isSuccess());
     auto& loader = result.value();
 
     EXPECT_EQ(loader.getString("item.id").value(), "iron_sword");
@@ -207,13 +207,13 @@ TEST_F(DataLoaderTest, ItemSchemaLoads) {
     EXPECT_DOUBLE_EQ(loader.getFloat("item.stats.weight").value(), 3.5);
 
     auto tags = loader.getStringArray("item.tags.values");
-    ASSERT_TRUE(tags.isOk());
+    ASSERT_TRUE(tags.isSuccess());
     EXPECT_EQ(tags.value().size(), 3u);
 }
 
 TEST_F(DataLoaderTest, NpcSchemaLoads) {
     auto result = DataLoader::load("data/schema/npc.toml");
-    ASSERT_TRUE(result.isOk()) << result.message();
+    ASSERT_TRUE(result.isSuccess());
     auto& loader = result.value();
 
     EXPECT_EQ(loader.getString("npc.id").value(), "village_blacksmith");

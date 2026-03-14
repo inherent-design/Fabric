@@ -186,11 +186,11 @@ CLI: `--log.level=debug`, `--log.render=trace`, `--log.include=physics`.
 - `throwError()` throws `FabricException` (subclass of `std::exception`)
 - Catch and handle exceptions at appropriate boundaries
 - Use `FABRIC_LOG_ERROR` for logging errors, not `std::cerr`
-- `ErrorCode` enum for hot-path error codes: `Ok`, `BufferOverrun`, `InvalidState`, `Timeout`, `ConnectionReset`, `PermissionDenied`, `NotFound`, `AlreadyExists`, `ResourceExhausted`, `Internal`
-- `Result<T>` template for error-code returns without exceptions: `Result<T>::ok(val)`, `Result<T>::error(code, msg)`, `.isOk()`, `.value()`, `.valueOr(default)`
-- `Result<void>` specialization for operations with no return value
-
-**Direction:** The existing `Result<T>` will be superseded by `TypedResult<A, Es...>` (see Programming Model below). New code should still use `Result<T>` until the migration; do not introduce new ad-hoc `FooResult` structs. If an operation can fail in multiple distinct ways, document the error modes in comments and plan for typed error channels.
+- `fabric::fx::Result<A, Es...>` for composable typed error handling: `Result::success(val)`, `Result::failure(err)`, `.isSuccess()`, `.isFailure()`, `.value()`, `.error<E>()`, `.map()`, `.flatMap()`, `.mapError()`, `.match()`
+- `Result<A, Never>` for infallible operations (collapses to just `A`)
+- `Result<void, Es...>` for effectful operations that can fail
+- Tagged error types in `fabric/fx/Error.hh`: `IOError`, `StateError`, `NotFound`, `ConcurrencyError` (all satisfy `TaggedError` concept)
+- Do not introduce ad-hoc `FooResult` structs; use `Result<A, Es...>` with appropriate error types
 
 ## Async
 
@@ -496,18 +496,18 @@ Every interaction with world state (reads and mutations) goes through a context/
 
 The executor resolves reads synchronously (direct return, no allocation) and mutations asynchronously (queued, batched, deferred). The operation is always a value; the resolution strategy is an implementation detail.
 
-### TypedResult
+### Result
 
-`TypedResult<A, Es...>` replaces ad-hoc result/error patterns. `A` is the success type; `Es...` are the possible error types (tagged, `std::variant`-backed). Operations compose via `flatMap`, which merges error channels at compile time.
+`fabric::fx::Result<A, Es...>` handles composable typed errors. `A` is the success type; `Es...` are the possible error types (tagged, `std::variant`-backed). Operations compose via `flatMap`, which merges error channels at compile time.
 
 ```cpp
 auto r = ctx.resolve(LoadChunk{coord})
     .flatMap([](auto ref) { return decode(ref); })
     .flatMap([](auto data) { return decompress(data); });
-// r : TypedResult<VoxelData, IOError, NotFound, DecodeError, ZstdError>
+// r : Result<VoxelData, IOError, NotFound, DecodeError, ZstdError>
 ```
 
-`Never` sentinel indicates infallible operations. Error channel merging is automatic and deduplicated at the type level.
+`Never` sentinel indicates infallible operations (`Result<A, Never>` collapses to just `A`). Error channel merging is automatic and deduplicated at the type level. Four specializations: `Result<A, Es...>` (primary), `Result<A, Never>` (infallible), `Result<void, Es...>` (effectful), `Result<void, Never>` (void infallible).
 
 ### RAII session boundaries
 

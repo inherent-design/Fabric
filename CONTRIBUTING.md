@@ -201,7 +201,7 @@ void unloadWorld() { session_.reset(); }  // complete by construction
 
 ### Error composition
 
-Operations that can fail declare their error types. Composed operations merge error channels automatically. Do not create ad-hoc `FooResult` structs; use the shared `Result<T>` type (and `TypedResult<A, Es...>` once available).
+Operations that can fail declare their error types. Composed operations merge error channels automatically. Do not create ad-hoc `FooResult` structs; use `fabric::fx::Result<A, Es...>` with tagged error types from `fabric/fx/Error.hh`.
 
 ### Engine/game separation
 
@@ -249,7 +249,7 @@ Prefer `constexpr` over macros.
 ### Error Handling
 
 - `throwError()` from `fabric/utils/ErrorHandling.hh` for error conditions; not raw `throw`
-- `Result<T>` / `Result<void>` for hot-path error codes (`ErrorCode` enum)
+- `fabric::fx::Result<A, Es...>` for typed error handling (tagged errors from `fabric/fx/Error.hh`)
 - All exceptions subclass `FabricException`
 
 ### Logging
