@@ -1,6 +1,6 @@
 #include "recurse/render/LODGrid.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include <algorithm>
 #include <array>
 

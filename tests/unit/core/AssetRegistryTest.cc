@@ -4,8 +4,8 @@
 #include <fstream>
 #include <string>
 
-#include "fabric/core/AssetRegistry.hh"
-#include "fabric/core/ResourceHub.hh"
+#include "fabric/resource/AssetRegistry.hh"
+#include "fabric/resource/ResourceHub.hh"
 
 namespace fabric {
 

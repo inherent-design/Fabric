@@ -1,6 +1,6 @@
 #include "recurse/persistence/PruningScheduler.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/platform/WriterQueue.hh"
 #include <chrono>
 

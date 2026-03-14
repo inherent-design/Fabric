@@ -1,5 +1,5 @@
 #include "fabric/input/InputManager.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 
 namespace fabric {
 

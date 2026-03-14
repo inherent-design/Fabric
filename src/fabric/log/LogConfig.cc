@@ -1,4 +1,4 @@
-#include "fabric/core/LogConfig.hh"
+#include "fabric/log/LogConfig.hh"
 #include "fabric/platform/ConfigManager.hh"
 
 #include <cstdlib>

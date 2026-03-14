@@ -1,5 +1,5 @@
 #include "fabric/core/SystemRegistry.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <queue>
 

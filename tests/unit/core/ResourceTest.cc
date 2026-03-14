@@ -1,5 +1,5 @@
-#include "fabric/core/Resource.hh"
-#include "fabric/core/ResourceHub.hh"
+#include "fabric/resource/Resource.hh"
+#include "fabric/resource/ResourceHub.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "fabric/utils/Testing.hh"
 #include <atomic>

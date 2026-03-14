@@ -1,5 +1,5 @@
 #include "recurse/character/CameraController.hh"
-#include "fabric/render/Rendering.hh"
+#include "fabric/render/Geometry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 
 #include <algorithm>

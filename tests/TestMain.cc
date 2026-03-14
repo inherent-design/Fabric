@@ -1,4 +1,4 @@
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include <gtest/gtest.h>
 
 int main(int argc, char** argv) {

@@ -3,7 +3,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 
 namespace recurse {
 

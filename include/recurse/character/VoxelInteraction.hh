@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fabric/core/Event.hh"
-#include "fabric/render/Rendering.hh"
+#include "fabric/render/Geometry.hh"
 #include "recurse/persistence/ChangeSource.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"

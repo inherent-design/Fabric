@@ -1,7 +1,7 @@
 #include "recurse/systems/TerrainSystem.hh"
 
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "recurse/world/TestWorldGenerator.hh"
 #include "recurse/world/WorldGenerator.hh"
 

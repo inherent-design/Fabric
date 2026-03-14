@@ -1,7 +1,7 @@
 #include "recurse/systems/ShadowRenderSystem.hh"
 
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/render/Camera.hh"
 
 #include <cmath>

@@ -25,8 +25,6 @@ TEST_F(BgfxNoopFixture, VoxelRendererInitAndShutdownUnderNoop) {
     ChunkMesh mesh;
     mesh.valid = true;
     mesh.indexCount = 3;
-    mesh.vbh = BGFX_INVALID_HANDLE;
-    mesh.ibh = BGFX_INVALID_HANDLE;
 
     renderer.render(0, mesh, 0, 0, 0);
     EXPECT_TRUE(renderer.isValid());
@@ -57,8 +55,6 @@ TEST_F(BgfxNoopFixture, VoxelRendererRenderWithInvalidBuffersNoOp) {
     ChunkMesh mesh;
     mesh.valid = true;
     mesh.indexCount = 100;
-    mesh.vbh = BGFX_INVALID_HANDLE;
-    mesh.ibh = BGFX_INVALID_HANDLE;
 
     renderer.render(0, mesh, 0, 0, 0);
     // Noop renderer: initProgram succeeds, so renderer is valid.

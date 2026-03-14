@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fabric/core/ECS.hh"
 #include "fabric/core/SystemBase.hh"
+#include "fabric/ecs/ECS.hh"
 #include "recurse/character/GameConstants.hh"
 #include "recurse/world/ChunkStreaming.hh"
 #include <chrono>

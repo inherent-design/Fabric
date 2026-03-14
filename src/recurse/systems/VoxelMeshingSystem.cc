@@ -2,8 +2,8 @@
 #include "fabric/world/ChunkCoordUtils.hh"
 
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkedGrid.hh"
@@ -344,22 +344,21 @@ void VoxelMeshingSystem::uploadMeshResult(const fabric::ChunkCoord& coord, CPUMe
     gpuMesh.valid = true;
 
     if (gpuUploadEnabled_) {
-        gpuMesh.mesh.vbh = bgfx::createVertexBuffer(
+        gpuMesh.mesh.vbh.reset(bgfx::createVertexBuffer(
             bgfx::copy(result.vertices.data(),
                        static_cast<uint32_t>(result.vertices.size() * sizeof(recurse::SmoothVoxelVertex))),
-            recurse::SmoothVoxelVertex::getVertexLayout());
-        if (!bgfx::isValid(gpuMesh.mesh.vbh)) {
+            recurse::SmoothVoxelVertex::getVertexLayout()));
+        if (!gpuMesh.mesh.vbh.isValid()) {
             gpuMesh.valid = false;
             gpuMesh.mesh.valid = false;
         }
 
         if (gpuMesh.valid) {
-            gpuMesh.mesh.ibh = bgfx::createIndexBuffer(
+            gpuMesh.mesh.ibh.reset(bgfx::createIndexBuffer(
                 bgfx::copy(result.indices.data(), static_cast<uint32_t>(result.indices.size() * sizeof(uint32_t))),
-                BGFX_BUFFER_INDEX32);
-            if (!bgfx::isValid(gpuMesh.mesh.ibh)) {
-                bgfx::destroy(gpuMesh.mesh.vbh);
-                gpuMesh.mesh.vbh = BGFX_INVALID_HANDLE;
+                BGFX_BUFFER_INDEX32));
+            if (!gpuMesh.mesh.ibh.isValid()) {
+                gpuMesh.mesh.vbh.reset();
                 gpuMesh.valid = false;
                 gpuMesh.mesh.valid = false;
             }
@@ -379,13 +378,8 @@ void VoxelMeshingSystem::uploadMeshResult(const fabric::ChunkCoord& coord, CPUMe
 }
 
 void VoxelMeshingSystem::destroyChunkMesh(ChunkGPUMesh& gpuMesh) {
-    if (bgfx::isValid(gpuMesh.mesh.vbh))
-        bgfx::destroy(gpuMesh.mesh.vbh);
-    if (bgfx::isValid(gpuMesh.mesh.ibh))
-        bgfx::destroy(gpuMesh.mesh.ibh);
-
-    gpuMesh.mesh.vbh = BGFX_INVALID_HANDLE;
-    gpuMesh.mesh.ibh = BGFX_INVALID_HANDLE;
+    gpuMesh.mesh.vbh.reset();
+    gpuMesh.mesh.ibh.reset();
     gpuMesh.mesh.indexCount = 0;
     gpuMesh.mesh.palette.clear();
     gpuMesh.mesh.valid = false;

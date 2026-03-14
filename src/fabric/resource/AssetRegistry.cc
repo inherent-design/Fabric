@@ -1,4 +1,4 @@
-#include "fabric/core/AssetRegistry.hh"
+#include "fabric/resource/AssetRegistry.hh"
 
 namespace fabric {
 

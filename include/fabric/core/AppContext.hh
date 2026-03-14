@@ -1,8 +1,8 @@
 #pragma once
 
-#include "fabric/core/ECS.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/Temporal.hh"
+#include "fabric/ecs/ECS.hh"
 
 struct SDL_Window;
 

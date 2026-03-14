@@ -1,5 +1,5 @@
-#include "fabric/core/ResourceHub.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/resource/ResourceHub.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <algorithm>
 #include <thread>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/render/Rendering.hh"
+#include "fabric/render/Geometry.hh"
 #include <array>
 #include <atomic>
 #include <condition_variable>

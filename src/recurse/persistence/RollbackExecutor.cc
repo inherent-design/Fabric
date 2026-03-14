@@ -1,5 +1,5 @@
 #include "recurse/persistence/RollbackExecutor.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include <cstring>

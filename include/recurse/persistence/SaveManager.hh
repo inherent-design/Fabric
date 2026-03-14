@@ -1,8 +1,8 @@
 #pragma once
 
-#include "fabric/core/ECS.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/Temporal.hh"
+#include "fabric/ecs/ECS.hh"
 #include "recurse/persistence/SceneSerializer.hh"
 #include <optional>
 #include <string>

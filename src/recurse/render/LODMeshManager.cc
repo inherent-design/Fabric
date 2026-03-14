@@ -1,6 +1,6 @@
 #include "recurse/render/LODMeshManager.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/world/ChunkDensityCache.hh"
 #include "recurse/world/SnapMCMesher.hh"

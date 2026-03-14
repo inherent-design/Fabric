@@ -1,6 +1,6 @@
 #include "recurse/persistence/SqliteChunkStore.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "recurse/persistence/SchemaMigrations.hh"
 #include <algorithm>

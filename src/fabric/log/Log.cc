@@ -1,5 +1,5 @@
-#include "fabric/core/Log.hh"
-#include "fabric/core/FilteredConsoleSink.hh"
+#include "fabric/log/Log.hh"
+#include "fabric/log/FilteredConsoleSink.hh"
 
 #include <quill/Backend.h>
 #include <quill/Frontend.h>

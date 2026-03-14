@@ -1,5 +1,5 @@
-#include "fabric/core/Component.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/ecs/Component.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <type_traits>
 

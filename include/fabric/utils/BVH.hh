@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/render/Rendering.hh"
+#include "fabric/render/Geometry.hh"
 #include <algorithm>
 #include <cassert>
 #include <functional>

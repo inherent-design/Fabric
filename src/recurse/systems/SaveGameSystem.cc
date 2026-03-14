@@ -3,9 +3,9 @@
 #include "recurse/systems/TerrainSystem.hh"
 
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/input/InputRouter.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/persistence/SaveManager.hh"
 

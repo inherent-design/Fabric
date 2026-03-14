@@ -1,4 +1,4 @@
-#include "fabric/core/FilteredConsoleSink.hh"
+#include "fabric/log/FilteredConsoleSink.hh"
 
 #include <algorithm>
 #include <string>

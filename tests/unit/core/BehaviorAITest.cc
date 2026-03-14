@@ -1,5 +1,5 @@
 #include "recurse/ai/BehaviorAI.hh"
-#include "fabric/core/ECS.hh"
+#include "fabric/ecs/ECS.hh"
 
 #include <gtest/gtest.h>
 

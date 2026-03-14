@@ -4,11 +4,11 @@
 // Wraps Quill v11.x async structured logging.
 //
 // Usage:
-//   #include "fabric/core/Log.hh"
+//   #include "fabric/log/Log.hh"
 //   FABRIC_LOG_INFO("Server started on port {}", port);
 //   FABRIC_LOG_ERROR("Failed to load resource: {}", resource_id);
 
-#include "fabric/core/LogConfig.hh"
+#include "fabric/log/LogConfig.hh"
 
 // Neutralize X11 macro pollution.  <X11/X.h> (included transitively by
 // WebKitGTK and other Linux system headers) defines bare-word macros that

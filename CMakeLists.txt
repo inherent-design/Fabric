@@ -145,19 +145,21 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/fabric/platform/Async.cc
     src/fabric/render/BgfxCallback.cc
     src/fabric/render/Camera.cc
-    src/core/Component.cc
+    src/fabric/ecs/Component.cc
     src/fabric/platform/ConfigManager.cc
-    src/core/ECS.cc
+    src/fabric/ecs/ECS.cc
     src/core/Event.cc
     src/fabric/input/InputManager.cc
     src/fabric/input/InputRouter.cc
     src/core/Lifecycle.cc
-    src/core/Log.cc
-    src/core/LogConfig.cc
+    src/fabric/log/Log.cc
+    src/fabric/log/LogConfig.cc
     src/fabric/render/RenderCaps.cc
+    src/fabric/render/Geometry.cc
+    src/fabric/render/DrawCall.cc
     src/fabric/render/Rendering.cc
-    src/core/Resource.cc
-    src/core/ResourceHub.cc
+    src/fabric/resource/Resource.cc
+    src/fabric/resource/ResourceHub.cc
     src/fabric/render/SceneView.cc
     src/core/Spatial.cc
     src/core/Temporal.cc
@@ -168,9 +170,9 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/core/SystemRegistry.cc
     src/fabric/input/InputContext.cc
     src/fabric/input/InputSystem.cc
-    src/core/AssetRegistry.cc
+    src/fabric/resource/AssetRegistry.cc
     src/fabric/platform/FabricApp.cc
-    src/core/FilteredConsoleSink.cc
+    src/fabric/log/FilteredConsoleSink.cc
     src/fabric/render/PostProcess.cc
     src/fabric/render/SkyRenderer.cc
     src/fabric/platform/JobScheduler.cc

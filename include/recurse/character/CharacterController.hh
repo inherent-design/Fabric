@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fabric/core/Spatial.hh"
-#include "fabric/render/Rendering.hh"
+#include "fabric/render/Geometry.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/physics/VoxelCollision.hh"
 #include <cmath>

@@ -13,9 +13,9 @@
 #include "recurse/systems/VoxelSimulationSystem.hh"
 
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/ECS.hh"
-#include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/ecs/ECS.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/platform/ConfigManager.hh"
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"

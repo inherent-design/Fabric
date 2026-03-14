@@ -1,5 +1,5 @@
 #include "recurse/physics/JoltCharacterController.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>

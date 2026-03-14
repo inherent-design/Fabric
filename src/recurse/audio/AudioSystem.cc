@@ -1,7 +1,7 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "recurse/audio/AudioSystem.hh"
 #include "recurse/simulation/SimulationGrid.hh"

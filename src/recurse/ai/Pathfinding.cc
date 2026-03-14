@@ -1,7 +1,7 @@
 #include "recurse/ai/Pathfinding.hh"
 #include "fabric/world/ChunkCoordUtils.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 
 #include <algorithm>
 #include <array>

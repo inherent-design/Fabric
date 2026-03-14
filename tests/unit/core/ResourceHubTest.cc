@@ -1,4 +1,4 @@
-#include "fabric/core/ResourceHub.hh"
+#include "fabric/resource/ResourceHub.hh"
 #include "fabric/utils/Testing.hh"
 #include <atomic>
 #include <gmock/gmock.h>

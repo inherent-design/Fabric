@@ -4,8 +4,8 @@
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Event.hh"
-#include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/character/VoxelInteraction.hh"
 #include "recurse/simulation/ChunkRegistry.hh"

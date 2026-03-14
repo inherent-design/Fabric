@@ -1,5 +1,5 @@
 #include "fabric/platform/WriterQueue.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include <future>
 #include <utility>
 

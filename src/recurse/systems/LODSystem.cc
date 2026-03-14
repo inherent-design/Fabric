@@ -1,9 +1,9 @@
 #include "recurse/systems/LODSystem.hh"
 
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/Log.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/platform/ConfigManager.hh"
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/render/Camera.hh"
@@ -222,9 +222,7 @@ void LODSystem::render(fabric::AppContext& ctx) {
             selectVisibleSections(*camera, baseRadius_);
 
             if (!visibleSections_.empty()) {
-                std::vector<recurse::ChunkMesh> lodMeshes;
                 std::vector<recurse::ChunkRenderInfo> lodBatch;
-                lodMeshes.reserve(visibleSections_.size());
                 lodBatch.reserve(visibleSections_.size());
 
                 for (const auto& vis : visibleSections_) {
@@ -232,32 +230,19 @@ void LODSystem::render(fabric::AppContext& ctx) {
                     if (it == gpuSections_.end() || !it->second.resident)
                         continue;
 
-                    const auto& gpu = it->second;
-
-                    lodMeshes.push_back(recurse::ChunkMesh{
-                        .vbh = gpu.vbh.get(),
-                        .ibh = gpu.ibh.get(),
-                        .indexCount = gpu.indexCount,
-                        .palette = gpu.palette,
-                        .valid = true,
-                    });
-
                     auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
                         static_cast<double>(vis.section->origin.x), static_cast<double>(vis.section->origin.y),
                         static_cast<double>(vis.section->origin.z));
                     auto relOrigin = camera->cameraRelative(worldOrigin);
 
                     lodBatch.push_back(recurse::ChunkRenderInfo{
-                        .mesh = nullptr,
+                        .mesh = &it->second.mesh,
                         .offsetX = relOrigin.x,
                         .offsetY = relOrigin.y,
                         .offsetZ = relOrigin.z,
                         .sortKey = vis.key.value,
                     });
                 }
-
-                for (size_t i = 0; i < lodBatch.size(); ++i)
-                    lodBatch[i].mesh = &lodMeshes[i];
 
                 if (!lodBatch.empty()) {
                     voxelRenderer_->renderBatch(ctx.sceneView->geometryViewId(), lodBatch.data(),
@@ -382,18 +367,19 @@ void LODSystem::uploadSection(LODSectionKey key, const recurse::LODMeshManager::
 
     // Create vertex buffer (copy: mesh data is temporary); reset destroys old handle
     bgfx::VertexLayout layout = SmoothVoxelVertex::getVertexLayout();
-    gpu.vbh.reset(bgfx::createVertexBuffer(
+    gpu.mesh.vbh.reset(bgfx::createVertexBuffer(
         bgfx::copy(mesh.vertices.data(), static_cast<uint32_t>(mesh.vertices.size() * sizeof(SmoothVoxelVertex))),
         layout));
 
     // Create index buffer (copy: mesh data is temporary); reset destroys old handle
-    gpu.ibh.reset(bgfx::createIndexBuffer(
+    gpu.mesh.ibh.reset(bgfx::createIndexBuffer(
         bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t))),
         BGFX_BUFFER_INDEX32));
 
     gpu.vertexCount = static_cast<uint32_t>(mesh.vertices.size());
-    gpu.indexCount = static_cast<uint32_t>(mesh.indices.size());
-    gpu.palette = mesh.palette;
+    gpu.mesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
+    gpu.mesh.palette = mesh.palette;
+    gpu.mesh.valid = true;
     gpu.resident = true;
 }
 
@@ -412,7 +398,7 @@ LODDebugInfo LODSystem::debugInfo() const {
     size_t totalBytes = 0;
     for (const auto& [key, gpu] : gpuSections_) {
         if (gpu.resident)
-            totalBytes += gpu.vertexCount * K_VERTEX_BYTES + gpu.indexCount * K_INDEX_BYTES;
+            totalBytes += gpu.vertexCount * K_VERTEX_BYTES + gpu.mesh.indexCount * K_INDEX_BYTES;
     }
     info.estimatedGpuBytes = totalBytes;
     return info;

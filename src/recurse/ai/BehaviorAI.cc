@@ -1,6 +1,6 @@
 #include "recurse/ai/BehaviorAI.hh"
-#include "fabric/core/ECS.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/ecs/ECS.hh"
+#include "fabric/log/Log.hh"
 #include "recurse/components/StreamSource.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/world/VoxelRaycast.hh"

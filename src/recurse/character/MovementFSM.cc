@@ -1,5 +1,5 @@
 #include "recurse/character/MovementFSM.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 
 using namespace fabric;
 

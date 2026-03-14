@@ -1,10 +1,10 @@
 #include "fabric/core/SystemBase.hh"
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/AssetRegistry.hh"
-#include "fabric/core/ResourceHub.hh"
 #include "fabric/core/SystemPhase.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/platform/ConfigManager.hh"
+#include "fabric/resource/AssetRegistry.hh"
+#include "fabric/resource/ResourceHub.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;

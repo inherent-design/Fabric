@@ -1,6 +1,6 @@
 #include "recurse/ui/ContentBrowser.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 
 #include <algorithm>
 #include <filesystem>

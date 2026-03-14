@@ -1,6 +1,6 @@
 #include "fabric/ui/HotkeyPanel.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
 #include <RmlUi/Core/Element.h>

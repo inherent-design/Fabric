@@ -1,6 +1,6 @@
 #include "recurse/render/ShadowSystem.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "fabric/utils/Profiler.hh"
 #include <algorithm>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fabric/core/Spatial.hh"
-#include "fabric/render/Rendering.hh"
+#include "fabric/render/Geometry.hh"
 #include "fabric/world/ChunkedGrid.hh"
 
 namespace recurse::simulation {

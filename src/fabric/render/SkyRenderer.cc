@@ -1,6 +1,6 @@
 #include "fabric/render/SkyRenderer.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/render/Rendering.hh"
 #include "fabric/utils/Profiler.hh"
 

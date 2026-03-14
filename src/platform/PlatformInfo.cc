@@ -1,6 +1,6 @@
 #include "fabric/platform/PlatformInfo.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 
 #include <bgfx/bgfx.h>
 #include <SDL3/SDL.h>

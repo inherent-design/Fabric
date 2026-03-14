@@ -10,7 +10,7 @@
 #include <windows.h>
 #endif
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/platform/DefaultConfig.hh"
 
 namespace fabric {

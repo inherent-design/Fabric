@@ -1,6 +1,6 @@
 #include "fabric/platform/WindowDesc.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 
 #include <SDL3/SDL.h>
 #include <toml++/toml.hpp>

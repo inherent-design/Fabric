@@ -1,7 +1,6 @@
 #include "recurse/render/ParticleSystem.hh"
 
-#include "fabric/core/Log.hh"
-#include "fabric/render/Rendering.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/Profiler.hh"
 
 #include <algorithm>

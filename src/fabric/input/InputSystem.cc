@@ -1,7 +1,7 @@
 #include "fabric/input/InputSystem.hh"
 
 #include "fabric/core/Event.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include <algorithm>
 #include <cmath>
 

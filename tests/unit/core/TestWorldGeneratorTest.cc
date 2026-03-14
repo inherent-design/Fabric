@@ -5,11 +5,11 @@
 
 // TerrainSystem tests need AppContext infrastructure
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/AssetRegistry.hh"
-#include "fabric/core/ResourceHub.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/platform/ConfigManager.hh"
 #include "fabric/platform/JobScheduler.hh"
+#include "fabric/resource/AssetRegistry.hh"
+#include "fabric/resource/ResourceHub.hh"
 #include "fabric/world/MinecraftNoiseGenerator.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/world/NaturalWorldGenerator.hh"

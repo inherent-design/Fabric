@@ -1,5 +1,5 @@
 #include "recurse/render/DebugDraw.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 
 #include <bgfx/bgfx.h>
 

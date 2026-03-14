@@ -1,6 +1,6 @@
 #include "recurse/ui/DevConsole.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>

@@ -1,5 +1,5 @@
 #include "fabric/ui/BgfxRenderInterface.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/Profiler.hh"
 
 #include "stb_image.h"

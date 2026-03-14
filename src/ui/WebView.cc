@@ -1,5 +1,5 @@
 #include "fabric/ui/WebView.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include <memory>
 
 #if defined(FABRIC_USE_WEBVIEW)

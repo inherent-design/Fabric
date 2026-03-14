@@ -1,4 +1,4 @@
-#include "fabric/core/Component.hh"
+#include "fabric/ecs/Component.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include "fabric/utils/Testing.hh"
 #include <gtest/gtest.h>

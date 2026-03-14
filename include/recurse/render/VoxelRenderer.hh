@@ -18,13 +18,20 @@ namespace Space = fabric::Space;
 using fabric::Vector3;
 
 /// GPU-side chunk mesh (vertex/index buffer handles + palette).
-/// Formerly defined in VoxelMesher.hh; kept here for VoxelRenderer API.
+/// Move-only; BgfxHandle RAII destroys GPU buffers automatically.
 struct ChunkMesh {
-    bgfx::VertexBufferHandle vbh = BGFX_INVALID_HANDLE;
-    bgfx::IndexBufferHandle ibh = BGFX_INVALID_HANDLE;
+    fabric::BgfxHandle<bgfx::VertexBufferHandle> vbh;
+    fabric::BgfxHandle<bgfx::IndexBufferHandle> ibh;
     uint32_t indexCount = 0;
     std::vector<std::array<float, 4>> palette;
     bool valid = false;
+
+    ChunkMesh() = default;
+    ~ChunkMesh() = default;
+    ChunkMesh(const ChunkMesh&) = delete;
+    ChunkMesh& operator=(const ChunkMesh&) = delete;
+    ChunkMesh(ChunkMesh&&) noexcept = default;
+    ChunkMesh& operator=(ChunkMesh&&) noexcept = default;
 };
 
 // Per-chunk info for batch rendering.

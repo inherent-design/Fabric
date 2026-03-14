@@ -1,6 +1,6 @@
 #include "recurse/persistence/ChunkSaveService.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/platform/WriterQueue.hh"
 #include <algorithm>
 #include <vector>

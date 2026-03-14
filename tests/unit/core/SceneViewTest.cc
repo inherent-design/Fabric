@@ -1,6 +1,6 @@
 #include "fabric/render/SceneView.hh"
-#include "fabric/core/ECS.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/ecs/ECS.hh"
 #include "fabric/render/Camera.hh"
 #include "fabric/render/Rendering.hh"
 #include "fabric/utils/Testing.hh"

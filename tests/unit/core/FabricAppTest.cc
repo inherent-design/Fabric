@@ -5,11 +5,11 @@
 #include <vector>
 
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/AssetRegistry.hh"
-#include "fabric/core/ResourceHub.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/platform/ConfigManager.hh"
 #include "fabric/platform/FabricApp.hh"
+#include "fabric/resource/AssetRegistry.hh"
+#include "fabric/resource/ResourceHub.hh"
 
 namespace fabric {
 

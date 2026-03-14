@@ -5,11 +5,11 @@
 #include "recurse/systems/VoxelSimulationSystem.hh"
 
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/ECS.hh"
 #include "fabric/core/Event.hh"
-#include "fabric/core/Log.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/ecs/ECS.hh"
 #include "fabric/input/InputManager.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/platform/ConfigManager.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/character/CameraController.hh"
@@ -48,7 +48,12 @@ void CharacterMovementSystem::setPlayerPosition(const fabric::Vec3f& pos) {
     if (joltCharCtrl_) {
         joltCharCtrl_->setPosition(pos);
     }
-    playerVel_ = {}; // Reset velocity
+    playerVel_ = {};
+
+    // Sync ECS component immediately so StreamSource queries in CPS
+    // read the correct position on the first frame after world load.
+    if (playerEntity_.is_valid())
+        playerEntity_.set<fabric::Position>({pos.x, pos.y, pos.z});
 }
 
 namespace {

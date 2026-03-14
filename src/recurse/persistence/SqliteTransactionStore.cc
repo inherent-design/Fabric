@@ -1,6 +1,6 @@
 #include "recurse/persistence/SqliteTransactionStore.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <chrono>
 #include <cstring>

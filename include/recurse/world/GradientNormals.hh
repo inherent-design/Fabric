@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fabric/render/Rendering.hh"
+#include "fabric/render/Geometry.hh"
 #include "recurse/world/ChunkDensityCache.hh"
 
 namespace recurse {

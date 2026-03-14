@@ -1,6 +1,6 @@
 #include "fabric/render/RenderCaps.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/Profiler.hh"
 
 #include <bgfx/bgfx.h>

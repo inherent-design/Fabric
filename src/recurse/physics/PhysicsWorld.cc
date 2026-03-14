@@ -1,5 +1,5 @@
 #include "recurse/physics/PhysicsWorld.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/physics/JoltCharacterController.hh"

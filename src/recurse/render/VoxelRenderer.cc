@@ -1,6 +1,6 @@
 #include "recurse/render/VoxelRenderer.hh"
 
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/render/Rendering.hh"
 #include "fabric/utils/Profiler.hh"
 
@@ -117,7 +117,7 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, float offse
         initProgram();
     }
 
-    if (!isValid() || !bgfx::isValid(mesh.vbh) || !bgfx::isValid(mesh.ibh)) {
+    if (!isValid() || !mesh.vbh.isValid() || !mesh.ibh.isValid()) {
         return;
     }
 
@@ -136,8 +136,8 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, float offse
         bgfx::setUniform(uniformPalette_.get(), mesh.palette.data(), count);
     }
 
-    bgfx::setVertexBuffer(0, mesh.vbh);
-    bgfx::setIndexBuffer(mesh.ibh);
+    bgfx::setVertexBuffer(0, mesh.vbh.get());
+    bgfx::setIndexBuffer(mesh.ibh.get());
 
     uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
                      BGFX_STATE_MSAA | BGFX_STATE_CULL_CCW;
@@ -219,7 +219,7 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
         if (!ci.mesh || !ci.mesh->valid || ci.mesh->indexCount == 0) {
             continue;
         }
-        if (!bgfx::isValid(ci.mesh->vbh) || !bgfx::isValid(ci.mesh->ibh)) {
+        if (!ci.mesh->vbh.isValid() || !ci.mesh->ibh.isValid()) {
             continue;
         }
 
@@ -266,8 +266,8 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
             mtx[14] = ci.offsetZ;
             bgfx::setTransform(mtx);
 
-            bgfx::setVertexBuffer(0, ci.mesh->vbh);
-            bgfx::setIndexBuffer(ci.mesh->ibh);
+            bgfx::setVertexBuffer(0, ci.mesh->vbh.get());
+            bgfx::setIndexBuffer(ci.mesh->ibh.get());
 
             bool last = (j + 1 == group.indices.size());
             bgfx::submit(view, program_.get(), 0, last ? BGFX_DISCARD_ALL : K_GROUP_DISCARD);

@@ -1,5 +1,5 @@
 #include "recurse/persistence/SceneSerializer.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/log/Log.hh"
 #include <fstream>
 #include <stdexcept>
 #include <unordered_map>

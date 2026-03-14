@@ -1,8 +1,8 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/AssetRegistry.hh"
-#include "fabric/core/ResourceHub.hh"
 #include "fabric/platform/ConfigManager.hh"
+#include "fabric/resource/AssetRegistry.hh"
+#include "fabric/resource/ResourceHub.hh"
 #include "fabric/utils/ErrorHandling.hh"
 #include <gtest/gtest.h>
 

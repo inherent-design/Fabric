@@ -1,11 +1,11 @@
 #include "recurse/systems/VoxelRenderSystem.hh"
 
 #include "fabric/core/AppContext.hh"
-#include "fabric/core/Log.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/render/Camera.hh"
-#include "fabric/render/Rendering.hh"
+#include "fabric/render/Geometry.hh"
 #include "fabric/render/SceneView.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/systems/ChunkPipelineSystem.hh"

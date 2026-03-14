@@ -17,9 +17,9 @@
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/WorldGenerator.hh"
 
-#include "fabric/core/ECS.hh"
 #include "fabric/core/Event.hh"
-#include "fabric/core/Log.hh"
+#include "fabric/ecs/ECS.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/platform/JobScheduler.hh"
 
 #include <algorithm>

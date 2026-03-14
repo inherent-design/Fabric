@@ -1,7 +1,6 @@
 #include "fabric/render/PaniniPass.hh"
 
-#include "fabric/core/Log.hh"
-#include "fabric/render/Rendering.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/Profiler.hh"
 #include <algorithm> // for std::lerp
 #include <cmath>

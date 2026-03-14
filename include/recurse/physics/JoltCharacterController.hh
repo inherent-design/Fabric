@@ -7,7 +7,7 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 
 #include "fabric/core/Spatial.hh"
-#include "fabric/render/Rendering.hh"
+#include "fabric/render/Geometry.hh"
 
 #include <memory>
 

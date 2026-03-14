@@ -1,7 +1,7 @@
 #pragma once
 
-#include "fabric/core/Log.hh"
-#include "fabric/core/Resource.hh"
+#include "fabric/log/Log.hh"
+#include "fabric/resource/Resource.hh"
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/CoordinatedGraph.hh"
 #include <atomic>

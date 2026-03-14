@@ -1,4 +1,4 @@
-#include "fabric/core/ECS.hh"
+#include "fabric/ecs/ECS.hh"
 #include "fabric/core/Spatial.hh"
 
 #include <algorithm>

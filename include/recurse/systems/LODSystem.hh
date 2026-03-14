@@ -84,11 +84,8 @@ class LODSystem : public fabric::System<LODSystem> {
 
     // GPU mesh management
     struct GPUSection {
-        fabric::BgfxHandle<bgfx::VertexBufferHandle> vbh;
-        fabric::BgfxHandle<bgfx::IndexBufferHandle> ibh;
+        recurse::ChunkMesh mesh;
         uint32_t vertexCount = 0;
-        uint32_t indexCount = 0;
-        std::vector<std::array<float, 4>> palette;
         bool resident = false;
     };
     void uploadSection(LODSectionKey key, const recurse::LODMeshManager::MeshResult& mesh);
