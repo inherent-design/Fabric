@@ -253,6 +253,19 @@ void LODSystem::render(fabric::AppContext& ctx) {
     }
 }
 
+void LODSystem::onWorldBegin() {
+    // LOD generation is triggered by chunk streaming; no initialization needed.
+}
+
+void LODSystem::onWorldEnd() {
+    gpuSections_.clear();
+    visibleSections_.clear();
+    pendingChunks_.clear();
+    pendingDirectChunks_.clear();
+    if (grid_)
+        grid_->clear();
+}
+
 void LODSystem::configureDependencies() {
     after<VoxelSimulationSystem>();
     after<VoxelRenderSystem>();

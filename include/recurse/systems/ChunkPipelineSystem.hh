@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/ecs/ECS.hh"
 #include "recurse/character/GameConstants.hh"
 #include "recurse/world/ChunkStreaming.hh"
@@ -38,7 +39,7 @@ class CharacterMovementSystem;
 /// Load: streaming detects new chunk -> VoxelSimulationSystem::generateChunk() fills grid
 ///   -> dirty flags set -> VoxelSimulationSystem picks up -> VoxelMeshingSystem meshes.
 /// Unload: streaming detects far chunk -> VoxelSimulationSystem::removeChunk() -> ECS destroy.
-class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
+class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem>, public fabric::WorldAware {
   public:
     ChunkPipelineSystem();
     ~ChunkPipelineSystem() override;
@@ -48,6 +49,9 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
 
     void configureDependencies() override;
+
+    void onWorldBegin() override;
+    void onWorldEnd() override;
 
     // Accessors
     const std::unordered_map<ChunkCoord, flecs::entity, ChunkCoordHash>& chunkEntities() const;

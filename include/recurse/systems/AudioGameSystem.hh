@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "recurse/audio/AudioSystem.hh"
 
 namespace recurse::systems {
@@ -11,12 +12,15 @@ class VoxelSimulationSystem;
 
 /// Spatial audio system. Tracks the camera as the listener and updates
 /// the audio engine each frame.
-class AudioGameSystem : public fabric::System<AudioGameSystem> {
+class AudioGameSystem : public fabric::System<AudioGameSystem>, public fabric::WorldAware {
   public:
     void doInit(fabric::AppContext& ctx) override;
     void update(fabric::AppContext& ctx, float dt) override;
     void doShutdown() override;
     void configureDependencies() override;
+
+    void onWorldBegin() override;
+    void onWorldEnd() override;
 
     recurse::AudioSystem& audioSystem() { return audioSystem_; }
     uint32_t activeSoundCount() const { return audioSystem_.activeSoundCount(); }

@@ -36,6 +36,14 @@ void AudioGameSystem::doShutdown() {
     FABRIC_LOG_INFO("AudioGameSystem shut down");
 }
 
+void AudioGameSystem::onWorldBegin() {
+    // Audio spawns reactively; no initialization needed.
+}
+
+void AudioGameSystem::onWorldEnd() {
+    audioSystem_.stopAllSounds();
+}
+
 void AudioGameSystem::configureDependencies() {
     after<CameraGameSystem>();
     after<TerrainSystem>();

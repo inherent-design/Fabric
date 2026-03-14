@@ -8,6 +8,7 @@
 #include "fabric/core/Event.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/ecs/ECS.hh"
+#include "fabric/ecs/WorldScoped.hh"
 #include "fabric/input/InputManager.hh"
 #include "fabric/log/Log.hh"
 #include "fabric/platform/ConfigManager.hh"
@@ -135,6 +136,7 @@ void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
     int streamRadius = ctx.configManager.get<int>("terrain.chunk_radius", 8);
     playerEntity_ = ctx.world.get()
                         .entity("player")
+                        .add<fabric::WorldScoped>()
                         .set<fabric::Position>({playerPos_.x, playerPos_.y, playerPos_.z})
                         .set<recurse::StreamSource>({streamRadius, K_COLLISION_RADIUS});
 
@@ -263,6 +265,21 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
 
     if (playerEntity_.is_valid())
         playerEntity_.set<fabric::Position>({playerPos_.x, playerPos_.y, playerPos_.z});
+}
+
+void CharacterMovementSystem::onWorldBegin() {
+    // Player state is set by MainMenuSystem/setPlayerPosition before simulation starts.
+}
+
+void CharacterMovementSystem::onWorldEnd() {
+    movementFSM_ = MovementFSM{};
+    playerVel_ = {};
+    joltCharCtrl_ = nullptr;
+    playerPos_ = {K_DEFAULT_SPAWN_X, K_DEFAULT_SPAWN_Y, K_DEFAULT_SPAWN_Z};
+    playerPosD_ = fabric::Vector3<double, fabric::Space::World>(static_cast<double>(K_DEFAULT_SPAWN_X),
+                                                                static_cast<double>(K_DEFAULT_SPAWN_Y),
+                                                                static_cast<double>(K_DEFAULT_SPAWN_Z));
+    playerEntity_ = flecs::entity{};
 }
 
 void CharacterMovementSystem::configureDependencies() {

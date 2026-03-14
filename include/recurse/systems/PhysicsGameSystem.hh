@@ -1,15 +1,18 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "recurse/physics/PhysicsWorld.hh"
 #include "recurse/physics/Ragdoll.hh"
 #include "recurse/world/ChunkStreaming.hh"
 
 #include <climits>
+#include <string>
 #include <unordered_set>
 #include <vector>
 
 namespace fabric {
+class EventDispatcher;
 class JobScheduler;
 } // namespace fabric
 
@@ -25,7 +28,7 @@ inline constexpr int K_COLLISION_RADIUS = 3;
 /// Owns the Jolt PhysicsWorld and Ragdoll subsystem.
 /// Steps physics at fixed rate and rebuilds chunk collision
 /// when voxel data changes.
-class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
+class PhysicsGameSystem : public fabric::System<PhysicsGameSystem>, public fabric::WorldAware {
   public:
     PhysicsGameSystem() = default;
 
@@ -34,6 +37,9 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
 
     void configureDependencies() override;
+
+    void onWorldBegin() override;
+    void onWorldEnd() override;
 
     PhysicsWorld& physicsWorld() { return physicsWorld_; }
     const PhysicsWorld& physicsWorld() const { return physicsWorld_; }
@@ -62,11 +68,13 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
     TerrainSystem* terrain_ = nullptr;
     VoxelSimulationSystem* voxelSim_ = nullptr;
     fabric::JobScheduler* scheduler_ = nullptr;
+    fabric::EventDispatcher* dispatcher_ = nullptr;
     PhysicsWorld physicsWorld_;
     Ragdoll ragdoll_;
     std::unordered_set<recurse::ChunkCoord, recurse::ChunkCoordHash> dirtyCollisionChunks_;
     std::vector<recurse::FocalPoint> focalPoints_;
     std::vector<recurse::CollisionCenter> lastFocalChunkCoords_;
+    std::string voxelChangedListenerId_;
 };
 
 } // namespace recurse::systems

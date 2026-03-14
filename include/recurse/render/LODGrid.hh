@@ -72,6 +72,7 @@ class LODGrid {
     void tryBuildParent(int childLevel, int cx, int cy, int cz);
     void downsample(LODSection& parent, const std::array<LODSection*, 8>& children);
     void remove(LODSectionKey key);
+    void clear() { sections_.clear(); }
     size_t sectionCount() const { return sections_.size(); }
 
     template <typename Fn> void forEach(Fn&& fn) {

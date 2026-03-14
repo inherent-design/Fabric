@@ -23,7 +23,8 @@ void PhysicsGameSystem::doInit(fabric::AppContext& ctx) {
 
     physicsWorld_.init(4096, 0);
 
-    ctx.dispatcher.addEventListener(K_VOXEL_CHANGED_EVENT, [this](fabric::Event& e) {
+    dispatcher_ = &ctx.dispatcher;
+    voxelChangedListenerId_ = ctx.dispatcher.addEventListener(K_VOXEL_CHANGED_EVENT, [this](fabric::Event& e) {
         int cx = e.getData<int>("cx");
         int cy = e.getData<int>("cy");
         int cz = e.getData<int>("cz");
@@ -36,10 +37,14 @@ void PhysicsGameSystem::doInit(fabric::AppContext& ctx) {
 }
 
 void PhysicsGameSystem::doShutdown() {
+    if (dispatcher_ && !voxelChangedListenerId_.empty())
+        dispatcher_->removeEventListener(K_VOXEL_CHANGED_EVENT, voxelChangedListenerId_);
+
     ragdoll_.shutdown();
     physicsWorld_.shutdown();
     voxelSim_ = nullptr;
     scheduler_ = nullptr;
+    dispatcher_ = nullptr;
 }
 
 void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) {
@@ -131,6 +136,18 @@ void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) 
     }
 
     physicsWorld_.step(fixedDt);
+}
+
+void PhysicsGameSystem::onWorldBegin() {
+    dirtyCollisionChunks_.clear();
+}
+
+void PhysicsGameSystem::onWorldEnd() {
+    dirtyCollisionChunks_.clear();
+    focalPoints_.clear();
+    lastFocalChunkCoords_.clear();
+    physicsWorld_.resetWorldState();
+    ragdoll_.clear();
 }
 
 void PhysicsGameSystem::configureDependencies() {

@@ -238,6 +238,18 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     }
 }
 
+void ChunkPipelineSystem::onWorldBegin() {
+    lastFrameTime_ = std::chrono::steady_clock::now();
+    frameTimeEma_ = 16.0f;
+    lastPlayerX_ = K_DEFAULT_SPAWN_X;
+    lastPlayerY_ = K_DEFAULT_SPAWN_Y;
+    lastPlayerZ_ = K_DEFAULT_SPAWN_Z;
+}
+
+void ChunkPipelineSystem::onWorldEnd() {
+    // WorldSession RAII handles heavy teardown; these are transient timing fields.
+}
+
 void ChunkPipelineSystem::configureDependencies() {
     after<TerrainSystem>();
 }
