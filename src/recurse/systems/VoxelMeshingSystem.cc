@@ -109,6 +109,14 @@ void VoxelMeshingSystem::configureDependencies() {
     before<ShadowRenderSystem>();
 }
 
+void VoxelMeshingSystem::onWorldBegin() {
+    // Meshes generated reactively from simulation; no initialization needed.
+}
+
+void VoxelMeshingSystem::onWorldEnd() {
+    clearAllMeshes();
+}
+
 void VoxelMeshingSystem::setSimulationGrid(recurse::simulation::SimulationGrid* grid) {
     simGrid_ = grid;
 }

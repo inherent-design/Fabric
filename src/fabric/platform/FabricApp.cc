@@ -3,6 +3,7 @@
 #include "fabric/core/AppModeManager.hh"
 #include "fabric/core/RuntimeState.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/input/InputManager.hh"
 #include "fabric/input/InputRouter.hh"
 #include "fabric/input/InputSystem.hh"
@@ -240,6 +241,8 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         cursorManagerPtr = std::make_unique<CursorManager>(window);
     }
 
+    WorldLifecycleCoordinator worldLifecycle;
+
     AppContext ctx{
         .world = world,
         .timeline = timeline,
@@ -260,6 +263,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         .camera = camera.get(),
         .sceneView = sceneView.get(),
         .rmlContext = rmlContext,
+        .worldLifecycle = &worldLifecycle,
     };
 
     // ── Phase 4: System Registration ────────────────────────────
@@ -291,6 +295,8 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         }
         return 1;
     }
+
+    worldLifecycle.discover(systemRegistry, world);
 
     // ── Phase 7: Application Init ───────────────────────────────
     if (desc.onInit)

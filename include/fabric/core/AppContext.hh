@@ -27,6 +27,7 @@ class InputManager;
 class InputRouter;
 class Camera;
 class SceneView;
+class WorldLifecycleCoordinator;
 
 /// Non-owning view into engine services. Constructed once at startup,
 /// passed to systems via init/update/render. Immutable after construction.
@@ -56,6 +57,7 @@ struct AppContext {
     Camera* camera = nullptr;
     SceneView* sceneView = nullptr;
     Rml::Context* rmlContext = nullptr;
+    WorldLifecycleCoordinator* worldLifecycle = nullptr;
 };
 
 } // namespace fabric

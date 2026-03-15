@@ -14,6 +14,7 @@
 namespace fabric {
 class AppModeManager;
 class SystemRegistry;
+class WorldLifecycleCoordinator;
 } // namespace fabric
 
 namespace recurse {
@@ -144,6 +145,7 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     ChunkPipelineSystem* chunkPipeline_ = nullptr;
     fabric::AppModeManager* appModeManager_ = nullptr;
     fabric::SystemRegistry* registry_ = nullptr;
+    fabric::WorldLifecycleCoordinator* worldLifecycle_ = nullptr;
 
     // World management
     recurse::WorldRegistry* worldRegistry_ = nullptr;

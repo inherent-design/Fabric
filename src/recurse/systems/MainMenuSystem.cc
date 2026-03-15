@@ -75,6 +75,7 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
     chunkPipeline_ = ctx.systemRegistry.get<ChunkPipelineSystem>();
     appModeManager_ = ctx.appModeManager;
     registry_ = &ctx.systemRegistry;
+    worldLifecycle_ = ctx.worldLifecycle;
     rmlContext_ = ctx.rmlContext;
 
     FABRIC_LOG_INFO("MainMenuSystem: rmlContext={}, appModeManager={}", (void*)rmlContext_, (void*)appModeManager_);
@@ -110,6 +111,9 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
         if (chunkPipeline_ && worldRegistry_ && !uuid.empty()) {
             chunkPipeline_->loadWorld(worldRegistry_->worldPath(uuid), voxelSim_->scheduler());
         }
+
+        if (worldLifecycle_)
+            worldLifecycle_->beginWorld();
 
         // New worlds: generate initial chunks around spawn.
         // Existing worlds: streaming loads chunks from disk via dispatchAsyncLoad.
@@ -204,6 +208,7 @@ void MainMenuSystem::doShutdown() {
     chunkPipeline_ = nullptr;
     appModeManager_ = nullptr;
     registry_ = nullptr;
+    worldLifecycle_ = nullptr;
     FABRIC_LOG_INFO("MainMenuSystem shutdown");
 }
 
@@ -868,19 +873,8 @@ void MainMenuSystem::resetWorldState() {
     if (chunkPipeline_)
         chunkPipeline_->unloadWorld();
 
-    // Order: meshes -> physics -> simulation
-    if (voxelMesh_) {
-        voxelMesh_->clearAllMeshes();
-        FABRIC_LOG_DEBUG("MainMenu: Cleared GPU meshes");
-    }
-    if (physics_) {
-        physics_->clearAllCollisions();
-        FABRIC_LOG_DEBUG("MainMenu: Cleared physics collisions");
-    }
-    if (voxelSim_) {
-        voxelSim_->resetWorld();
-        FABRIC_LOG_DEBUG("MainMenu: Reset voxel simulation");
-    }
+    if (worldLifecycle_)
+        worldLifecycle_->endWorld();
 
     setWorldSystemsEnabled(false);
 }

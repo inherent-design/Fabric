@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/world/ChunkCoord.hh"
 #include "recurse/render/VoxelRenderer.hh"
 
@@ -54,7 +55,7 @@ struct CPUMeshResult {
 /// Bridges simulation activity flags to mesh updates via SnapMC meshing.
 /// Runs in PreRender phase. Collects active chunks from ChunkActivityTracker,
 /// sorts by priority, and meshes up to a per-frame chunk budget.
-class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
+class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem>, public fabric::WorldAware {
   public:
     VoxelMeshingSystem();
     ~VoxelMeshingSystem() override;
@@ -66,6 +67,9 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     void doShutdown() override;
     void render(fabric::AppContext& ctx) override;
     void configureDependencies() override;
+
+    void onWorldBegin() override;
+    void onWorldEnd() override;
 
     void setSimulationGrid(recurse::simulation::SimulationGrid* grid);
     void setActivityTracker(recurse::simulation::ChunkActivityTracker* tracker);

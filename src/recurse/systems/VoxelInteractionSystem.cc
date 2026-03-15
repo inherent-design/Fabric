@@ -105,4 +105,12 @@ void VoxelInteractionSystem::configureDependencies() {
     after<VoxelSimulationSystem>();
 }
 
+void VoxelInteractionSystem::onWorldBegin() {
+    // Interaction state is reset reactively; no initialization needed.
+}
+
+void VoxelInteractionSystem::onWorldEnd() {
+    interactionCooldown_ = 0.0f;
+}
+
 } // namespace recurse::systems

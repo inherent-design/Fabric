@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include <memory>
 
 namespace recurse {
@@ -16,7 +17,7 @@ class VoxelSimulationSystem;
 /// Handles mouse-button voxel editing (destroy/create matter).
 /// Raycasts from camera position along camera forward, with a
 /// cooldown to rate-limit interactions.
-class VoxelInteractionSystem : public fabric::System<VoxelInteractionSystem> {
+class VoxelInteractionSystem : public fabric::System<VoxelInteractionSystem>, public fabric::WorldAware {
   public:
     VoxelInteractionSystem() = default;
     ~VoxelInteractionSystem() override;
@@ -26,6 +27,9 @@ class VoxelInteractionSystem : public fabric::System<VoxelInteractionSystem> {
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
 
     void configureDependencies() override;
+
+    void onWorldBegin() override;
+    void onWorldEnd() override;
 
   private:
     static constexpr float K_INTERACTION_RATE = 0.15f;

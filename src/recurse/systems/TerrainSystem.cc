@@ -28,6 +28,14 @@ void TerrainSystem::configureDependencies() {
     // Root system: no dependencies
 }
 
+void TerrainSystem::onWorldBegin() {
+    // Generator is set before beginWorld via setWorldGenerator in startGameCallback.
+}
+
+void TerrainSystem::onWorldEnd() {
+    worldGen_ = std::make_unique<FlatWorldGenerator>();
+}
+
 void TerrainSystem::setWorldGenerator(std::unique_ptr<WorldGenerator> gen) {
     worldGen_ = std::move(gen);
 }

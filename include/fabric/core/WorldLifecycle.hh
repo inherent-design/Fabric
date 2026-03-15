@@ -1,5 +1,7 @@
 #pragma once
 
+#include "fabric/ecs/ECS.hh"
+
 #include <cstddef>
 #include <vector>
 
@@ -34,7 +36,7 @@ class WorldLifecycleCoordinator {
   public:
     /// Discover WorldAware systems from the registry.
     /// Call after SystemRegistry::initAll() completes.
-    void discover(SystemRegistry& registry);
+    void discover(SystemRegistry& registry, World& world);
 
     /// Notify all participants that a new world has begun.
     /// Called in SystemRegistry init order.
@@ -49,6 +51,7 @@ class WorldLifecycleCoordinator {
 
   private:
     std::vector<WorldAware*> participants_;
+    World* world_ = nullptr;
 };
 
 } // namespace fabric

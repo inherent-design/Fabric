@@ -481,6 +481,14 @@ void DebugOverlaySystem::doShutdown() {
     FABRIC_LOG_INFO("DebugOverlaySystem shut down");
 }
 
+void DebugOverlaySystem::onWorldBegin() {
+    // Debug state is reactive; no initialization needed.
+}
+
+void DebugOverlaySystem::onWorldEnd() {
+    btDebugSelectedNpc_ = flecs::entity{};
+}
+
 void DebugOverlaySystem::configureDependencies() {
     // Run after opaque + OIT rendering so debug lines appear on top
     after<VoxelRenderSystem>();
