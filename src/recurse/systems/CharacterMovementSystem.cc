@@ -1,4 +1,8 @@
 #include "recurse/systems/CharacterMovementSystem.hh"
+
+#include "recurse/config/RecurseConfig.hh"
+#include "recurse/input/ActionIds.hh"
+
 #include "recurse/systems/CameraGameSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
@@ -7,6 +11,7 @@
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/ecs/ECS.hh"
 #include "fabric/ecs/WorldScoped.hh"
 #include "fabric/input/InputManager.hh"
@@ -69,6 +74,9 @@ void syncPlayerPositionViews(fabric::Vector3<double, fabric::Space::World>& play
 } // namespace
 
 void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     playerPosD_ = fabric::Vector3<double, fabric::Space::World>(
         static_cast<double>(playerPos_.x), static_cast<double>(playerPos_.y), static_cast<double>(playerPos_.z));
 
@@ -106,7 +114,8 @@ void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
     FABRIC_LOG_INFO("JoltCharacterController enabled for player movement");
 
     // Toggle fly/noclip mode: Grounded -> Flying -> Noclip -> Grounded
-    ctx.dispatcher.addEventListener("toggle_fly", [this](fabric::Event&) {
+    using namespace recurse::input;
+    ctx.dispatcher.addEventListener(K_ACTION_TOGGLE_FLY, [this](fabric::Event&) {
         if (movementFSM_.isNoclip()) {
             // Noclip -> Falling (exit to normal mode)
             movementFSM_.tryTransition(CharacterState::Falling);
@@ -124,7 +133,7 @@ void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
     });
 
     // Jump on space press (grounded only)
-    ctx.dispatcher.addEventListener("move_up", [this](fabric::Event&) {
+    ctx.dispatcher.addEventListener(K_ACTION_MOVE_UP, [this](fabric::Event&) {
         if (movementFSM_.isGrounded()) {
             if (movementFSM_.tryTransition(CharacterState::Jumping)) {
                 FABRIC_LOG_DEBUG("Movement state: Grounded -> Jumping (jump input)");
@@ -134,14 +143,16 @@ void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
     });
 
     int streamRadius = ctx.configManager.get<int>("terrain.chunk_radius", 8);
+    int collisionRadius =
+        ctx.configManager.get<int>("physics.collision_radius", recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS);
     playerEntity_ = ctx.world.get()
                         .entity("player")
                         .add<fabric::WorldScoped>()
                         .set<fabric::Position>({playerPos_.x, playerPos_.y, playerPos_.z})
-                        .set<recurse::StreamSource>({streamRadius, K_COLLISION_RADIUS});
+                        .set<recurse::StreamSource>({streamRadius, collisionRadius});
 
     FABRIC_LOG_INFO("CharacterMovementSystem initialized (player entity created, stream={}, collision={})",
-                    streamRadius, K_COLLISION_RADIUS);
+                    streamRadius, collisionRadius);
 }
 
 void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
@@ -162,17 +173,17 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
         auto right = camRight;
 
         fabric::Vec3f moveDir(0.0f, 0.0f, 0.0f);
-        if (inputManager->isActionActive("move_forward"))
+        if (inputManager->isActionActive(recurse::input::K_ACTION_MOVE_FORWARD))
             moveDir = moveDir + fwd;
-        if (inputManager->isActionActive("move_backward"))
+        if (inputManager->isActionActive(recurse::input::K_ACTION_MOVE_BACKWARD))
             moveDir = moveDir - fwd;
-        if (inputManager->isActionActive("move_right"))
+        if (inputManager->isActionActive(recurse::input::K_ACTION_MOVE_RIGHT))
             moveDir = moveDir + right;
-        if (inputManager->isActionActive("move_left"))
+        if (inputManager->isActionActive(recurse::input::K_ACTION_MOVE_LEFT))
             moveDir = moveDir - right;
-        if (inputManager->isActionActive("move_up"))
+        if (inputManager->isActionActive(recurse::input::K_ACTION_MOVE_UP))
             moveDir = moveDir + fabric::Vec3f(0.0f, 1.0f, 0.0f);
-        if (inputManager->isActionActive("move_down"))
+        if (inputManager->isActionActive(recurse::input::K_ACTION_MOVE_DOWN))
             moveDir = moveDir - fabric::Vec3f(0.0f, 1.0f, 0.0f);
 
         float len = std::sqrt(moveDir.x * moveDir.x + moveDir.y * moveDir.y + moveDir.z * moveDir.z);
@@ -181,7 +192,7 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
 
         // Determine speed: base flight/noclip speed, with LCTRL multiplier
         float baseSpeed = movementFSM_.isNoclip() ? charConfig_.noclipSpeed : charConfig_.flightSpeed;
-        if (inputManager->isActionActive("speed_boost"))
+        if (inputManager->isActionActive(recurse::input::K_ACTION_SPEED_BOOST))
             baseSpeed *= charConfig_.speedMultiplier;
 
         fabric::Vec3f displacement(moveDir.x * baseSpeed * fixedDt, moveDir.y * baseSpeed * fixedDt,
@@ -214,13 +225,13 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
             flatRight = fabric::Vec3f(flatRight.x / rightLen, 0.0f, flatRight.z / rightLen);
 
         fabric::Vec3f horizMove(0.0f, 0.0f, 0.0f);
-        if (inputManager->isActionActive("move_forward"))
+        if (inputManager->isActionActive(recurse::input::K_ACTION_MOVE_FORWARD))
             horizMove = horizMove + flatFwd;
-        if (inputManager->isActionActive("move_backward"))
+        if (inputManager->isActionActive(recurse::input::K_ACTION_MOVE_BACKWARD))
             horizMove = horizMove - flatFwd;
-        if (inputManager->isActionActive("move_right"))
+        if (inputManager->isActionActive(recurse::input::K_ACTION_MOVE_RIGHT))
             horizMove = horizMove + flatRight;
-        if (inputManager->isActionActive("move_left"))
+        if (inputManager->isActionActive(recurse::input::K_ACTION_MOVE_LEFT))
             horizMove = horizMove - flatRight;
 
         float horizLen = std::sqrt(horizMove.x * horizMove.x + horizMove.z * horizMove.z);

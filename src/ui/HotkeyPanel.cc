@@ -109,10 +109,13 @@ void HotkeyPanel::rebuildHotkeys() {
             addHotkey("Time", "P", "Pause Time");
             addHotkey("Time", "+ / -", "Time Scale");
             addHotkey("Debug", "F1", "Chunk States");
+            addHotkey("Debug", "F2", "LOD Stats");
             addHotkey("Debug", "F3", "Debug HUD");
             addHotkey("Debug", "F4", "Wireframe");
+            addHotkey("Debug", "F5", "Concurrency");
             addHotkey("Debug", "F6", "BVH Overlay");
             addHotkey("Debug", "F10", "Collision Debug");
+            addHotkey("Debug", "F12", "Chunk Debug");
             addHotkey("Panels", "`", "Console");
             addHotkey("Panels", "Esc", "Pause Menu");
             addHotkey("Panels", "F7", "Content Browser");

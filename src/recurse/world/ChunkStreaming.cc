@@ -124,14 +124,11 @@ const StreamingConfig& ChunkStreamingManager::config() const {
 }
 
 void ChunkStreamingManager::updateBudget(float frameTimeMs) {
-    constexpr float K_TARGET_HIGH = 16.0f;
-    constexpr float K_TARGET_LOW = 10.0f;
-    constexpr int K_FLOOR = 4;
     int ceiling = config_.maxLoadsPerTick * 4;
 
-    if (frameTimeMs > K_TARGET_HIGH)
-        adaptiveBudget_ = std::max(K_FLOOR, adaptiveBudget_ * 3 / 4);
-    else if (frameTimeMs < K_TARGET_LOW)
+    if (frameTimeMs > config_.targetHighMs)
+        adaptiveBudget_ = std::max(config_.floor, adaptiveBudget_ * 3 / 4);
+    else if (frameTimeMs < config_.targetLowMs)
         adaptiveBudget_ = std::min(ceiling, adaptiveBudget_ + 2);
 }
 

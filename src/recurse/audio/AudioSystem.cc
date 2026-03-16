@@ -445,8 +445,7 @@ OcclusionResult AudioSystem::computeOcclusion(const Vec3f& source, const Vec3f& 
     int solidCount = static_cast<int>(hits.size());
     int totalSteps = static_cast<int>(std::ceil(distance));
 
-    constexpr int K_MAX_OCCLUSION_VOXELS = 8;
-    float factor = std::min(static_cast<float>(solidCount) / static_cast<float>(K_MAX_OCCLUSION_VOXELS), 1.0f);
+    float factor = std::min(static_cast<float>(solidCount) / static_cast<float>(maxOcclusionVoxels_), 1.0f);
 
     return {factor, solidCount, totalSteps};
 }

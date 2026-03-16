@@ -1,7 +1,6 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
-#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/render/BgfxHandle.hh"
 #include "fabric/render/Camera.hh"
 #include "recurse/render/LODGrid.hh"
@@ -41,7 +40,7 @@ class VoxelRenderSystem;
 /// LOD Cascade: When 8 children exist, builds parent via downsampling.
 /// LOD Selection: Distance-based level selection: level = floor(log2(distance / baseRadius))
 /// LOD Rendering: Submits visible sections to VoxelRenderer.
-class LODSystem : public fabric::System<LODSystem>, public fabric::WorldAware {
+class LODSystem : public fabric::System<LODSystem> {
   public:
     LODSystem();
     ~LODSystem() override;
@@ -52,8 +51,8 @@ class LODSystem : public fabric::System<LODSystem>, public fabric::WorldAware {
     void render(fabric::AppContext& ctx) override;
     void configureDependencies() override;
 
-    void onWorldBegin() override;
-    void onWorldEnd() override;
+    void onWorldBegin();
+    void onWorldEnd();
 
     // Dependency injection (called by FabricAppDesc or parent system)
     void setSimulationGrid(recurse::simulation::SimulationGrid* grid) { simGrid_ = grid; }

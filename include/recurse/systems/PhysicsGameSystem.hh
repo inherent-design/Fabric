@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
-#include "fabric/core/WorldLifecycle.hh"
+#include "recurse/config/RecurseConfig.hh"
 #include "recurse/physics/PhysicsWorld.hh"
 #include "recurse/physics/Ragdoll.hh"
 #include "recurse/world/ChunkStreaming.hh"
@@ -21,14 +21,10 @@ namespace recurse::systems {
 class TerrainSystem;
 class VoxelSimulationSystem;
 
-// Per-frame cap; matches scale of meshBudget_ and genBudget_
-inline constexpr int K_COLLISION_BUDGET_PER_FRAME = 8;
-inline constexpr int K_COLLISION_RADIUS = 3;
-
 /// Owns the Jolt PhysicsWorld and Ragdoll subsystem.
 /// Steps physics at fixed rate and rebuilds chunk collision
 /// when voxel data changes.
-class PhysicsGameSystem : public fabric::System<PhysicsGameSystem>, public fabric::WorldAware {
+class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
   public:
     PhysicsGameSystem() = default;
 
@@ -38,8 +34,8 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem>, public fabri
 
     void configureDependencies() override;
 
-    void onWorldBegin() override;
-    void onWorldEnd() override;
+    void onWorldBegin();
+    void onWorldEnd();
 
     PhysicsWorld& physicsWorld() { return physicsWorld_; }
     const PhysicsWorld& physicsWorld() const { return physicsWorld_; }
@@ -75,6 +71,9 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem>, public fabri
     std::vector<recurse::FocalPoint> focalPoints_;
     std::vector<recurse::CollisionCenter> lastFocalChunkCoords_;
     std::string voxelChangedListenerId_;
+
+    int collisionBudget_ = RecurseConfig::K_DEFAULT_COLLISION_BUDGET;
+    int collisionRadius_ = RecurseConfig::K_DEFAULT_COLLISION_RADIUS;
 };
 
 } // namespace recurse::systems

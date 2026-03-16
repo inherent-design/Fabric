@@ -4,6 +4,7 @@
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/log/Log.hh"
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
@@ -24,6 +25,9 @@ VoxelSimulationSystem::VoxelSimulationSystem() = default;
 VoxelSimulationSystem::~VoxelSimulationSystem() = default;
 
 void VoxelSimulationSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     dispatcher_ = &ctx.dispatcher;
     fabSim_ = std::make_unique<recurse::simulation::VoxelSimulationSystem>();

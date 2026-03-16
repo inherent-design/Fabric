@@ -1,7 +1,6 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
-#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/render/Geometry.hh"
 #include <memory>
 
@@ -12,7 +11,7 @@ class WorldGenerator;
 namespace recurse::systems {
 
 /// Owns WorldGenerator. Init-only system.
-class TerrainSystem : public fabric::System<TerrainSystem>, public fabric::WorldAware {
+class TerrainSystem : public fabric::System<TerrainSystem> {
   public:
     TerrainSystem();
     ~TerrainSystem() override;
@@ -22,8 +21,8 @@ class TerrainSystem : public fabric::System<TerrainSystem>, public fabric::World
     void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
     void configureDependencies() override;
 
-    void onWorldBegin() override;
-    void onWorldEnd() override;
+    void onWorldBegin();
+    void onWorldEnd();
 
     WorldGenerator& worldGenerator() { return *worldGen_; }
     void setWorldGenerator(std::unique_ptr<WorldGenerator> gen);

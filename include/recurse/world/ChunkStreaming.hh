@@ -19,6 +19,9 @@ struct StreamingConfig {
     int maxLoadsPerTick = 4;
     int maxUnloadsPerTick = 4;
     int maxTrackedChunks = 0;
+    float targetHighMs = 16.0f;
+    float targetLowMs = 10.0f;
+    int floor = 4;
 };
 
 struct StreamingUpdate {

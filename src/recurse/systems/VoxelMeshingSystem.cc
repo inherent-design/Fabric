@@ -3,6 +3,7 @@
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/log/Log.hh"
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
@@ -51,6 +52,9 @@ VoxelMeshingSystem::~VoxelMeshingSystem() {
 }
 
 void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     simSystem_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
     if (simSystem_) {
         simGrid_ = &simSystem_->simulationGrid();

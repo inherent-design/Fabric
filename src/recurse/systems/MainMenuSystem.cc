@@ -7,6 +7,7 @@
 #include "fabric/core/AppModeManager.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/log/Log.hh"
 #include "recurse/systems/AIGameSystem.hh"
 #include "recurse/systems/AudioGameSystem.hh"
@@ -17,7 +18,6 @@
 #include "recurse/systems/OITRenderSystem.hh"
 #include "recurse/systems/ParticleGameSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
-#include "recurse/systems/SaveGameSystem.hh"
 #include "recurse/systems/ShadowRenderSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelInteractionSystem.hh"
@@ -891,7 +891,7 @@ void MainMenuSystem::setWorldSystemsEnabled(bool enabled) {
     if (!registry_)
         return;
 
-    // 16 world-dependent systems. MainMenuSystem and DebugOverlaySystem stay always-enabled.
+    // 15 world-dependent systems. MainMenuSystem and DebugOverlaySystem stay always-enabled.
     registry_->setEnabled<TerrainSystem>(enabled);
     registry_->setEnabled<VoxelSimulationSystem>(enabled);
     registry_->setEnabled<PhysicsGameSystem>(enabled);
@@ -900,7 +900,6 @@ void MainMenuSystem::setWorldSystemsEnabled(bool enabled) {
     registry_->setEnabled<ParticleGameSystem>(enabled);
     registry_->setEnabled<ChunkPipelineSystem>(enabled);
     registry_->setEnabled<VoxelInteractionSystem>(enabled);
-    registry_->setEnabled<SaveGameSystem>(enabled);
     registry_->setEnabled<AudioGameSystem>(enabled);
     registry_->setEnabled<CameraGameSystem>(enabled);
     registry_->setEnabled<VoxelMeshingSystem>(enabled);

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
-#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/ui/ChunkDebugPanel.hh"
 #include "fabric/ui/ConcurrencyPanel.hh"
 #include "fabric/ui/DebugHUD.hh"
@@ -34,15 +33,15 @@ class VoxelSimulationSystem;
 /// Registered to the Render phase (after VoxelRenderSystem and OITRenderSystem)
 /// so that debugDraw.begin()/end() operates on the geometry view before bgfx
 /// frame submission. RmlUi panels update independently.
-class DebugOverlaySystem : public fabric::System<DebugOverlaySystem>, public fabric::WorldAware {
+class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
   public:
     void doInit(fabric::AppContext& ctx) override;
     void render(fabric::AppContext& ctx) override;
     void doShutdown() override;
     void configureDependencies() override;
 
-    void onWorldBegin() override;
-    void onWorldEnd() override;
+    void onWorldBegin();
+    void onWorldEnd();
 
     recurse::DebugDraw& debugDraw() { return debugDraw_; }
     fabric::DebugHUD& debugHUD() { return debugHUD_; }

@@ -46,7 +46,6 @@ target_sources(UnitTests
   PathfindingTest.cc
   AudioSystemTest.cc
   AnimationEventsTest.cc
-  SceneSerializerTest.cc
   StructuralIntegrityTest.cc
   DebrisPoolTest.cc
   DataLoaderTest.cc
@@ -61,7 +60,6 @@ target_sources(UnitTests
   InputRecorderTest.cc
   OITCompositorTest.cc
   MaterialSoundsTest.cc
-  SaveManagerTest.cc
   ContentBrowserTest.cc
   AppModeManagerTest.cc
   VulkanRegressionTest.cc

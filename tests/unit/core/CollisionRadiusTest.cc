@@ -1,6 +1,8 @@
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 
+#include "recurse/config/RecurseConfig.hh"
+
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/platform/ConfigManager.hh"
@@ -78,17 +80,19 @@ class CollisionRadiusTest : public ::testing::Test {
 
 TEST_F(CollisionRadiusTest, BeyondRadiusFilteredFromDirtySet) {
     materializeActiveChunk(0, 0, 0);
-    materializeActiveChunk(K_COLLISION_RADIUS + 1, 0, 0);
+    materializeActiveChunk(recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS + 1, 0, 0);
 
     physics.insertDirtyChunk(0, 0, 0);
-    physics.insertDirtyChunk(K_COLLISION_RADIUS + 1, 0, 0);
+    physics.insertDirtyChunk(recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS + 1, 0, 0);
 
-    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
 
     EXPECT_GT(physics.physicsWorld().chunkCollisionShapeCount(0, 0, 0), 0u);
-    EXPECT_EQ(physics.physicsWorld().chunkCollisionShapeCount(K_COLLISION_RADIUS + 1, 0, 0), 0u);
+    EXPECT_EQ(
+        physics.physicsWorld().chunkCollisionShapeCount(recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS + 1, 0, 0),
+        0u);
 }
 
 TEST_F(CollisionRadiusTest, OverflowDropBeyondRadius) {
@@ -96,21 +100,23 @@ TEST_F(CollisionRadiusTest, OverflowDropBeyondRadius) {
         for (int z = -2; z <= 2; ++z)
             materializeActiveChunk(x, 0, z);
 
-    materializeActiveChunk(K_COLLISION_RADIUS + 2, 0, 0);
+    materializeActiveChunk(recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS + 2, 0, 0);
 
     for (int x = -2; x <= 2; ++x)
         for (int z = -2; z <= 2; ++z)
             physics.insertDirtyChunk(x, 0, z);
-    physics.insertDirtyChunk(K_COLLISION_RADIUS + 2, 0, 0);
+    physics.insertDirtyChunk(recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS + 2, 0, 0);
 
-    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     auto ctx = makeCtx();
 
     // Process all frames until dirty set drains
     for (int i = 0; i < 10; ++i)
         physics.fixedUpdate(ctx, 1.0f / 60.0f);
 
-    EXPECT_EQ(physics.physicsWorld().chunkCollisionShapeCount(K_COLLISION_RADIUS + 2, 0, 0), 0u);
+    EXPECT_EQ(
+        physics.physicsWorld().chunkCollisionShapeCount(recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS + 2, 0, 0),
+        0u);
     EXPECT_TRUE(physics.dirtyChunks().empty());
 }
 
@@ -122,13 +128,13 @@ TEST_F(CollisionRadiusTest, ProactiveCleanupOnFocalMove) {
     physics.insertDirtyChunk(10, 0, 0);
 
     // First: focal at origin; chunk (10,0,0) beyond radius, only (0,0,0) gets collision
-    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
     EXPECT_GT(physics.physicsWorld().chunkCollisionShapeCount(0, 0, 0), 0u);
 
     // Move focal far away from origin
-    physics.setFocalPoints({{10.0f * 32.0f + 16.0f, 16.0f, 16.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{10.0f * 32.0f + 16.0f, 16.0f, 16.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
 
     // Origin chunk should have had its collision bodies removed (proactive cleanup)
@@ -139,18 +145,18 @@ TEST_F(CollisionRadiusTest, ReDirtyOnFocalReturn) {
     materializeActiveChunk(0, 0, 0);
 
     physics.insertDirtyChunk(0, 0, 0);
-    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
     EXPECT_GT(physics.physicsWorld().chunkCollisionShapeCount(0, 0, 0), 0u);
 
     // Move far away; proactive cleanup removes collision
-    physics.setFocalPoints({{100.0f * 32.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{100.0f * 32.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
     EXPECT_EQ(physics.physicsWorld().chunkCollisionShapeCount(0, 0, 0), 0u);
 
     // Return to origin; re-dirty scan adds to dirty set, processed next frame
-    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
     EXPECT_GT(physics.physicsWorld().chunkCollisionShapeCount(0, 0, 0), 0u);
@@ -160,7 +166,7 @@ TEST_F(CollisionRadiusTest, SteadyStateNoRedundantWork) {
     materializeActiveChunk(0, 0, 0);
 
     physics.insertDirtyChunk(0, 0, 0);
-    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
     EXPECT_GT(physics.physicsWorld().chunkCollisionShapeCount(0, 0, 0), 0u);
@@ -179,7 +185,7 @@ TEST_F(CollisionRadiusTest, SingleFocalCompat) {
     physics.insertDirtyChunk(0, 0, 0);
     physics.insertDirtyChunk(1, 0, 0);
 
-    physics.setFocalPoints({{16.0f, 16.0f, 16.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{16.0f, 16.0f, 16.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
 
@@ -203,8 +209,8 @@ TEST_F(CollisionRadiusTest, TwoFocalSortByNearest) {
         physics.insertDirtyChunk(coords[i][0], coords[i][1], coords[i][2]);
 
     physics.setFocalPoints({
-        {0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS},
-        {5.0f * 32.0f + 16.0f, 16.0f, 5.0f * 32.0f + 16.0f, K_COLLISION_RADIUS},
+        {0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
+        {5.0f * 32.0f + 16.0f, 16.0f, 5.0f * 32.0f + 16.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
     });
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
@@ -225,8 +231,8 @@ TEST_F(CollisionRadiusTest, RadiusFilterMultiFocal) {
     physics.insertDirtyChunk(20, 0, 0);
 
     physics.setFocalPoints({
-        {0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS},
-        {5.0f * 32.0f + 16.0f, 16.0f, 5.0f * 32.0f + 16.0f, K_COLLISION_RADIUS},
+        {0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
+        {5.0f * 32.0f + 16.0f, 16.0f, 5.0f * 32.0f + 16.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
     });
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
@@ -244,8 +250,8 @@ TEST_F(CollisionRadiusTest, WithinAnySourceRetained) {
     physics.insertDirtyChunk(2, 0, 0);
 
     physics.setFocalPoints({
-        {0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS},
-        {10.0f * 32.0f, 0.0f, 0.0f, K_COLLISION_RADIUS},
+        {0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
+        {10.0f * 32.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
     });
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
@@ -273,8 +279,8 @@ TEST_F(CollisionRadiusTest, OverflowDropMultiFocal) {
     physics.insertDirtyChunk(farChunk[0], farChunk[1], farChunk[2]);
 
     physics.setFocalPoints({
-        {0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS},
-        {8.0f * 32.0f + 16.0f, 16.0f, 16.0f, K_COLLISION_RADIUS},
+        {0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
+        {8.0f * 32.0f + 16.0f, 16.0f, 16.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
     });
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);

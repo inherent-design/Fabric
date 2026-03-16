@@ -247,7 +247,6 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
 }
 
 void WorldSession::pollPendingLoads(flecs::world& ecsWorld) {
-    constexpr int K_MAX_LOAD_COMPLETIONS_PER_FRAME = 16;
     int completed = 0;
 
     auto it = pendingLoads_.begin();
@@ -306,7 +305,7 @@ void WorldSession::pollPendingLoads(flecs::world& ecsWorld) {
         }
 
         it = pendingLoads_.erase(it);
-        if (++completed >= K_MAX_LOAD_COMPLETIONS_PER_FRAME)
+        if (++completed >= maxLoadCompletions_)
             break;
     }
 }
@@ -417,8 +416,7 @@ void WorldSession::updateLODRing(int centerCX, int centerCY, int centerCZ, int s
         lodChunks_.insert(c);
     }
 
-    constexpr int K_LOD_HYSTERESIS = 2;
-    int unloadRadius = lodRadius + K_LOD_HYSTERESIS;
+    int unloadRadius = lodRadius + lodHysteresis_;
 
     std::vector<fabric::ChunkCoord> toUnload;
     for (const auto& c : lodChunks_) {

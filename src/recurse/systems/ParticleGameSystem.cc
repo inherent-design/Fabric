@@ -1,12 +1,16 @@
 #include "recurse/systems/ParticleGameSystem.hh"
 
 #include "fabric/core/AppContext.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/log/Log.hh"
 #include "fabric/utils/Profiler.hh"
 
 namespace recurse::systems {
 
-void ParticleGameSystem::doInit(fabric::AppContext& /*ctx*/) {
+void ParticleGameSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     particleSystem_.init();
 
     debrisPool_.enableParticleConversion(true);

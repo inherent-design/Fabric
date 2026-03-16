@@ -1,7 +1,6 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
-#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/render/Geometry.hh"
 #include "recurse/character/CameraController.hh"
 
@@ -15,15 +14,15 @@ class VoxelSimulationSystem;
 
 /// Camera controller wrapper. Processes mouse input once per frame,
 /// then tracks the player position with spring arm collision.
-class CameraGameSystem : public fabric::System<CameraGameSystem>, public fabric::WorldAware {
+class CameraGameSystem : public fabric::System<CameraGameSystem> {
   public:
     void doInit(fabric::AppContext& ctx) override;
     void update(fabric::AppContext& ctx, float dt) override;
     void doShutdown() override;
     void configureDependencies() override;
 
-    void onWorldBegin() override;
-    void onWorldEnd() override;
+    void onWorldBegin();
+    void onWorldEnd();
 
     fabric::Vector3<float, fabric::Space::World> position() const;
     fabric::Vector3<float, fabric::Space::World> forward() const;

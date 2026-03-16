@@ -1,7 +1,6 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
-#include "fabric/core/WorldLifecycle.hh"
 #include "recurse/ai/BehaviorAI.hh"
 #include "recurse/ai/Pathfinding.hh"
 #include "recurse/animation/AnimationEvents.hh"
@@ -10,7 +9,7 @@ namespace recurse::systems {
 
 /// Owns behavior tree AI, pathfinding, and animation event subsystems.
 /// No cross-system dependencies; updates behavior trees at fixed rate.
-class AIGameSystem : public fabric::System<AIGameSystem>, public fabric::WorldAware {
+class AIGameSystem : public fabric::System<AIGameSystem> {
   public:
     AIGameSystem() = default;
 
@@ -20,8 +19,8 @@ class AIGameSystem : public fabric::System<AIGameSystem>, public fabric::WorldAw
 
     void configureDependencies() override;
 
-    void onWorldBegin() override;
-    void onWorldEnd() override;
+    void onWorldBegin();
+    void onWorldEnd();
 
     BehaviorAI& behaviorAI() { return behaviorAI_; }
     const BehaviorAI& behaviorAI() const { return behaviorAI_; }

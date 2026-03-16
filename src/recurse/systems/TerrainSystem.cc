@@ -1,6 +1,7 @@
 #include "recurse/systems/TerrainSystem.hh"
 
 #include "fabric/core/AppContext.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/log/Log.hh"
 #include "recurse/world/TestWorldGenerator.hh"
 #include "recurse/world/WorldGenerator.hh"
@@ -10,7 +11,10 @@ namespace recurse::systems {
 TerrainSystem::TerrainSystem() = default;
 TerrainSystem::~TerrainSystem() = default;
 
-void TerrainSystem::doInit(fabric::AppContext& /*ctx*/) {
+void TerrainSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     worldGen_ = std::make_unique<FlatWorldGenerator>();
     FABRIC_LOG_INFO("TerrainSystem initialized");
 }

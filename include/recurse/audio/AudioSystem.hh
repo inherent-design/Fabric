@@ -177,6 +177,7 @@ class AudioSystem {
     OcclusionResult computeOcclusion(const Vec3f& source, const Vec3f& listener) const;
     void setOcclusionEnabled(bool enabled);
     bool isOcclusionEnabled() const;
+    void setMaxOcclusionVoxels(int n) { maxOcclusionVoxels_ = n; }
 
     // Stats
     uint32_t activeSoundCount() const;
@@ -223,6 +224,7 @@ class AudioSystem {
 
     const recurse::simulation::SimulationGrid* simulationGrid_ = nullptr;
     bool occlusionEnabled_ = false;
+    int maxOcclusionVoxels_ = 8;
 
     // Reverb node graph: sounds -> lpfNode_ -> delayNode_ -> endpoint
     // Stored as void* because miniaudio uses C-style typedefs (cannot forward-declare)

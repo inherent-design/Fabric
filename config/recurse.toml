@@ -18,6 +18,27 @@ upload_budget = 50       # max LOD sections uploaded per frame
 max_level = 6            # highest LOD level (LOD1 to LOD6)
 base_radius = 10.0       # LOD1 starts at base_radius * 32 blocks from camera
 
+[pipeline]
+max_async_loads = 32           # max chunks dispatched for DB load per frame
+max_generates = 512            # max chunks queued for generation per frame
+max_load_completions = 16      # max async load futures polled per frame
+lod_hysteresis = 2             # extra radius before LOD chunk unload
+
+[streaming]
+target_high_ms = 16.0          # AIMD: shrink budget above this frame time
+target_low_ms = 10.0           # AIMD: grow budget below this frame time
+floor = 4                      # AIMD: minimum streaming budget (chunks/tick)
+
+[physics]
+collision_budget = 8           # max collision meshes rebuilt per frame
+collision_radius = 3           # chunk radius for collision generation
+
+[audio]
+max_occlusion_voxels = 8       # max voxels for audio occlusion raycast
+
+[simulation]
+max_fixed_steps = 3            # max fixed timestep iterations per frame
+
 [panini]
 enabled = true
 strength = 0.5

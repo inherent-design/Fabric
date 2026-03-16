@@ -1,4 +1,5 @@
 #include "recurse/systems/VoxelInteractionSystem.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/world/ChunkCoordUtils.hh"
 #include "recurse/systems/CameraGameSystem.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
@@ -30,6 +31,9 @@ void VoxelInteractionSystem::doShutdown() {
 }
 
 void VoxelInteractionSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();

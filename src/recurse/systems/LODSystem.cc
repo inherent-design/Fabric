@@ -3,6 +3,7 @@
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Spatial.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/log/Log.hh"
 #include "fabric/platform/ConfigManager.hh"
 #include "fabric/platform/JobScheduler.hh"
@@ -31,6 +32,9 @@ LODSystem::LODSystem() : grid_(std::make_unique<LODGrid>()) {}
 LODSystem::~LODSystem() = default;
 
 void LODSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     uploadBudget_ = ctx.configManager.get<int>("lod.upload_budget", 50);
     genBudget_ = ctx.configManager.get<int>("lod.gen_budget", 16);
     maxLODLevel_ = ctx.configManager.get<int>("lod.max_level", 6);

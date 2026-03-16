@@ -251,14 +251,15 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/persistence/PruningScheduler.cc
     src/recurse/persistence/WorldSession.cc
     src/recurse/persistence/RollbackExecutor.cc
-    src/recurse/persistence/SaveManager.cc
     src/recurse/persistence/DataLoader.cc
-    src/recurse/persistence/SceneSerializer.cc
     src/recurse/persistence/InputRecorder.cc
     # ui/
     src/recurse/ui/ContentBrowser.cc
     src/recurse/ui/DevConsole.cc
     src/recurse/simulation/DebrisPool.cc
+
+    # config/
+    src/recurse/config/RecurseConfig.cc
 
     # components/
     src/recurse/components/EssenceTypes.cc
@@ -276,7 +277,6 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/systems/CharacterMovementSystem.cc
     src/recurse/systems/VoxelInteractionSystem.cc
     src/recurse/systems/AIGameSystem.cc
-    src/recurse/systems/SaveGameSystem.cc
     src/recurse/systems/ParticleGameSystem.cc
     src/recurse/systems/CameraGameSystem.cc
     src/recurse/systems/AudioGameSystem.cc

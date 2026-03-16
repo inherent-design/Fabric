@@ -1,6 +1,7 @@
 #include "recurse/systems/AIGameSystem.hh"
 
 #include "fabric/core/AppContext.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/ecs/ECS.hh"
 #include "fabric/log/Log.hh"
 #include "fabric/utils/Profiler.hh"
@@ -8,6 +9,9 @@
 namespace recurse::systems {
 
 void AIGameSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     behaviorAI_.init(ctx.world.get());
     pathfinding_.init();
     animEvents_.init();

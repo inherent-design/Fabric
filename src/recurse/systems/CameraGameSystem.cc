@@ -1,8 +1,11 @@
 #include "recurse/systems/CameraGameSystem.hh"
 
+#include "recurse/input/ActionIds.hh"
+
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/input/InputManager.hh"
 #include "fabric/log/Log.hh"
 #include "fabric/render/Camera.hh"
@@ -13,6 +16,9 @@
 namespace recurse::systems {
 
 void CameraGameSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     cameraCtrl_ = std::make_unique<recurse::CameraController>(*ctx.camera);
 
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
@@ -20,7 +26,7 @@ void CameraGameSystem::doInit(fabric::AppContext& ctx) {
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
     // Toggle between first/third person camera
-    ctx.dispatcher.addEventListener("toggle_camera", [this](fabric::Event&) {
+    ctx.dispatcher.addEventListener(recurse::input::K_ACTION_TOGGLE_CAMERA, [this](fabric::Event&) {
         if (cameraCtrl_->mode() == recurse::CameraMode::FirstPerson) {
             cameraCtrl_->setMode(recurse::CameraMode::ThirdPerson);
         } else {

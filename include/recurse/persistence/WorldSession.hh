@@ -106,6 +106,9 @@ class WorldSession {
     int lastLodCY() const { return lastLodCY_; }
     int lastLodCZ() const { return lastLodCZ_; }
 
+    void setMaxLoadCompletions(int n) { maxLoadCompletions_ = n; }
+    void setLodHysteresis(int n) { lodHysteresis_ = n; }
+
     std::optional<flecs::query<const fabric::Position, const StreamSource>>& streamSourceQuery() {
         return streamSourceQuery_;
     }
@@ -134,6 +137,9 @@ class WorldSession {
     int lastLodCZ_ = INT_MIN;
     std::vector<VoxelChange> pendingChanges_;
     std::optional<flecs::query<const fabric::Position, const StreamSource>> streamSourceQuery_;
+
+    int maxLoadCompletions_ = 16;
+    int lodHysteresis_ = 2;
 
     // Non-owning references (outlive session)
     fabric::EventDispatcher& dispatcher_;

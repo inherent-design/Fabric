@@ -296,7 +296,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         return 1;
     }
 
-    worldLifecycle.discover(systemRegistry, world);
+    worldLifecycle.setWorld(world);
 
     // ── Phase 7: Application Init ───────────────────────────────
     if (desc.onInit)
@@ -307,6 +307,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
     // ── Phase 8: Main Loop ──────────────────────────────────────
     if (!desc.headless) {
         constexpr double K_FIXED_DT = 1.0 / 60.0;
+        const int maxFixedSteps = configManager.get<int>("simulation.max_fixed_steps", 3);
         double accumulator = 0.0;
         auto lastTime = std::chrono::high_resolution_clock::now();
         bool running = true;
@@ -385,9 +386,8 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
             systemRegistry.runPreUpdate(ctx, static_cast<float>(frameTime));
 
             // Fixed timestep simulation
-            constexpr int K_MAX_FIXED_STEPS_PER_FRAME = 3;
             int fixedIter = 0;
-            while (accumulator >= K_FIXED_DT && fixedIter < K_MAX_FIXED_STEPS_PER_FRAME) {
+            while (accumulator >= K_FIXED_DT && fixedIter < maxFixedSteps) {
                 ++fixedIter;
                 FABRIC_ZONE_SCOPED_N("fixed_timestep");
                 float dt = static_cast<float>(K_FIXED_DT);
@@ -407,7 +407,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
             }
 
             // Drain excess accumulator if we hit the iteration cap
-            if (fixedIter >= K_MAX_FIXED_STEPS_PER_FRAME && accumulator > K_FIXED_DT) {
+            if (fixedIter >= maxFixedSteps && accumulator > K_FIXED_DT) {
                 FABRIC_ZONE_SCOPED_N("accumulator_drain");
                 accumulator = 0.0;
             }

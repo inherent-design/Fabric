@@ -1,32 +1,31 @@
 #include "fabric/core/WorldLifecycle.hh"
-#include "fabric/core/SystemRegistry.hh"
 #include "fabric/ecs/WorldScoped.hh"
 #include "fabric/log/Log.hh"
 
 namespace fabric {
 
-void WorldLifecycleCoordinator::discover(SystemRegistry& registry, World& world) {
-    participants_.clear();
+void WorldLifecycleCoordinator::registerParticipant(std::function<void()> onBegin, std::function<void()> onEnd) {
+    participants_.push_back({std::move(onBegin), std::move(onEnd)});
+}
+
+void WorldLifecycleCoordinator::setWorld(World& world) {
     world_ = &world;
-    registry.forEachInInitOrder([this](SystemBase& system) {
-        if (auto* aware = dynamic_cast<WorldAware*>(&system)) {
-            participants_.push_back(aware);
-        }
-    });
-    FABRIC_LOG_INFO("WorldLifecycleCoordinator: discovered {} WorldAware participants", participants_.size());
+    FABRIC_LOG_INFO("WorldLifecycleCoordinator: {} participants registered", participants_.size());
 }
 
 void WorldLifecycleCoordinator::beginWorld() {
     FABRIC_LOG_INFO("WorldLifecycleCoordinator: beginWorld ({} participants)", participants_.size());
-    for (auto* participant : participants_) {
-        participant->onWorldBegin();
+    for (auto& participant : participants_) {
+        if (participant.onBegin)
+            participant.onBegin();
     }
 }
 
 void WorldLifecycleCoordinator::endWorld() {
     FABRIC_LOG_INFO("WorldLifecycleCoordinator: endWorld ({} participants)", participants_.size());
     for (auto it = participants_.rbegin(); it != participants_.rend(); ++it) {
-        (*it)->onWorldEnd();
+        if (it->onEnd)
+            it->onEnd();
     }
 
     // Bulk-delete all WorldScoped entities

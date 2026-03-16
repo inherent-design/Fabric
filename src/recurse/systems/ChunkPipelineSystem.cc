@@ -12,8 +12,11 @@
 #include "recurse/systems/VoxelMeshingSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 
+#include "recurse/config/RecurseConfig.hh"
+
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/ecs/ECS.hh"
 #include "fabric/log/Log.hh"
 #include "fabric/platform/ConfigManager.hh"
@@ -35,6 +38,9 @@ ChunkPipelineSystem::~ChunkPipelineSystem() {
 }
 
 void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     lodSystem_ = ctx.systemRegistry.get<LODSystem>();
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     meshingSystem_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
@@ -50,10 +56,27 @@ void ChunkPipelineSystem::doInit(fabric::AppContext& ctx) {
     streamConfig.maxLoadsPerTick = 64;
     streamConfig.maxUnloadsPerTick = 32;
     streamConfig.maxTrackedChunks = 4096;
+    streamConfig.targetHighMs =
+        ctx.configManager.get<float>("streaming.target_high_ms", recurse::RecurseConfig::K_DEFAULT_TARGET_HIGH_MS);
+    streamConfig.targetLowMs =
+        ctx.configManager.get<float>("streaming.target_low_ms", recurse::RecurseConfig::K_DEFAULT_TARGET_LOW_MS);
+    streamConfig.floor =
+        ctx.configManager.get<int>("streaming.floor", recurse::RecurseConfig::K_DEFAULT_STREAMING_FLOOR);
     streaming_ = std::make_unique<ChunkStreamingManager>(streamConfig);
 
     lodRadius_ = ctx.configManager.get<int>("lod.radius", 24);
     lodGenBudget_ = ctx.configManager.get<int>("lod.gen_budget", 4);
+
+    maxAsyncLoadsPerFrame_ =
+        ctx.configManager.get<int>("pipeline.max_async_loads", recurse::RecurseConfig::K_DEFAULT_MAX_ASYNC_LOADS);
+    maxGeneratesPerFrame_ =
+        ctx.configManager.get<int>("pipeline.max_generates", recurse::RecurseConfig::K_DEFAULT_MAX_GENERATES);
+    maxLoadCompletions_ = ctx.configManager.get<int>("pipeline.max_load_completions",
+                                                     recurse::RecurseConfig::K_DEFAULT_MAX_LOAD_COMPLETIONS);
+    lodHysteresis_ =
+        ctx.configManager.get<int>("pipeline.lod_hysteresis", recurse::RecurseConfig::K_DEFAULT_LOD_HYSTERESIS);
+    collisionRadius_ =
+        ctx.configManager.get<int>("physics.collision_radius", recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS);
 }
 
 void ChunkPipelineSystem::doShutdown() {
@@ -104,8 +127,6 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     // Triage new chunks: already-ready, async-loadable, or needs-generation.
     // Separate budgets prevent load-budget exhaustion from starving generation (K34).
     // Bounding-box pre-filter skips DB lookup for coords outside saved region (K35).
-    constexpr int K_MAX_ASYNC_LOADS_PER_FRAME = 32;
-    constexpr int K_MAX_GENERATES_PER_FRAME = 512;
     int loadsDispatched = 0;
     int generatesQueued = 0;
 
@@ -133,14 +154,14 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
 
         bool maybeInDb = chunkStore && chunkStore->isInSavedRegion(coord.x, coord.y, coord.z);
 
-        if (maybeInDb && loadsDispatched < K_MAX_ASYNC_LOADS_PER_FRAME) {
+        if (maybeInDb && loadsDispatched < maxAsyncLoadsPerFrame_) {
             if (session_->dispatchAsyncLoad(coord.x, coord.y, coord.z)) {
                 ++loadsDispatched;
                 continue;
             }
         }
 
-        if (generatesQueued < K_MAX_GENERATES_PER_FRAME) {
+        if (generatesQueued < maxGeneratesPerFrame_) {
             toGenerate.emplace_back(coord.x, coord.y, coord.z);
             ++generatesQueued;
         } else {
@@ -220,7 +241,7 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
 
     if (physics_) {
         if (collisionFocals.empty())
-            collisionFocals.push_back({lastPlayerX_, lastPlayerY_, lastPlayerZ_, K_COLLISION_RADIUS});
+            collisionFocals.push_back({lastPlayerX_, lastPlayerY_, lastPlayerZ_, collisionRadius_});
         physics_->setFocalPoints(collisionFocals);
     }
 
@@ -276,6 +297,8 @@ void ChunkPipelineSystem::loadWorld(const std::string& worldDir, fabric::JobSche
 
     if (result.isSuccess()) {
         session_ = std::move(result.value());
+        session_->setMaxLoadCompletions(maxLoadCompletions_);
+        session_->setLodHysteresis(lodHysteresis_);
         FABRIC_LOG_INFO("ChunkPipeline: world loaded");
     } else {
         auto& err = result.error<fabric::fx::IOError>();

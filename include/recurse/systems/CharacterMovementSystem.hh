@@ -1,7 +1,6 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
-#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/render/Geometry.hh"
 #include "recurse/character/CharacterTypes.hh"
 #include "recurse/character/GameConstants.hh"
@@ -27,7 +26,7 @@ class VoxelSimulationSystem;
 /// Owns player movement state: controllers, FSM, position, velocity.
 /// Reads camera direction for movement input and resolves character
 /// collision against the density grid each fixed tick.
-class CharacterMovementSystem : public fabric::System<CharacterMovementSystem>, public fabric::WorldAware {
+class CharacterMovementSystem : public fabric::System<CharacterMovementSystem> {
   public:
     CharacterMovementSystem() = default;
     ~CharacterMovementSystem() override;
@@ -38,8 +37,8 @@ class CharacterMovementSystem : public fabric::System<CharacterMovementSystem>, 
 
     void configureDependencies() override;
 
-    void onWorldBegin() override;
-    void onWorldEnd() override;
+    void onWorldBegin();
+    void onWorldEnd();
 
     const fabric::Vec3f& playerPosition() const { return playerPos_; }
     fabric::Vec3f& playerPosition() { return playerPos_; }

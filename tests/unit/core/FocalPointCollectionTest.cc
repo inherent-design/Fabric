@@ -1,6 +1,8 @@
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 
+#include "recurse/config/RecurseConfig.hh"
+
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/ecs/ECS.hh"
@@ -274,8 +276,8 @@ TEST_F(FocalIntegrationTest, EndToEndPlayerPlusNPC) {
     physics.insertDirtyChunk(6, 0, 5);
 
     physics.setFocalPoints({
-        {16.0f, 16.0f, 16.0f, K_COLLISION_RADIUS},
-        {5.0f * 32.0f + 16.0f, 16.0f, 5.0f * 32.0f + 16.0f, K_COLLISION_RADIUS},
+        {16.0f, 16.0f, 16.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
+        {5.0f * 32.0f + 16.0f, 16.0f, 5.0f * 32.0f + 16.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
     });
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
@@ -296,8 +298,8 @@ TEST_F(FocalIntegrationTest, NPCRemovalCleansUpCollision) {
     physics.insertDirtyChunk(10, 0, 10);
 
     physics.setFocalPoints({
-        {16.0f, 16.0f, 16.0f, K_COLLISION_RADIUS},
-        {10.0f * 32.0f + 16.0f, 16.0f, 10.0f * 32.0f + 16.0f, K_COLLISION_RADIUS},
+        {16.0f, 16.0f, 16.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
+        {10.0f * 32.0f + 16.0f, 16.0f, 10.0f * 32.0f + 16.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS},
     });
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
@@ -306,7 +308,7 @@ TEST_F(FocalIntegrationTest, NPCRemovalCleansUpCollision) {
     EXPECT_GT(physics.physicsWorld().chunkCollisionShapeCount(10, 0, 10), 0u);
 
     // "Remove" NPC by setting single focal point (player only)
-    physics.setFocalPoints({{16.0f, 16.0f, 16.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{16.0f, 16.0f, 16.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
 
     // NPC's chunk should have collision removed via proactive cleanup

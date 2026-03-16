@@ -1,9 +1,12 @@
 #include "recurse/systems/DebugOverlaySystem.hh"
 
+#include "recurse/input/ActionIds.hh"
+
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/AppModeManager.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/input/InputRouter.hh"
 #include "fabric/log/Log.hh"
 #include "fabric/platform/JobScheduler.hh"
@@ -43,6 +46,9 @@
 namespace recurse::systems {
 
 void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     // Cache sibling system pointers
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
     chunks_ = ctx.systemRegistry.get<ChunkPipelineSystem>();
@@ -92,38 +98,39 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
 
     // Event listeners for debug toggles
     auto& dispatcher = ctx.dispatcher;
+    using namespace recurse::input;
 
-    dispatcher.addEventListener("toggle_debug", [this](fabric::Event&) {
+    dispatcher.addEventListener(K_ACTION_TOGGLE_DEBUG, [this](fabric::Event&) {
         debugHUD_.toggle();
         // WAILA and HotkeyPanel are always visible now
     });
 
-    dispatcher.addEventListener("toggle_chunk_debug", [this](fabric::Event&) { chunkDebugPanel_.toggle(); });
-    dispatcher.addEventListener("toggle_lod_stats", [this](fabric::Event&) { lodStatsPanel_.toggle(); });
-    dispatcher.addEventListener("toggle_concurrency", [this](fabric::Event&) { concurrencyPanel_.toggle(); });
+    dispatcher.addEventListener(K_ACTION_TOGGLE_CHUNK_DEBUG, [this](fabric::Event&) { chunkDebugPanel_.toggle(); });
+    dispatcher.addEventListener(K_ACTION_TOGGLE_LOD_STATS, [this](fabric::Event&) { lodStatsPanel_.toggle(); });
+    dispatcher.addEventListener(K_ACTION_TOGGLE_CONCURRENCY, [this](fabric::Event&) { concurrencyPanel_.toggle(); });
 
-    dispatcher.addEventListener("toggle_wireframe", [this](fabric::Event&) {
+    dispatcher.addEventListener(K_ACTION_TOGGLE_WIREFRAME, [this](fabric::Event&) {
         debugDraw_.toggleWireframe();
         FABRIC_LOG_INFO("Wireframe: {}", debugDraw_.isWireframeEnabled() ? "on" : "off");
     });
 
-    dispatcher.addEventListener("toggle_collision_debug", [this](fabric::Event&) {
+    dispatcher.addEventListener(K_ACTION_TOGGLE_COLLISION_DEBUG, [this](fabric::Event&) {
         debugDraw_.toggleFlag(recurse::DebugDrawFlags::CollisionShapes);
         FABRIC_LOG_INFO("Collision shapes: {}",
                         debugDraw_.hasFlag(recurse::DebugDrawFlags::CollisionShapes) ? "on" : "off");
     });
 
-    dispatcher.addEventListener("toggle_bvh_debug", [this](fabric::Event&) {
+    dispatcher.addEventListener(K_ACTION_TOGGLE_BVH_DEBUG, [this](fabric::Event&) {
         debugDraw_.toggleFlag(recurse::DebugDrawFlags::BVHOverlay);
         FABRIC_LOG_INFO("BVH overlay: {}", debugDraw_.hasFlag(recurse::DebugDrawFlags::BVHOverlay) ? "on" : "off");
     });
 
-    dispatcher.addEventListener("toggle_chunk_states", [this](fabric::Event&) {
+    dispatcher.addEventListener(K_ACTION_TOGGLE_CHUNK_STATES, [this](fabric::Event&) {
         debugDraw_.toggleFlag(recurse::DebugDrawFlags::ChunkStates);
         FABRIC_LOG_INFO("Chunk states: {}", debugDraw_.hasFlag(recurse::DebugDrawFlags::ChunkStates) ? "on" : "off");
     });
 
-    dispatcher.addEventListener("toggle_content_browser", [this, appMode](fabric::Event&) {
+    dispatcher.addEventListener(K_ACTION_TOGGLE_CONTENT_BROWSER, [this, appMode](fabric::Event&) {
         auto mode = appMode->current();
         if (mode == fabric::AppMode::Editor) {
             appMode->transition(fabric::AppMode::Game);
@@ -134,7 +141,7 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
         FABRIC_LOG_INFO("Content Browser: {}", contentBrowser_.isVisible() ? "on" : "off");
     });
 
-    dispatcher.addEventListener("toggle_bt_debug", [this, appMode](fabric::Event&) {
+    dispatcher.addEventListener(K_ACTION_TOGGLE_BT_DEBUG, [this, appMode](fabric::Event&) {
         auto mode = appMode->current();
         if (mode == fabric::AppMode::Menu) {
             appMode->transition(fabric::AppMode::Game);
@@ -145,7 +152,7 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
         FABRIC_LOG_INFO("BT Debug: {}", btDebugPanel_.isVisible() ? "on" : "off");
     });
 
-    dispatcher.addEventListener("cycle_bt_npc", [this, &ctx](fabric::Event&) {
+    dispatcher.addEventListener(K_ACTION_CYCLE_BT_NPC, [this, &ctx](fabric::Event&) {
         btDebugPanel_.selectNextNPC(ai_->behaviorAI(), ctx.world.get());
         btDebugSelectedNpc_ = btDebugPanel_.selectedNpc();
     });

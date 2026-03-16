@@ -1,8 +1,12 @@
 #include "recurse/systems/AudioGameSystem.hh"
 
+#include "recurse/config/RecurseConfig.hh"
+
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/log/Log.hh"
+#include "fabric/platform/ConfigManager.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/systems/CameraGameSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
@@ -11,6 +15,9 @@
 namespace recurse::systems {
 
 void AudioGameSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
@@ -18,6 +25,8 @@ void AudioGameSystem::doInit(fabric::AppContext& ctx) {
     audioSystem_.setThreadedMode(true);
     audioSystem_.init();
     audioSystem_.setSimulationGrid(&voxelSim_->simulationGrid());
+    audioSystem_.setMaxOcclusionVoxels(ctx.configManager.get<int>(
+        "audio.max_occlusion_voxels", recurse::RecurseConfig::K_DEFAULT_MAX_OCCLUSION_VOXELS));
 
     FABRIC_LOG_INFO("AudioGameSystem initialized");
 }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
-#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/ecs/ECS.hh"
 #include "recurse/character/GameConstants.hh"
 #include "recurse/world/ChunkStreaming.hh"
@@ -39,7 +38,7 @@ class CharacterMovementSystem;
 /// Load: streaming detects new chunk -> VoxelSimulationSystem::generateChunk() fills grid
 ///   -> dirty flags set -> VoxelSimulationSystem picks up -> VoxelMeshingSystem meshes.
 /// Unload: streaming detects far chunk -> VoxelSimulationSystem::removeChunk() -> ECS destroy.
-class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem>, public fabric::WorldAware {
+class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
   public:
     ChunkPipelineSystem();
     ~ChunkPipelineSystem() override;
@@ -50,8 +49,8 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem>, public f
 
     void configureDependencies() override;
 
-    void onWorldBegin() override;
-    void onWorldEnd() override;
+    void onWorldBegin();
+    void onWorldEnd();
 
     // Accessors
     const std::unordered_map<ChunkCoord, flecs::entity, ChunkCoordHash>& chunkEntities() const;
@@ -90,6 +89,12 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem>, public f
 
     int lodRadius_ = 0;
     int lodGenBudget_ = 4;
+
+    int maxAsyncLoadsPerFrame_ = 32;
+    int maxGeneratesPerFrame_ = 512;
+    int maxLoadCompletions_ = 16;
+    int lodHysteresis_ = 2;
+    int collisionRadius_ = 3;
 };
 
 } // namespace recurse::systems

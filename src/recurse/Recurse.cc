@@ -1,5 +1,5 @@
 // Recurse.cc -- Main entry point for the Recurse game.
-// Registers 15 application systems via FabricAppDesc and delegates to
+// Registers 14 application systems via FabricAppDesc and delegates to
 // FabricApp::run(). All game logic lives in registered SystemBase subclasses.
 
 // Engine includes
@@ -24,7 +24,6 @@
 #include "recurse/character/CharacterController.hh"
 #include "recurse/character/FlightController.hh"
 #include "recurse/character/VoxelInteraction.hh"
-#include "recurse/persistence/SaveManager.hh"
 #include "recurse/persistence/WorldRegistry.hh"
 // System includes
 #include "recurse/systems/AIGameSystem.hh"
@@ -38,7 +37,6 @@
 #include "recurse/systems/OITRenderSystem.hh"
 #include "recurse/systems/ParticleGameSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
-#include "recurse/systems/SaveGameSystem.hh"
 #include "recurse/systems/ShadowRenderSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelInteractionSystem.hh"
@@ -46,9 +44,13 @@
 #include "recurse/systems/VoxelRenderSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 
+#include "recurse/input/ActionIds.hh"
+#include "recurse/input/DebugToggleTable.hh"
+
 #include <SDL3/SDL.h>
 
 using fabric::SystemPhase;
+using namespace recurse::input;
 
 fabric::FabricAppDesc buildRecurseDesc() {
     fabric::FabricAppDesc desc;
@@ -69,7 +71,6 @@ fabric::FabricAppDesc buildRecurseDesc() {
     desc.registerSystem<recurse::systems::ParticleGameSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::ChunkPipelineSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::VoxelInteractionSystem>(SystemPhase::FixedUpdate);
-    desc.registerSystem<recurse::systems::SaveGameSystem>(SystemPhase::FixedUpdate);
 
     // Update: per-frame logic
     desc.registerSystem<recurse::systems::MainMenuSystem>(SystemPhase::Update);
@@ -119,32 +120,32 @@ fabric::FabricAppDesc buildRecurseDesc() {
 #endif
 
         // Key bindings (input action mapping)
-        ctx.inputManager->bindKey("move_forward", SDLK_W);
-        ctx.inputManager->bindKey("move_backward", SDLK_S);
-        ctx.inputManager->bindKey("move_left", SDLK_A);
-        ctx.inputManager->bindKey("move_right", SDLK_D);
-        ctx.inputManager->bindKey("move_up", SDLK_SPACE);
-        ctx.inputManager->bindKey("move_down", SDLK_LSHIFT);
-        ctx.inputManager->bindKey("speed_boost", SDLK_LCTRL);
+        ctx.inputManager->bindKey(K_ACTION_MOVE_FORWARD, SDLK_W);
+        ctx.inputManager->bindKey(K_ACTION_MOVE_BACKWARD, SDLK_S);
+        ctx.inputManager->bindKey(K_ACTION_MOVE_LEFT, SDLK_A);
+        ctx.inputManager->bindKey(K_ACTION_MOVE_RIGHT, SDLK_D);
+        ctx.inputManager->bindKey(K_ACTION_MOVE_UP, SDLK_SPACE);
+        ctx.inputManager->bindKey(K_ACTION_MOVE_DOWN, SDLK_LSHIFT);
+        ctx.inputManager->bindKey(K_ACTION_SPEED_BOOST, SDLK_LCTRL);
 
-        ctx.inputManager->bindKey("time_pause", SDLK_P);
-        ctx.inputManager->bindKey("time_faster", SDLK_EQUALS);
-        ctx.inputManager->bindKey("time_slower", SDLK_MINUS);
+        ctx.inputManager->bindKey(K_ACTION_TIME_PAUSE, SDLK_P);
+        ctx.inputManager->bindKey(K_ACTION_TIME_FASTER, SDLK_EQUALS);
+        ctx.inputManager->bindKey(K_ACTION_TIME_SLOWER, SDLK_MINUS);
 
-        ctx.inputManager->bindKey("toggle_fly", SDLK_F);
-        ctx.inputManager->bindKey("toggle_debug", SDLK_F3);
-        ctx.inputManager->bindKey("toggle_wireframe", SDLK_F4);
-        ctx.inputManager->bindKey("toggle_chunk_debug", SDLK_F12);
-        ctx.inputManager->bindKey("toggle_camera", SDLK_V);
-        ctx.inputManager->bindKey("toggle_collision_debug", SDLK_F10);
-        ctx.inputManager->bindKey("toggle_bvh_debug", SDLK_F6);
-        ctx.inputManager->bindKey("toggle_content_browser", SDLK_F7);
-        ctx.inputManager->bindKey("toggle_chunk_states", SDLK_F1);
-        ctx.inputManager->bindKey("toggle_bt_debug", SDLK_F11);
-        ctx.inputManager->bindKey("cycle_bt_npc", SDLK_F8);
+        ctx.inputManager->bindKey(K_ACTION_TOGGLE_FLY, SDLK_F);
+        ctx.inputManager->bindKey(K_ACTION_TOGGLE_CAMERA, SDLK_V);
+
+        // Debug toggle bindings from table (single source of truth)
+        for (const auto& toggle : K_DEBUG_TOGGLES) {
+            ctx.inputManager->bindKey(toggle.actionId, toggle.defaultKey);
+        }
+
+        ctx.inputManager->bindKey(K_ACTION_TOGGLE_CONTENT_BROWSER, SDLK_F7);
+        ctx.inputManager->bindKey(K_ACTION_TOGGLE_BT_DEBUG, SDLK_F11);
+        ctx.inputManager->bindKey(K_ACTION_CYCLE_BT_NPC, SDLK_F8);
 
         // Timeline event listeners (cross-cutting; affect global simulation state)
-        dispatcher.addEventListener("time_pause", [&timeline](fabric::Event&) {
+        dispatcher.addEventListener(K_ACTION_TIME_PAUSE, [&timeline](fabric::Event&) {
             if (timeline.isPaused()) {
                 timeline.resume();
                 FABRIC_LOG_INFO("Timeline resumed");
@@ -154,7 +155,7 @@ fabric::FabricAppDesc buildRecurseDesc() {
             }
         });
 
-        dispatcher.addEventListener("time_faster", [&timeline](fabric::Event&) {
+        dispatcher.addEventListener(K_ACTION_TIME_FASTER, [&timeline](fabric::Event&) {
             double scale = timeline.getGlobalTimeScale() + 0.25;
             if (scale > 4.0)
                 scale = 4.0;
@@ -162,7 +163,7 @@ fabric::FabricAppDesc buildRecurseDesc() {
             FABRIC_LOG_INFO("Time scale: {:.2f}", timeline.getGlobalTimeScale());
         });
 
-        dispatcher.addEventListener("time_slower", [&timeline](fabric::Event&) {
+        dispatcher.addEventListener(K_ACTION_TIME_SLOWER, [&timeline](fabric::Event&) {
             double scale = timeline.getGlobalTimeScale() - 0.25;
             if (scale < 0.25)
                 scale = 0.25;

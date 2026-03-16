@@ -3,54 +3,58 @@
 #include "fabric/ecs/ECS.hh"
 
 #include <cstddef>
+#include <functional>
 #include <vector>
 
 namespace fabric {
 
-class SystemBase;
 class SystemRegistry;
 
-/// Opt-in mixin for systems that hold per-world mutable state.
-/// Systems inherit WorldAware alongside System<T> to receive
-/// lifecycle callbacks on world transitions. The coordinator
-/// discovers participants via dynamic_cast during initialization.
-class WorldAware {
-  public:
-    virtual ~WorldAware() = default;
-
-    /// Called after a new world is loaded and ready for simulation.
-    /// Systems should initialize per-world state here.
-    virtual void onWorldBegin() = 0;
-
-    /// Called before the current world is torn down.
-    /// Systems must release all per-world state: clear collections,
-    /// unsubscribe listeners, free GPU resources, reset counters.
-    /// Called in reverse init order (dependencies torn down first).
-    virtual void onWorldEnd() = 0;
+/// Concept: system provides onWorldBegin callback.
+template <typename T>
+concept HasWorldBegin = requires(T& t) {
+    { t.onWorldBegin() } -> std::same_as<void>;
 };
 
-/// Coordinates world lifecycle transitions across WorldAware systems.
-/// Discovers participants via dynamic_cast on SystemRegistry init order.
-/// Dispatches onWorldBegin in init order, onWorldEnd in reverse.
+/// Concept: system provides onWorldEnd callback.
+template <typename T>
+concept HasWorldEnd = requires(T& t) {
+    { t.onWorldEnd() } -> std::same_as<void>;
+};
+
+/// Coordinates world lifecycle transitions across participating systems.
+/// Systems register explicitly during doInit via registerParticipant.
+/// No virtual inheritance required; systems define onWorldBegin/onWorldEnd
+/// as regular methods and register callbacks.
 class WorldLifecycleCoordinator {
   public:
-    /// Discover WorldAware systems from the registry.
-    /// Call after SystemRegistry::initAll() completes.
-    void discover(SystemRegistry& registry, World& world);
+    struct Participant {
+        std::function<void()> onBegin;
+        std::function<void()> onEnd;
+    };
+
+    /// Register a system as a world lifecycle participant.
+    /// Call from SystemBase::doInit(). Order of registration determines
+    /// dispatch order (beginWorld in registration order, endWorld in reverse).
+    void registerParticipant(std::function<void()> onBegin, std::function<void()> onEnd);
+
+    /// Store the ECS world reference for WorldScoped entity cleanup.
+    /// Call after SystemRegistry::initAll().
+    void setWorld(World& world);
 
     /// Notify all participants that a new world has begun.
-    /// Called in SystemRegistry init order.
+    /// Called in registration order.
     void beginWorld();
 
     /// Notify all participants that the current world is ending.
-    /// Called in reverse SystemRegistry init order.
+    /// Called in reverse registration order.
     void endWorld();
 
-    /// Number of discovered WorldAware participants.
+    /// Number of registered participants.
     size_t participantCount() const;
 
   private:
-    std::vector<WorldAware*> participants_;
+    std::vector<Participant> participants_;
     World* world_ = nullptr;
 };
 

@@ -1,6 +1,8 @@
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 
+#include "recurse/config/RecurseConfig.hh"
+
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/platform/ConfigManager.hh"
@@ -102,7 +104,7 @@ TEST_F(CollisionBudgetTest, BudgetCapsProcessedChunksPerFrame) {
     for (int i = 0; i < N; ++i)
         physics.insertDirtyChunk(coords[i][0], coords[i][1], coords[i][2]);
 
-    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
 
@@ -112,12 +114,13 @@ TEST_F(CollisionBudgetTest, BudgetCapsProcessedChunksPerFrame) {
             ++rebuilt;
     }
 
-    EXPECT_EQ(rebuilt, K_COLLISION_BUDGET_PER_FRAME);
-    EXPECT_EQ(static_cast<int>(physics.dirtyChunks().size()), N - K_COLLISION_BUDGET_PER_FRAME);
+    EXPECT_EQ(rebuilt, recurse::RecurseConfig::K_DEFAULT_COLLISION_BUDGET);
+    EXPECT_EQ(static_cast<int>(physics.dirtyChunks().size()), N - recurse::RecurseConfig::K_DEFAULT_COLLISION_BUDGET);
 }
 
 TEST_F(CollisionBudgetTest, NearestChunksProcessedFirst) {
-    physics.setFocalPoints({{5.0f * 32.0f + 16.0f, 16.0f, 5.0f * 32.0f + 16.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints(
+        {{5.0f * 32.0f + 16.0f, 16.0f, 5.0f * 32.0f + 16.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
 
     int nearCoords[][3] = {{5, 0, 5}, {4, 0, 5}, {6, 0, 5}};
     int farCoords[][3] = {{0, 0, 0}, {10, 0, 10}, {9, 0, 9}, {1, 0, 1}};
@@ -147,7 +150,7 @@ TEST_F(CollisionBudgetTest, NonActiveChunksFiltered) {
     physics.insertDirtyChunk(0, 0, 0);
     physics.insertDirtyChunk(1, 0, 0);
 
-    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     auto ctx = makeCtx();
     physics.fixedUpdate(ctx, 1.0f / 60.0f);
 
@@ -170,7 +173,7 @@ TEST_F(CollisionBudgetTest, OverflowPersistsAcrossFrames) {
     for (int i = 0; i < N; ++i)
         physics.insertDirtyChunk(coords[i][0], coords[i][1], coords[i][2]);
 
-    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, K_COLLISION_RADIUS}});
+    physics.setFocalPoints({{0.0f, 0.0f, 0.0f, recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS}});
     auto ctx = makeCtx();
 
     physics.fixedUpdate(ctx, 1.0f / 60.0f);

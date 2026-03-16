@@ -2,10 +2,14 @@
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 
+#include "recurse/config/RecurseConfig.hh"
+
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Event.hh"
 #include "fabric/core/SystemRegistry.hh"
+#include "fabric/core/WorldLifecycle.hh"
 #include "fabric/log/Log.hh"
+#include "fabric/platform/ConfigManager.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/character/VoxelInteraction.hh"
 #include "recurse/simulation/ChunkRegistry.hh"
@@ -16,6 +20,9 @@
 namespace recurse::systems {
 
 void PhysicsGameSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
     terrain_ = ctx.systemRegistry.get<TerrainSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
     if (voxelSim_)
@@ -32,6 +39,11 @@ void PhysicsGameSystem::doInit(fabric::AppContext& ctx) {
     });
 
     ragdoll_.init(&physicsWorld_);
+
+    collisionBudget_ =
+        ctx.configManager.get<int>("physics.collision_budget", recurse::RecurseConfig::K_DEFAULT_COLLISION_BUDGET);
+    collisionRadius_ =
+        ctx.configManager.get<int>("physics.collision_radius", recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS);
 
     FABRIC_LOG_INFO("PhysicsGameSystem initialized (scheduler={})", scheduler_ != nullptr);
 }
@@ -92,7 +104,7 @@ void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) 
         std::sort(candidates.begin(), candidates.end(),
                   [&](const recurse::ChunkCoord& a, const recurse::ChunkCoord& b) { return minDist(a) < minDist(b); });
 
-        int limit = std::min(static_cast<int>(candidates.size()), K_COLLISION_BUDGET_PER_FRAME);
+        int limit = std::min(static_cast<int>(candidates.size()), collisionBudget_);
         std::vector<recurse::ChunkCoord> toRebuild(candidates.begin(), candidates.begin() + limit);
 
         for (int i = limit; i < static_cast<int>(candidates.size()); ++i)
