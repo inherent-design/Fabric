@@ -1,11 +1,5 @@
 #pragma once
 
 namespace fabric {
-    constexpr const char* APP_NAME = "@APP_NAME@";
-#if defined(_WIN32)
-    constexpr const char* APP_EXECUTABLE_NAME = "@APP_NAME@.exe";
-#else
-    constexpr const char* APP_EXECUTABLE_NAME = "@APP_NAME@";
-#endif
     constexpr const char* APP_VERSION = "@APP_VERSION@";
 }

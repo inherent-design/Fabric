@@ -29,8 +29,8 @@
 namespace recurse::systems {
 
 using fabric::ChunkedGrid;
-using fabric::K_CHUNK_SIZE;
 using fabric::K_HORIZONTAL_NEIGHBORS;
+using recurse::simulation::K_CHUNK_SIZE;
 
 namespace {
 

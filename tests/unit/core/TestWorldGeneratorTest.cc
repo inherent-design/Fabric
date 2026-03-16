@@ -10,14 +10,14 @@
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/resource/AssetRegistry.hh"
 #include "fabric/resource/ResourceHub.hh"
-#include "fabric/world/MinecraftNoiseGenerator.hh"
 #include "recurse/systems/TerrainSystem.hh"
+#include "recurse/world/MinecraftNoiseGenerator.hh"
 #include "recurse/world/NaturalWorldGenerator.hh"
 
 using namespace recurse::simulation;
 using namespace recurse;
-using fabric::K_CHUNK_SIZE;
-using fabric::K_CHUNK_VOLUME;
+using recurse::simulation::K_CHUNK_SIZE;
+using recurse::simulation::K_CHUNK_VOLUME;
 
 // -- FlatWorldGenerator -------------------------------------------------------
 
@@ -233,7 +233,7 @@ TEST(TestWorldGenerator, GenerateToBuffer_LayeredMatchesGenerate) {
 }
 
 TEST(TestWorldGenerator, GenerateToBuffer_NaturalMatchesGenerate) {
-    fabric::world::NoiseGenConfig cfg;
+    recurse::NoiseGenConfig cfg;
     NaturalWorldGenerator gen(cfg);
 
     // Grid path
@@ -253,7 +253,7 @@ TEST(TestWorldGenerator, GenerateToBuffer_NaturalMatchesGenerate) {
 }
 
 TEST(TestWorldGenerator, BatchGeneration_MatchesSequential) {
-    fabric::world::NoiseGenConfig cfg;
+    recurse::NoiseGenConfig cfg;
     NaturalWorldGenerator gen(cfg);
     fabric::JobScheduler scheduler(2);
 
@@ -304,7 +304,7 @@ TEST(TestWorldGenerator, BatchGeneration_MatchesSequential) {
 }
 
 TEST(TestWorldGenerator, BatchGeneration_EmptyChunksAboveGround) {
-    fabric::world::NoiseGenConfig cfg;
+    recurse::NoiseGenConfig cfg;
     cfg.terrainHeight = 16.0f;
     cfg.seaLevel = 8.0f;
     NaturalWorldGenerator gen(cfg);

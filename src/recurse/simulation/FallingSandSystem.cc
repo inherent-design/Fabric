@@ -89,9 +89,9 @@ void FallingSandSystem::writeSwap(ChunkCoord pos, int srcLx, int srcLy, int srcL
         int dstWx = pos.x * K_CHUNK_SIZE + dstLx;
         int dstWy = pos.y * K_CHUNK_SIZE + dstLy;
         int dstWz = pos.z * K_CHUNK_SIZE + dstLz;
-        int ncx = dstWx >> 5;
-        int ncy = dstWy >> 5;
-        int ncz = dstWz >> 5;
+        int ncx = dstWx >> K_CHUNK_SHIFT;
+        int ncy = dstWy >> K_CHUNK_SHIFT;
+        int ncz = dstWz >> K_CHUNK_SHIFT;
         boundaryWrites.push_back(
             BoundaryWrite{dstWx, dstWy, dstWz, srcCell, srcWx, srcWy, srcWz, srcCell, ChunkCoord{ncx, ncy, ncz}});
     }

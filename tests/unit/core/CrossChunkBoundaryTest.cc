@@ -10,9 +10,9 @@
 #include <gtest/gtest.h>
 
 using fabric::ChunkCoord;
-using fabric::K_CHUNK_SIZE;
 using recurse::simulation::ChunkActivityTracker;
 using recurse::simulation::ChunkState;
+using recurse::simulation::K_CHUNK_SIZE;
 using recurse::simulation::SimulationGrid;
 using recurse::simulation::VoxelCell;
 namespace MaterialIds = recurse::simulation::material_ids;

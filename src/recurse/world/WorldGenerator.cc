@@ -6,7 +6,7 @@
 
 namespace recurse {
 
-using fabric::K_CHUNK_VOLUME;
+using simulation::K_CHUNK_VOLUME;
 using simulation::VoxelCell;
 
 void WorldGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy, int cz) {

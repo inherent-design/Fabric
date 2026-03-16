@@ -1,8 +1,9 @@
 #include "recurse/character/VoxelInteraction.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 
 #include <cstring>
 
-using fabric::K_CHUNK_SHIFT;
+using recurse::simulation::K_CHUNK_SHIFT;
 
 namespace recurse {
 

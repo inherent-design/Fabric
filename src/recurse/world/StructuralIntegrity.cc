@@ -54,13 +54,13 @@ bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
 
         const auto active = grid.activeChunks();
         for (const auto& [cx, cy, cz] : active) {
-            const int baseX = cx * K_STRUCTURAL_INTEGRITY_CHUNK_SIZE;
-            const int baseY = cy * K_STRUCTURAL_INTEGRITY_CHUNK_SIZE;
-            const int baseZ = cz * K_STRUCTURAL_INTEGRITY_CHUNK_SIZE;
+            const int baseX = cx * K_CHUNK_SIZE;
+            const int baseY = cy * K_CHUNK_SIZE;
+            const int baseZ = cz * K_CHUNK_SIZE;
 
-            for (int lz = 0; lz < K_STRUCTURAL_INTEGRITY_CHUNK_SIZE; ++lz) {
-                for (int ly = 0; ly < K_STRUCTURAL_INTEGRITY_CHUNK_SIZE; ++ly) {
-                    for (int lx = 0; lx < K_STRUCTURAL_INTEGRITY_CHUNK_SIZE; ++lx) {
+            for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+                for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+                    for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
                         const int wx = baseX + lx;
                         const int wy = baseY + ly;
                         const int wz = baseZ + lz;

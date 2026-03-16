@@ -96,7 +96,7 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
 
         // Set world generator based on selection, using the provided seed
         if (type == WorldType::Natural) {
-            auto config = fabric::world::NoiseGenConfig{};
+            auto config = recurse::NoiseGenConfig{};
             config.seed = static_cast<int>(seed);
             terrain_->setWorldGenerator(std::make_unique<recurse::NaturalWorldGenerator>(config));
             FABRIC_LOG_INFO("MainMenu: Using NaturalWorldGenerator (seed={})", seed);

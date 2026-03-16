@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 
 using fabric::ChunkedGrid;
-using fabric::K_CHUNK_VOLUME;
+using recurse::simulation::K_CHUNK_VOLUME;
 using namespace recurse;
 
 class StructuralIntegrityTest : public ::testing::Test {

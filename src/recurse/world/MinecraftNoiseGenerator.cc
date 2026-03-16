@@ -1,14 +1,14 @@
-#include "fabric/world/MinecraftNoiseGenerator.hh"
+#include "recurse/world/MinecraftNoiseGenerator.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <cmath>
 #include <vector>
 
-namespace fabric::world {
+namespace recurse {
 
-using recurse::simulation::MaterialId;
-namespace material_ids = recurse::simulation::material_ids;
-using recurse::simulation::VoxelCell;
+using simulation::MaterialId;
+namespace material_ids = simulation::material_ids;
+using simulation::VoxelCell;
 
 MinecraftNoiseGenerator::MinecraftNoiseGenerator(const NoiseGenConfig& config)
     : config_(config),
@@ -29,25 +29,21 @@ float MinecraftNoiseGenerator::computeBaseHeight(float continental, float erosio
 
 MaterialId MinecraftNoiseGenerator::selectSurfaceMaterial(float temp, float humid, float wy) const {
     // TODO(human): Implement biome-aware surface material selection.
-    // Inputs: temp [-1,1], humid [-1,1], wy (world Y coordinate).
-    // Available materials: Sand, Dirt, Gravel (from MaterialIds).
-    // Should return the appropriate MaterialId based on biome conditions.
-    // Current fallback: Sand near sea level, Dirt elsewhere.
     if (std::abs(wy - config_.seaLevel) <= 3.0f) {
         return material_ids::SAND;
     }
     return material_ids::DIRT;
 }
 
-void MinecraftNoiseGenerator::generate(recurse::simulation::SimulationGrid& grid, recurse::simulation::ChunkCoord pos) {
-    grid.materializeChunk(pos.x, pos.y, pos.z);
-    auto* buf = grid.writeBuffer(pos.x, pos.y, pos.z);
+void MinecraftNoiseGenerator::generate(simulation::SimulationGrid& grid, int cx, int cy, int cz) {
+    grid.materializeChunk(cx, cy, cz);
+    auto* buf = grid.writeBuffer(cx, cy, cz);
     if (!buf)
         return;
-    generateToBuffer(buf->data(), pos.x, pos.y, pos.z);
+    generateToBuffer(buf->data(), cx, cy, cz);
 }
 
-void MinecraftNoiseGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy, int cz) const {
+void MinecraftNoiseGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy, int cz) {
     int baseX = cx * K_SIZE;
     int baseY = cy * K_SIZE;
     int baseZ = cz * K_SIZE;
@@ -142,4 +138,4 @@ uint16_t MinecraftNoiseGenerator::sampleMaterial(int wx, int wy, int wz) const {
     return material_ids::AIR;
 }
 
-} // namespace fabric::world
+} // namespace recurse

@@ -39,9 +39,9 @@ RollbackResult RollbackExecutor::applyReverse(const std::vector<VoxelChange>& ch
     int64_t count = 0;
 
     for (const auto& c : changes) {
-        int wx = c.addr.cx * fabric::K_CHUNK_SIZE + c.addr.vx;
-        int wy = c.addr.cy * fabric::K_CHUNK_SIZE + c.addr.vy;
-        int wz = c.addr.cz * fabric::K_CHUNK_SIZE + c.addr.vz;
+        int wx = c.addr.cx * recurse::simulation::K_CHUNK_SIZE + c.addr.vx;
+        int wy = c.addr.cy * recurse::simulation::K_CHUNK_SIZE + c.addr.vy;
+        int wz = c.addr.cz * recurse::simulation::K_CHUNK_SIZE + c.addr.vz;
 
         simulation::VoxelCell cell{};
         std::memcpy(&cell, &c.oldCell, sizeof(cell));

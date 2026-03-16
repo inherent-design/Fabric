@@ -1,12 +1,12 @@
-#include "fabric/world/FlatGenerator.hh"
-#include "fabric/world/LayeredGenerator.hh"
-#include "fabric/world/SingleMaterialGenerator.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/world/FlatGenerator.hh"
+#include "recurse/world/LayeredGenerator.hh"
+#include "recurse/world/SingleMaterialGenerator.hh"
 #include <gtest/gtest.h>
 
 using namespace recurse::simulation;
-using namespace fabric::world;
+using namespace recurse;
 
 class GeneratorTest : public ::testing::Test {
   protected:
@@ -17,7 +17,7 @@ class GeneratorTest : public ::testing::Test {
 TEST_F(GeneratorTest, FlatBelowSurface) {
     FlatGenerator gen(16);
     // Chunk at y=0 covers worldY 0-31, surface at 16
-    gen.generate(grid, {0, 0, 0});
+    gen.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
 
     // worldY=0 should be Stone
@@ -29,7 +29,7 @@ TEST_F(GeneratorTest, FlatBelowSurface) {
 // 2. FlatAboveSurface -- Above = Air
 TEST_F(GeneratorTest, FlatAboveSurface) {
     FlatGenerator gen(16);
-    gen.generate(grid, {0, 0, 0});
+    gen.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
 
     // worldY=17 should be Air
@@ -41,7 +41,7 @@ TEST_F(GeneratorTest, FlatAboveSurface) {
 // 3. FlatSurfaceLayer -- Surface = Dirt
 TEST_F(GeneratorTest, FlatSurfaceLayer) {
     FlatGenerator gen(16);
-    gen.generate(grid, {0, 0, 0});
+    gen.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
 
     EXPECT_EQ(grid.readCell(0, 16, 0).materialId, material_ids::DIRT);
@@ -53,7 +53,7 @@ TEST_F(GeneratorTest, SingleMaterialFills) {
     VoxelCell water;
     water.materialId = material_ids::WATER;
     SingleMaterialGenerator gen(water);
-    gen.generate(grid, {0, 0, 0});
+    gen.generate(grid, 0, 0, 0);
 
     // SingleMaterial uses fillChunk (sentinel), so reads should return Water
     EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::WATER);
@@ -72,7 +72,7 @@ TEST_F(GeneratorTest, LayeredBoundaries) {
     dirt.materialId = material_ids::DIRT;
 
     LayeredGenerator gen({{stone, 0, 9}, {dirt, 10, 19}});
-    gen.generate(grid, {0, 0, 0});
+    gen.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
 
     EXPECT_EQ(grid.readCell(0, 9, 0).materialId, material_ids::STONE);
@@ -90,7 +90,7 @@ TEST_F(GeneratorTest, LayeredMultiple) {
     sand.materialId = material_ids::SAND;
 
     LayeredGenerator gen({{stone, 0, 4}, {dirt, 5, 9}, {sand, 10, 14}});
-    gen.generate(grid, {0, 0, 0});
+    gen.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
 
     EXPECT_EQ(grid.readCell(0, 2, 0).materialId, material_ids::STONE);
@@ -113,7 +113,7 @@ TEST_F(GeneratorTest, NoBgfxDependency) {
 TEST_F(GeneratorTest, NegativeYChunks) {
     FlatGenerator gen(16);
     // Chunk at cy=-1 covers worldY -32 to -1, all below surface
-    gen.generate(grid, {0, -1, 0});
+    gen.generate(grid, 0, -1, 0);
     grid.advanceEpoch();
 
     EXPECT_EQ(grid.readCell(0, -1, 0).materialId, material_ids::STONE);
@@ -124,7 +124,7 @@ TEST_F(GeneratorTest, NegativeYChunks) {
 TEST_F(GeneratorTest, AboveSurfaceAllAir) {
     FlatGenerator gen(16);
     // Chunk at cy=1 covers worldY 32-63, entirely above surface
-    gen.generate(grid, {0, 1, 0});
+    gen.generate(grid, 0, 1, 0);
 
     // Should remain sentinel (not materialized)
     EXPECT_FALSE(grid.isChunkMaterialized(0, 1, 0));

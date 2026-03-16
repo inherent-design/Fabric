@@ -1,6 +1,7 @@
 #include "recurse/world/ChunkDensityCache.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 
-using fabric::K_CHUNK_SIZE;
+using recurse::simulation::K_CHUNK_SIZE;
 
 namespace recurse {
 

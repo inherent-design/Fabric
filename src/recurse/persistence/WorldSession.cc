@@ -527,9 +527,9 @@ void WorldSession::submit(ops::Tick op) {
 }
 
 void WorldSession::submit(ops::UpdateLODRing op) {
-    int cx = static_cast<int>(std::floor(op.px / fabric::K_CHUNK_SIZE));
-    int cy = static_cast<int>(std::floor(op.py / fabric::K_CHUNK_SIZE));
-    int cz = static_cast<int>(std::floor(op.pz / fabric::K_CHUNK_SIZE));
+    int cx = static_cast<int>(std::floor(op.px / recurse::simulation::K_CHUNK_SIZE));
+    int cy = static_cast<int>(std::floor(op.py / recurse::simulation::K_CHUNK_SIZE));
+    int cz = static_cast<int>(std::floor(op.pz / recurse::simulation::K_CHUNK_SIZE));
     updateLODRing(cx, cy, cz, op.chunkRadius, op.lodRadius, op.genBudget);
 }
 

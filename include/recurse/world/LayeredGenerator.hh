@@ -1,24 +1,25 @@
 #pragma once
-#include "fabric/world/GeneratorInterface.hh"
+
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/world/WorldGenerator.hh"
 #include <vector>
 
-namespace fabric::world {
+namespace recurse {
 
 struct LayerDef {
-    recurse::simulation::VoxelCell cell;
+    simulation::VoxelCell cell;
     int minY;
     int maxY;
 };
 
-class LayeredGenerator : public GeneratorInterface {
+class LayeredGenerator : public WorldGenerator {
   public:
     explicit LayeredGenerator(std::vector<LayerDef> layers);
-    void generate(SimulationGrid& grid, ChunkCoord pos) override;
+    void generate(simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
     std::string name() const override { return "Layered"; }
 
   private:
     std::vector<LayerDef> layers_;
 };
 
-} // namespace fabric::world
+} // namespace recurse

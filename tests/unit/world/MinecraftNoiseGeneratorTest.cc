@@ -1,4 +1,4 @@
-#include "fabric/world/MinecraftNoiseGenerator.hh"
+#include "recurse/world/MinecraftNoiseGenerator.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <chrono>
@@ -6,7 +6,7 @@
 #include <set>
 
 using namespace recurse::simulation;
-using namespace fabric::world;
+using namespace recurse;
 
 static constexpr int K_CHUNK = 32;
 
@@ -37,7 +37,7 @@ TEST_F(MinecraftNoiseGenTest, TerrainHasHeightVariation) {
     for (int cy = 0; cy <= 1; ++cy) {
         for (int cx = 0; cx < 2; ++cx) {
             for (int cz = 0; cz < 2; ++cz) {
-                gen.generate(grid, {cx, cy, cz});
+                gen.generate(grid, cx, cy, cz);
             }
         }
     }
@@ -74,7 +74,7 @@ TEST_F(MinecraftNoiseGenTest, SeaLevelProducesWater) {
     for (int cy = 0; cy <= 1; ++cy)
         for (int cx = 0; cx < 2; ++cx)
             for (int cz = 0; cz < 2; ++cz)
-                gen.generate(grid, {cx, cy, cz});
+                gen.generate(grid, cx, cy, cz);
     grid.advanceEpoch();
 
     // Scan every Y position (water layer can be thin), sparse XZ
@@ -109,7 +109,7 @@ TEST_F(MinecraftNoiseGenTest, SurfaceMaterialVaries) {
     for (int cy = 0; cy <= 1; ++cy) {
         for (int cx = 0; cx < 2; ++cx) {
             for (int cz = 0; cz < 2; ++cz) {
-                gen.generate(grid, {cx, cy, cz});
+                gen.generate(grid, cx, cy, cz);
             }
         }
     }
@@ -144,7 +144,7 @@ TEST_F(MinecraftNoiseGenTest, BulkUndergroundStone) {
     MinecraftNoiseGenerator gen(config);
 
     // Chunk at cy=-1 covers worldY -32 to -1, well below surface
-    gen.generate(grid, {0, -1, 0});
+    gen.generate(grid, 0, -1, 0);
     grid.advanceEpoch();
 
     // All cells this deep should be Stone (density >> 3)
@@ -163,15 +163,14 @@ TEST_F(MinecraftNoiseGenTest, DeterministicSameSeed) {
     MinecraftNoiseGenerator gen1(config);
     MinecraftNoiseGenerator gen2(config);
 
-    ChunkCoord pos{1, 1, 1};
-    gen1.generate(grid1, pos);
-    gen2.generate(grid2, pos);
+    gen1.generate(grid1, 1, 1, 1);
+    gen2.generate(grid2, 1, 1, 1);
     grid1.advanceEpoch();
     grid2.advanceEpoch();
 
-    int bx = pos.x * K_CHUNK;
-    int by = pos.y * K_CHUNK;
-    int bz = pos.z * K_CHUNK;
+    int bx = 1 * K_CHUNK;
+    int by = 1 * K_CHUNK;
+    int bz = 1 * K_CHUNK;
 
     for (int lz = 0; lz < K_CHUNK; ++lz) {
         for (int ly = 0; ly < K_CHUNK; ++ly) {
@@ -196,15 +195,14 @@ TEST_F(MinecraftNoiseGenTest, DifferentSeeds) {
     MinecraftNoiseGenerator gen1(config1);
     MinecraftNoiseGenerator gen2(config2);
 
-    ChunkCoord pos{0, 1, 0};
-    gen1.generate(grid1, pos);
-    gen2.generate(grid2, pos);
+    gen1.generate(grid1, 0, 1, 0);
+    gen2.generate(grid2, 0, 1, 0);
     grid1.advanceEpoch();
     grid2.advanceEpoch();
 
-    int bx = pos.x * K_CHUNK;
-    int by = pos.y * K_CHUNK;
-    int bz = pos.z * K_CHUNK;
+    int bx = 0;
+    int by = 1 * K_CHUNK;
+    int bz = 0;
 
     int differences = 0;
     for (int lz = 0; lz < K_CHUNK; ++lz) {
@@ -228,8 +226,8 @@ TEST_F(MinecraftNoiseGenTest, CrossChunkContinuity) {
     MinecraftNoiseGenerator gen(config);
 
     // Two horizontally adjacent chunks at y=1 (covering seaLevel region)
-    gen.generate(grid, {0, 1, 0});
-    gen.generate(grid, {1, 1, 0});
+    gen.generate(grid, 0, 1, 0);
+    gen.generate(grid, 1, 1, 0);
     grid.advanceEpoch();
 
     // Check boundary: last column of chunk 0 vs first column of chunk 1
@@ -290,7 +288,7 @@ TEST_F(MinecraftNoiseGenTest, MaxSurfaceHeightIsConservative) {
 
             // Generate chunks spanning the expected surface region
             for (int cy = 0; cy <= 4; ++cy)
-                gen.generate(grid, {cx, cy, cz});
+                gen.generate(grid, cx, cy, cz);
             grid.advanceEpoch();
 
             // Find actual highest solid in this column
@@ -325,7 +323,7 @@ TEST_F(MinecraftNoiseGenTest, PerformanceSingleChunk) {
     MinecraftNoiseGenerator gen(config);
 
     auto start = std::chrono::steady_clock::now();
-    gen.generate(grid, {0, 1, 0});
+    gen.generate(grid, 0, 1, 0);
     auto end = std::chrono::steady_clock::now();
 
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();

@@ -64,14 +64,14 @@ class FabricE2ETest : public ::testing::Test {
 TEST_F(FabricE2ETest, HelpFlag) {
     std::string output = executeCommand(executablePath + " --help");
 
-    ASSERT_THAT(output, ::testing::HasSubstr("Usage: " + std::string(fabric::APP_NAME)));
+    ASSERT_THAT(output, ::testing::HasSubstr("Usage: Recurse"));
 }
 
 // Test version flag
 TEST_F(FabricE2ETest, VersionFlag) {
     std::string output = executeCommand(executablePath + " --version");
 
-    ASSERT_THAT(output, ::testing::HasSubstr(fabric::APP_NAME));
+    ASSERT_THAT(output, ::testing::HasSubstr("Recurse"));
     ASSERT_THAT(output, ::testing::HasSubstr(fabric::APP_VERSION));
 }
 

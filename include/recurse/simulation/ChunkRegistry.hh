@@ -1,6 +1,7 @@
 #pragma once
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/EssencePalette.hh"
 #include <array>
@@ -11,9 +12,6 @@
 #include <vector>
 
 namespace recurse::simulation {
-
-using fabric::K_CHUNK_SIZE;
-using fabric::K_CHUNK_VOLUME;
 using fabric::packChunkKey;
 using fabric::unpackChunkKey;
 

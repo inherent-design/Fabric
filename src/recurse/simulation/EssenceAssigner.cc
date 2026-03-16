@@ -2,14 +2,12 @@
 #include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/world/EssencePalette.hh"
 
 #include <cstring>
 
 namespace recurse::simulation {
-
-using fabric::K_CHUNK_SIZE;
-using fabric::K_CHUNK_VOLUME;
 
 namespace {
 

@@ -2,6 +2,7 @@
 
 #include "fabric/world/ChunkCoordUtils.hh"
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 
 #include <array>
 #include <cstdint>
@@ -15,8 +16,7 @@ namespace recurse {
 using fabric::ChunkedGrid;
 using fabric::K_FACE_NEIGHBORS;
 using fabric::packChunkKey;
-
-inline constexpr int K_STRUCTURAL_INTEGRITY_CHUNK_SIZE = 32;
+using simulation::K_CHUNK_SIZE;
 
 struct DebrisEvent {
     int x, y, z;

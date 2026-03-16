@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 
 using namespace recurse::simulation;
-using fabric::K_CHUNK_SIZE;
 
 class VoxelSimulationSystemTest : public ::testing::Test {
   protected:

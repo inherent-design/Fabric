@@ -1,4 +1,5 @@
 #include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 #include <algorithm>
 #include <cmath>
 
@@ -48,9 +49,9 @@ void ChunkActivityTracker::setReferencePoint(int wx, int wy, int wz) {
 
 SimPriority ChunkActivityTracker::computePriority(ChunkCoord pos) const {
     // Convert reference point to chunk coordinates (floor division via shift)
-    int refCx = refX_ >> 5; // K_CHUNK_SHIFT = 5
-    int refCy = refY_ >> 5;
-    int refCz = refZ_ >> 5;
+    int refCx = refX_ >> K_CHUNK_SHIFT;
+    int refCy = refY_ >> K_CHUNK_SHIFT;
+    int refCz = refZ_ >> K_CHUNK_SHIFT;
 
     int dist = std::abs(pos.x - refCx) + std::abs(pos.y - refCy) + std::abs(pos.z - refCz);
 

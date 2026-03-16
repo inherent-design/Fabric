@@ -5,6 +5,7 @@
 #include "fabric/world/ChunkCoord.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/VoxelRenderer.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 
 #include <array>
@@ -37,7 +38,7 @@ namespace recurse::systems {
 /// Eliminates per-cell hash lookups during meshing. Built once per chunk before
 /// the meshing loop; all pointers are valid for the current epoch.
 struct MeshingChunkContext {
-    using Buffer = std::array<recurse::simulation::VoxelCell, fabric::K_CHUNK_VOLUME>;
+    using Buffer = std::array<recurse::simulation::VoxelCell, recurse::simulation::K_CHUNK_VOLUME>;
 
     const Buffer* self = nullptr;
     const Buffer* neighbors[6] = {}; ///< +X, -X, +Y, -Y, +Z, -Z (nullptr if absent)
@@ -53,47 +54,49 @@ struct MeshingChunkContext {
     template <typename Fallback>
     FABRIC_ALWAYS_INLINE recurse::simulation::VoxelCell readLocal(int lx, int ly, int lz,
                                                                   const Fallback* fallback) const {
-        if (lx >= 0 && lx < fabric::K_CHUNK_SIZE && ly >= 0 && ly < fabric::K_CHUNK_SIZE && lz >= 0 &&
-            lz < fabric::K_CHUNK_SIZE) {
+        if (lx >= 0 && lx < recurse::simulation::K_CHUNK_SIZE && ly >= 0 && ly < recurse::simulation::K_CHUNK_SIZE &&
+            lz >= 0 && lz < recurse::simulation::K_CHUNK_SIZE) {
             if (self)
-                return (*self)[lx + ly * fabric::K_CHUNK_SIZE + lz * fabric::K_CHUNK_SIZE * fabric::K_CHUNK_SIZE];
+                return (*self)[lx + ly * recurse::simulation::K_CHUNK_SIZE +
+                               lz * recurse::simulation::K_CHUNK_SIZE * recurse::simulation::K_CHUNK_SIZE];
             return selfFill;
         }
 
-        int outCount = (lx < 0 || lx >= fabric::K_CHUNK_SIZE) + (ly < 0 || ly >= fabric::K_CHUNK_SIZE) +
-                       (lz < 0 || lz >= fabric::K_CHUNK_SIZE);
+        int outCount = (lx < 0 || lx >= recurse::simulation::K_CHUNK_SIZE) +
+                       (ly < 0 || ly >= recurse::simulation::K_CHUNK_SIZE) +
+                       (lz < 0 || lz >= recurse::simulation::K_CHUNK_SIZE);
         if (outCount == 1) {
             int face = -1;
             int nlx = lx, nly = ly, nlz = lz;
-            if (lx >= fabric::K_CHUNK_SIZE) {
+            if (lx >= recurse::simulation::K_CHUNK_SIZE) {
                 face = 0;
-                nlx = lx - fabric::K_CHUNK_SIZE;
+                nlx = lx - recurse::simulation::K_CHUNK_SIZE;
             } else if (lx < 0) {
                 face = 1;
-                nlx = lx + fabric::K_CHUNK_SIZE;
-            } else if (ly >= fabric::K_CHUNK_SIZE) {
+                nlx = lx + recurse::simulation::K_CHUNK_SIZE;
+            } else if (ly >= recurse::simulation::K_CHUNK_SIZE) {
                 face = 2;
-                nly = ly - fabric::K_CHUNK_SIZE;
+                nly = ly - recurse::simulation::K_CHUNK_SIZE;
             } else if (ly < 0) {
                 face = 3;
-                nly = ly + fabric::K_CHUNK_SIZE;
-            } else if (lz >= fabric::K_CHUNK_SIZE) {
+                nly = ly + recurse::simulation::K_CHUNK_SIZE;
+            } else if (lz >= recurse::simulation::K_CHUNK_SIZE) {
                 face = 4;
-                nlz = lz - fabric::K_CHUNK_SIZE;
+                nlz = lz - recurse::simulation::K_CHUNK_SIZE;
             } else {
                 face = 5;
-                nlz = lz + fabric::K_CHUNK_SIZE;
+                nlz = lz + recurse::simulation::K_CHUNK_SIZE;
             }
             if (neighbors[face])
-                return (*neighbors[face])[nlx + nly * fabric::K_CHUNK_SIZE +
-                                          nlz * fabric::K_CHUNK_SIZE * fabric::K_CHUNK_SIZE];
+                return (*neighbors[face])[nlx + nly * recurse::simulation::K_CHUNK_SIZE +
+                                          nlz * recurse::simulation::K_CHUNK_SIZE * recurse::simulation::K_CHUNK_SIZE];
             return neighborFill[face];
         }
 
         if (fallback) {
-            int wx = cx * fabric::K_CHUNK_SIZE + lx;
-            int wy = cy * fabric::K_CHUNK_SIZE + ly;
-            int wz = cz * fabric::K_CHUNK_SIZE + lz;
+            int wx = cx * recurse::simulation::K_CHUNK_SIZE + lx;
+            int wy = cy * recurse::simulation::K_CHUNK_SIZE + ly;
+            int wz = cz * recurse::simulation::K_CHUNK_SIZE + lz;
             return fallback->readCell(wx, wy, wz);
         }
         return {};

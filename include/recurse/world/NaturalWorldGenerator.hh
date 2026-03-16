@@ -1,21 +1,20 @@
 #pragma once
 
-#include "fabric/world/MinecraftNoiseGenerator.hh"
-#include "recurse/world/WorldGenerator.hh"
+#include "recurse/world/MinecraftNoiseGenerator.hh"
 
 namespace recurse {
 
-/// Noise-based terrain generator (formerly MinecraftWorldGenerator).
-/// Wraps MinecraftNoiseGenerator to conform to WorldGenerator interface.
+/// Noise-based terrain generator. Wraps MinecraftNoiseGenerator with a
+/// game-facing name for use in TerrainSystem and MainMenuSystem.
 class NaturalWorldGenerator : public WorldGenerator {
   public:
-    explicit NaturalWorldGenerator(const fabric::world::NoiseGenConfig& config) : noiseGen_(config) {}
+    explicit NaturalWorldGenerator(const NoiseGenConfig& config) : noiseGen_(config) {}
 
-    void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override {
-        noiseGen_.generate(grid, recurse::simulation::ChunkCoord{cx, cy, cz});
+    void generate(simulation::SimulationGrid& grid, int cx, int cy, int cz) override {
+        noiseGen_.generate(grid, cx, cy, cz);
     }
 
-    void generateToBuffer(recurse::simulation::VoxelCell* buffer, int cx, int cy, int cz) override {
+    void generateToBuffer(simulation::VoxelCell* buffer, int cx, int cy, int cz) override {
         noiseGen_.generateToBuffer(buffer, cx, cy, cz);
     }
 
@@ -25,7 +24,7 @@ class NaturalWorldGenerator : public WorldGenerator {
     std::string name() const override { return "NaturalWorldGenerator"; }
 
   private:
-    fabric::world::MinecraftNoiseGenerator noiseGen_;
+    MinecraftNoiseGenerator noiseGen_;
 };
 
 } // namespace recurse

@@ -66,10 +66,10 @@ void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) 
     std::vector<recurse::CollisionCenter> currentFocalCoords;
     currentFocalCoords.reserve(focalPoints_.size());
     for (const auto& fp : focalPoints_) {
-        currentFocalCoords.push_back({static_cast<int>(std::floor(fp.x / static_cast<float>(fabric::K_CHUNK_SIZE))),
-                                      static_cast<int>(std::floor(fp.y / static_cast<float>(fabric::K_CHUNK_SIZE))),
-                                      static_cast<int>(std::floor(fp.z / static_cast<float>(fabric::K_CHUNK_SIZE))),
-                                      fp.radius});
+        currentFocalCoords.push_back(
+            {static_cast<int>(std::floor(fp.x / static_cast<float>(recurse::simulation::K_CHUNK_SIZE))),
+             static_cast<int>(std::floor(fp.y / static_cast<float>(recurse::simulation::K_CHUNK_SIZE))),
+             static_cast<int>(std::floor(fp.z / static_cast<float>(recurse::simulation::K_CHUNK_SIZE))), fp.radius});
     }
 
     if (!dirtyCollisionChunks_.empty() && voxelSim_ && !currentFocalCoords.empty()) {

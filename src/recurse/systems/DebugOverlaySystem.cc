@@ -392,9 +392,9 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             waila.voxelX = hit->x;
             waila.voxelY = hit->y;
             waila.voxelZ = hit->z;
-            waila.chunkX = hit->x >> fabric::K_CHUNK_SHIFT;
-            waila.chunkY = hit->y >> fabric::K_CHUNK_SHIFT;
-            waila.chunkZ = hit->z >> fabric::K_CHUNK_SHIFT;
+            waila.chunkX = hit->x >> recurse::simulation::K_CHUNK_SHIFT;
+            waila.chunkY = hit->y >> recurse::simulation::K_CHUNK_SHIFT;
+            waila.chunkZ = hit->z >> recurse::simulation::K_CHUNK_SHIFT;
             waila.normalX = hit->nx;
             waila.normalY = hit->ny;
             waila.normalZ = hit->nz;

@@ -4,7 +4,6 @@
 #include <gtest/gtest.h>
 
 using namespace recurse::simulation;
-using fabric::K_CHUNK_SIZE;
 
 class GhostCellsTest : public ::testing::Test {
   protected:

@@ -1,16 +1,16 @@
 #include "recurse/render/LODGrid.hh"
 #include "fabric/platform/JobScheduler.hh"
-#include "fabric/world/MinecraftNoiseGenerator.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/world/MinecraftNoiseGenerator.hh"
 #include "recurse/world/NaturalWorldGenerator.hh"
 #include <algorithm>
 #include <gtest/gtest.h>
 
 using namespace recurse;
 using namespace recurse::simulation;
-using fabric::K_CHUNK_SIZE;
-using fabric::K_CHUNK_VOLUME;
+using recurse::simulation::K_CHUNK_SIZE;
+using recurse::simulation::K_CHUNK_VOLUME;
 
 namespace {
 
@@ -81,7 +81,7 @@ void fillSectionFromGrid(LODSection& section, const SimulationGrid& grid, int cx
 // -- Parallel LOD fill from WorldGenerator (C-P2) ----------------------------
 
 TEST(LODGrid, ParallelFill_DirectMatchesSequential) {
-    fabric::world::NoiseGenConfig cfg;
+    recurse::NoiseGenConfig cfg;
     NaturalWorldGenerator gen(cfg);
     fabric::JobScheduler scheduler(2);
 
@@ -130,7 +130,7 @@ TEST(LODGrid, ParallelFill_DirectMatchesSequential) {
 // -- Parallel LOD fill from SimulationGrid (C-P2) ----------------------------
 
 TEST(LODGrid, ParallelFill_GridMatchesSequential) {
-    fabric::world::NoiseGenConfig cfg;
+    recurse::NoiseGenConfig cfg;
     NaturalWorldGenerator gen(cfg);
     fabric::JobScheduler scheduler(2);
 
@@ -191,7 +191,7 @@ TEST(LODGrid, ParallelFill_GridMatchesSequential) {
 // -- Batch dirty flag verification -------------------------------------------
 
 TEST(LODGrid, ParallelFill_AllSectionsMarkedDirty) {
-    fabric::world::NoiseGenConfig cfg;
+    recurse::NoiseGenConfig cfg;
     NaturalWorldGenerator gen(cfg);
     fabric::JobScheduler scheduler(2);
 
@@ -223,7 +223,7 @@ TEST(LODGrid, ParallelFill_AllSectionsMarkedDirty) {
 // -- Empty sections above terrain --------------------------------------------
 
 TEST(LODGrid, ParallelFill_EmptySectionsAboveTerrain) {
-    fabric::world::NoiseGenConfig cfg;
+    recurse::NoiseGenConfig cfg;
     cfg.terrainHeight = 16.0f;
     cfg.seaLevel = 8.0f;
     NaturalWorldGenerator gen(cfg);

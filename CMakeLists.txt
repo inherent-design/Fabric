@@ -43,7 +43,6 @@ find_package(Threads REQUIRED)
 #------------------------------------------------------------------------------
 # Generate Constants Header
 #------------------------------------------------------------------------------
-set(APP_NAME "Recurse")
 set(APP_VERSION "${PROJECT_VERSION}")
 
 configure_file(
@@ -190,6 +189,8 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/fabric/ui/font/TextureLayoutRectangle.cc
     src/fabric/ui/font/TextureLayoutRow.cc
     src/fabric/ui/font/TextureLayoutTexture.cc
+    # Panini projection post-processing
+    src/fabric/render/PaniniPass.cc
 )
 
 #------------------------------------------------------------------------------
@@ -267,6 +268,10 @@ set(RECURSE_GAME_SOURCE_FILES
     # world/ (VP0+ generators)
     src/recurse/world/WorldGenerator.cc
     src/recurse/world/TestWorldGenerator.cc
+    src/recurse/world/FlatGenerator.cc
+    src/recurse/world/LayeredGenerator.cc
+    src/recurse/world/SingleMaterialGenerator.cc
+    src/recurse/world/MinecraftNoiseGenerator.cc
 
     # systems/ (SystemBase subclasses, phase-dispatched by SystemRegistry)
     src/recurse/systems/TerrainSystem.cc
@@ -291,8 +296,6 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/render/LODMeshManager.cc
     src/recurse/systems/LODSystem.cc
 
-    # Panini projection post-processing
-    src/fabric/render/PaniniPass.cc
 )
 
 # Simulation library components (recurse::simulation namespace)
@@ -309,10 +312,6 @@ set(FABRIC_SIMULATION_SOURCE_FILES
 
 # World library components (fabric::world namespace)
 set(FABRIC_WORLD_SOURCE_FILES
-    src/world/FlatGenerator.cc
-    src/world/LayeredGenerator.cc
-    src/world/SingleMaterialGenerator.cc
-    src/world/MinecraftNoiseGenerator.cc
 )
 
 # Utils library components

@@ -50,19 +50,19 @@ std::vector<recurse::TileShapeResult> buildChunkShapesImpl(int cx, int cy, int c
     int baseY = cy * recurse::K_CHUNK_SIZE;
     int baseZ = cz * recurse::K_CHUNK_SIZE;
 
-    for (int tz = 0; tz < recurse::physics::K_TILES_PER_AXIS; ++tz) {
-        for (int ty = 0; ty < recurse::physics::K_TILES_PER_AXIS; ++ty) {
-            for (int tx = 0; tx < recurse::physics::K_TILES_PER_AXIS; ++tx) {
-                int tileBaseX = baseX + tx * recurse::physics::K_PHYS_TILE_SIZE;
-                int tileBaseY = baseY + ty * recurse::physics::K_PHYS_TILE_SIZE;
-                int tileBaseZ = baseZ + tz * recurse::physics::K_PHYS_TILE_SIZE;
+    for (int tz = 0; tz < recurse::simulation::K_TILES_PER_AXIS; ++tz) {
+        for (int ty = 0; ty < recurse::simulation::K_TILES_PER_AXIS; ++ty) {
+            for (int tx = 0; tx < recurse::simulation::K_TILES_PER_AXIS; ++tx) {
+                int tileBaseX = baseX + tx * recurse::simulation::K_PHYS_TILE_SIZE;
+                int tileBaseY = baseY + ty * recurse::simulation::K_PHYS_TILE_SIZE;
+                int tileBaseZ = baseZ + tz * recurse::simulation::K_PHYS_TILE_SIZE;
 
                 JPH::StaticCompoundShapeSettings compound;
                 bool hasShape = false;
 
-                for (int lz = 0; lz < recurse::physics::K_PHYS_TILE_SIZE; ++lz) {
-                    for (int ly = 0; ly < recurse::physics::K_PHYS_TILE_SIZE; ++ly) {
-                        for (int lx = 0; lx < recurse::physics::K_PHYS_TILE_SIZE; ++lx) {
+                for (int lz = 0; lz < recurse::simulation::K_PHYS_TILE_SIZE; ++lz) {
+                    for (int ly = 0; ly < recurse::simulation::K_PHYS_TILE_SIZE; ++ly) {
+                        for (int lx = 0; lx < recurse::simulation::K_PHYS_TILE_SIZE; ++lx) {
                             int wx = tileBaseX + lx;
                             int wy = tileBaseY + ly;
                             int wz = tileBaseZ + lz;

@@ -6,7 +6,7 @@
 
 namespace recurse {
 
-using fabric::K_CHUNK_SIZE;
+using simulation::K_CHUNK_SIZE;
 
 // -- FlatWorldGenerator -------------------------------------------------------
 

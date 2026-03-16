@@ -9,7 +9,6 @@
 #include <random>
 
 using namespace recurse::simulation;
-using fabric::K_CHUNK_SIZE;
 
 class FallingSandGravityTest : public ::testing::Test {
   protected:

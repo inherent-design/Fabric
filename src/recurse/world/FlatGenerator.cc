@@ -1,60 +1,54 @@
-#include "fabric/world/FlatGenerator.hh"
-#include "fabric/world/ChunkedGrid.hh"
+#include "recurse/world/FlatGenerator.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
-namespace fabric::world {
+namespace recurse {
 
-using namespace recurse::simulation;
+using namespace simulation;
 
 FlatGenerator::FlatGenerator(int surfaceHeight) : surfaceHeight_(surfaceHeight) {}
 
-void FlatGenerator::generate(SimulationGrid& grid, ChunkCoord pos) {
-    int baseY = pos.y * K_CHUNK_SIZE;
+void FlatGenerator::generate(SimulationGrid& grid, int cx, int cy, int cz) {
+    int baseY = cy * K_CHUNK_SIZE;
     int topY = baseY + K_CHUNK_SIZE - 1;
 
-    // Entire chunk above surface -- leave as Air (default sentinel)
     if (baseY > surfaceHeight_) {
-        grid.fillChunk(pos.x, pos.y, pos.z, VoxelCell{});
+        grid.fillChunk(cx, cy, cz, VoxelCell{});
         return;
     }
 
-    // Entire chunk below surface -- all Stone
     if (topY < surfaceHeight_) {
         VoxelCell stone;
         stone.materialId = material_ids::STONE;
-        grid.fillChunk(pos.x, pos.y, pos.z, stone);
+        grid.fillChunk(cx, cy, cz, stone);
         return;
     }
 
-    // Mixed chunk: contains the surface layer
-    // Pre-fill with Stone (most cells below surface), then overwrite
     VoxelCell stone;
     stone.materialId = material_ids::STONE;
-    grid.fillChunk(pos.x, pos.y, pos.z, stone);
+    grid.fillChunk(cx, cy, cz, stone);
 
     for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
         for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
             int worldY = baseY + ly;
             if (worldY == surfaceHeight_) {
-                // Surface layer = Dirt
                 VoxelCell dirt;
                 dirt.materialId = material_ids::DIRT;
                 for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
-                    int wx = pos.x * K_CHUNK_SIZE + lx;
-                    int wz = pos.z * K_CHUNK_SIZE + lz;
+                    int wx = cx * K_CHUNK_SIZE + lx;
+                    int wz = cz * K_CHUNK_SIZE + lz;
                     grid.writeCell(wx, worldY, wz, dirt);
                 }
             } else if (worldY > surfaceHeight_) {
-                // Above surface = Air
                 VoxelCell air;
                 for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
-                    int wx = pos.x * K_CHUNK_SIZE + lx;
-                    int wz = pos.z * K_CHUNK_SIZE + lz;
+                    int wx = cx * K_CHUNK_SIZE + lx;
+                    int wz = cz * K_CHUNK_SIZE + lz;
                     grid.writeCell(wx, worldY, wz, air);
                 }
             }
-            // Below surface: Stone fill already set
         }
     }
 }
 
-} // namespace fabric::world
+} // namespace recurse

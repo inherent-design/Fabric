@@ -5,7 +5,6 @@
 #include <gtest/gtest.h>
 
 using namespace recurse::simulation;
-using fabric::K_CHUNK_VOLUME;
 
 class ChunkRegistryTest : public ::testing::Test {
   protected:

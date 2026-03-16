@@ -1,8 +1,9 @@
 #include "recurse/world/ChunkDensityCache.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 #include <gtest/gtest.h>
 
 using namespace recurse;
-using fabric::K_CHUNK_SIZE;
+using recurse::simulation::K_CHUNK_SIZE;
 
 class ChunkDensityCacheTest : public ::testing::Test {
   protected:

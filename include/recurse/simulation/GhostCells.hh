@@ -2,6 +2,7 @@
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <array>
 #include <unordered_map>

@@ -1,23 +1,22 @@
-#include "fabric/world/LayeredGenerator.hh"
-#include "fabric/world/ChunkedGrid.hh"
+#include "recurse/world/LayeredGenerator.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
-namespace fabric::world {
+namespace recurse {
 
-using namespace recurse::simulation;
+using namespace simulation;
 
 LayeredGenerator::LayeredGenerator(std::vector<LayerDef> layers) : layers_(std::move(layers)) {}
 
-void LayeredGenerator::generate(SimulationGrid& grid, ChunkCoord pos) {
-    int baseY = pos.y * K_CHUNK_SIZE;
+void LayeredGenerator::generate(SimulationGrid& grid, int cx, int cy, int cz) {
+    int baseY = cy * K_CHUNK_SIZE;
 
-    // Default fill is Air
-    grid.fillChunk(pos.x, pos.y, pos.z, VoxelCell{});
+    grid.fillChunk(cx, cy, cz, VoxelCell{});
 
     for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
         for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
             int worldY = baseY + ly;
 
-            // Find last matching layer for this worldY
             const LayerDef* match = nullptr;
             for (const auto& layer : layers_) {
                 if (worldY >= layer.minY && worldY <= layer.maxY)
@@ -26,8 +25,8 @@ void LayeredGenerator::generate(SimulationGrid& grid, ChunkCoord pos) {
 
             if (match) {
                 for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
-                    int wx = pos.x * K_CHUNK_SIZE + lx;
-                    int wz = pos.z * K_CHUNK_SIZE + lz;
+                    int wx = cx * K_CHUNK_SIZE + lx;
+                    int wz = cz * K_CHUNK_SIZE + lz;
                     grid.writeCell(wx, worldY, wz, match->cell);
                 }
             }
@@ -35,4 +34,4 @@ void LayeredGenerator::generate(SimulationGrid& grid, ChunkCoord pos) {
     }
 }
 
-} // namespace fabric::world
+} // namespace recurse

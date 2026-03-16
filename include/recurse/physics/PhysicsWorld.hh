@@ -16,6 +16,7 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
 #include <cstdint>
@@ -36,7 +37,10 @@ namespace recurse {
 
 // Engine types imported from fabric:: namespace
 using fabric::ChunkedGrid;
-using fabric::K_CHUNK_SIZE;
+using recurse::simulation::K_CHUNK_SIZE;
+using recurse::simulation::K_PHYS_TILE_SIZE;
+using recurse::simulation::K_TILES_PER_AXIS;
+using recurse::simulation::K_TILES_PER_CHUNK;
 
 class JoltCharacterController;
 struct JoltCharacterConfig;
@@ -50,11 +54,6 @@ inline constexpr int K_NUM_OBJECT_LAYERS = 2;
 inline constexpr JPH::BroadPhaseLayer K_BP_LAYER_NON_MOVING(0);
 inline constexpr JPH::BroadPhaseLayer K_BP_LAYER_MOVING(1);
 inline constexpr int K_NUM_BROAD_PHASE_LAYERS = 2;
-
-// 8^3 sub-chunk tiles for fast partial physics rebuild
-inline constexpr int K_PHYS_TILE_SIZE = 8;
-inline constexpr int K_TILES_PER_AXIS = K_CHUNK_SIZE / K_PHYS_TILE_SIZE;                         // 4
-inline constexpr int K_TILES_PER_CHUNK = K_TILES_PER_AXIS * K_TILES_PER_AXIS * K_TILES_PER_AXIS; // 64
 
 class BPLayerInterface final : public JPH::BroadPhaseLayerInterface {
   public:

@@ -3,7 +3,6 @@
 #include <gtest/gtest.h>
 
 using namespace recurse::simulation;
-using fabric::K_CHUNK_SIZE;
 
 class ParallelSimulationTest : public ::testing::Test {
   protected:

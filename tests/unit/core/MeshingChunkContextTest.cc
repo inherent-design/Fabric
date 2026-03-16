@@ -5,8 +5,8 @@
 
 #include <gtest/gtest.h>
 
-using fabric::K_CHUNK_SIZE;
-using fabric::K_CHUNK_VOLUME;
+using recurse::simulation::K_CHUNK_SIZE;
+using recurse::simulation::K_CHUNK_VOLUME;
 using recurse::simulation::SimulationGrid;
 using recurse::simulation::VoxelCell;
 using recurse::systems::MeshingChunkContext;

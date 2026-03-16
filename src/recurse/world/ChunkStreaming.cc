@@ -1,9 +1,10 @@
 #include "recurse/world/ChunkStreaming.hh"
 #include "fabric/utils/Profiler.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 
 #include <climits>
 
-using fabric::K_CHUNK_SIZE;
+using recurse::simulation::K_CHUNK_SIZE;
 
 namespace recurse {
 

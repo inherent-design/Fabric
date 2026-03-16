@@ -1,11 +1,12 @@
 #include "recurse/world/SurfaceNetsMesher.hh"
 
+#include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/world/SnapMCTables.hh"
 
 #include <cmath>
 #include <unordered_map>
 
-using fabric::K_CHUNK_SIZE;
+using recurse::simulation::K_CHUNK_SIZE;
 
 namespace recurse {
 
