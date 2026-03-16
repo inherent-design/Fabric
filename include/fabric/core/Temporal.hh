@@ -113,3 +113,41 @@ class Timeline {
 };
 
 } // namespace fabric
+
+// --- Temporal ops-as-values (Wave 5a4) ---
+
+#include "fabric/fx/Error.hh"
+#include "fabric/fx/Never.hh"
+#include "fabric/fx/OneOf.hh"
+
+namespace fabric::temporal::ops {
+
+/// Dilate time within a spherical region.
+struct DilateTime {
+    float centerX, centerY, centerZ;
+    float radius;
+    float targetScale;
+    float duration;
+
+    static constexpr bool K_IS_SYNC = false;
+    using Returns = void;
+    using Errors = fx::TypeList<fx::Never>;
+};
+
+/// Create a timeline snapshot, returning its index.
+struct CreateSnapshot {
+    static constexpr bool K_IS_SYNC = false;
+    using Returns = int;
+    using Errors = fx::TypeList<fx::Never>;
+};
+
+/// Restore a previously created snapshot by index.
+struct RestoreSnapshot {
+    int index;
+
+    static constexpr bool K_IS_SYNC = false;
+    using Returns = void;
+    using Errors = fx::TypeList<fx::StateError>;
+};
+
+} // namespace fabric::temporal::ops

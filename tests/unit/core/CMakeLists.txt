@@ -96,4 +96,5 @@ target_sources(UnitTests
   CollisionRadiusTest.cc
   StreamingMultiPositionTest.cc
   FocalPointCollectionTest.cc
+  WorldLifecycleTest.cc
 )
