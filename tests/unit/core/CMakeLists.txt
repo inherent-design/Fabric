@@ -97,4 +97,5 @@ target_sources(UnitTests
   StreamingMultiPositionTest.cc
   FocalPointCollectionTest.cc
   WorldLifecycleTest.cc
+  WorldContextBenchmark.cc
 )

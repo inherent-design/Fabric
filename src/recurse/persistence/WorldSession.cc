@@ -65,6 +65,7 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
     : store_(std::move(store)),
       dispatcher_(dispatcher),
       scheduler_(scheduler),
+      ecsWorld_(ecsWorld),
       simSystem_(simSystem),
       meshingSystem_(meshingSystem),
       lodSystem_(lodSystem),
@@ -491,6 +492,54 @@ ChunkSaveService* WorldSession::saveService() const {
 
 WorldTransactionStore* WorldSession::transactionStore() const {
     return txStore_.get();
+}
+
+// ---------------------------------------------------------------------------
+// Async mutation submit (Phase III: ops-as-values)
+// ---------------------------------------------------------------------------
+
+void WorldSession::submit(ops::LoadChunk op) {
+    dispatchAsyncLoad(op.cx, op.cy, op.cz);
+}
+
+void WorldSession::submit(ops::SaveChunk op) {
+    if (saveService_)
+        saveService_->markDirty(op.cx, op.cy, op.cz);
+}
+
+void WorldSession::submit(ops::RemoveChunk op) {
+    fabric::ChunkCoord coord{op.cx, op.cy, op.cz};
+    auto it = chunkEntities_.find(coord);
+    if (it != chunkEntities_.end()) {
+        it->second.destruct();
+        chunkEntities_.erase(it);
+    }
+    lodChunks_.erase(coord);
+    if (simSystem_)
+        simSystem_->removeChunk(op.cx, op.cy, op.cz);
+}
+
+bool WorldSession::submit(ops::CancelPendingLoad op) {
+    return cancelPendingLoad(op.cx, op.cy, op.cz);
+}
+
+void WorldSession::submit(ops::GenerateChunks op) {
+    if (simSystem_)
+        simSystem_->generateChunksBatch(op.coords);
+}
+
+void WorldSession::submit(ops::Tick op) {
+    flushPendingChanges();
+    updateSaveService(op.dt);
+    updateSnapshotScheduler(op.dt);
+    updatePruningScheduler(op.dt);
+}
+
+void WorldSession::submit(ops::UpdateLODRing op) {
+    int cx = static_cast<int>(std::floor(op.px / fabric::K_CHUNK_SIZE));
+    int cy = static_cast<int>(std::floor(op.py / fabric::K_CHUNK_SIZE));
+    int cz = static_cast<int>(std::floor(op.pz / fabric::K_CHUNK_SIZE));
+    updateLODRing(cx, cy, cz, op.chunkRadius, op.lodRadius, op.genBudget);
 }
 
 } // namespace recurse

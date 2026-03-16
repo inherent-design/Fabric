@@ -5,7 +5,11 @@
 #include "fabric/platform/WriterQueue.hh"
 #include "fabric/world/ChunkCoord.hh"
 #include "recurse/persistence/ChunkStore.hh"
+#include "recurse/persistence/SqliteChunkStore.hh"
 #include "recurse/persistence/WorldTransactionStore.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/systems/VoxelSimulationSystem.hh"
+#include "recurse/world/ChunkOps.hh"
 #include <climits>
 #include <future>
 #include <memory>
@@ -113,6 +117,61 @@ class WorldSession {
         return streamSourceQuery_;
     }
 
+    // --- Sync read resolve (Phase III: ops-as-values) ---
+
+    [[gnu::always_inline]] bool resolve(const ops::HasChunk& op) {
+        return simSystem_->simulationGrid().hasChunk(op.cx, op.cy, op.cz);
+    }
+
+    [[gnu::always_inline]] const simulation::ChunkSlot* resolve(const ops::FindSlot& op) {
+        return simSystem_->simulationGrid().registry().find(op.cx, op.cy, op.cz);
+    }
+
+    [[gnu::always_inline]] bool resolve(const ops::IsInSavedRegion& op) {
+        return store_->isInSavedRegion(op.cx, op.cy, op.cz);
+    }
+
+    [[gnu::always_inline]] bool resolve(const ops::HasPendingLoad& op) { return hasPendingLoad(op.cx, op.cy, op.cz); }
+
+    [[gnu::always_inline]] bool resolve(const ops::QueryChunkEntities& op) { return chunkEntities_.contains(op.coord); }
+
+    [[gnu::always_inline]] const simulation::VoxelCell* resolve(const ops::ReadBuffer& op) {
+        auto* arr = simSystem_->simulationGrid().readBuffer(op.cx, op.cy, op.cz);
+        return arr ? arr->data() : nullptr;
+    }
+
+    [[gnu::always_inline]] simulation::VoxelCell* resolve(const ops::WriteBuffer& op) {
+        auto* arr = simSystem_->simulationGrid().writeBuffer(op.cx, op.cy, op.cz);
+        return arr ? arr->data() : nullptr;
+    }
+
+    [[gnu::always_inline]] int resolve(const ops::ChunkCount&) {
+        return static_cast<int>(simSystem_->simulationGrid().registry().chunkCount());
+    }
+
+    [[gnu::always_inline]] int resolve(const ops::ActiveChunkCount&) {
+        return static_cast<int>(simSystem_->activeChunkCount());
+    }
+
+    [[gnu::always_inline]] int resolve(const ops::PollPendingLoads& op) {
+        auto before = pendingLoads_.size();
+        setMaxLoadCompletions(op.maxCompletions);
+        pollPendingLoads(ecsWorld_);
+        return static_cast<int>(before - pendingLoads_.size());
+    }
+
+    [[gnu::always_inline]] int resolve(const ops::QueryLODChunks&) { return static_cast<int>(lodChunks_.size()); }
+
+    // --- Async mutation submit (Phase III: ops-as-values) ---
+
+    void submit(ops::LoadChunk op);
+    void submit(ops::SaveChunk op);
+    void submit(ops::RemoveChunk op);
+    bool submit(ops::CancelPendingLoad op);
+    void submit(ops::GenerateChunks op);
+    void submit(ops::Tick op);
+    void submit(ops::UpdateLODRing op);
+
   private:
     WorldSession(const std::string& worldDir, fabric::EventDispatcher& dispatcher, fabric::JobScheduler& scheduler,
                  flecs::world& ecsWorld, std::unique_ptr<SqliteChunkStore> store,
@@ -144,6 +203,7 @@ class WorldSession {
     // Non-owning references (outlive session)
     fabric::EventDispatcher& dispatcher_;
     fabric::JobScheduler& scheduler_;
+    flecs::world& ecsWorld_;
     std::string listenerHandlerId_;
 
     systems::VoxelSimulationSystem* simSystem_ = nullptr;

@@ -23,14 +23,14 @@ template <typename Session> class WorldContext {
     /// For infallible ops (Errors = Never), the result collapses to just Returns.
     template <SyncReadOp Op>
         requires Resolves<Session, Op>
-    [[gnu::always_inline]] auto resolve(const Op& op) -> decltype(session_.resolve(op)) {
+    [[gnu::always_inline]] auto resolve(const Op& op) {
         return session_.resolve(op);
     }
 
     /// Submit an asynchronous mutation operation.
     template <AsyncMutationOp Op>
         requires Accepts<Session, Op>
-    auto submit(Op op) -> decltype(session_.submit(std::move(op))) {
+    auto submit(Op op) {
         return session_.submit(std::move(op));
     }
 
