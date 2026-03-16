@@ -128,10 +128,8 @@ WorldSession::~WorldSession() {
     // Step 0: Unsubscribe event listener to prevent callbacks during teardown
     dispatcher_.removeEventListener(K_VOXEL_CHANGED_EVENT, listenerHandlerId_);
 
-    // Step 1: Cancel and drain all pending async load futures
-    for (auto& pl : pendingLoads_)
-        pl.result.wait();
-    pendingLoads_.clear();
+    // Step 1: Cancel pending async loads (ScopedTaskGroup destructor drains futures)
+    pendingLoads_.cancelAll();
 
     // Step 2: Flush snapshot scheduler
     if (snapshotScheduler_)
@@ -246,93 +244,74 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
         return r;
     });
 
-    pendingLoads_.push_back({std::move(future), cx, cy, cz, bufIdx, false});
+    PendingLoadMeta meta{bufIdx, generating};
+    fabric::ChunkCoord coord{cx, cy, cz};
+    if (!pendingLoads_.submit(coord, std::move(future), meta)) {
+        simulation::cancelAndRemove(generating, registry);
+        simSystem_->activityTracker().remove(coord);
+        return false;
+    }
     return true;
 }
 
 std::vector<ops::CompletedLoad> WorldSession::pollPendingLoads() {
     std::vector<ops::CompletedLoad> completions;
-    int completed = 0;
+    auto entries = pendingLoads_.poll(maxLoadCompletions_);
 
-    auto it = pendingLoads_.begin();
-    while (it != pendingLoads_.end()) {
-        if (it->result.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-            ++it;
-            continue;
-        }
+    for (auto& entry : entries) {
+        int cx = entry.key.x;
+        int cy = entry.key.y;
+        int cz = entry.key.z;
+        auto& meta = entry.metadata;
 
-        auto loadResult = it->result.get();
-        int cx = it->cx;
-        int cy = it->cy;
-        int cz = it->cz;
-
-        if (it->cancelled) {
+        if (entry.cancelled) {
             if (simSystem_) {
                 auto& registry = simSystem_->simulationGrid().registry();
-                if (auto gen = simulation::findAs<simulation::Generating>(registry, cx, cy, cz))
-                    simulation::cancelAndRemove(*gen, registry);
-                simSystem_->activityTracker().remove(fabric::ChunkCoord{cx, cy, cz});
+                simulation::cancelAndRemove(meta.generating, registry);
+                simSystem_->activityTracker().remove(entry.key);
             }
-            it = pendingLoads_.erase(it);
             continue;
         }
 
-        if (loadResult.success) {
+        if (entry.result.success) {
             auto& grid = simSystem_->simulationGrid();
             auto& registry = grid.registry();
-            grid.syncChunkBuffersFrom(cx, cy, cz, it->bufferIndex);
-            if (auto gen = simulation::findAs<simulation::Generating>(registry, cx, cy, cz))
-                simulation::transition<simulation::Generating, simulation::Active>(*gen, registry);
-            simSystem_->activityTracker().setState(fabric::ChunkCoord{cx, cy, cz},
-                                                   recurse::simulation::ChunkState::Active);
+            grid.syncChunkBuffersFrom(cx, cy, cz, meta.bufferIndex);
+            simulation::transition<simulation::Generating, simulation::Active>(meta.generating, registry);
+            simSystem_->activityTracker().setState(entry.key, recurse::simulation::ChunkState::Active);
 
-            if (loadResult.paletteEntryCount > 0) {
+            if (entry.result.paletteEntryCount > 0) {
                 auto* palette = grid.chunkPalette(cx, cy, cz);
                 if (palette) {
                     palette->clear();
-                    for (uint16_t i = 0; i < loadResult.paletteEntryCount; ++i) {
+                    for (uint16_t i = 0; i < entry.result.paletteEntryCount; ++i) {
                         size_t base = static_cast<size_t>(i) * 4;
-                        palette->addEntry({loadResult.paletteData[base], loadResult.paletteData[base + 1],
-                                           loadResult.paletteData[base + 2], loadResult.paletteData[base + 3]});
+                        palette->addEntry({entry.result.paletteData[base], entry.result.paletteData[base + 1],
+                                           entry.result.paletteData[base + 2], entry.result.paletteData[base + 3]});
                     }
                 }
             }
 
-            completions.push_back({cx, cy, cz, it->bufferIndex, true});
+            completions.push_back({cx, cy, cz, meta.bufferIndex, true});
         } else {
             if (simSystem_) {
                 auto& registry = simSystem_->simulationGrid().registry();
-                if (auto gen = simulation::findAs<simulation::Generating>(registry, cx, cy, cz))
-                    simulation::cancelAndRemove(*gen, registry);
-                simSystem_->activityTracker().remove(fabric::ChunkCoord{cx, cy, cz});
+                simulation::cancelAndRemove(meta.generating, registry);
+                simSystem_->activityTracker().remove(entry.key);
             }
-            completions.push_back({cx, cy, cz, it->bufferIndex, false});
+            completions.push_back({cx, cy, cz, meta.bufferIndex, false});
         }
-
-        it = pendingLoads_.erase(it);
-        if (++completed >= maxLoadCompletions_)
-            break;
     }
 
     return completions;
 }
 
 bool WorldSession::cancelPendingLoad(int cx, int cy, int cz) {
-    for (auto& pl : pendingLoads_) {
-        if (pl.cx == cx && pl.cy == cy && pl.cz == cz) {
-            pl.cancelled = true;
-            return true;
-        }
-    }
-    return false;
+    return pendingLoads_.cancel(fabric::ChunkCoord{cx, cy, cz});
 }
 
 bool WorldSession::hasPendingLoad(int cx, int cy, int cz) const {
-    for (const auto& pl : pendingLoads_) {
-        if (pl.cx == cx && pl.cy == cy && pl.cz == cz)
-            return true;
-    }
-    return false;
+    return pendingLoads_.has(fabric::ChunkCoord{cx, cy, cz});
 }
 
 // ---------------------------------------------------------------------------

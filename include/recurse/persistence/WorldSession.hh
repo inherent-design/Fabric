@@ -3,11 +3,13 @@
 #include "fabric/core/CompilerHints.hh"
 #include "fabric/fx/Error.hh"
 #include "fabric/fx/Result.hh"
+#include "fabric/platform/ScopedTaskGroup.hh"
 #include "fabric/platform/WriterQueue.hh"
 #include "fabric/world/ChunkCoord.hh"
 #include "recurse/persistence/ChunkStore.hh"
 #include "recurse/persistence/SqliteChunkStore.hh"
 #include "recurse/persistence/WorldTransactionStore.hh"
+#include "recurse/simulation/ChunkState.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/ChunkOps.hh"
@@ -70,11 +72,9 @@ class WorldSession {
         uint16_t paletteEntryCount = 0;
     };
 
-    struct PendingChunkLoad {
-        std::future<AsyncLoadResult> result;
-        int cx, cy, cz;
+    struct PendingLoadMeta {
         int bufferIndex = 0;
-        bool cancelled = false;
+        simulation::ChunkRef<simulation::Generating> generating;
     };
 
     // --- Methods migrated from ChunkPipelineSystem ---
@@ -189,7 +189,8 @@ class WorldSession {
 
     // Per-world state
     std::unordered_map<fabric::ChunkCoord, flecs::entity, fabric::ChunkCoordHash> chunkEntities_;
-    std::vector<PendingChunkLoad> pendingLoads_;
+    fabric::platform::ScopedTaskGroup<fabric::ChunkCoord, AsyncLoadResult, fabric::ChunkCoordHash, PendingLoadMeta>
+        pendingLoads_;
     std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> lodChunks_;
     int lastLodCX_ = INT_MIN;
     int lastLodCY_ = INT_MIN;
