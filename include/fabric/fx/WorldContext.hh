@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/core/CompilerHints.hh"
 #include "fabric/fx/WorldOps.hh"
 
 namespace fabric::fx {
@@ -23,7 +24,7 @@ template <typename Session> class WorldContext {
     /// For infallible ops (Errors = Never), the result collapses to just Returns.
     template <SyncReadOp Op>
         requires Resolves<Session, Op>
-    [[gnu::always_inline]] auto resolve(const Op& op) {
+    FABRIC_ALWAYS_INLINE auto resolve(const Op& op) {
         return session_.resolve(op);
     }
 

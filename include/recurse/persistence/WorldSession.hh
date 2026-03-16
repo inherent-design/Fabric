@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/core/CompilerHints.hh"
 #include "fabric/fx/Error.hh"
 #include "fabric/fx/Result.hh"
 #include "fabric/platform/WriterQueue.hh"
@@ -119,48 +120,48 @@ class WorldSession {
 
     // --- Sync read resolve (Phase III: ops-as-values) ---
 
-    [[gnu::always_inline]] bool resolve(const ops::HasChunk& op) {
+    FABRIC_ALWAYS_INLINE bool resolve(const ops::HasChunk& op) {
         return simSystem_->simulationGrid().hasChunk(op.cx, op.cy, op.cz);
     }
 
-    [[gnu::always_inline]] const simulation::ChunkSlot* resolve(const ops::FindSlot& op) {
+    FABRIC_ALWAYS_INLINE const simulation::ChunkSlot* resolve(const ops::FindSlot& op) {
         return simSystem_->simulationGrid().registry().find(op.cx, op.cy, op.cz);
     }
 
-    [[gnu::always_inline]] bool resolve(const ops::IsInSavedRegion& op) {
+    FABRIC_ALWAYS_INLINE bool resolve(const ops::IsInSavedRegion& op) {
         return store_->isInSavedRegion(op.cx, op.cy, op.cz);
     }
 
-    [[gnu::always_inline]] bool resolve(const ops::HasPendingLoad& op) { return hasPendingLoad(op.cx, op.cy, op.cz); }
+    FABRIC_ALWAYS_INLINE bool resolve(const ops::HasPendingLoad& op) { return hasPendingLoad(op.cx, op.cy, op.cz); }
 
-    [[gnu::always_inline]] bool resolve(const ops::QueryChunkEntities& op) { return chunkEntities_.contains(op.coord); }
+    FABRIC_ALWAYS_INLINE bool resolve(const ops::QueryChunkEntities& op) { return chunkEntities_.contains(op.coord); }
 
-    [[gnu::always_inline]] const simulation::VoxelCell* resolve(const ops::ReadBuffer& op) {
+    FABRIC_ALWAYS_INLINE const simulation::VoxelCell* resolve(const ops::ReadBuffer& op) {
         auto* arr = simSystem_->simulationGrid().readBuffer(op.cx, op.cy, op.cz);
         return arr ? arr->data() : nullptr;
     }
 
-    [[gnu::always_inline]] simulation::VoxelCell* resolve(const ops::WriteBuffer& op) {
+    FABRIC_ALWAYS_INLINE simulation::VoxelCell* resolve(const ops::WriteBuffer& op) {
         auto* arr = simSystem_->simulationGrid().writeBuffer(op.cx, op.cy, op.cz);
         return arr ? arr->data() : nullptr;
     }
 
-    [[gnu::always_inline]] int resolve(const ops::ChunkCount&) {
+    FABRIC_ALWAYS_INLINE int resolve(const ops::ChunkCount&) {
         return static_cast<int>(simSystem_->simulationGrid().registry().chunkCount());
     }
 
-    [[gnu::always_inline]] int resolve(const ops::ActiveChunkCount&) {
+    FABRIC_ALWAYS_INLINE int resolve(const ops::ActiveChunkCount&) {
         return static_cast<int>(simSystem_->activeChunkCount());
     }
 
-    [[gnu::always_inline]] int resolve(const ops::PollPendingLoads& op) {
+    FABRIC_ALWAYS_INLINE int resolve(const ops::PollPendingLoads& op) {
         auto before = pendingLoads_.size();
         setMaxLoadCompletions(op.maxCompletions);
         pollPendingLoads(ecsWorld_);
         return static_cast<int>(before - pendingLoads_.size());
     }
 
-    [[gnu::always_inline]] int resolve(const ops::QueryLODChunks&) { return static_cast<int>(lodChunks_.size()); }
+    FABRIC_ALWAYS_INLINE int resolve(const ops::QueryLODChunks&) { return static_cast<int>(lodChunks_.size()); }
 
     // --- Async mutation submit (Phase III: ops-as-values) ---
 

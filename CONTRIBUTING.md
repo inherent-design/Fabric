@@ -246,6 +246,16 @@ Dependency is one-way: `recurse` depends on `fabric`, never reverse.
 
 Prefer `constexpr` over macros.
 
+### Compiler Hints
+
+`fabric/core/CompilerHints.hh` provides cross-platform compiler attribute macros:
+
+| Macro | GCC/Clang | MSVC | Purpose |
+|-------|-----------|------|---------|
+| `FABRIC_ALWAYS_INLINE` | `[[gnu::always_inline]] inline` | `__forceinline` | Force inlining for zero-overhead wrappers |
+
+Use `FABRIC_ALWAYS_INLINE` instead of raw `[[gnu::always_inline]]` or `__forceinline`.
+
 ### Error Handling
 
 - `throwError()` from `fabric/utils/ErrorHandling.hh` for error conditions; not raw `throw`
