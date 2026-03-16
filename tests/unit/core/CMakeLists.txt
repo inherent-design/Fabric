@@ -98,4 +98,5 @@ target_sources(UnitTests
   FocalPointCollectionTest.cc
   WorldLifecycleTest.cc
   WorldContextBenchmark.cc
+  MeshingChunkContextTest.cc
 )

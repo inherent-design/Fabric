@@ -9,6 +9,7 @@
 #include "recurse/persistence/SqliteChunkStore.hh"
 #include "recurse/persistence/SqliteTransactionStore.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/ChunkState.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/systems/LODSystem.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
@@ -216,13 +217,15 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
         return false;
 
     auto& grid = simSystem_->simulationGrid();
-    grid.registry().addChunk(cx, cy, cz);
-    grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Generating);
+    auto& registry = grid.registry();
+    auto absent = simulation::addChunkRef(registry, cx, cy, cz);
+    auto generating = simulation::transition<simulation::Absent, simulation::Generating>(absent, registry);
 
     int bufIdx = grid.currentWriteIndex();
     auto* buf = grid.writeBuffer(cx, cy, cz);
     if (!buf) {
-        simSystem_->removeChunk(cx, cy, cz);
+        simulation::cancelAndRemove(generating, registry);
+        simSystem_->activityTracker().remove(fabric::ChunkCoord{cx, cy, cz});
         return false;
     }
 
@@ -247,7 +250,8 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
     return true;
 }
 
-void WorldSession::pollPendingLoads(flecs::world& ecsWorld) {
+std::vector<ops::CompletedLoad> WorldSession::pollPendingLoads() {
+    std::vector<ops::CompletedLoad> completions;
     int completed = 0;
 
     auto it = pendingLoads_.begin();
@@ -263,16 +267,22 @@ void WorldSession::pollPendingLoads(flecs::world& ecsWorld) {
         int cz = it->cz;
 
         if (it->cancelled) {
-            if (simSystem_)
-                simSystem_->removeChunk(cx, cy, cz);
+            if (simSystem_) {
+                auto& registry = simSystem_->simulationGrid().registry();
+                if (auto gen = simulation::findAs<simulation::Generating>(registry, cx, cy, cz))
+                    simulation::cancelAndRemove(*gen, registry);
+                simSystem_->activityTracker().remove(fabric::ChunkCoord{cx, cy, cz});
+            }
             it = pendingLoads_.erase(it);
             continue;
         }
 
         if (loadResult.success) {
             auto& grid = simSystem_->simulationGrid();
+            auto& registry = grid.registry();
             grid.syncChunkBuffersFrom(cx, cy, cz, it->bufferIndex);
-            grid.registry().transitionState(cx, cy, cz, recurse::simulation::ChunkSlotState::Active);
+            if (auto gen = simulation::findAs<simulation::Generating>(registry, cx, cy, cz))
+                simulation::transition<simulation::Generating, simulation::Active>(*gen, registry);
             simSystem_->activityTracker().setState(fabric::ChunkCoord{cx, cy, cz},
                                                    recurse::simulation::ChunkState::Active);
 
@@ -288,27 +298,23 @@ void WorldSession::pollPendingLoads(flecs::world& ecsWorld) {
                 }
             }
 
-            if (lodSystem_)
-                lodSystem_->onChunkReady(cx, cy, cz);
-
-            if (physicsSystem_)
-                physicsSystem_->insertDirtyChunk(cx, cy, cz);
-
-            fabric::ChunkCoord coord{cx, cy, cz};
-            auto ent = ecsWorld.entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
-                {static_cast<float>(cx * K_CHUNK_SIZE), static_cast<float>(cy * K_CHUNK_SIZE),
-                 static_cast<float>(cz * K_CHUNK_SIZE), static_cast<float>((cx + 1) * K_CHUNK_SIZE),
-                 static_cast<float>((cy + 1) * K_CHUNK_SIZE), static_cast<float>((cz + 1) * K_CHUNK_SIZE)});
-            chunkEntities_[coord] = ent;
+            completions.push_back({cx, cy, cz, it->bufferIndex, true});
         } else {
-            if (simSystem_)
-                simSystem_->removeChunk(cx, cy, cz);
+            if (simSystem_) {
+                auto& registry = simSystem_->simulationGrid().registry();
+                if (auto gen = simulation::findAs<simulation::Generating>(registry, cx, cy, cz))
+                    simulation::cancelAndRemove(*gen, registry);
+                simSystem_->activityTracker().remove(fabric::ChunkCoord{cx, cy, cz});
+            }
+            completions.push_back({cx, cy, cz, it->bufferIndex, false});
         }
 
         it = pendingLoads_.erase(it);
         if (++completed >= maxLoadCompletions_)
             break;
     }
+
+    return completions;
 }
 
 bool WorldSession::cancelPendingLoad(int cx, int cy, int cz) {

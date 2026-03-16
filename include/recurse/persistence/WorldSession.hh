@@ -81,7 +81,7 @@ class WorldSession {
 
     ChunkBlob encodeChunkBlob(int cx, int cy, int cz);
     bool dispatchAsyncLoad(int cx, int cy, int cz);
-    void pollPendingLoads(flecs::world& ecsWorld);
+    std::vector<ops::CompletedLoad> pollPendingLoads();
     bool cancelPendingLoad(int cx, int cy, int cz);
     bool hasPendingLoad(int cx, int cy, int cz) const;
     void updateLODRing(int playerCx, int playerCy, int playerCz, int streamingRadius, int lodRadius, int lodGenBudget);
@@ -154,11 +154,9 @@ class WorldSession {
         return static_cast<int>(simSystem_->activeChunkCount());
     }
 
-    FABRIC_ALWAYS_INLINE int resolve(const ops::PollPendingLoads& op) {
-        auto before = pendingLoads_.size();
+    FABRIC_ALWAYS_INLINE std::vector<ops::CompletedLoad> resolve(const ops::PollPendingLoads& op) {
         setMaxLoadCompletions(op.maxCompletions);
-        pollPendingLoads(ecsWorld_);
-        return static_cast<int>(before - pendingLoads_.size());
+        return pollPendingLoads();
     }
 
     FABRIC_ALWAYS_INLINE int resolve(const ops::QueryLODChunks&) { return static_cast<int>(lodChunks_.size()); }

@@ -6,4 +6,5 @@ target_sources(UnitTests
   ChunkSaveServiceTest.cc
   EditTriggeredSaveTest.cc
   WorldSessionIntegrationTest.cc
+  PollPendingLoadsTest.cc
 )

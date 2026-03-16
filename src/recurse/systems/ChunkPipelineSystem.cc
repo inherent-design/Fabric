@@ -4,6 +4,7 @@
 #include "recurse/persistence/ChunkSaveService.hh"
 #include "recurse/persistence/SqliteChunkStore.hh"
 #include "recurse/persistence/WorldSession.hh"
+#include "recurse/simulation/ChunkState.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/systems/CharacterMovementSystem.hh"
 #include "recurse/systems/LODSystem.hh"
@@ -101,7 +102,24 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     if (!session_)
         return;
 
-    session_->pollPendingLoads(ecsWorld.get());
+    auto loadCompletions = session_->pollPendingLoads();
+    for (const auto& cl : loadCompletions) {
+        if (!cl.success)
+            continue;
+
+        if (lodSystem_)
+            lodSystem_->onChunkReady(cl.cx, cl.cy, cl.cz);
+
+        if (physics_)
+            physics_->insertDirtyChunk(cl.cx, cl.cy, cl.cz);
+
+        fabric::ChunkCoord coord{cl.cx, cl.cy, cl.cz};
+        auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
+            {static_cast<float>(cl.cx * K_CHUNK_SIZE), static_cast<float>(cl.cy * K_CHUNK_SIZE),
+             static_cast<float>(cl.cz * K_CHUNK_SIZE), static_cast<float>((cl.cx + 1) * K_CHUNK_SIZE),
+             static_cast<float>((cl.cy + 1) * K_CHUNK_SIZE), static_cast<float>((cl.cz + 1) * K_CHUNK_SIZE)});
+        session_->chunkEntities()[coord] = ent;
+    }
 
     // Collect focal points from StreamSource entities
     std::vector<FocalPoint> streamingFocals;
@@ -143,8 +161,8 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
             continue;
 
         if (simSystem_ && simSystem_->simulationGrid().hasChunk(coord.x, coord.y, coord.z)) {
-            auto* slot = simSystem_->simulationGrid().registry().find(coord.x, coord.y, coord.z);
-            if (slot && slot->state == recurse::simulation::ChunkSlotState::Active)
+            if (recurse::simulation::findAs<recurse::simulation::Active>(simSystem_->simulationGrid().registry(),
+                                                                         coord.x, coord.y, coord.z))
                 readyChunks.push_back(coord);
             continue;
         }

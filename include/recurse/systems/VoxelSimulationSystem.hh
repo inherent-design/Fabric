@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/core/SystemBase.hh"
+#include "recurse/simulation/ChunkState.hh"
 #include <cstddef>
 #include <memory>
 #include <tuple>
@@ -61,8 +62,14 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     /// Called before starting a new world.
     void resetWorld();
 
-    /// Remove a chunk from the simulation grid.
-    /// Called by ChunkPipelineSystem during streaming unload.
+    /// Remove an active chunk (Active -> Draining -> erase).
+    void removeActiveChunk(recurse::simulation::ChunkRef<recurse::simulation::Active> ref);
+
+    /// Cancel and remove a generating chunk (direct erase, no Draining).
+    void cancelChunk(recurse::simulation::ChunkRef<recurse::simulation::Generating> ref);
+
+    /// Remove a chunk by coordinate (runtime dispatch to typed variant).
+    /// Prefer removeActiveChunk/cancelChunk when the state is known.
     void removeChunk(int cx, int cy, int cz);
 
     /// Access the underlying JobScheduler (owned by the inner simulation system).

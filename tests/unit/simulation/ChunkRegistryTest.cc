@@ -1,4 +1,5 @@
 #include "recurse/simulation/ChunkRegistry.hh"
+#include "recurse/simulation/ChunkState.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <gtest/gtest.h>
@@ -259,29 +260,30 @@ TEST_F(ChunkRegistryTest, ResolveBufferPointersNullForUnmaterialized) {
     EXPECT_EQ(slot->writePtr, nullptr);
 }
 
-// 22. Valid lifecycle transitions succeed without assertion
+// 22. Valid lifecycle transitions succeed via typed transition()
 TEST_F(ChunkRegistryTest, ValidTransitionsSucceed) {
-    registry.addChunk(0, 0, 0); // default state: Absent
+    auto absent = addChunkRef(registry, 0, 0, 0);
     EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Absent);
 
-    registry.transitionState(0, 0, 0, ChunkSlotState::Generating);
+    auto generating = transition<Absent, Generating>(absent, registry);
     EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Generating);
 
-    registry.transitionState(0, 0, 0, ChunkSlotState::Active);
+    auto active = transition<Generating, Active>(generating, registry);
     EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Active);
 
-    registry.transitionState(0, 0, 0, ChunkSlotState::Draining);
+    auto draining = transition<Active, Draining>(active, registry);
     EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Draining);
+    (void)draining;
 }
 
-// 23. Invalid transition asserts in debug builds
-TEST_F(ChunkRegistryTest, InvalidTransitionAssertsInDebug) {
-#ifdef NDEBUG
-    GTEST_SKIP() << "Debug assertions disabled in release builds";
-#else
-    registry.addChunk(0, 0, 0); // default state: Absent
-    EXPECT_DEATH(registry.transitionState(0, 0, 0, ChunkSlotState::Active), "invalid state transition");
-#endif
+// 23. Invalid transitions are compile errors (verified by static_assert in ChunkState.hh).
+// No runtime test needed; the following would not compile:
+// transition<Absent, Active>(absent, registry);
+TEST_F(ChunkRegistryTest, InvalidTransitionsPreventedAtCompileTime) {
+    static_assert(!ValidTransition<Absent, Active>);
+    static_assert(!ValidTransition<Generating, Draining>);
+    static_assert(!ValidTransition<Active, Generating>);
+    static_assert(!ValidTransition<Draining, Active>);
 }
 
 // 24. syncChunkBuffers copies a single chunk without touching others
@@ -313,14 +315,15 @@ TEST_F(ChunkRegistryTest, SyncChunkBuffersNoOpForUnmaterialized) {
     EXPECT_NO_THROW(grid.syncChunkBuffers(0, 0, 0));
 }
 
-// 26. Lifecycle state transitions through Generating -> Active
+// 26. Lifecycle state transitions through Generating -> Active via typed handles
 TEST_F(ChunkRegistryTest, GenerateChunkSetsLifecycleStates) {
-    registry.addChunk(0, 0, 0);
+    auto absent = addChunkRef(registry, 0, 0, 0);
     EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Absent);
 
-    registry.transitionState(0, 0, 0, ChunkSlotState::Generating);
+    auto generating = transition<Absent, Generating>(absent, registry);
     EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Generating);
 
-    registry.transitionState(0, 0, 0, ChunkSlotState::Active);
+    auto active = transition<Generating, Active>(generating, registry);
     EXPECT_EQ(registry.find(0, 0, 0)->state, ChunkSlotState::Active);
+    (void)active;
 }

@@ -13,6 +13,7 @@
 #include "fabric/utils/Profiler.hh"
 #include "recurse/character/VoxelInteraction.hh"
 #include "recurse/simulation/ChunkRegistry.hh"
+#include "recurse/simulation/ChunkState.hh"
 
 #include <algorithm>
 #include <cmath>
@@ -77,8 +78,7 @@ void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) 
 
         auto& registry = voxelSim_->simulationGrid().registry();
         std::erase_if(candidates, [&registry](const recurse::ChunkCoord& k) {
-            auto* slot = registry.find(k.x, k.y, k.z);
-            return !slot || slot->state != recurse::simulation::ChunkSlotState::Active;
+            return !recurse::simulation::findAs<recurse::simulation::Active>(registry, k.x, k.y, k.z);
         });
 
         // Drop chunks beyond ALL focal points' collision radii
@@ -135,8 +135,7 @@ void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) 
                                 if (dx * dx + dy * dy + dz * dz > r * r)
                                     continue;
                                 int ccx = c.cx + dx, ccy = c.cy + dy, ccz = c.cz + dz;
-                                auto* slot = registry.find(ccx, ccy, ccz);
-                                if (slot && slot->state == recurse::simulation::ChunkSlotState::Active &&
+                                if (recurse::simulation::findAs<recurse::simulation::Active>(registry, ccx, ccy, ccz) &&
                                     !physicsWorld_.hasChunkCollision(ccx, ccy, ccz))
                                     dirtyCollisionChunks_.insert({ccx, ccy, ccz});
                             }

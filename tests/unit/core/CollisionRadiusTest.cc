@@ -1,3 +1,4 @@
+#include "recurse/simulation/ChunkState.hh"
 #include "recurse/systems/PhysicsGameSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 
@@ -65,14 +66,15 @@ class CollisionRadiusTest : public ::testing::Test {
     }
 
     void materializeActiveChunk(int cx, int cy, int cz) {
+        using namespace recurse::simulation;
         auto& grid = voxelSim_->simulationGrid();
         auto& reg = grid.registry();
-        reg.addChunk(cx, cy, cz);
-        reg.transitionState(cx, cy, cz, ChunkSlotState::Generating);
+        auto absent = addChunkRef(reg, cx, cy, cz);
+        auto generating = transition<Absent, Generating>(absent, reg);
         grid.materializeChunk(cx, cy, cz);
         grid.writeCell(cx * 32 + 4, cy * 32 + 4, cz * 32 + 4, VoxelCell{STONE});
         grid.syncChunkBuffers(cx, cy, cz);
-        reg.transitionState(cx, cy, cz, ChunkSlotState::Active);
+        transition<Generating, Active>(generating, reg);
     }
 };
 

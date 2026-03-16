@@ -19,6 +19,7 @@
 #include "recurse/physics/PhysicsWorld.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/ChunkRegistry.hh"
+#include "recurse/simulation/ChunkState.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/systems/AIGameSystem.hh"
@@ -292,25 +293,13 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         // ChunkSlotState overlay (pipeline lifecycle; larger inset wireframe)
         auto& registry = grid.registry();
         for (auto [cx, cy, cz] : grid.allChunks()) {
-            auto* slot = registry.find(cx, cy, cz);
-            if (!slot)
-                continue;
-
-            if (slot->state == recurse::simulation::ChunkSlotState::Absent ||
-                slot->state == recurse::simulation::ChunkSlotState::Active)
-                continue;
-
             uint32_t slotColor;
-            switch (slot->state) {
-                case recurse::simulation::ChunkSlotState::Generating:
-                    slotColor = 0xcc00ffff; // Yellow (ABGR)
-                    break;
-                case recurse::simulation::ChunkSlotState::Draining:
-                    slotColor = 0xcc0000ff; // Red (ABGR)
-                    break;
-                default:
-                    continue;
-            }
+            if (recurse::simulation::findAs<recurse::simulation::Generating>(registry, cx, cy, cz))
+                slotColor = 0xcc00ffff; // Yellow (ABGR)
+            else if (recurse::simulation::findAs<recurse::simulation::Draining>(registry, cx, cy, cz))
+                slotColor = 0xcc0000ff; // Red (ABGR)
+            else
+                continue;
 
             auto worldOrigin = fabric::Vector3<double, fabric::Space::World>(
                 static_cast<double>(cx * recurse::K_CHUNK_SIZE), static_cast<double>(cy * recurse::K_CHUNK_SIZE),

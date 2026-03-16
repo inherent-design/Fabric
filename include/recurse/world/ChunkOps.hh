@@ -104,12 +104,20 @@ struct ActiveChunkCount {
     using Errors = fabric::fx::TypeList<fabric::fx::Never>;
 };
 
+/// Describes a single completed async chunk load.
+struct CompletedLoad {
+    int cx, cy, cz;
+    int bufferIndex;
+    bool success;
+};
+
 /// Poll pending async load completions, returning up to maxCompletions results.
+/// Caller is responsible for entity creation and system notifications.
 struct PollPendingLoads {
     int maxCompletions;
 
     static constexpr bool K_IS_SYNC = true;
-    using Returns = int;
+    using Returns = std::vector<CompletedLoad>;
     using Errors = fabric::fx::TypeList<fabric::fx::Never>;
 };
 

@@ -209,6 +209,28 @@ void VoxelMeshingSystem::processFrame() {
     }
 }
 
+MeshingChunkContext VoxelMeshingSystem::buildMeshingContext(const fabric::ChunkCoord& coord) const {
+    MeshingChunkContext ctx{};
+    ctx.cx = coord.x;
+    ctx.cy = coord.y;
+    ctx.cz = coord.z;
+    ctx.self = simGrid_->readBuffer(coord.x, coord.y, coord.z);
+    ctx.selfFill = simGrid_->getChunkFillValue(coord.x, coord.y, coord.z);
+    ctx.palette = simGrid_->chunkPalette(coord.x, coord.y, coord.z);
+
+    // +X, -X, +Y, -Y, +Z, -Z
+    static constexpr int K_OFFSETS[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+    for (int i = 0; i < 6; ++i) {
+        int nx = coord.x + K_OFFSETS[i][0];
+        int ny = coord.y + K_OFFSETS[i][1];
+        int nz = coord.z + K_OFFSETS[i][2];
+        ctx.neighbors[i] = simGrid_->readBuffer(nx, ny, nz);
+        ctx.neighborFill[i] = simGrid_->getChunkFillValue(nx, ny, nz);
+    }
+
+    return ctx;
+}
+
 CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coord) const {
     CPUMeshResult result;
 
@@ -225,6 +247,8 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
         }
     }
 
+    auto meshCtx = buildMeshingContext(coord);
+
     ChunkedGrid<float> densityGrid;
     ChunkedGrid<uint16_t> materialGrid;
 
@@ -236,14 +260,10 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
     for (int lz = -K_SAMPLE_MARGIN; lz <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++lz) {
         for (int ly = -K_SAMPLE_MARGIN; ly <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++ly) {
             for (int lx = -K_SAMPLE_MARGIN; lx <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++lx) {
-                const int wx = baseX + lx;
-                const int wy = baseY + ly;
-                const int wz = baseZ + lz;
-
-                const auto cell = simGrid_->readCell(wx, wy, wz);
+                const auto cell = meshCtx.readLocal(lx, ly, lz, simGrid_);
                 const float density = (cell.materialId == recurse::simulation::material_ids::AIR) ? 0.0f : 1.0f;
-                densityGrid.set(wx, wy, wz, density);
-                materialGrid.set(wx, wy, wz, cell.materialId);
+                densityGrid.set(baseX + lx, baseY + ly, baseZ + lz, density);
+                materialGrid.set(baseX + lx, baseY + ly, baseZ + lz, cell.materialId);
             }
         }
     }
@@ -257,18 +277,16 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
     if (meshData.empty() || meshData.indices.empty())
         return result;
 
-    // Look up per-vertex essenceIdx from the simulation grid
-    const auto* palette = simGrid_->chunkPalette(coord.x, coord.y, coord.z);
-    const bool hasEssence = palette && palette->paletteSize() > 0;
+    const bool hasEssence = meshCtx.palette && meshCtx.palette->paletteSize() > 0;
 
     std::vector<uint8_t> vertEssenceIdx(meshData.vertices.size(), 0);
     if (hasEssence) {
         for (size_t i = 0; i < meshData.vertices.size(); ++i) {
             const auto& v = meshData.vertices[i];
-            int wx = baseX + static_cast<int>(std::round(v.px));
-            int wy = baseY + static_cast<int>(std::round(v.py));
-            int wz = baseZ + static_cast<int>(std::round(v.pz));
-            vertEssenceIdx[i] = simGrid_->readCell(wx, wy, wz).essenceIdx;
+            int vlx = static_cast<int>(std::round(v.px));
+            int vly = static_cast<int>(std::round(v.py));
+            int vlz = static_cast<int>(std::round(v.pz));
+            vertEssenceIdx[i] = meshCtx.readLocal(vlx, vly, vlz, simGrid_).essenceIdx;
         }
     }
 
@@ -282,8 +300,8 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
         result.palette.reserve(uniqueEssence.size());
         for (uint8_t eidx : uniqueEssence) {
             essenceLookup[eidx] = static_cast<uint16_t>(result.palette.size());
-            if (eidx < palette->paletteSize()) {
-                result.palette.push_back(recurse::simulation::essenceToColor(palette->lookup(eidx)));
+            if (eidx < meshCtx.palette->paletteSize()) {
+                result.palette.push_back(recurse::simulation::essenceToColor(meshCtx.palette->lookup(eidx)));
             } else {
                 result.palette.push_back({0.5f, 0.5f, 0.5f, 1.0f});
             }

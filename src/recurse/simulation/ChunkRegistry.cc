@@ -1,16 +1,6 @@
 #include "recurse/simulation/ChunkRegistry.hh"
-#include <cassert>
 
 namespace recurse::simulation {
-
-namespace {
-bool isValidTransition(ChunkSlotState from, ChunkSlotState to) {
-    return (from == ChunkSlotState::Absent && to == ChunkSlotState::Generating) ||
-           (from == ChunkSlotState::Generating && to == ChunkSlotState::Active) ||
-           (from == ChunkSlotState::Active && to == ChunkSlotState::Draining) ||
-           (from == ChunkSlotState::Draining && to == ChunkSlotState::Absent);
-}
-} // namespace
 
 // -- ChunkBuffers -------------------------------------------------------------
 
@@ -39,13 +29,6 @@ ChunkSlot& ChunkRegistry::addChunk(int cx, int cy, int cz) {
 
 void ChunkRegistry::removeChunk(int cx, int cy, int cz) {
     slots_.erase(packChunkKey(cx, cy, cz));
-}
-
-void ChunkRegistry::transitionState(int cx, int cy, int cz, ChunkSlotState to) {
-    auto* slot = find(cx, cy, cz);
-    assert(slot && "transitionState: slot must exist");
-    assert(isValidTransition(slot->state, to) && "transitionState: invalid state transition");
-    slot->state = to;
 }
 
 void ChunkRegistry::clear() {

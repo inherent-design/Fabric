@@ -1,8 +1,11 @@
 #pragma once
 
+#include "fabric/core/CompilerHints.hh"
 #include "fabric/core/SystemBase.hh"
 #include "fabric/world/ChunkCoord.hh"
+#include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/VoxelRenderer.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
 #include <array>
 #include <cstdint>
@@ -13,6 +16,10 @@
 namespace fabric {
 class JobScheduler;
 } // namespace fabric
+
+namespace recurse {
+class EssencePalette;
+} // namespace recurse
 
 namespace recurse::simulation {
 class ChunkActivityTracker;
@@ -25,6 +32,73 @@ class SnapMCMesher;
 } // namespace recurse
 
 namespace recurse::systems {
+
+/// Pre-resolved buffer pointers for a chunk and its 6 face-adjacent neighbors.
+/// Eliminates per-cell hash lookups during meshing. Built once per chunk before
+/// the meshing loop; all pointers are valid for the current epoch.
+struct MeshingChunkContext {
+    using Buffer = std::array<recurse::simulation::VoxelCell, fabric::K_CHUNK_VOLUME>;
+
+    const Buffer* self = nullptr;
+    const Buffer* neighbors[6] = {}; ///< +X, -X, +Y, -Y, +Z, -Z (nullptr if absent)
+    const recurse::EssencePalette* palette = nullptr;
+    recurse::simulation::VoxelCell selfFill{};        ///< Fill value for non-materialized center chunk
+    recurse::simulation::VoxelCell neighborFill[6]{}; ///< Fill values for non-materialized neighbors
+    int cx, cy, cz;
+
+    /// Read a cell at local coordinates relative to the center chunk.
+    /// Coordinates outside [0, K_CHUNK_SIZE) are resolved via neighbor buffers
+    /// when possible, falling back to Fallback::readCell for edge/corner cells.
+    /// Fallback is templated to avoid requiring SimulationGrid.hh in the header.
+    template <typename Fallback>
+    FABRIC_ALWAYS_INLINE recurse::simulation::VoxelCell readLocal(int lx, int ly, int lz,
+                                                                  const Fallback* fallback) const {
+        if (lx >= 0 && lx < fabric::K_CHUNK_SIZE && ly >= 0 && ly < fabric::K_CHUNK_SIZE && lz >= 0 &&
+            lz < fabric::K_CHUNK_SIZE) {
+            if (self)
+                return (*self)[lx + ly * fabric::K_CHUNK_SIZE + lz * fabric::K_CHUNK_SIZE * fabric::K_CHUNK_SIZE];
+            return selfFill;
+        }
+
+        int outCount = (lx < 0 || lx >= fabric::K_CHUNK_SIZE) + (ly < 0 || ly >= fabric::K_CHUNK_SIZE) +
+                       (lz < 0 || lz >= fabric::K_CHUNK_SIZE);
+        if (outCount == 1) {
+            int face = -1;
+            int nlx = lx, nly = ly, nlz = lz;
+            if (lx >= fabric::K_CHUNK_SIZE) {
+                face = 0;
+                nlx = lx - fabric::K_CHUNK_SIZE;
+            } else if (lx < 0) {
+                face = 1;
+                nlx = lx + fabric::K_CHUNK_SIZE;
+            } else if (ly >= fabric::K_CHUNK_SIZE) {
+                face = 2;
+                nly = ly - fabric::K_CHUNK_SIZE;
+            } else if (ly < 0) {
+                face = 3;
+                nly = ly + fabric::K_CHUNK_SIZE;
+            } else if (lz >= fabric::K_CHUNK_SIZE) {
+                face = 4;
+                nlz = lz - fabric::K_CHUNK_SIZE;
+            } else {
+                face = 5;
+                nlz = lz + fabric::K_CHUNK_SIZE;
+            }
+            if (neighbors[face])
+                return (*neighbors[face])[nlx + nly * fabric::K_CHUNK_SIZE +
+                                          nlz * fabric::K_CHUNK_SIZE * fabric::K_CHUNK_SIZE];
+            return neighborFill[face];
+        }
+
+        if (fallback) {
+            int wx = cx * fabric::K_CHUNK_SIZE + lx;
+            int wy = cy * fabric::K_CHUNK_SIZE + ly;
+            int wz = cz * fabric::K_CHUNK_SIZE + lz;
+            return fallback->readCell(wx, wy, wz);
+        }
+        return {};
+    }
+};
 
 struct MeshingDebugInfo {
     int chunksMeshedThisFrame = 0;
@@ -100,6 +174,7 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
 
   private:
     CPUMeshResult generateMeshCPU(const fabric::ChunkCoord& coord) const;
+    MeshingChunkContext buildMeshingContext(const fabric::ChunkCoord& coord) const;
     void uploadMeshResult(const fabric::ChunkCoord& coord, CPUMeshResult&& result);
     void destroyChunkMesh(ChunkGPUMesh& gpuMesh);
     std::array<float, 4> materialColor(uint16_t materialId) const;
