@@ -504,13 +504,19 @@ WorldTransactionStore* WorldSession::transactionStore() const {
 // Async mutation submit (Phase III: ops-as-values)
 // ---------------------------------------------------------------------------
 
-void WorldSession::submit(ops::LoadChunk op) {
-    dispatchAsyncLoad(op.cx, op.cy, op.cz);
+bool WorldSession::submit(ops::LoadChunk op) {
+    return dispatchAsyncLoad(op.cx, op.cy, op.cz);
 }
 
 void WorldSession::submit(ops::SaveChunk op) {
     if (saveService_)
         saveService_->markDirty(op.cx, op.cy, op.cz);
+}
+
+void WorldSession::submit(ops::PersistChunk op) {
+    auto blob = encodeChunkBlob(op.cx, op.cy, op.cz);
+    if (!blob.empty() && saveService_)
+        saveService_->enqueuePrepared(op.cx, op.cy, op.cz, std::move(blob));
 }
 
 void WorldSession::submit(ops::RemoveChunk op) {

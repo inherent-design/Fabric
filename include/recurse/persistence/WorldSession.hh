@@ -163,8 +163,9 @@ class WorldSession {
 
     // --- Async mutation submit (Phase III: ops-as-values) ---
 
-    void submit(ops::LoadChunk op);
+    bool submit(ops::LoadChunk op);
     void submit(ops::SaveChunk op);
+    void submit(ops::PersistChunk op);
     void submit(ops::RemoveChunk op);
     bool submit(ops::CancelPendingLoad op);
     void submit(ops::GenerateChunks op);

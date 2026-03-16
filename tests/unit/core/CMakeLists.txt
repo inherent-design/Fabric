@@ -98,5 +98,8 @@ target_sources(UnitTests
   FocalPointCollectionTest.cc
   WorldLifecycleTest.cc
   WorldContextBenchmark.cc
+  WorldContextTest.cc
+  WorldContextMockTest.cc
+  SubmitOpsTest.cc
   MeshingChunkContextTest.cc
 )

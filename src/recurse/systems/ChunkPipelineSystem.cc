@@ -12,6 +12,7 @@
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelMeshingSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
+#include "recurse/world/ChunkOps.hh"
 
 #include "recurse/config/RecurseConfig.hh"
 
@@ -99,10 +100,10 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     if (streaming_)
         streaming_->updateBudget(frameTimeEma_);
 
-    if (!session_)
+    if (!ctx_)
         return;
 
-    auto loadCompletions = session_->pollPendingLoads();
+    auto loadCompletions = ctx_->resolve(recurse::ops::PollPendingLoads{maxLoadCompletions_});
     for (const auto& cl : loadCompletions) {
         if (!cl.success)
             continue;
@@ -118,13 +119,13 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
             {static_cast<float>(cl.cx * K_CHUNK_SIZE), static_cast<float>(cl.cy * K_CHUNK_SIZE),
              static_cast<float>(cl.cz * K_CHUNK_SIZE), static_cast<float>((cl.cx + 1) * K_CHUNK_SIZE),
              static_cast<float>((cl.cy + 1) * K_CHUNK_SIZE), static_cast<float>((cl.cz + 1) * K_CHUNK_SIZE)});
-        session_->chunkEntities()[coord] = ent;
+        ctx_->session().chunkEntities()[coord] = ent;
     }
 
     // Collect focal points from StreamSource entities
     std::vector<FocalPoint> streamingFocals;
     std::vector<FocalPoint> collisionFocals;
-    auto& query = session_->streamSourceQuery();
+    auto& query = ctx_->session().streamSourceQuery();
     if (query) {
         query->each([&](const fabric::Position& pos, const StreamSource& src) {
             if (src.streamRadius > 0)
@@ -152,28 +153,26 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     std::vector<std::tuple<int, int, int>> toGenerate;
     size_t triageEnd = streamUpdate.toLoad.size();
 
-    auto* chunkStore = session_->chunkStore();
-
     for (size_t i = 0; i < streamUpdate.toLoad.size(); ++i) {
         const auto& coord = streamUpdate.toLoad[i];
 
-        if (session_->chunkEntities().find(coord) != session_->chunkEntities().end())
+        if (ctx_->resolve(recurse::ops::QueryChunkEntities{coord}))
             continue;
 
-        if (simSystem_ && simSystem_->simulationGrid().hasChunk(coord.x, coord.y, coord.z)) {
+        if (ctx_->resolve(recurse::ops::HasChunk{coord.x, coord.y, coord.z})) {
             if (recurse::simulation::findAs<recurse::simulation::Active>(simSystem_->simulationGrid().registry(),
                                                                          coord.x, coord.y, coord.z))
                 readyChunks.push_back(coord);
             continue;
         }
 
-        if (session_->hasPendingLoad(coord.x, coord.y, coord.z))
+        if (ctx_->resolve(recurse::ops::HasPendingLoad{coord.x, coord.y, coord.z}))
             continue;
 
-        bool maybeInDb = chunkStore && chunkStore->isInSavedRegion(coord.x, coord.y, coord.z);
+        bool maybeInDb = ctx_->resolve(recurse::ops::IsInSavedRegion{coord.x, coord.y, coord.z});
 
         if (maybeInDb && loadsDispatched < maxAsyncLoadsPerFrame_) {
-            if (session_->dispatchAsyncLoad(coord.x, coord.y, coord.z)) {
+            if (ctx_->submit(recurse::ops::LoadChunk{coord.x, coord.y, coord.z})) {
                 ++loadsDispatched;
                 continue;
             }
@@ -199,8 +198,8 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
         }
     }
 
-    if (!toGenerate.empty() && simSystem_)
-        simSystem_->generateChunksBatch(toGenerate);
+    if (!toGenerate.empty())
+        ctx_->submit(recurse::ops::GenerateChunks{toGenerate});
 
     // Generated chunks are Active after batch gen (synchronous parallelFor)
     for (const auto& [cx, cy, cz] : toGenerate)
@@ -215,19 +214,17 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
             {static_cast<float>(coord.x * K_CHUNK_SIZE), static_cast<float>(coord.y * K_CHUNK_SIZE),
              static_cast<float>(coord.z * K_CHUNK_SIZE), static_cast<float>((coord.x + 1) * K_CHUNK_SIZE),
              static_cast<float>((coord.y + 1) * K_CHUNK_SIZE), static_cast<float>((coord.z + 1) * K_CHUNK_SIZE)});
-        session_->chunkEntities()[coord] = ent;
+        ctx_->session().chunkEntities()[coord] = ent;
     }
 
     // Unload
     for (const auto& coord : streamUpdate.toUnload) {
         // If async load in progress, cancel it. The background thread still holds
         // a pointer to the write buffer, so defer registry removal to pollPendingLoads.
-        if (session_->cancelPendingLoad(coord.x, coord.y, coord.z))
+        if (ctx_->submit(recurse::ops::CancelPendingLoad{coord.x, coord.y, coord.z}))
             continue;
 
-        auto blob = session_->encodeChunkBlob(coord.x, coord.y, coord.z);
-        if (!blob.empty())
-            session_->saveService()->enqueuePrepared(coord.x, coord.y, coord.z, std::move(blob));
+        ctx_->submit(recurse::ops::PersistChunk{coord.x, coord.y, coord.z});
 
         if (meshingSystem_)
             meshingSystem_->removeChunkMesh(coord);
@@ -235,18 +232,11 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
         if (lodSystem_)
             lodSystem_->onChunkRemoved(coord.x, coord.y, coord.z);
 
-        if (simSystem_)
-            simSystem_->removeChunk(coord.x, coord.y, coord.z);
+        ctx_->submit(recurse::ops::RemoveChunk{coord.x, coord.y, coord.z});
 
         if (physics_) {
             physics_->removeDirtyChunk(coord.x, coord.y, coord.z);
             physics_->physicsWorld().removeChunkCollision(coord.x, coord.y, coord.z);
-        }
-
-        auto& entities = session_->chunkEntities();
-        if (auto it = entities.find(coord); it != entities.end()) {
-            it->second.destruct();
-            entities.erase(it);
         }
     }
 
@@ -263,18 +253,12 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
         physics_->setFocalPoints(collisionFocals);
     }
 
-    session_->flushPendingChanges();
-    session_->updateSaveService(fixedDt);
-    session_->updateSnapshotScheduler(fixedDt);
-    session_->updatePruningScheduler(fixedDt);
+    ctx_->submit(recurse::ops::Tick{fixedDt});
 
     int chunkRadius = streaming_ ? streaming_->currentRadius() : 0;
-    if (lodRadius_ > chunkRadius) {
-        int cx = static_cast<int>(std::floor(lastPlayerX_ / static_cast<float>(K_CHUNK_SIZE)));
-        int cy = static_cast<int>(std::floor(lastPlayerY_ / static_cast<float>(K_CHUNK_SIZE)));
-        int cz = static_cast<int>(std::floor(lastPlayerZ_ / static_cast<float>(K_CHUNK_SIZE)));
-        session_->updateLODRing(cx, cy, cz, chunkRadius, lodRadius_, lodGenBudget_);
-    }
+    if (lodRadius_ > chunkRadius)
+        ctx_->submit(recurse::ops::UpdateLODRing{lastPlayerX_, lastPlayerY_, lastPlayerZ_, chunkRadius, lodRadius_,
+                                                 lodGenBudget_});
 }
 
 void ChunkPipelineSystem::onWorldBegin() {
@@ -315,6 +299,7 @@ void ChunkPipelineSystem::loadWorld(const std::string& worldDir, fabric::JobSche
 
     if (result.isSuccess()) {
         session_ = std::move(result.value());
+        ctx_.emplace(*session_);
         session_->setMaxLoadCompletions(maxLoadCompletions_);
         session_->setLodHysteresis(lodHysteresis_);
         FABRIC_LOG_INFO("ChunkPipeline: world loaded");
@@ -325,6 +310,7 @@ void ChunkPipelineSystem::loadWorld(const std::string& worldDir, fabric::JobSche
 }
 
 void ChunkPipelineSystem::unloadWorld() {
+    ctx_.reset();
     session_.reset();
 
     if (streaming_)

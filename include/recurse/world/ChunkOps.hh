@@ -150,6 +150,16 @@ struct SaveChunk {
     // TODO: using RequiresState = Active; // Phase IV type-state
 };
 
+/// Encode a chunk blob and enqueue it for immediate persistence.
+/// Used during chunk unload (eager save, not lazy markDirty).
+struct PersistChunk {
+    int cx, cy, cz;
+
+    static constexpr bool K_IS_SYNC = false;
+    using Returns = void;
+    using Errors = fabric::fx::TypeList<fabric::fx::IOError>;
+};
+
 /// Remove a chunk from the simulation grid.
 struct RemoveChunk {
     int cx, cy, cz;

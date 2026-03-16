@@ -2,10 +2,12 @@
 
 #include "fabric/core/SystemBase.hh"
 #include "fabric/ecs/ECS.hh"
+#include "fabric/fx/WorldContext.hh"
 #include "recurse/character/GameConstants.hh"
 #include "recurse/world/ChunkStreaming.hh"
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -73,6 +75,7 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
 
     std::unique_ptr<ChunkStreamingManager> streaming_;
     std::unique_ptr<recurse::WorldSession> session_;
+    std::optional<fabric::fx::WorldContext<recurse::WorldSession>> ctx_;
 
     fabric::EventDispatcher* dispatcher_ = nullptr;
     flecs::world* ecsWorld_ = nullptr;
