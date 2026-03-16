@@ -253,8 +253,9 @@ Prefer `constexpr` over macros.
 | Macro | GCC/Clang | MSVC | Purpose |
 |-------|-----------|------|---------|
 | `FABRIC_ALWAYS_INLINE` | `[[gnu::always_inline]] inline` | `__forceinline` | Force inlining for zero-overhead wrappers |
+| `FABRIC_NOINLINE` | `[[gnu::noinline]]` | `__declspec(noinline)` | Prevent inlining for benchmarks and stack traces |
 
-Use `FABRIC_ALWAYS_INLINE` instead of raw `[[gnu::always_inline]]` or `__forceinline`.
+Use these macros instead of raw compiler attributes.
 
 ### Error Handling
 

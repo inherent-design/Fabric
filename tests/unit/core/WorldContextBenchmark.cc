@@ -1,3 +1,4 @@
+#include "fabric/core/CompilerHints.hh"
 #include "fabric/fx/WorldContext.hh"
 #include "recurse/persistence/WorldSession.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
@@ -28,18 +29,18 @@ using recurse::simulation::VoxelCell;
 using recurse::simulation::material_ids::STONE;
 
 // Noinline wrappers isolate each call chain for assembly comparison.
-// With [[gnu::always_inline]] on WorldContext::resolve, readViaResolve
+// With FABRIC_ALWAYS_INLINE on WorldContext::resolve, readViaResolve
 // should produce identical object code to readDirect in Release builds.
 //
 // Verify:
 //   objdump -d build/release/tests/UnitTests | grep -A 30 'readDirect\|readViaResolve'
 
-__attribute__((noinline)) const VoxelCell* readDirect(recurse::WorldSession& session, int cx, int cy, int cz) {
+FABRIC_NOINLINE const VoxelCell* readDirect(recurse::WorldSession& session, int cx, int cy, int cz) {
     return session.resolve(recurse::ops::ReadBuffer{cx, cy, cz, 0});
 }
 
-__attribute__((noinline)) const VoxelCell* readViaResolve(fabric::fx::WorldContext<recurse::WorldSession>& ctx, int cx,
-                                                          int cy, int cz) {
+FABRIC_NOINLINE const VoxelCell* readViaResolve(fabric::fx::WorldContext<recurse::WorldSession>& ctx, int cx, int cy,
+                                                int cz) {
     return ctx.resolve(recurse::ops::ReadBuffer{cx, cy, cz, 0});
 }
 
