@@ -18,6 +18,10 @@ void FilteredConsoleSink::setExcludePatterns(std::vector<std::string> patterns) 
     exclude_patterns_ = std::move(patterns);
 }
 
+void FilteredConsoleSink::setMinLevel(quill::LogLevel level) {
+    minLevel_ = level;
+}
+
 void FilteredConsoleSink::write_log(quill::MacroMetadata const* log_metadata, uint64_t log_timestamp,
                                     std::string_view thread_id, std::string_view thread_name,
                                     std::string const& process_id, std::string_view logger_name,
@@ -26,10 +30,11 @@ void FilteredConsoleSink::write_log(quill::MacroMetadata const* log_metadata, ui
                                     std::vector<std::pair<std::string, std::string>> const* named_args,
                                     std::string_view log_message, std::string_view log_statement) {
 
-    // Check if this logger should be logged
-    if (!shouldLog(std::string(logger_name))) {
-        return; // Filtered out
-    }
+    if (log_level < minLevel_)
+        return;
+
+    if (!shouldLog(std::string(logger_name)))
+        return;
 
     // Pass through to inner console sink
     inner_->write_log(log_metadata, log_timestamp, thread_id, thread_name, process_id, logger_name, log_level,

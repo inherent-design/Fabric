@@ -46,6 +46,11 @@ class FilteredConsoleSink : public quill::Sink {
     /// Set patterns for loggers to EXCLUDE (takes precedence over include)
     void setExcludePatterns(std::vector<std::string> patterns);
 
+    /// Set minimum log level for console output.
+    /// Messages below this level are suppressed even if the logger-level
+    /// allows them (needed when file_level < console_level).
+    void setMinLevel(quill::LogLevel level);
+
     /// Write log if it passes filters
     /// Overrides quill::Sink::write_log
     void write_log(quill::MacroMetadata const* log_metadata, uint64_t log_timestamp, std::string_view thread_id,
@@ -68,6 +73,7 @@ class FilteredConsoleSink : public quill::Sink {
     std::shared_ptr<quill::ConsoleSink> inner_;
     std::vector<std::string> include_patterns_;
     std::vector<std::string> exclude_patterns_;
+    quill::LogLevel minLevel_{quill::LogLevel::Info};
 };
 
 } // namespace fabric::log

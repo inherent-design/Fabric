@@ -132,10 +132,22 @@ void init(const LogConfig& config) {
         std::filesystem::create_directories(logPath);
     }
 
-    // Create filtered console sink with include/exclude patterns
+    // Create filtered console sink with include/exclude patterns and level floor.
+    // The sink is shared across loggers; minLevel is the strictest console_level
+    // among enabled loggers. Per-logger console level differences need separate sinks.
     auto filtered_console = std::make_shared<FilteredConsoleSink>();
     filtered_console->setIncludePatterns(config.consoleIncludePatterns);
     filtered_console->setExcludePatterns(config.consoleExcludePatterns);
+
+    quill::LogLevel consoleFloor = quill::LogLevel::TraceL3;
+    for (const auto& [name, cfg] : config.loggers) {
+        if (cfg.consoleEnabled) {
+            quill::LogLevel lvl = toQuillLevel(cfg.consoleLevel);
+            if (lvl > consoleFloor)
+                consoleFloor = lvl;
+        }
+    }
+    filtered_console->setMinLevel(consoleFloor);
 
     auto console_sink = filtered_console;
     auto pattern = makePatternOptions();
