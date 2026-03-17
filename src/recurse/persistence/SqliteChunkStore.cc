@@ -212,36 +212,34 @@ void SqliteChunkStore::execSql(sqlite3* db, const char* sql) {
 }
 
 // ---------------------------------------------------------------------------
-// Saved-region bounding box
+// Saved-region coord set
 // ---------------------------------------------------------------------------
 
 void SqliteChunkStore::computeSavedBounds() {
     sqlite3_stmt* stmt = nullptr;
-    int rc = sqlite3_prepare_v2(
-        readerDb_, "SELECT MIN(cx), MAX(cx), MIN(cy), MAX(cy), MIN(cz), MAX(cz) FROM chunk_state", -1, &stmt, nullptr);
+    int rc = sqlite3_prepare_v2(readerDb_, "SELECT cx, cy, cz FROM chunk_state", -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         FABRIC_LOG_WARN("computeSavedBounds: prepare failed: {}", sqlite3_errmsg(readerDb_));
         return;
     }
 
-    if (sqlite3_step(stmt) == SQLITE_ROW && sqlite3_column_type(stmt, 0) != SQLITE_NULL) {
-        savedBounds_.minCx = sqlite3_column_int(stmt, 0);
-        savedBounds_.maxCx = sqlite3_column_int(stmt, 1);
-        savedBounds_.minCy = sqlite3_column_int(stmt, 2);
-        savedBounds_.maxCy = sqlite3_column_int(stmt, 3);
-        savedBounds_.minCz = sqlite3_column_int(stmt, 4);
-        savedBounds_.maxCz = sqlite3_column_int(stmt, 5);
-        savedBounds_.empty = false;
+    // Called at init time before any concurrent access; no mutex needed.
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        savedCoords_.insert(
+            fabric::ChunkCoord{sqlite3_column_int(stmt, 0), sqlite3_column_int(stmt, 1), sqlite3_column_int(stmt, 2)});
     }
-
     sqlite3_finalize(stmt);
+
+    if (savedCoords_.empty()) {
+        FABRIC_LOG_INFO("savedCoords: empty (no chunks in DB)");
+    } else {
+        FABRIC_LOG_INFO("savedCoords: {} chunks in DB", savedCoords_.size());
+    }
 }
 
 bool SqliteChunkStore::isInSavedRegion(int cx, int cy, int cz) const {
-    if (savedBounds_.empty)
-        return false;
-    return cx >= savedBounds_.minCx && cx <= savedBounds_.maxCx && cy >= savedBounds_.minCy &&
-           cy <= savedBounds_.maxCy && cz >= savedBounds_.minCz && cz <= savedBounds_.maxCz;
+    std::shared_lock lock(savedCoordsMutex_);
+    return savedCoords_.contains(fabric::ChunkCoord{cx, cy, cz});
 }
 
 void SqliteChunkStore::setWorldgenVersion(uint32_t version) {
@@ -249,16 +247,8 @@ void SqliteChunkStore::setWorldgenVersion(uint32_t version) {
 }
 
 void SqliteChunkStore::expandBounds(int cx, int cy, int cz) {
-    if (savedBounds_.empty) {
-        savedBounds_ = {cx, cx, cy, cy, cz, cz, false};
-    } else {
-        savedBounds_.minCx = std::min(savedBounds_.minCx, cx);
-        savedBounds_.maxCx = std::max(savedBounds_.maxCx, cx);
-        savedBounds_.minCy = std::min(savedBounds_.minCy, cy);
-        savedBounds_.maxCy = std::max(savedBounds_.maxCy, cy);
-        savedBounds_.minCz = std::min(savedBounds_.minCz, cz);
-        savedBounds_.maxCz = std::max(savedBounds_.maxCz, cz);
-    }
+    std::unique_lock lock(savedCoordsMutex_);
+    savedCoords_.insert(fabric::ChunkCoord{cx, cy, cz});
 }
 
 // ---------------------------------------------------------------------------
@@ -376,10 +366,14 @@ void SqliteChunkStore::saveBatch(const std::vector<std::pair<fabric::ChunkCoord,
             sqlite3_exec(writerDb_, "ROLLBACK", nullptr, nullptr, nullptr);
             return;
         }
-        expandBounds(coord.x, coord.y, coord.z);
     }
 
     execSql(writerDb_, "COMMIT");
+
+    // Expand saved coords AFTER commit so reader sees the data
+    for (const auto& [coord, blob] : entries) {
+        expandBounds(coord.x, coord.y, coord.z);
+    }
 }
 
 // ---------------------------------------------------------------------------

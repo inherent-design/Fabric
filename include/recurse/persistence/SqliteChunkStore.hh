@@ -3,7 +3,9 @@
 #include "recurse/persistence/ChunkStore.hh"
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
+#include <unordered_set>
 
 // Forward-declare sqlite3 types to avoid exposing sqlite3.h in the header.
 struct sqlite3;
@@ -48,9 +50,9 @@ class SqliteChunkStore : public ChunkStore {
     sqlite3* writerDb() const { return writerDb_; }
     sqlite3* readerDb() const { return readerDb_; }
 
-    /// Check if a coordinate falls within the bounding box of all saved chunks.
-    /// False: definitely not saved. True: might be saved (call hasChunk to confirm).
-    /// Thread-safe: bounds computed once at open time, never mutated during session.
+    /// Check if a coordinate is in the set of saved chunk coords.
+    /// False: definitely not saved. True: chunk was saved (or is being saved).
+    /// Thread-safe: guarded by shared_mutex (reader/writer).
     bool isInSavedRegion(int cx, int cy, int cz) const;
 
     /// Set worldgen version for delta persistence. Bound to parameter 6 on save.
@@ -83,16 +85,11 @@ class SqliteChunkStore : public ChunkStore {
     sqlite3_stmt* stmtLoad_ = nullptr;
     sqlite3_stmt* stmtSize_ = nullptr;
 
-    // Axis-aligned bounding box of all saved chunk coordinates. Computed once
-    // at open time; not updated during the session. A stale read (false
-    // negative) sends the chunk to generation instead of DB load, which is safe.
-    struct SavedBounds {
-        int minCx = 0, maxCx = 0;
-        int minCy = 0, maxCy = 0;
-        int minCz = 0, maxCz = 0;
-        bool empty = true;
-    };
-    SavedBounds savedBounds_;
+    // Exact set of saved chunk coordinates. Populated at open time from DB,
+    // expanded after each successful COMMIT. Guarded by shared_mutex for
+    // concurrent reader access (shared_lock) and writer inserts (unique_lock).
+    std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> savedCoords_;
+    mutable std::shared_mutex savedCoordsMutex_;
     uint32_t worldgenVersion_{0};
 
     void computeSavedBounds();

@@ -193,6 +193,7 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
                 ++loadsDispatched;
                 continue;
             }
+            ++triageStats_.fallthrough;
         } else if (maybeInDb) {
             // Load budget exhausted; defer to next frame rather than regenerating.
             continue;
@@ -211,11 +212,20 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
         size_t deferred = streamUpdate.toLoad.size() - triageEnd;
         for (size_t i = triageEnd; i < streamUpdate.toLoad.size(); ++i)
             streaming_->untrack(streamUpdate.toLoad[i]);
-        if (deferred > 0 || loadsDispatched > 0 || !toGenerate.empty()) {
-            FABRIC_LOG_DEBUG("triage: load={} dbLoads={} gen={} ready={} deferred={} unload={}",
-                             streamUpdate.toLoad.size(), loadsDispatched, toGenerate.size(), readyChunks.size(),
-                             deferred, streamUpdate.toUnload.size());
+    }
+
+    triageStats_.dbLoads += loadsDispatched;
+    triageStats_.generates += static_cast<int>(toGenerate.size());
+    triageStats_.ready += static_cast<int>(readyChunks.size());
+    triageStats_.unloads += static_cast<int>(streamUpdate.toUnload.size());
+    if (++triageStats_.frames >= K_TRIAGE_LOG_INTERVAL) {
+        bool any = triageStats_.dbLoads > 0 || triageStats_.generates > 0 || triageStats_.fallthrough > 0;
+        if (any) {
+            FABRIC_LOG_INFO("triage: dbLoads={} gen={} ready={} fallthrough={} unloads={} ({}frames)",
+                            triageStats_.dbLoads, triageStats_.generates, triageStats_.ready, triageStats_.fallthrough,
+                            triageStats_.unloads, triageStats_.frames);
         }
+        triageStats_ = {};
     }
 
     if (!toGenerate.empty())

@@ -227,6 +227,21 @@ class WorldSession {
     // Delta persistence (v3 codec)
     WorldGenerator* worldGen_ = nullptr;
     uint32_t worldgenVersion_{0};
+
+    // Accumulated diagnostics (emitted periodically in submit(Tick))
+    struct PersistenceStats {
+        int encodes = 0;
+        int zeroDiffEncodes = 0;
+        size_t encodeBytes = 0;
+        int loadsDispatched = 0;
+        int loadsDbMiss = 0;
+        int loadsOk = 0;
+        int loadsFail = 0;
+        int loadsCancel = 0;
+        int ticks = 0;
+    };
+    PersistenceStats stats_{};
+    static constexpr int K_STATS_INTERVAL = 300; // ~5s at 60fps
 };
 
 } // namespace recurse

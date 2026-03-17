@@ -98,6 +98,18 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     int maxLoadCompletions_ = 16;
     int lodHysteresis_ = 2;
     int collisionRadius_ = 3;
+
+    // Accumulated triage diagnostics (emitted every K_TRIAGE_LOG_INTERVAL frames)
+    struct TriageStats {
+        int dbLoads = 0;
+        int generates = 0;
+        int ready = 0;
+        int fallthrough = 0; // inSavedRegion but LoadChunk returned false
+        int unloads = 0;
+        int frames = 0;
+    };
+    TriageStats triageStats_{};
+    static constexpr int K_TRIAGE_LOG_INTERVAL = 60;
 };
 
 } // namespace recurse::systems

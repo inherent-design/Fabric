@@ -141,6 +141,8 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
 
         for (auto& [cx, cy, cz] : batch) {
             auto blob = provider_(cx, cy, cz);
+            if (!blob.empty() && blob.size() < 40)
+                continue; // F20: zero-diff blob; chunk matches worldgen reference
             if (!blob.empty()) {
                 entries.push_back({fabric::ChunkCoord{cx, cy, cz}, std::move(blob)});
             }

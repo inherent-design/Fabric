@@ -33,19 +33,23 @@ size_t SnapshotScheduler::pendingCount() const {
 
 void SnapshotScheduler::snapshotAll() {
     std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> entries;
+    size_t totalBytes = 0;
     for (const auto& coord : dirty_) {
         auto blob = provider_(coord.x, coord.y, coord.z);
-        if (!blob.empty())
+        if (!blob.empty()) {
+            totalBytes += blob.size();
             entries.emplace_back(coord, std::move(blob));
+        }
     }
     dirty_.clear();
     if (entries.empty())
         return;
     int count = static_cast<int>(entries.size());
-    writerQueue_.submit([this, entries = std::move(entries), count]() {
+    FABRIC_LOG_INFO("Snapshot pass: {} chunks, {} bytes total ({} bytes/chunk avg)", count, totalBytes,
+                    totalBytes / static_cast<size_t>(count));
+    writerQueue_.submit([this, entries = std::move(entries)]() {
         for (const auto& [coord, blob] : entries)
             txStore_.saveSnapshot(coord.x, coord.y, coord.z, blob);
-        FABRIC_LOG_INFO("Snapshot pass: saved {} chunks", count);
     });
 }
 

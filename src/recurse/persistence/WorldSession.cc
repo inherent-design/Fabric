@@ -135,6 +135,15 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
         int cy = e.getData<int>("cy");
         int cz = e.getData<int>("cz");
 
+        // F22: Filter events that cannot produce meaningful persistence diffs.
+        if (e.hasData("source")) {
+            auto src = static_cast<ChangeSource>(e.getData<int>("source"));
+            if (src == ChangeSource::Generation)
+                return; // fresh worldgen matches reference; zero diff by definition
+            if (src == ChangeSource::Physics && !e.hasAnyData("detail"))
+                return; // settled-chunk event (collision-only, no cell changes)
+        }
+
         if (saveService_)
             saveService_->markDirty(cx, cy, cz);
         if (snapshotScheduler_)
@@ -251,20 +260,25 @@ ChunkBlob WorldSession::encodeChunkBlob(int cx, int cy, int cz) {
         palettePtr = paletteFloats.data();
     }
 
-    // Delta path: generate reference (terrain + essence), diff against current.
-    // The reference must match the full generation pipeline so that only
-    // actual modifications (simulation, player edits) produce diff entries.
     if (worldGen_) {
         std::vector<simulation::VoxelCell> refBuf(simulation::K_CHUNK_VOLUME);
         worldGen_->generateToBuffer(refBuf.data(), cx, cy, cz);
         EssencePalette refPalette;
         simulation::assignEssence(refBuf.data(), cx, cy, cz, simSystem_->materials(), refPalette, 42);
-        return FchkCodec::encodeDelta(buf->data(), refBuf.data(), sizeof(*buf), worldgenVersion_, 1, 1, palettePtr,
-                                      paletteCount);
+        auto blob = FchkCodec::encodeDelta(buf->data(), refBuf.data(), sizeof(*buf), worldgenVersion_, 1, 1, palettePtr,
+                                           paletteCount);
+        ++stats_.encodes;
+        stats_.encodeBytes += blob.size();
+        // Heuristic: empty delta compresses to ~29 bytes (header + zero diffs + empty palette)
+        if (blob.size() < 40)
+            ++stats_.zeroDiffEncodes;
+        return blob;
     }
 
-    // Fallback: full v2 blob (no worldgen available)
-    return FchkCodec::encode(buf->data(), sizeof(*buf), 1, 1, palettePtr, paletteCount);
+    auto blob = FchkCodec::encode(buf->data(), sizeof(*buf), 1, 1, palettePtr, paletteCount);
+    ++stats_.encodes;
+    stats_.encodeBytes += blob.size();
+    return blob;
 }
 
 // ---------------------------------------------------------------------------
@@ -275,8 +289,11 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
     if (!store_ || !simSystem_)
         return false;
 
-    if (!store_->hasChunk(cx, cy, cz))
+    if (!store_->hasChunk(cx, cy, cz)) {
+        ++stats_.loadsDbMiss;
         return false;
+    }
+    ++stats_.loadsDispatched;
 
     auto& grid = simSystem_->simulationGrid();
     auto& registry = grid.registry();
@@ -297,29 +314,40 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
 
     auto future = scheduler_.submit([storePtr, cx, cy, cz, buf, worldGen, materials]() -> AsyncLoadResult {
         AsyncLoadResult r;
-        auto blob = storePtr->loadChunk(cx, cy, cz);
-        if (!blob)
-            return r;
-
-        FchkDecoded decoded;
-        if (FchkCodec::isDelta(*blob) && worldGen) {
-            auto refBuf = std::make_unique<std::array<simulation::VoxelCell, simulation::K_CHUNK_VOLUME>>();
-            worldGen->generateToBuffer(refBuf->data(), cx, cy, cz);
-            if (materials) {
-                EssencePalette refPalette;
-                simulation::assignEssence(refBuf->data(), cx, cy, cz, *materials, refPalette, 42);
+        try {
+            auto blob = storePtr->loadChunk(cx, cy, cz);
+            if (!blob) {
+                FABRIC_LOG_WARN("asyncLoad({},{},{}): loadChunk returned nullopt", cx, cy, cz);
+                return r;
             }
-            decoded = FchkCodec::decodeAny(*blob, refBuf->data());
-        } else {
-            decoded = FchkCodec::decodeAny(*blob);
+
+            bool isDelta = FchkCodec::isDelta(*blob);
+            FchkDecoded decoded;
+            if (isDelta && worldGen) {
+                auto refBuf = std::make_unique<std::array<simulation::VoxelCell, simulation::K_CHUNK_VOLUME>>();
+                worldGen->generateToBuffer(refBuf->data(), cx, cy, cz);
+                if (materials) {
+                    EssencePalette refPalette;
+                    simulation::assignEssence(refBuf->data(), cx, cy, cz, *materials, refPalette, 42);
+                }
+                decoded = FchkCodec::decodeAny(*blob, refBuf->data());
+            } else {
+                decoded = FchkCodec::decodeAny(*blob);
+            }
+
+            const size_t expected = sizeof(*buf);
+            if (decoded.cells.size() == expected) {
+                std::memcpy(buf->data(), decoded.cells.data(), expected);
+                r.paletteData = std::move(decoded.paletteData);
+                r.paletteEntryCount = decoded.paletteEntryCount;
+                r.success = true;
+            } else {
+                FABRIC_LOG_WARN("asyncLoad({},{},{}): cells size mismatch: got {} expected {}", cx, cy, cz,
+                                decoded.cells.size(), expected);
+            }
+        } catch (const std::exception& ex) {
+            FABRIC_LOG_WARN("asyncLoad({},{},{}): decode failed: {}", cx, cy, cz, ex.what());
         }
-
-        if (decoded.cells.size() == sizeof(*buf))
-            std::memcpy(buf->data(), decoded.cells.data(), decoded.cells.size());
-
-        r.paletteData = std::move(decoded.paletteData);
-        r.paletteEntryCount = decoded.paletteEntryCount;
-        r.success = true;
         return r;
     });
 
@@ -344,6 +372,7 @@ std::vector<ops::CompletedLoad> WorldSession::pollPendingLoads() {
         auto& meta = entry.metadata;
 
         if (entry.cancelled) {
+            ++stats_.loadsCancel;
             if (simSystem_) {
                 auto& registry = simSystem_->simulationGrid().registry();
                 simulation::cancelAndRemove(meta.generating, registry);
@@ -353,6 +382,7 @@ std::vector<ops::CompletedLoad> WorldSession::pollPendingLoads() {
         }
 
         if (entry.result.success) {
+            ++stats_.loadsOk;
             auto& grid = simSystem_->simulationGrid();
             auto& registry = grid.registry();
             grid.syncChunkBuffersFrom(cx, cy, cz, meta.bufferIndex);
@@ -377,6 +407,8 @@ std::vector<ops::CompletedLoad> WorldSession::pollPendingLoads() {
 
             completions.push_back({cx, cy, cz, meta.bufferIndex, true});
         } else {
+            ++stats_.loadsFail;
+            FABRIC_LOG_WARN("pollPendingLoads({},{},{}): load failed", cx, cy, cz);
             if (simSystem_) {
                 auto& registry = simSystem_->simulationGrid().registry();
                 simulation::cancelAndRemove(meta.generating, registry);
@@ -620,6 +652,18 @@ void WorldSession::submit(ops::Tick op) {
     if (checkpointElapsed_ >= K_CHECKPOINT_INTERVAL_SECONDS) {
         checkpointElapsed_ = 0.0f;
         writerQueue_.submit([this]() { store_->maybeCheckpoint(); });
+    }
+
+    if (++stats_.ticks >= K_STATS_INTERVAL) {
+        bool any = stats_.encodes > 0 || stats_.loadsDispatched > 0 || stats_.loadsDbMiss > 0 || stats_.loadsOk > 0 ||
+                   stats_.loadsFail > 0;
+        if (any) {
+            FABRIC_LOG_INFO(
+                "persistence: encodes={} ({}B, {}zeroDiff) loads={} ({}ok {}fail {}miss {}cancel) pending={}",
+                stats_.encodes, stats_.encodeBytes, stats_.zeroDiffEncodes, stats_.loadsDispatched, stats_.loadsOk,
+                stats_.loadsFail, stats_.loadsDbMiss, stats_.loadsCancel, pendingLoads_.size());
+        }
+        stats_ = {};
     }
 }
 

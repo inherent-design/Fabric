@@ -65,6 +65,15 @@ void VoxelSimulationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fix
             dispatcher_->dispatchEvent(e);
         }
     }
+
+    // Periodic generation summary
+    if (++genStats_.frames >= K_GEN_LOG_INTERVAL) {
+        if (genStats_.chunksGenerated > 0) {
+            FABRIC_LOG_INFO("generation: {} chunks in {} batches ({}frames)", genStats_.chunksGenerated,
+                            genStats_.batchCalls, genStats_.frames);
+        }
+        genStats_ = {};
+    }
 }
 
 void VoxelSimulationSystem::onWorldBegin() {
@@ -316,7 +325,8 @@ void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int
         }
     }
 
-    FABRIC_LOG_DEBUG("generateChunksBatch: {} chunks generated in parallel", chunks.size());
+    genStats_.chunksGenerated += static_cast<int>(chunks.size());
+    ++genStats_.batchCalls;
 }
 
 void VoxelSimulationSystem::removeActiveChunk(recurse::simulation::ChunkRef<recurse::simulation::Active> ref) {

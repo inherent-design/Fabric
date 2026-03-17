@@ -96,6 +96,14 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     fabric::EventDispatcher* dispatcher_ = nullptr;
     std::unique_ptr<recurse::simulation::VoxelSimulationSystem> fabSim_;
     size_t lastActiveCount_ = 0;
+
+    struct GenStats {
+        int batchCalls = 0;
+        int chunksGenerated = 0;
+        int frames = 0;
+    };
+    GenStats genStats_{};
+    static constexpr int K_GEN_LOG_INTERVAL = 60;
 };
 
 } // namespace recurse::systems
