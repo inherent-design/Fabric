@@ -9,6 +9,7 @@
 
 namespace recurse {
 struct VoxelChange;
+class WorldGenerator;
 class WorldTransactionStore;
 } // namespace recurse
 
@@ -87,7 +88,7 @@ class ReplayExecutor {
   public:
     ReplayExecutor(WorldTransactionStore& txStore, simulation::SimulationGrid& grid,
                    simulation::FallingSandSystem& sandSystem, simulation::GhostCellManager& ghosts,
-                   simulation::ChunkActivityTracker& tracker, int64_t worldSeed);
+                   simulation::ChunkActivityTracker& tracker, int64_t worldSeed, WorldGenerator* worldGen = nullptr);
 
     ReplayResult replayDelta(const SnapshotSet& snapshot, std::span<const VoxelChange> userEdits, uint64_t tickCount,
                              ReplayConfig config = {}, ReplayObserver observer = nullptr);
@@ -105,6 +106,7 @@ class ReplayExecutor {
     simulation::GhostCellManager& ghosts_;
     simulation::ChunkActivityTracker& tracker_;
     int64_t worldSeed_;
+    WorldGenerator* worldGen_ = nullptr;
 };
 
 } // namespace recurse::persistence

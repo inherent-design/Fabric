@@ -38,6 +38,7 @@ class SqliteTransactionStore;
 class ChunkSaveService;
 class SnapshotScheduler;
 class PruningScheduler;
+class WorldGenerator;
 struct StreamSource;
 
 namespace persistence {
@@ -222,6 +223,10 @@ class WorldSession {
     systems::LODSystem* lodSystem_ = nullptr;
     systems::PhysicsGameSystem* physicsSystem_ = nullptr;
     systems::TerrainSystem* terrainSystem_ = nullptr;
+
+    // Delta persistence (v3 codec)
+    WorldGenerator* worldGen_ = nullptr;
+    uint32_t worldgenVersion_{0};
 };
 
 } // namespace recurse

@@ -53,6 +53,9 @@ class SqliteChunkStore : public ChunkStore {
     /// Thread-safe: bounds computed once at open time, never mutated during session.
     bool isInSavedRegion(int cx, int cy, int cz) const;
 
+    /// Set worldgen version for delta persistence. Bound to parameter 6 on save.
+    void setWorldgenVersion(uint32_t version);
+
   private:
     void openConnections(const std::string& dbPath);
     void configurePragmas(sqlite3* db);
@@ -90,6 +93,7 @@ class SqliteChunkStore : public ChunkStore {
         bool empty = true;
     };
     SavedBounds savedBounds_;
+    uint32_t worldgenVersion_{0};
 
     void computeSavedBounds();
     void expandBounds(int cx, int cy, int cz);

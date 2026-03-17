@@ -8,8 +8,11 @@
 #include "recurse/simulation/GhostCells.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
+#include "recurse/world/WorldGenerator.hh"
 #include <algorithm>
+#include <array>
 #include <cstring>
+#include <memory>
 #include <random>
 #include <unordered_set>
 
@@ -23,13 +26,14 @@ constexpr double K_TICK_DURATION_MS = 1000.0 / 60.0;
 
 ReplayExecutor::ReplayExecutor(WorldTransactionStore& txStore, simulation::SimulationGrid& grid,
                                simulation::FallingSandSystem& sandSystem, simulation::GhostCellManager& ghosts,
-                               simulation::ChunkActivityTracker& tracker, int64_t worldSeed)
+                               simulation::ChunkActivityTracker& tracker, int64_t worldSeed, WorldGenerator* worldGen)
     : txStore_(txStore),
       grid_(grid),
       sandSystem_(sandSystem),
       ghosts_(ghosts),
       tracker_(tracker),
-      worldSeed_(worldSeed) {}
+      worldSeed_(worldSeed),
+      worldGen_(worldGen) {}
 
 ReplayResult ReplayExecutor::replayDelta(const SnapshotSet& snapshot, std::span<const VoxelChange> userEdits,
                                          uint64_t tickCount, ReplayConfig config, ReplayObserver observer) {
@@ -57,7 +61,14 @@ ReplayResult ReplayExecutor::runLoop(const SnapshotSet& snapshot, std::span<cons
 
     // Phase 0: Load snapshot into grid.
     for (const auto& cs : snapshot.chunks) {
-        FchkDecoded decoded = FchkCodec::decode(cs.blob);
+        FchkDecoded decoded;
+        if (FchkCodec::isDelta(cs.blob) && worldGen_) {
+            auto refBuf = std::make_unique<std::array<VoxelCell, K_CHUNK_VOLUME>>();
+            worldGen_->generateToBuffer(refBuf->data(), cs.coord.x, cs.coord.y, cs.coord.z);
+            decoded = FchkCodec::decodeAny(cs.blob, refBuf->data());
+        } else {
+            decoded = FchkCodec::decodeAny(cs.blob);
+        }
         if (decoded.cells.empty()) {
             return ReplayResult{ReplayStatus::SnapshotDecodeFailed, 0, 0, {}};
         }

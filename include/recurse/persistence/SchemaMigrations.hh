@@ -69,6 +69,11 @@ CREATE TABLE schema_version (
 CREATE INDEX idx_changelog_ts ON change_log (ts);
 )sql",
         "add ts-only index for pruning queries"},
+    Migration{
+        R"sql(
+ALTER TABLE chunk_state ADD COLUMN worldgen_version INTEGER NOT NULL DEFAULT 0;
+)sql",
+        "add worldgen_version column for delta persistence tracking"},
 };
 
 inline constexpr int K_SCHEMA_VERSION = static_cast<int>(K_SCHEMA_MIGRATIONS.size());

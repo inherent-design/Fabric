@@ -25,14 +25,35 @@
 #include "fabric/log/Log.hh"
 #include "fabric/platform/JobScheduler.hh"
 
+#include "recurse/simulation/VoxelConstants.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
+
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <memory>
 
 inline constexpr float K_CHECKPOINT_INTERVAL_SECONDS = 5.0f;
 
 namespace recurse {
+
+namespace {
+uint32_t computeWorldgenVersion(const std::string& genName, int64_t worldSeed) {
+    uint32_t h = 2166136261u;
+    for (char c : genName) {
+        h ^= static_cast<uint32_t>(static_cast<uint8_t>(c));
+        h *= 16777619u;
+    }
+    auto seed = static_cast<uint64_t>(worldSeed);
+    for (int i = 0; i < 8; ++i) {
+        h ^= static_cast<uint32_t>((seed >> (i * 8)) & 0xFF);
+        h *= 16777619u;
+    }
+    return h;
+}
+} // namespace
 
 // ---------------------------------------------------------------------------
 // Static factory
@@ -79,6 +100,14 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
 
     txStore_ = std::make_unique<SqliteTransactionStore>(store_->writerDb(), store_->readerDb());
 
+    if (terrainSystem_) {
+        worldGen_ = &terrainSystem_->worldGenerator();
+        worldgenVersion_ = computeWorldgenVersion(worldGen_->name(), simSystem_ ? simSystem_->worldSeed() : 0);
+    }
+
+    if (worldgenVersion_ != 0)
+        store_->setWorldgenVersion(worldgenVersion_);
+
     auto provider = [this](int cx, int cy, int cz) -> ChunkBlob {
         return encodeChunkBlob(cx, cy, cz);
     };
@@ -90,7 +119,7 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
     if (simSystem_) {
         replayExecutor_ = std::make_unique<persistence::ReplayExecutor>(
             *txStore_, simSystem_->simulationGrid(), simSystem_->fallingSandSystem(), simSystem_->ghostCellManager(),
-            simSystem_->activityTracker(), simSystem_->worldSeed());
+            simSystem_->activityTracker(), simSystem_->worldSeed(), worldGen_);
 
         chunkSnapshotProvider_ = std::make_unique<ChunkSnapshotProvider>(
             *txStore_, *snapshotScheduler_, simSystem_->simulationGrid(), *replayExecutor_);
@@ -219,6 +248,15 @@ ChunkBlob WorldSession::encodeChunkBlob(int cx, int cy, int cz) {
         palettePtr = paletteFloats.data();
     }
 
+    // Delta path: generate reference, diff against current
+    if (worldGen_) {
+        std::vector<simulation::VoxelCell> refBuf(simulation::K_CHUNK_VOLUME);
+        worldGen_->generateToBuffer(refBuf.data(), cx, cy, cz);
+        return FchkCodec::encodeDelta(buf->data(), refBuf.data(), sizeof(*buf), worldgenVersion_, 1, 1, palettePtr,
+                                      paletteCount);
+    }
+
+    // Fallback: full v2 blob (no worldgen available)
     return FchkCodec::encode(buf->data(), sizeof(*buf), 1, 1, palettePtr, paletteCount);
 }
 
@@ -247,13 +285,24 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
     }
 
     auto* storePtr = store_.get();
-    auto future = scheduler_.submit([storePtr, cx, cy, cz, buf]() -> AsyncLoadResult {
+    auto* worldGen = worldGen_;
+
+    auto future = scheduler_.submit([storePtr, cx, cy, cz, buf, worldGen]() -> AsyncLoadResult {
         AsyncLoadResult r;
         auto blob = storePtr->loadChunk(cx, cy, cz);
         if (!blob)
             return r;
 
-        auto decoded = FchkCodec::decode(*blob);
+        FchkDecoded decoded;
+        if (FchkCodec::isDelta(*blob) && worldGen) {
+            // Heap-allocate reference buffer (128KB, too large for 64KB fiber stacks)
+            auto refBuf = std::make_unique<std::array<simulation::VoxelCell, simulation::K_CHUNK_VOLUME>>();
+            worldGen->generateToBuffer(refBuf->data(), cx, cy, cz);
+            decoded = FchkCodec::decodeAny(*blob, refBuf->data());
+        } else {
+            decoded = FchkCodec::decodeAny(*blob);
+        }
+
         if (decoded.cells.size() == sizeof(*buf))
             std::memcpy(buf->data(), decoded.cells.data(), decoded.cells.size());
 

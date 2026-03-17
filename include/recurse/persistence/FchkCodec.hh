@@ -24,7 +24,22 @@ struct FchkDecoded {
     uint16_t paletteEntryCount{0};  ///< Number of palette entries (0 for v1).
 };
 
-/// Shared FCHK v2 codec. Used by SqliteChunkStore and tests.
+/// Sparse delta entry from v3 decode.
+struct FchkDeltaEntry {
+    uint32_t cellIndex;
+    uint32_t cellData;
+};
+static_assert(sizeof(FchkDeltaEntry) == 8, "FchkDeltaEntry must be 8 bytes for binary format");
+
+/// Decoded FCHK v3 delta payload.
+struct FchkDeltaDecoded {
+    uint32_t worldgenVersion{0};
+    std::vector<FchkDeltaEntry> entries;
+    std::vector<float> paletteData;
+    uint16_t paletteEntryCount{0};
+};
+
+/// Shared FCHK codec. Handles v1/v2 full blobs and v3 delta blobs.
 struct FchkCodec {
     /// Encode raw VoxelCell data into FCHK v2 blob.
     /// When paletteData is non-null and paletteEntryCount > 0, palette is appended after the
@@ -35,7 +50,27 @@ struct FchkCodec {
     /// Decode FCHK blob (v1 or v2). Validates header, decompresses if needed.
     /// v1 files: returns cells only, paletteEntryCount == 0, essenceIdx bytes zeroed.
     /// v2 files: returns cells + palette section.
+    /// Throws for v3 blobs (use decodeDelta instead).
     static FchkDecoded decode(const ChunkBlob& blob);
+
+    /// Encode delta between current and reference cell buffers as FCHK v3 blob.
+    /// Only cells where current != reference are stored.
+    /// worldgenVersion: caller-provided hash for version tracking.
+    static ChunkBlob encodeDelta(const void* currentCells, const void* referenceCells, size_t cellsByteCount,
+                                 uint32_t worldgenVersion, uint8_t compression = 1, int level = 1,
+                                 const float* paletteData = nullptr, uint16_t paletteEntryCount = 0);
+
+    /// Decode a v3 delta blob. Throws if blob is not v3.
+    static FchkDeltaDecoded decodeDelta(const ChunkBlob& blob);
+
+    /// Check if a blob is a v3 delta format (without full decode).
+    static bool isDelta(const ChunkBlob& blob);
+
+    /// Decode any FCHK blob (v1/v2/v3). For v3 deltas, applies diff entries
+    /// to refCells to produce full cell data. refCells must point to
+    /// K_CHUNK_VOLUME * sizeof(VoxelCell) bytes when blob is v3.
+    /// For v1/v2, refCells is ignored. Throws if blob is v3 and refCells is null.
+    static FchkDecoded decodeAny(const ChunkBlob& blob, const void* refCells = nullptr);
 };
 
 } // namespace recurse

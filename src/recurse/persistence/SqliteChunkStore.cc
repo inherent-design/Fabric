@@ -172,8 +172,8 @@ void SqliteChunkStore::prepareStatements() {
     stmtHas_ = prepareOne(readerDb_, "SELECT 1 FROM chunk_state WHERE cx=?1 AND cy=?2 AND cz=?3");
     stmtLoad_ = prepareOne(readerDb_, "SELECT data FROM chunk_state WHERE cx=?1 AND cy=?2 AND cz=?3");
     stmtSize_ = prepareOne(readerDb_, "SELECT length(data) FROM chunk_state WHERE cx=?1 AND cy=?2 AND cz=?3");
-    stmtSave_ = prepareOne(
-        writerDb_, "INSERT OR REPLACE INTO chunk_state (cx, cy, cz, data, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)");
+    stmtSave_ = prepareOne(writerDb_, "INSERT OR REPLACE INTO chunk_state (cx, cy, cz, data, updated_at, "
+                                      "worldgen_version) VALUES (?1, ?2, ?3, ?4, ?5, ?6)");
 }
 
 void SqliteChunkStore::finalizeStatements() {
@@ -244,6 +244,10 @@ bool SqliteChunkStore::isInSavedRegion(int cx, int cy, int cz) const {
            cy <= savedBounds_.maxCy && cz >= savedBounds_.minCz && cz <= savedBounds_.maxCz;
 }
 
+void SqliteChunkStore::setWorldgenVersion(uint32_t version) {
+    worldgenVersion_ = version;
+}
+
 void SqliteChunkStore::expandBounds(int cx, int cy, int cz) {
     if (savedBounds_.empty) {
         savedBounds_ = {cx, cx, cy, cy, cz, cz, false};
@@ -301,6 +305,7 @@ void SqliteChunkStore::saveChunk(int cx, int cy, int cz, const ChunkBlob& data) 
     sqlite3_bind_int(stmtSave_, 3, cz);
     sqlite3_bind_blob(stmtSave_, 4, data.data_ptr(), static_cast<int>(data.size()), SQLITE_STATIC);
     sqlite3_bind_int64(stmtSave_, 5, static_cast<sqlite3_int64>(std::time(nullptr)));
+    sqlite3_bind_int(stmtSave_, 6, static_cast<int>(worldgenVersion_));
 
     int rc = sqlite3_step(stmtSave_);
     resetStmt(stmtSave_);
@@ -360,6 +365,7 @@ void SqliteChunkStore::saveBatch(const std::vector<std::pair<fabric::ChunkCoord,
         sqlite3_bind_int(stmtSave_, 3, coord.z);
         sqlite3_bind_blob(stmtSave_, 4, blob.data_ptr(), static_cast<int>(blob.size()), SQLITE_STATIC);
         sqlite3_bind_int64(stmtSave_, 5, static_cast<sqlite3_int64>(std::time(nullptr)));
+        sqlite3_bind_int(stmtSave_, 6, static_cast<int>(worldgenVersion_));
 
         int rc = sqlite3_step(stmtSave_);
         resetStmt(stmtSave_);
