@@ -191,11 +191,19 @@ ChunkBlob FchkCodec::encodeDelta(const void* currentCells, const void* reference
     const auto* cur = static_cast<const uint32_t*>(currentCells);
     const auto* ref = static_cast<const uint32_t*>(referenceCells);
 
-    // Collect differing cells
+    // Strip runtime-only flags (UPDATED, FREE_FALL) before diffing.
+    // These bits are set by the simulation each tick but are not persistent
+    // state. Without masking, every "touched" cell produces a false diff
+    // against the clean worldgen reference. The decode side already strips
+    // these via kRuntimeFlagsMask.
+    constexpr uint32_t kPersistMask = 0xFC'FF'FF'FF; // clear bits 0-1 of flags byte (byte 3, LE)
+
     std::vector<FchkDeltaEntry> diffs;
     for (size_t i = 0; i < cellCount; ++i) {
-        if (cur[i] != ref[i]) {
-            diffs.push_back({static_cast<uint32_t>(i), cur[i]});
+        uint32_t c = cur[i] & kPersistMask;
+        uint32_t r = ref[i] & kPersistMask;
+        if (c != r) {
+            diffs.push_back({static_cast<uint32_t>(i), c});
         }
     }
 
