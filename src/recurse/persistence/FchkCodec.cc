@@ -1,9 +1,12 @@
 #include "recurse/persistence/FchkCodec.hh"
 
 #include "fabric/utils/ErrorHandling.hh"
+#include <bit>
 #include <cstring>
 #include <lz4.h>
 #include <zstd.h>
+
+static_assert(std::endian::native == std::endian::little, "FchkCodec assumes little-endian byte order");
 
 namespace recurse {
 

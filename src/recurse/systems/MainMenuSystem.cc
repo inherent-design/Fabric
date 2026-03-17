@@ -9,6 +9,7 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/core/WorldLifecycle.hh"
 #include "fabric/log/Log.hh"
+#include "fabric/utils/TextSanitize.hh"
 #include "recurse/systems/AIGameSystem.hh"
 #include "recurse/systems/AudioGameSystem.hh"
 #include "recurse/systems/CameraGameSystem.hh"
@@ -109,7 +110,7 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
 
         // Wire persistence before generation so streaming can save/load chunks
         if (chunkPipeline_ && worldRegistry_ && !uuid.empty()) {
-            chunkPipeline_->loadWorld(worldRegistry_->worldPath(uuid), voxelSim_->scheduler());
+            chunkPipeline_->loadWorld(worldRegistry_->worldPath(uuid).string(), voxelSim_->scheduler());
         }
 
         if (worldLifecycle_)
@@ -438,7 +439,7 @@ void MainMenuSystem::showWorldList() {
 
                     if (world.uuid == renamingWorldUUID_) {
                         row->SetInnerRML(
-                            "<input type='text' id='rename_input' value='" + world.name +
+                            "<input type='text' id='rename_input' value='" + fabric::utils::rmlEscape(world.name) +
                             "' class='rename_input' />"
                             "<button class='action_btn' id='confirm_rename'><span class='icon'>&#xf00c;</span></button>"
                             "<button class='action_btn' id='cancel_rename'><span "
@@ -483,7 +484,7 @@ void MainMenuSystem::showWorldList() {
                         row->SetInnerRML(
                             "<div class='world_info'>"
                             "<span class='world_name'>" +
-                            world.name +
+                            fabric::utils::rmlEscape(world.name) +
                             "</span>"
                             "<span class='world_meta delete_confirm'>Delete this world?</span>"
                             "</div>"
@@ -514,10 +515,10 @@ void MainMenuSystem::showWorldList() {
                         std::string typeStr = (world.type == WorldType::Flat) ? "Flat" : "Natural";
                         row->SetInnerRML("<div class='world_info'>"
                                          "<span class='world_name'>" +
-                                         world.name +
+                                         fabric::utils::rmlEscape(world.name) +
                                          "</span>"
                                          "<span class='world_meta'>" +
-                                         typeStr + " | " + world.lastPlayed +
+                                         typeStr + " | " + fabric::utils::rmlEscape(world.lastPlayed) +
                                          "</span>"
                                          "</div>"
                                          "<div class='world_actions'>"
@@ -805,7 +806,7 @@ void MainMenuSystem::onOpenFolderClicked(const std::string& uuid) {
     if (!worldRegistry_)
         return;
 
-    std::string path = worldRegistry_->worldPath(uuid);
+    std::string path = worldRegistry_->worldPath(uuid).string();
     FABRIC_LOG_INFO("MainMenu: Open folder {}", path);
 
     std::string url = "file://" + path;
@@ -862,7 +863,7 @@ void MainMenuSystem::resetWorldState() {
             meta->playerY = pos.y;
             meta->playerZ = pos.z;
             meta->lastPlayed = WorldMetadata::nowISO8601();
-            meta->toTOML(worldRegistry_->worldPath(activeWorldUUID_) + "/world.toml");
+            meta->toTOML((worldRegistry_->worldPath(activeWorldUUID_) / "world.toml").string());
             FABRIC_LOG_INFO("MainMenu: Saved player position ({}, {}, {})", pos.x, pos.y, pos.z);
         }
         activeWorldUUID_.clear();

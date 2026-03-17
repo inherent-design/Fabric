@@ -4,11 +4,7 @@
 #include <fstream>
 #include <string>
 
-#if defined(__APPLE__)
-#include <dlfcn.h>
-#elif defined(_WIN32)
-#include <windows.h>
-#endif
+#include <SDL3/SDL.h>
 
 #include "fabric/log/Log.hh"
 #include "fabric/platform/DefaultConfig.hh"
@@ -262,41 +258,13 @@ std::filesystem::path ConfigManager::findConfig(const std::filesystem::path& fil
     }
 
     // 2. Executable directory
-#if defined(__APPLE__)
-    // macOS: use dladdr to find executable path
-    Dl_info info;
-    if (dladdr(reinterpret_cast<void*>(&ConfigManager::findConfig), &info) && info.dli_fname) {
-        std::filesystem::path exePath(info.dli_fname);
-        auto exeDir = exePath.parent_path();
-        auto candidate = exeDir / filename;
+    const char* base = SDL_GetBasePath();
+    if (base != nullptr) {
+        auto candidate = std::filesystem::path(base) / filename;
         if (std::filesystem::exists(candidate)) {
             return candidate;
         }
     }
-#elif defined(__linux__)
-    // Linux: read /proc/self/exe
-    std::error_code ec;
-    auto exePath = std::filesystem::read_symlink("/proc/self/exe", ec);
-    if (!ec && !exePath.empty()) {
-        auto exeDir = exePath.parent_path();
-        auto candidate = exeDir / filename;
-        if (std::filesystem::exists(candidate)) {
-            return candidate;
-        }
-    }
-#elif defined(_WIN32)
-    // Windows: use GetModuleFileName
-    char buffer[MAX_PATH];
-    DWORD len = GetModuleFileNameA(nullptr, buffer, MAX_PATH);
-    if (len > 0 && len < MAX_PATH) {
-        std::filesystem::path exePath(buffer);
-        auto exeDir = exePath.parent_path();
-        auto candidate = exeDir / filename;
-        if (std::filesystem::exists(candidate)) {
-            return candidate;
-        }
-    }
-#endif
 
     // 3. Source config directory (config/ relative to CWD)
     auto sourceConfig = std::filesystem::current_path() / "config" / filename;

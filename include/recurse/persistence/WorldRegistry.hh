@@ -1,6 +1,7 @@
 #pragma once
 
 #include "recurse/persistence/WorldMetadata.hh"
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -38,7 +39,7 @@ class WorldRegistry {
     std::unique_ptr<ChunkStore> openChunkStore(const std::string& uuid) const;
 
     /// Filesystem path for a world directory.
-    std::string worldPath(const std::string& uuid) const;
+    std::filesystem::path worldPath(const std::string& uuid) const;
 
     const std::string& worldsDir() const { return worldsDir_; }
 

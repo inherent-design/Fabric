@@ -54,8 +54,15 @@ std::string createRunFolder(const std::string& baseDir) {
     auto now = system_clock::now();
     auto time = system_clock::to_time_t(now);
 
+    std::tm tm{};
+#if defined(_WIN32)
+    localtime_s(&tm, &time);
+#else
+    localtime_r(&time, &tm);
+#endif
+
     std::ostringstream ss;
-    ss << std::put_time(std::localtime(&time), "%Y-%m-%d_%H-%M-%S");
+    ss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
     std::string runId = ss.str();
 
     std::filesystem::path runPath = std::filesystem::path(baseDir) / runId;

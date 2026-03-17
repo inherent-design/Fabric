@@ -1,10 +1,11 @@
 # Utils unit tests
 target_sources(UnitTests
   PRIVATE
-  UtilsTest.cc
+  AsyncTest.cc
+  BVHTest.cc
+  CoordinatedGraphTest.cc
   ErrorHandlingTest.cc
   LoggingTest.cc
-  CoordinatedGraphTest.cc
-  BVHTest.cc
-  AsyncTest.cc
+  TextSanitizeTest.cc
+  UtilsTest.cc
 )

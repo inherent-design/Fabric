@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 
+#include "fabric/core/CompilerHints.hh"
 #include "fabric/log/Log.hh"
 
 namespace recurse {
@@ -172,7 +173,7 @@ RegistryResult DataRegistry::get(const std::filesystem::path& path) {
 
     auto result = DataLoader::load(path);
     if (result.isFailure()) {
-        return result.match([](const DataLoader&) -> RegistryResult { __builtin_unreachable(); },
+        return result.match([](const DataLoader&) -> RegistryResult { FABRIC_UNREACHABLE; },
                             [](auto err) -> RegistryResult {
                                 return std::visit(
                                     [](auto& e) -> RegistryResult { return RegistryResult::failure(std::move(e)); },
@@ -189,7 +190,7 @@ RegistryResult DataRegistry::reload(const std::filesystem::path& path) {
 
     auto result = DataLoader::load(path);
     if (result.isFailure()) {
-        return result.match([](const DataLoader&) -> RegistryResult { __builtin_unreachable(); },
+        return result.match([](const DataLoader&) -> RegistryResult { FABRIC_UNREACHABLE; },
                             [](auto err) -> RegistryResult {
                                 return std::visit(
                                     [](auto& e) -> RegistryResult { return RegistryResult::failure(std::move(e)); },

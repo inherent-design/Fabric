@@ -5,6 +5,7 @@
 #include <utility>
 #include <variant>
 
+#include "fabric/core/CompilerHints.hh"
 #include "fabric/fx/OneOf.hh"
 
 namespace fabric::fx {
@@ -33,13 +34,13 @@ template <typename A, typename... Es> struct SuccessOf<Result<A, Es...>> {
 
 // Only called when isFailure(); A branch is unreachable.
 template <typename A, typename... Es> std::variant<Es...> extractError(const std::variant<A, Es...>& data) {
-    return std::visit(overloaded{[](const A&) -> std::variant<Es...> { __builtin_unreachable(); },
+    return std::visit(overloaded{[](const A&) -> std::variant<Es...> { FABRIC_UNREACHABLE; },
                                  [](const auto& err) -> std::variant<Es...> { return err; }},
                       data);
 }
 
 template <typename A, typename... Es> std::variant<Es...> extractError(std::variant<A, Es...>& data) {
-    return std::visit(overloaded{[](A&) -> std::variant<Es...> { __builtin_unreachable(); },
+    return std::visit(overloaded{[](A&) -> std::variant<Es...> { FABRIC_UNREACHABLE; },
                                  [](auto& err) -> std::variant<Es...> { return std::move(err); }},
                       data);
 }

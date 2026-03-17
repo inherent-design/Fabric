@@ -10,3 +10,9 @@
 #define FABRIC_ALWAYS_INLINE [[gnu::always_inline]] inline
 #define FABRIC_NOINLINE [[gnu::noinline]]
 #endif
+
+#if defined(_MSC_VER)
+#define FABRIC_UNREACHABLE __assume(0)
+#else
+#define FABRIC_UNREACHABLE __builtin_unreachable()
+#endif

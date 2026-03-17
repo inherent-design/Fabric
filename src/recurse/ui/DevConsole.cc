@@ -119,6 +119,9 @@ void DevConsole::execute(const std::string& input) {
     }
 }
 
+// NOTE: output_ is not currently rendered via SetInnerRML. If a future
+// rendering path feeds these strings into RML markup, each entry must be
+// passed through fabric::utils::rmlEscape() at the render site.
 void DevConsole::print(const std::string& message) {
     output_.push_back(message);
     while (output_.size() > K_MAX_OUTPUT_LINES) {

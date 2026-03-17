@@ -6,10 +6,12 @@
 #include <SDL3/SDL.h>
 
 #include <cstdlib>
+#include <filesystem>
 
 namespace fabric {
 
 namespace {
+namespace fs = std::filesystem;
 
 std::string detectArch() {
 #if defined(__aarch64__) || defined(_M_ARM64)
@@ -67,39 +69,30 @@ PlatformDirs resolvePlatformDirs() {
 #if defined(__APPLE__)
     std::string homeDir = getEnvOr("HOME", "/tmp");
 
-    // macOS native: ~/Library/Application Support, ~/Library/Caches
-    // Override with XDG env vars if explicitly set
-    dirs.configDir = getEnvOr("XDG_CONFIG_HOME", homeDir + "/Library/Application Support") + "/fabric";
-    dirs.cacheDir = getEnvOr("XDG_CACHE_HOME", homeDir + "/Library/Caches") + "/fabric";
-    dirs.dataDir = getEnvOr("XDG_DATA_HOME", homeDir + "/Library/Application Support") + "/fabric";
+    dirs.configDir =
+        (fs::path(getEnvOr("XDG_CONFIG_HOME", homeDir + "/Library/Application Support")) / "fabric").string();
+    dirs.cacheDir = (fs::path(getEnvOr("XDG_CACHE_HOME", homeDir + "/Library/Caches")) / "fabric").string();
+    dirs.dataDir = (fs::path(getEnvOr("XDG_DATA_HOME", homeDir + "/Library/Application Support")) / "fabric").string();
 
 #elif defined(_WIN32)
     std::string appData = getEnvOr("APPDATA", "");
     std::string localAppData = getEnvOr("LOCALAPPDATA", "");
 
-    dirs.configDir = getEnvOr("XDG_CONFIG_HOME", appData + "\\Fabric") + "/fabric";
-    dirs.cacheDir = getEnvOr("XDG_CACHE_HOME", localAppData + "\\Fabric\\Cache") + "/fabric";
-    dirs.dataDir = getEnvOr("XDG_DATA_HOME", appData + "\\Fabric") + "/fabric";
+    const char* xdgConfig = std::getenv("XDG_CONFIG_HOME");
+    const char* xdgCache = std::getenv("XDG_CACHE_HOME");
+    const char* xdgData = std::getenv("XDG_DATA_HOME");
 
-    // When using native Windows paths (no XDG override), strip trailing /fabric
-    // since the base already includes the app name
-    if (std::getenv("XDG_CONFIG_HOME") == nullptr) {
-        dirs.configDir = appData + "\\Fabric";
-    }
-    if (std::getenv("XDG_CACHE_HOME") == nullptr) {
-        dirs.cacheDir = localAppData + "\\Fabric\\Cache";
-    }
-    if (std::getenv("XDG_DATA_HOME") == nullptr) {
-        dirs.dataDir = appData + "\\Fabric";
-    }
+    dirs.configDir = xdgConfig ? (fs::path(xdgConfig) / "fabric").string() : (fs::path(appData) / "Fabric").string();
+    dirs.cacheDir =
+        xdgCache ? (fs::path(xdgCache) / "fabric").string() : (fs::path(localAppData) / "Fabric" / "Cache").string();
+    dirs.dataDir = xdgData ? (fs::path(xdgData) / "fabric").string() : (fs::path(appData) / "Fabric").string();
 
 #else
-    // Linux/BSD: XDG Base Directory Specification
     std::string homeDir = getEnvOr("HOME", "/tmp");
 
-    dirs.configDir = getEnvOr("XDG_CONFIG_HOME", homeDir + "/.config") + "/fabric";
-    dirs.cacheDir = getEnvOr("XDG_CACHE_HOME", homeDir + "/.cache") + "/fabric";
-    dirs.dataDir = getEnvOr("XDG_DATA_HOME", homeDir + "/.local/share") + "/fabric";
+    dirs.configDir = (fs::path(getEnvOr("XDG_CONFIG_HOME", homeDir + "/.config")) / "fabric").string();
+    dirs.cacheDir = (fs::path(getEnvOr("XDG_CACHE_HOME", homeDir + "/.cache")) / "fabric").string();
+    dirs.dataDir = (fs::path(getEnvOr("XDG_DATA_HOME", homeDir + "/.local/share")) / "fabric").string();
 #endif
 
     return dirs;

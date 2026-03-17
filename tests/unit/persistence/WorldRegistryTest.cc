@@ -46,7 +46,7 @@ TEST_F(WorldRegistryTest, CreateWorldPersistsToDisk) {
     recurse::WorldRegistry reg(worldsDir_);
     auto meta = reg.createWorld("Persist Test", recurse::WorldType::Flat, 0);
 
-    auto tomlPath = reg.worldPath(meta.uuid) + "/world.toml";
+    auto tomlPath = (reg.worldPath(meta.uuid) / "world.toml").string();
     EXPECT_TRUE(fs::exists(tomlPath));
 }
 
@@ -108,7 +108,7 @@ TEST_F(WorldRegistryTest, OpenChunkStoreCreatesDatabase) {
     ASSERT_NE(store, nullptr);
 
     auto worldDir = reg.worldPath(meta.uuid);
-    EXPECT_TRUE(fs::exists(worldDir + "/world.db"));
+    EXPECT_TRUE(fs::exists(worldDir / "world.db"));
 }
 
 TEST_F(WorldRegistryTest, TouchWorldUpdatesLastPlayed) {

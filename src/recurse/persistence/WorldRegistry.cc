@@ -47,7 +47,7 @@ WorldMetadata WorldRegistry::createWorld(const std::string& name, WorldType type
 
     auto dir = worldPath(meta.uuid);
     fs::create_directories(dir);
-    meta.toTOML(dir + "/world.toml");
+    meta.toTOML((dir / "world.toml").string());
 
     return meta;
 }
@@ -62,7 +62,7 @@ bool WorldRegistry::deleteWorld(const std::string& uuid) {
 }
 
 std::optional<WorldMetadata> WorldRegistry::getWorld(const std::string& uuid) const {
-    auto tomlPath = worldPath(uuid) + "/world.toml";
+    auto tomlPath = (worldPath(uuid) / "world.toml").string();
     if (!fs::exists(tomlPath))
         return std::nullopt;
 
@@ -74,7 +74,7 @@ std::optional<WorldMetadata> WorldRegistry::getWorld(const std::string& uuid) co
 }
 
 void WorldRegistry::touchWorld(const std::string& uuid) {
-    auto tomlPath = worldPath(uuid) + "/world.toml";
+    auto tomlPath = (worldPath(uuid) / "world.toml").string();
     if (!fs::exists(tomlPath))
         return;
 
@@ -88,7 +88,7 @@ void WorldRegistry::touchWorld(const std::string& uuid) {
 }
 
 bool WorldRegistry::renameWorld(const std::string& uuid, const std::string& newName) {
-    auto tomlPath = worldPath(uuid) + "/world.toml";
+    auto tomlPath = (worldPath(uuid) / "world.toml").string();
     if (!fs::exists(tomlPath))
         return false;
 
@@ -105,13 +105,13 @@ bool WorldRegistry::renameWorld(const std::string& uuid, const std::string& newN
 std::unique_ptr<ChunkStore> WorldRegistry::openChunkStore(const std::string& uuid) const {
     auto dir = worldPath(uuid);
     if (!fs::is_directory(dir)) {
-        fabric::throwError("World directory not found: " + dir);
+        fabric::throwError("World directory not found: " + dir.string());
     }
-    return std::make_unique<SqliteChunkStore>(dir);
+    return std::make_unique<SqliteChunkStore>(dir.string());
 }
 
-std::string WorldRegistry::worldPath(const std::string& uuid) const {
-    return worldsDir_ + "/" + uuid;
+fs::path WorldRegistry::worldPath(const std::string& uuid) const {
+    return fs::path(worldsDir_) / uuid;
 }
 
 } // namespace recurse
