@@ -42,11 +42,6 @@ void CharacterMovementSystem::doShutdown() {
     FABRIC_LOG_INFO("CharacterMovementSystem shut down");
 }
 
-void CharacterMovementSystem::setPlayerWorldOffset(double x, double y, double z) {
-    playerPosD_ = fabric::Vector3<double, fabric::Space::World>(x, y, z);
-    playerPos_ = fabric::Vec3f(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z));
-}
-
 void CharacterMovementSystem::setPlayerPosition(const fabric::Vec3f& pos) {
     playerPos_ = pos;
     playerPosD_ = fabric::Vector3<double, fabric::Space::World>(static_cast<double>(pos.x), static_cast<double>(pos.y),

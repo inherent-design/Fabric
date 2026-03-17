@@ -1,5 +1,5 @@
 // Recurse.cc -- Main entry point for the Recurse game.
-// Registers 14 application systems via FabricAppDesc and delegates to
+// Registers 17 application systems via FabricAppDesc and delegates to
 // FabricApp::run(). All game logic lives in registered SystemBase subclasses.
 
 // Engine includes

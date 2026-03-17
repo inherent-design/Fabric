@@ -112,7 +112,6 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     void onQuitToTitleClicked();
     void onExitToDesktopClicked();
     void onNewWorldClicked();
-    void onLoadWorldClicked();
     void onCreateWorldClicked();
     void onDeleteWorldClicked(const std::string& uuid);
     void onRenameWorldClicked(const std::string& uuid, const std::string& newName);

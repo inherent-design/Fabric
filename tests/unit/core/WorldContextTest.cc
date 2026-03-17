@@ -148,19 +148,19 @@ TEST_F(WorldContextTest, ResolveQueryChunkEntities_Present) {
 
 TEST_F(WorldContextTest, ResolveReadBuffer_Active) {
     fabric::fx::WorldContext<recurse::WorldSession> ctx(*session_);
-    const auto* buf = ctx.resolve(recurse::ops::ReadBuffer{0, 0, 0, 0});
+    const auto* buf = ctx.resolve(recurse::ops::ReadBuffer{0, 0, 0});
     ASSERT_NE(buf, nullptr);
 }
 
 TEST_F(WorldContextTest, ResolveReadBuffer_Missing) {
     fabric::fx::WorldContext<recurse::WorldSession> ctx(*session_);
-    const auto* buf = ctx.resolve(recurse::ops::ReadBuffer{99, 99, 99, 0});
+    const auto* buf = ctx.resolve(recurse::ops::ReadBuffer{99, 99, 99});
     EXPECT_EQ(buf, nullptr);
 }
 
 TEST_F(WorldContextTest, ResolveWriteBuffer_Active) {
     fabric::fx::WorldContext<recurse::WorldSession> ctx(*session_);
-    auto* buf = ctx.resolve(recurse::ops::WriteBuffer{0, 0, 0, 0});
+    auto* buf = ctx.resolve(recurse::ops::WriteBuffer{0, 0, 0});
     ASSERT_NE(buf, nullptr);
 }
 

@@ -526,10 +526,10 @@ fabric_link_tracy(RecurseGame)
 # Uses FabricApp::run() with lifecycle callbacks; all game logic in Recurse.cc.
 if(FABRIC_USE_MIMALLOC)
     add_executable(Recurse src/recurse/Recurse.cc src/core/MimallocOverride.cc)
-    target_link_libraries(Recurse PRIVATE FabricLib RecurseGame mimalloc-static)
+    target_link_libraries(Recurse PRIVATE FabricLib RecurseGame mimalloc-static ozz_animation_offline)
 else()
     add_executable(Recurse src/recurse/Recurse.cc)
-    target_link_libraries(Recurse PRIVATE FabricLib RecurseGame)
+    target_link_libraries(Recurse PRIVATE FabricLib RecurseGame ozz_animation_offline)
 endif()
 
 if(APPLE)

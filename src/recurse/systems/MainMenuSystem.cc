@@ -737,11 +737,6 @@ void MainMenuSystem::onNewWorldClicked() {
     transitionTo(MenuState::WorldCreate);
 }
 
-void MainMenuSystem::onLoadWorldClicked() {
-    FABRIC_LOG_INFO("MainMenu: Load World clicked");
-    transitionTo(MenuState::WorldList);
-}
-
 void MainMenuSystem::onCreateWorldClicked() {
     if (!worldRegistry_) {
         FABRIC_LOG_ERROR("MainMenu: No WorldRegistry, cannot create world");

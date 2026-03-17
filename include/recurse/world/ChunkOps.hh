@@ -68,26 +68,24 @@ struct QueryChunkEntities {
     using Errors = fabric::fx::TypeList<fabric::fx::Never>;
 };
 
-/// Read the voxel buffer for a chunk at the given buffer index.
+/// Read the current voxel buffer for a chunk. Buffer selection is managed
+/// internally by SimulationGrid's triple-buffer epoch.
 struct ReadBuffer {
     int cx, cy, cz;
-    int bufIdx;
 
     static constexpr bool K_IS_SYNC = true;
     using Returns = const simulation::VoxelCell*;
     using Errors = fabric::fx::TypeList<fabric::fx::Never>;
-    // TODO: using RequiresState = Active; // Phase IV type-state
 };
 
-/// Get a mutable pointer to the write buffer for a chunk.
+/// Get a mutable pointer to the current write buffer for a chunk. Buffer
+/// selection is managed internally by SimulationGrid's triple-buffer epoch.
 struct WriteBuffer {
     int cx, cy, cz;
-    int bufIdx;
 
     static constexpr bool K_IS_SYNC = true;
     using Returns = simulation::VoxelCell*;
     using Errors = fabric::fx::TypeList<fabric::fx::Never>;
-    // TODO: using RequiresState = Active; // Phase IV type-state
 };
 
 /// Get the total number of chunks in the registry.

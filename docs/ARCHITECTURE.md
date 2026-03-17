@@ -2,63 +2,63 @@
 
 ## Overview
 
-Fabric is a C++20 cross-platform runtime for building interactive spatial-temporal applications. Programming primitives (math, time, events, commands) compose into structural primitives (scenes, entities, graphs, simulations) that applications use to create games, editors, simulations, and multimedia tools. All engine symbols reside in the `fabric::` namespace.
+Fabric is a C++20 cross-platform runtime for building interactive spatial and temporal applications. Programming primitives (vectors, timelines, events) compose into structural primitives (ECS worlds, chunked grids, coordinated graphs) that applications assemble into games, editors, or simulations. All engine symbols reside in the `fabric::` namespace across subdirectories organized by concern: core, ecs, fx, input, log, platform, render, resource, ui, utils, and world.
 
-Recurse is a single-player voxel exploration game built on Fabric. It provides `main()` via `src/recurse/Recurse.cc`, registers 15 application systems through `FabricAppDesc`, and delegates execution to `FabricApp::run()`. All game symbols reside in the `recurse::` namespace.
+Recurse is a single-player voxel exploration game built on Fabric. It provides `main()` via `src/recurse/Recurse.cc`, registers 17 game systems through `FabricAppDesc`, and delegates execution to `FabricApp::run()`. All game symbols reside in the `recurse::` namespace. The namespace boundary rule is strict: `recurse::` depends on `fabric::`, never the reverse.
 
-Rendering uses Vulkan on all platforms. macOS translates Vulkan calls to Metal via MoltenVK. All shaders compile to SPIR-V.
+Rendering uses bgfx with Vulkan as the backend on all platforms. On macOS, Vulkan calls translate to Metal via MoltenVK. All shaders compile to SPIR-V; the bgfx `shaderc` tool produces embedded `.bin.h` headers consumed at compile time.
 
 ## Layer Architecture
 
 ```mermaid
 graph TD
     subgraph L0["L0: Platform Abstraction"]
-        SDL3["SDL3 3.4.2<br/>Windowing, input, timers"]
-        bgfx["bgfx 1.139.9155<br/>Vulkan rendering, SPIR-V"]
-        WebView["WebView 0.12.0<br/>Embedded browser, JS bridge"]
-        mimalloc["mimalloc 2.2.7<br/>Allocator (MI_OVERRIDE OFF)"]
+        SDL3["SDL3<br/>Windowing, input, timers"]
+        bgfx["bgfx<br/>Vulkan rendering, SPIR-V"]
+        WebView["WebView<br/>Embedded browser, JS bridge"]
+        mimalloc["mimalloc<br/>Allocator (MI_OVERRIDE OFF)"]
     end
 
     subgraph L1["L1: Infrastructure"]
         Log["Log<br/>Quill async SPSC"]
         Profiler["Profiler<br/>Tracy abstraction"]
         Async["Async<br/>Standalone Asio, C++20 coroutines"]
-        ErrorHandling["ErrorHandling<br/>FabricException, Result&lt;T&gt;"]
+        ErrorHandling["ErrorHandling<br/>FabricException"]
         StateMachine["StateMachine<br/>Guards, observers"]
+        WriterQueue["WriterQueue<br/>MPSC serial executor"]
+        ScopedTaskGroup["ScopedTaskGroup<br/>RAII future management"]
+        ConfigManager["ConfigManager<br/>TOML config loading"]
     end
 
     subgraph L2["L2: Primitives"]
         Spatial["Spatial<br/>Type-safe vec/mat/quat, GLM bridge"]
         Temporal["Temporal<br/>Multi-timeline, snapshots"]
         Event["Event<br/>Typed thread-safe pub/sub"]
-        Command["Command<br/>Undo/redo, composite"]
-        Pipeline["Pipeline<br/>Multi-stage data processing"]
         Types["Types, JsonTypes"]
-        Codec["Codec (L2.5)<br/>Encode/decode pipeline"]
+        FX["fx/<br/>Result, Error, OneOf, Never,<br/>WorldContext, WorldOps,<br/>SpatialDataOp, WorldQueryProvider"]
+        Input["Input<br/>InputManager, InputRouter,<br/>InputAction, InputAxis,<br/>InputContext, InputSource"]
     end
 
     subgraph L3["L3: Structural"]
-        ECS["ECS<br/>Flecs v4.1.4, ChildOf, CASCADE"]
+        ECS["ECS<br/>Flecs, ChildOf, CASCADE"]
         Resource["Resource, ResourceHub<br/>State machine, workers"]
         Camera["Camera<br/>Projection, view matrix"]
-        Rendering["Rendering<br/>AABB, Frustum, DrawCall"]
-        Graphs["CoordinatedGraph, ImmutableDAG"]
+        Rendering["Rendering<br/>DrawCall, Geometry, Frustum, AABB"]
+        Graphs["CoordinatedGraph"]
         BVH["BVH<br/>Median-split, frustum queries"]
-        VoxelWorld["Voxel World<br/>ChunkedGrid, FieldLayer, Mesher"]
-        Character["Character, Physics, AI, Audio"]
-        AnimRender["Animation, Rendering Pipeline"]
-        Simulation["Simulation, Persistence"]
+        ChunkedGrid["ChunkedGrid<br/>Sparse infinite grid"]
+        SceneView["SceneView<br/>Cull, render, Flecs queries"]
     end
 
     subgraph L4["L4: Framework"]
         AppLoop["FabricApp<br/>SDL3 events, fixed timestep"]
-        SceneView["SceneView<br/>Cull, render, Flecs queries"]
-        RmlUi["RmlUi<br/>BgfxRenderInterface, view 255"]
         SystemReg["SystemRegistry<br/>Kahn toposort, phase runners"]
+        RmlUi["RmlUi<br/>BgfxRenderInterface, view 255"]
+        PostProcess["PostProcess, PaniniPass"]
     end
 
-    subgraph L5["L5: Application"]
-        Recurse["Recurse<br/>main(), 15 systems, FabricAppDesc"]
+    subgraph L5["L5: Application (recurse::)"]
+        Recurse["Recurse<br/>main(), 17 systems, FabricAppDesc"]
     end
 
     L5 --> L4
@@ -70,11 +70,133 @@ graph TD
 
 Each layer depends only on layers below it. `recurse::` code at L5 depends on `fabric::` code at L0 through L4; the reverse dependency never occurs.
 
+## Directory Structure
+
+```
+fabric/
+├── include/
+│   ├── fabric/                    # Engine headers (namespace fabric::)
+│   │   ├── core/                  # AppContext, Event, Spatial, Temporal, SystemBase, SystemRegistry, etc.
+│   │   ├── ecs/                   # ECS.hh (Flecs wrapper), Component.hh, WorldScoped.hh
+│   │   ├── fx/                    # Result, Error, OneOf, Never, WorldContext, WorldOps, SpatialDataOp, WorldQueryProvider
+│   │   ├── input/                 # InputManager, InputRouter, InputAction, InputAxis, InputContext, InputSource, InputSystem
+│   │   ├── log/                   # Log.hh (Quill macros), FilteredConsoleSink, LogConfig
+│   │   ├── platform/              # FabricApp, FabricAppDesc, ConfigManager, Async, ScopedTaskGroup, WriterQueue, JobScheduler, PlatformInfo, WindowDesc, CursorManager, DefaultConfig
+│   │   ├── render/                # Camera, Rendering, DrawCall, Geometry, SceneView, ViewLayout, ShaderProgram, FullscreenQuad, PostProcess, PaniniPass, SkyRenderer, SpvOnly, BgfxHandle, HandleMap, BgfxCallback, RenderCaps
+│   │   ├── resource/              # Resource, ResourceHub, AssetLoader, AssetRegistry, Handle
+│   │   ├── ui/                    # BgfxRenderInterface, BgfxSystemInterface, ConcurrencyPanel, HotkeyPanel, RmlPanel, ToastManager, WebView
+│   │   │   └── font/              # FontEngineInterfaceHarfBuzz, LanguageData
+│   │   ├── utils/                 # BVH, CoordinatedGraph, ErrorHandling, Profiler, Testing, TextSanitize, Utils
+│   │   └── world/                 # ChunkedGrid, ChunkCoord, ChunkCoordUtils
+│   └── recurse/                   # Game headers (namespace recurse::)
+│       ├── ai/                    # BehaviorAI, BTDebugPanel, Pathfinding
+│       ├── animation/             # Animation, AnimationEvents, IKSolver, MeshLoader, SkinnedRenderer
+│       ├── audio/                 # AudioSystem, ReverbZone, MaterialSounds
+│       ├── character/             # CharacterController, FlightController, VoxelInteraction, MeleeSystem, MovementFSM, etc.
+│       ├── components/            # EssenceTypes, StreamSource
+│       ├── config/                # RecurseConfig
+│       ├── input/                 # ActionIds, DebugToggleTable
+│       ├── persistence/           # WorldSession, WorldTransactionStore, FchkCodec, ChunkStore, SqliteChunkStore, etc.
+│       ├── physics/               # PhysicsWorld, JoltCharacterController, Ragdoll, VoxelCollision
+│       ├── render/                # VoxelRenderer, OITCompositor, ShadowSystem, LODGrid, LODMeshManager, ParticleSystem, DebugDraw, etc.
+│       ├── simulation/            # ChunkState, SimulationGrid, FallingSandSystem, MaterialRegistry, VoxelMaterial, etc.
+│       ├── systems/               # 17 SystemBase subclasses (one per game system)
+│       ├── ui/                    # DebugHUD, ContentBrowser, DevConsole, ChunkDebugPanel, LODStatsPanel, WAILAPanel
+│       └── world/                 # ChunkOps, ChunkStreaming, WorldGenerator, VoxelMesher, TerrainGenerator, etc.
+├── src/
+│   ├── core/                      # Engine source: Event, Spatial, Temporal, SystemRegistry, etc.
+│   ├── fabric/                    # Engine source by subsystem
+│   │   ├── ecs/
+│   │   ├── input/
+│   │   ├── log/
+│   │   ├── platform/
+│   │   ├── render/
+│   │   ├── resource/
+│   │   └── ui/
+│   ├── platform/                  # CursorManager, PlatformInfo, WindowDesc
+│   ├── ui/                        # BgfxRenderInterface, BgfxSystemInterface, panels, WebView
+│   ├── utils/                     # ErrorHandling, Utils
+│   └── recurse/                   # Game source files
+│       ├── Recurse.cc             # main() entry point
+│       ├── ai/, animation/, audio/, character/, components/, config/
+│       ├── persistence/, physics/, render/, simulation/, systems/, ui/, world/
+├── shaders/                       # bgfx .sc shader sources
+│   ├── oit/                       # OIT accumulation and composite
+│   ├── panini/                    # Panini projection
+│   ├── particle/                  # Particle billboard rendering
+│   ├── post/                      # Bloom pipeline (bright, blur, tonemap)
+│   ├── rmlui/                     # UI overlay
+│   ├── shared/                    # Shared varying definitions (fullscreen, voxel lighting)
+│   ├── skinned/                   # GPU skeletal mesh skinning
+│   ├── sky/                       # Procedural atmosphere
+│   └── voxel-lighting/            # Voxel chunk terrain with lighting
+├── tests/
+│   ├── unit/                      # Unit tests (core/, fx/, persistence/, platform/, simulation/, ui/, utils/, world/)
+│   ├── e2e/                       # End-to-end tests
+│   ├── fixtures/                  # Test fixture data
+│   └── TestMain.cc                # Shared main() with Quill init
+├── config/
+│   ├── fabric.toml                # Engine defaults (window, renderer, logging)
+│   └── recurse.toml               # Game defaults (terrain, LOD, pipeline, physics, audio, panini)
+├── cmake/
+│   ├── CPM.cmake                  # CPM.cmake v0.42.1
+│   ├── modules/                   # 33 CMake modules (dependency + shader targets)
+│   └── patches/                   # Vendored dependency patches
+├── docs/                          # Architecture, API reference, guides
+├── tasks/                         # Shell (.sh) and PowerShell (.ps1) task scripts
+├── assets/                        # Runtime assets (UI .rml/.rcss files)
+├── CMakeLists.txt
+├── CMakePresets.json              # Configure presets (dev + CI + sanitize + coverage)
+├── mise.toml                      # Task runner (build, test, lint, profile, analysis)
+└── mise.windows.toml              # Windows environment overrides
+```
+
+## Build System
+
+The build uses CMake with CPM.cmake v0.42.1 for dependency management and mise as the task runner.
+
+### Library Targets
+
+| Target | Type | Contents |
+|--------|------|----------|
+| FabricLib | STATIC | Engine sources only (fabric:: namespace) |
+| RecurseGame | OBJECT | Game sources only (recurse:: namespace) |
+
+Both libraries link into the three executables: Recurse, UnitTests, and E2ETests.
+
+### Shader Targets
+
+Shader `.sc` files compile to SPIR-V embedded `.bin.h` headers via bgfx `shaderc`. The 8 shader targets split across the two library targets:
+
+| Depends On FabricLib | Depends On RecurseGame |
+|----------------------|------------------------|
+| FabricRmlUiShaders | FabricSkinnedShaders |
+| FabricSkyShaders | FabricSmoothShaders |
+| FabricPostShaders | FabricParticleShaders |
+| FabricPaniniShaders | FabricOITShaders |
+
+### Executables
+
+| Target | Entry Point |
+|--------|-------------|
+| Recurse | `src/recurse/Recurse.cc` |
+| UnitTests | `tests/TestMain.cc` (GoogleTest) |
+| E2ETests | `tests/TestMain.cc` (GoogleTest) |
+
+### Build Presets
+
+The default development preset is `dev-debug`, which places output in `build/dev-debug/`. Additional presets for CI, sanitizers, and coverage are defined in `CMakePresets.json`. To build and run:
+
+```sh
+mise run build          # cmake --build (dev-debug preset)
+mise run test           # ctest
+```
+
 ## System Registration and Lifecycle
 
 ### FabricAppDesc Pattern
 
-Recurse constructs a `FabricAppDesc`, registers 15 game systems via `desc.registerSystem<T>(phase)`, and passes the descriptor to `FabricApp::run()`. Each system is a subclass of `fabric::SystemBase` and implements `init()`, `shutdown()`, and one of `fixedUpdate()`, `update()`, or `render()`. Dependencies between systems are declared in `configureDependencies()` using `after<T>()` and `before<T>()` constraints.
+Recurse constructs a `FabricAppDesc`, registers 17 game systems via `desc.registerSystem<T>(phase)`, and passes the descriptor to `FabricApp::run()`. Each system is a subclass of `fabric::SystemBase` and implements `init()`, `shutdown()`, and one of `fixedUpdate()`, `update()`, or `render()`. Dependencies between systems are declared in `configureDependencies()` using `after<T>()` and `before<T>()` constraints.
 
 ### Dependency Resolution
 
@@ -106,203 +228,122 @@ The main loop dispatches systems across seven phases. FixedUpdate runs N times p
 | FixedUpdate | N per frame | Physics, AI, simulation at fixed timestep |
 | Update | Per frame | Camera, audio, per-frame logic |
 | PostUpdate | Per frame | Post-simulation cleanup, state sync |
-| PreRender | Per frame | Shadow cascades, LOD selection, culling |
+| PreRender | Per frame | Meshing, shadow cascades, LOD selection |
 | Render | Per frame | Scene submission, voxel rendering, particles |
 | PostRender | Per frame | UI overlay, debug HUD, frame flip |
 
-## System Execution Graph
+### System Execution Graph
 
-```mermaid
-graph LR
-    subgraph FixedUpdate
-        TS[TerrainSystem]
-        PGS[PhysicsGameSystem]
-        CMS[CharacterMovementSystem]
-        CPS[ChunkPipelineSystem]
-        VIS[VoxelInteractionSystem]
-        SGS[SaveGameSystem]
-        AIGS[AIGameSystem]
-        PAGS[ParticleGameSystem]
+Recurse registers 17 systems across four phases. Systems without declared dependencies may execute in any order within their phase.
 
-        TS --> PGS
-        PGS --> CMS
-        CMS --> CPS
-        CMS --> VIS
-        CMS --> SGS
-    end
+| Phase | Systems |
+|-------|---------|
+| FixedUpdate (8) | TerrainSystem, VoxelSimulationSystem, PhysicsGameSystem, CharacterMovementSystem, AIGameSystem, ParticleGameSystem, ChunkPipelineSystem, VoxelInteractionSystem |
+| Update (3) | MainMenuSystem, AudioGameSystem, CameraGameSystem |
+| PreRender (3) | VoxelMeshingSystem, LODSystem, ShadowRenderSystem |
+| Render (3) | VoxelRenderSystem, OITRenderSystem, DebugOverlaySystem |
 
-    subgraph Update
-        CGS[CameraGameSystem]
-        AGS[AudioGameSystem]
+Declared dependency chains within FixedUpdate: TerrainSystem runs before PhysicsGameSystem, which runs before CharacterMovementSystem, which runs before ChunkPipelineSystem and VoxelInteractionSystem. AIGameSystem and ParticleGameSystem have no declared dependencies on other game systems; the toposort places them at any valid position within the phase.
 
-        CGS --> AGS
-    end
+## Namespace Table
 
-    subgraph PreRender
-        SRS[ShadowRenderSystem]
-    end
-
-    subgraph Render
-        VRS[VoxelRenderSystem]
-        WRS["WaterRenderSystem<br/>(DISABLED)"]
-        OITRS[OITRenderSystem]
-        DOS[DebugOverlaySystem]
-
-        VRS --> WRS
-        WRS --> OITRS
-        VRS --> DOS
-    end
-```
-
-AIGameSystem and ParticleGameSystem run in FixedUpdate but have no declared dependencies on other application systems; the toposort places them at any valid position within the phase.
-
-WaterRenderSystem is registered but disabled at runtime pending a VP0 rewrite (Noita-inspired voxel water). The current water simulation consumes 180ms/frame due to an O(total_water_cells) `collectActiveCells` scan.
-
-## Rendering Pipeline
-
-### View ID Budget
-
-bgfx uses integer view IDs to order render passes. Fabric allocates view IDs across a 0 through 255 range:
-
-```mermaid
-graph LR
-    Sky["Sky (0)"] --> Geometry["Geometry (1)"]
-    Geometry --> Transparent["Transparent (2)"]
-    Transparent --> Particles["Particles (10)"]
-    Particles --> PostProcess["PostProcess (200-204)"]
-    PostProcess --> OIT["OIT (210-211)"]
-    OIT --> Shadows["Shadows (240+)"]
-    Shadows --> UI["UI (255)"]
-```
-
-| View ID | Pass | Notes |
-|---------|------|-------|
-| 0 | Sky | SkyRenderer procedural atmosphere |
-| 1 | Geometry | Opaque voxel chunks, skinned meshes |
-| 2 | Transparent | Alpha-sorted transparent geometry |
-| 10 | Particles | Billboard particle instancing |
-| 200-204 | PostProcess | Bright extract, Gaussian blur, tonemap (dormant) |
-| 210 | OIT Accumulation | RGBA16F weighted blended accumulation |
-| 211 | OIT Composite | Revealage resolve |
-| 240+ | Shadows | Cascaded shadow maps with texel snapping |
-| 255 | UI | RmlUi overlay (BgfxRenderInterface) |
-
-### Framebuffer Topology
-
-OIT uses a two-pass MRT: an accumulation pass writes to RGBA16F (weighted color) and R8 (revealage) targets at view 210, then a composite pass at view 211 blends the result into the backbuffer. PostProcess (bloom pipeline: bright extract, Gaussian blur, ACES tonemap) is implemented but dormant; `initPrograms()` only creates `brightProgram_` and skips the remaining two.
-
-## Build Target Graph
-
-```mermaid
-graph TD
-    subgraph Libraries
-        FabricLib["FabricLib (static library)<br/>Engine + game sources"]
-    end
-
-    subgraph Executables
-        Recurse["Recurse (executable)<br/>main() in Recurse.cc"]
-        UnitTests["UnitTests (executable)<br/>GoogleTest + custom TestMain"]
-        E2ETests["E2ETests (executable)<br/>GoogleTest + custom TestMain"]
-    end
-
-    subgraph Shaders["Shader Compilation (8 targets)"]
-        RmlUiSh["FabricRmlUi shaders"]
-        SkinnedSh["FabricSkinnedShaders"]
-        VoxelSh["FabricVoxelShaders"]
-        SkySh["FabricSkyShaders"]
-        PostSh["FabricPostShaders"]
-        ParticleSh["FabricParticleShaders"]
-        WaterSh["FabricWaterShaders"]
-        OITSh["FabricOITShaders"]
-    end
-
-    FabricLib --> Recurse
-    FabricLib --> UnitTests
-    FabricLib --> E2ETests
-
-    RmlUiSh --> FabricLib
-    SkinnedSh --> FabricLib
-    VoxelSh --> FabricLib
-    SkySh --> FabricLib
-    PostSh --> FabricLib
-    ParticleSh --> FabricLib
-    WaterSh --> FabricLib
-    OITSh --> FabricLib
-```
-
-FabricLib is a single static library containing all engine and game sources. Shader `.sc` files compile to SPIR-V embedded `.bin.h` headers via bgfx `shaderc`. FabricLib depends on all 8 shader targets so that embedded headers exist before C++ compilation.
-
-## Directory Structure
-
-```
-fabric/
-├── include/
-│   ├── fabric/                    # Engine headers (namespace fabric::)
-│   │   ├── core/                  # Core systems: ECS, Event, Camera, Audio, Physics, AI, etc.
-│   │   ├── codec/                 # Encode/decode pipeline
-│   │   ├── parser/                # ArgumentParser, SyntaxTree, Token
-│   │   ├── platform/              # WindowDesc, PlatformInfo, CursorManager
-│   │   ├── ui/                    # BgfxRenderInterface, BgfxSystemInterface, DebugHUD, WebView
-│   │   └── utils/                 # BVH, BufferPool, CoordinatedGraph, ErrorHandling, Profiler
-│   └── recurse/                   # Game headers (namespace recurse::)
-│       ├── ai/                    # BehaviorAI, Pathfinding
-│       ├── animation/             # Animation, AnimationEvents, IKSolver, SkinnedRenderer
-│       ├── audio/                 # AudioSystem, ReverbZone, MaterialSounds
-│       ├── gameplay/              # CharacterController, FlightController, VoxelInteraction, Melee
-│       ├── persistence/           # SaveManager, DataLoader
-│       ├── physics/               # PhysicsWorld, Ragdoll
-│       ├── render/                # SkyRenderer, WaterRenderer, OITCompositor, PostProcess, etc.
-│       ├── systems/               # 15 SystemBase subclasses (one per game system)
-│       ├── ui/                    # InputRouter, ToastManager, ContentBrowser
-│       └── world/                 # ChunkedGrid, ChunkStreaming, TerrainGenerator, VoxelMesher, etc.
-├── src/
-│   ├── core/                      # Engine source files
-│   ├── codec/
-│   ├── parser/
-│   ├── ui/
-│   ├── utils/
-│   └── recurse/                   # Game source files (mirrors include/recurse/ subdirectories)
-│       ├── Recurse.cc             # main() entry point
-│       ├── ai/, animation/, audio/, gameplay/, persistence/
-│       ├── physics/, render/, systems/, ui/, world/
-├── shaders/                       # bgfx .sc shader sources
-│   ├── oit/                       # OIT accumulation and composite
-│   ├── particle/                  # Particle billboard rendering
-│   ├── post/                      # Bloom pipeline (bright, blur, tonemap)
-│   ├── rmlui/                     # UI overlay
-│   ├── skinned/                   # GPU skeletal mesh skinning
-│   ├── sky/                       # Procedural sky
-│   ├── voxel/                     # Voxel chunk terrain
-│   └── water/                     # Water surface
-├── tests/
-│   ├── unit/                      # Unit tests (codec/, core/, parser/, ui/, utils/)
-│   ├── e2e/                       # End-to-end tests
-│   └── TestMain.cc                # Shared main() with Quill init
-├── cmake/
-│   ├── CPM.cmake                  # CPM.cmake v0.42.1
-│   ├── modules/                   # 25 CMake modules (dependency + shader targets)
-│   └── patches/                   # Vendored dependency patches
-├── tasks/                         # Shell (.sh) and PowerShell (.ps1) task scripts
-├── assets/                        # Runtime assets (UI .rml/.rcss files)
-├── CMakeLists.txt
-├── CMakePresets.json              # 12 configure presets (dev + CI + sanitize + coverage)
-├── mise.toml                      # Task runner (build, test, lint, profile, analysis)
-└── mise.windows.toml              # Windows environment overrides
-```
-
-## Namespace Conventions
-
-| Namespace | Scope | Examples |
-|-----------|-------|---------|
-| `fabric::` | Engine types, components, utilities | `fabric::Event`, `fabric::Camera`, `fabric::FabricApp` |
-| `fabric::log` | Logging subsystem | `fabric::log::init()`, `FABRIC_LOG_INFO(...)` |
-| `fabric::async` | Async I/O subsystem | `fabric::async::init()`, `fabric::async::makeStrand()` |
-| `fabric::Utils` | General utilities | `fabric::Utils::generateUniqueId()` |
-| `fabric::Testing` | Test utilities | `fabric::Testing::MockComponent` |
-| `recurse::` | Game-specific types | `recurse::TerrainGenerator`, `recurse::PhysicsWorld` |
-| `recurse::systems` | SystemBase subclasses | `recurse::systems::TerrainSystem` |
+| Namespace | Subdirectory | Key Types |
+|-----------|-------------|-----------|
+| `fabric::` | `core/` | AppContext, Event, Spatial, Temporal, SystemBase, SystemRegistry, SystemPhase, StateMachine, WorldLifecycle, AppModeManager, RuntimeState |
+| `fabric::ecs` | `ecs/` | ECS (Flecs wrapper), Component, WorldScoped |
+| `fabric::fx` | `fx/` | Result, Error, OneOf, Never, WorldContext, WorldOps, SpatialDataOp, WorldQueryProvider |
+| `fabric::input` | `input/` | InputManager, InputRouter, InputAction, InputAxis, InputContext, InputSource, InputSystem |
+| `fabric::log` | `log/` | Log (init/shutdown, FABRIC_LOG_INFO), FilteredConsoleSink, LogConfig |
+| `fabric::platform` | `platform/` | FabricApp, FabricAppDesc, ConfigManager, Async, ScopedTaskGroup, WriterQueue, JobScheduler, PlatformInfo |
+| `fabric::render` | `render/` | Camera, Rendering, DrawCall, Geometry, SceneView, ViewLayout, ShaderProgram, PostProcess, PaniniPass, SkyRenderer, BgfxHandle |
+| `fabric::render::view` | `render/ViewLayout.hh` | K_SKY, K_GEOMETRY, K_TRANSPARENT, K_PARTICLES, K_POST_BASE, K_PANINI, K_OIT_ACCUM, K_SHADOW_BASE, K_UI |
+| `fabric::resource` | `resource/` | Resource, ResourceHub, AssetLoader, AssetRegistry, Handle |
+| `fabric::ui` | `ui/` | BgfxRenderInterface, BgfxSystemInterface, ConcurrencyPanel, HotkeyPanel, RmlPanel, ToastManager, WebView |
+| `fabric::Utils` | `utils/` | BVH, CoordinatedGraph, ErrorHandling, Profiler, Testing, TextSanitize |
+| `recurse::` | (various) | TerrainGenerator, PhysicsWorld, WorldSession, VoxelRenderer, ChunkState, BehaviorAI, RecurseConfig |
+| `recurse::systems` | `systems/` | 17 SystemBase subclasses (TerrainSystem, VoxelRenderSystem, etc.) |
+| `recurse::input` | `input/` | ActionIds (K_ACTION_MOVE_FORWARD, etc.), DebugToggleTable |
+| `recurse::simulation` | `simulation/` | ChunkState, SimulationGrid, FallingSandSystem, MaterialRegistry, VoxelMaterial |
 
 The dependency direction is strictly one-way: `recurse::` depends on `fabric::`, never the reverse.
+
+## Key Architectural Patterns
+
+### Ops-as-Values (WorldContext resolve/submit)
+
+World operations are modeled as value types (`SyncReadOp`, `AsyncMutationOp`) that describe intent without performing side effects. Systems construct op values and pass them to `WorldContext::resolve()` for synchronous reads or `WorldContext::submit()` for asynchronous mutations. This separates what a system wants to do from how and when the operation executes, enabling batching, reordering, and transactional grouping.
+
+### Phantom Type-State (ChunkState, ChunkRef)
+
+Chunk lifecycle stages (Empty, Generating, Generated, Meshing, Meshed, Active, Unloading) are represented as phantom type parameters on `ChunkRef<State>`. Transitions between states are enforced at compile time; a function accepting `ChunkRef<Generated>` cannot receive a chunk in any other state. The `ChunkState` enum mirrors these states at runtime for serialization and debugging.
+
+### WorldSession RAII
+
+`WorldSession` owns all per-world resources: the SQLite database, chunk stores, transaction store, simulation grid, and streaming state. Its destructor tears down resources in a fixed order to prevent use-after-free across subsystems. `WorldSession::open()` returns a `Result<unique_ptr<WorldSession>, IOError>`, making failure explicit. The session also owns persistence scheduling (snapshots, pruning) and coordinates world begin/end lifecycle events.
+
+### WorldAware Lifecycle (HasWorldBegin/HasWorldEnd)
+
+The `HasWorldBegin` and `HasWorldEnd` concepts in `WorldLifecycle.hh` detect whether a system implements `onWorldBegin()` or `onWorldEnd()` methods. `WorldLifecycleCoordinator` iterates registered systems and calls these methods when a world session opens or closes, without requiring systems to register manually for world events.
+
+### ScopedTaskGroup
+
+`ScopedTaskGroup` is a generic RAII container for managing a set of `std::future` objects. It tracks in-flight async tasks by key, supports polling for completion, and cancels all outstanding futures on destruction. Both a primary template (with metadata per task) and a void-metadata specialization exist.
+
+### WriterQueue
+
+`WriterQueue` is an MPSC (multi-producer, single-consumer) serial executor. Producers submit callables from any thread; a dedicated consumer thread drains the queue and executes tasks in FIFO order. The primary use case is serializing SQLite write operations so that multiple systems can enqueue writes without external locking.
+
+## Shader Pipeline
+
+### Directory Layout
+
+Shader sources live under `shaders/`, organized by pass:
+
+| Directory | Pass |
+|-----------|------|
+| `oit/` | Order-independent transparency (accumulation + composite) |
+| `panini/` | Panini projection distortion correction |
+| `particle/` | Billboard particle instancing |
+| `post/` | Bloom pipeline (bright extract, Gaussian blur, ACES tonemap) |
+| `rmlui/` | UI overlay rendering |
+| `shared/` | Shared varying definitions (fullscreen triangle, voxel lighting) |
+| `skinned/` | GPU skeletal mesh skinning |
+| `sky/` | Procedural atmosphere (Preetham model) |
+| `voxel-lighting/` | Voxel chunk terrain with per-vertex lighting |
+
+### SPIR-V Compilation
+
+All shaders are `.sc` files (bgfx shader language). The CMake build invokes `shaderc` to compile each shader to SPIR-V, producing embedded C headers (`*.bin.h`). These headers are `#include`d directly into C++ source files via `createProgramFromEmbedded()`. Non-SPIR-V backends are suppressed by `SpvOnly.hh`.
+
+### View ID Layout
+
+bgfx uses integer view IDs (0 through 255) to order render passes. All view ID constants are defined in `fabric/render/ViewLayout.hh` with `static_assert` overlap validation:
+
+| View ID | Pass |
+|---------|------|
+| 0 | Sky |
+| 1 | Geometry (opaque voxel chunks, skinned meshes) |
+| 2 | Transparent |
+| 10 | Particles |
+| 200-204 | PostProcess (bright, blur, tonemap) |
+| 206 | Panini projection |
+| 210-211 | OIT (accumulation, composite) |
+| 240-243 | Shadow cascades |
+| 255 | UI (RmlUi overlay) |
+
+## Persistence
+
+### SQLite Per-World Storage
+
+Each game world uses its own SQLite database in WAL (Write-Ahead Logging) mode. `SqliteChunkStore` handles chunk reads and writes, including WAL checkpointing on clean shutdown. The `WriterQueue` serializes all database writes from multiple threads onto a single consumer thread.
+
+### WorldTransactionStore
+
+`WorldTransactionStore` provides change logging on top of chunk storage. It records voxel modifications as transactions, supports periodic snapshots via `SnapshotScheduler`, rollback via `RollbackExecutor`, and history pruning via `PruningScheduler`. These components compose inside `WorldSession`.
+
+### FchkCodec
+
+`FchkCodec` encodes and decodes voxel chunk data for storage. It supports three compression modes: none (0), zstd (1), and LZ4 (2). The codec is used by `SqliteChunkStore` when reading and writing chunk blobs.
 
 ## Configuration
 
@@ -312,32 +353,31 @@ Configuration loads in ascending precedence:
 
 | Layer | Source | Scope |
 |-------|--------|-------|
-| 1. Compiled defaults | Hardcoded in engine | Fallback values |
-| 2. `fabric.toml` | Engine config file | Renderer, platform, logging |
-| 3. `recurse.toml` | Application config file | Window size, FOV, timestep, initial mode |
+| 1. Compiled defaults | `DefaultConfig.hh` constants | Fallback values |
+| 2. `config/fabric.toml` | Engine config file | Renderer, platform, logging |
+| 3. `config/recurse.toml` | Application config file | Terrain, LOD, pipeline, physics, audio, panini |
 | 4. `user.toml` | Platform-standard user path | Persistent user preferences |
 | 5. CLI flags | Command-line arguments | Override everything |
 
-User preferences persist to platform-standard locations: `~/.config/fabric/user.toml` on Linux, `~/Library/Application Support/Fabric/` on macOS, `%APPDATA%/Fabric/` on Windows.
+`ConfigManager` merges these layers at startup. `RecurseConfig` is a runtime struct loaded from `recurse.toml` via `RecurseConfig::loadFromConfig()`, with constexpr defaults as fallbacks.
 
 ### RuntimeState
 
 A transient `RuntimeState` struct holds non-persistent system state (resize events, DPI changes, debug flags). RuntimeState is not written to disk and not part of the configuration hierarchy.
 
-## Known Limitations
+## Testing
 
-1. **Water system disabled**: WaterRenderSystem is registered but disabled at runtime. The water simulation consumes 180ms/frame due to O(total_water_cells) scanning in `collectActiveCells`. Architecture requires a full rewrite (VP0, Noita-inspired voxel water).
+Tests use GoogleTest with a shared `TestMain.cc` that initializes Quill logging.
 
-2. **PostProcess dormant**: The bloom pipeline (`initPrograms()`) only creates `brightProgram_`; the blur and tonemap programs are never initialized. PostProcess is disabled by default. Fix deferred to VP0 HDR pipeline work.
+| Target | Location | Scope |
+|--------|----------|-------|
+| UnitTests | `tests/unit/` | CPU-side logic (core, fx, persistence, platform, simulation, ui, utils, world) |
+| E2ETests | `tests/e2e/` | Integration tests spanning multiple subsystems |
 
-3. **Visual bugs partially fixed**: BUG-LIGHTSTREAK (uniform consumed by DISCARD_ALL) and BUG-CHUNKFACE (LOD neighbor dirtying) have code fixes applied but unconfirmed at runtime. Validation requires a render state inspection layer that does not yet exist.
+Test fixtures live in `tests/fixtures/`. Unit tests run against a bgfx noop backend; there is no GPU-side render state validation in CI.
 
-4. **Memory usage approximately 500MB**: Cause unconfirmed. Suspected contributors: 14 worker thread stacks, chunk density/essence field allocations, bgfx Metal resource pool.
-
-5. **OIT double-init**: OITCompositor initializes twice at startup (duplicate bgfx uniforms), likely from a spurious `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED` on the first frame.
-
-6. **Missing .rml assets at runtime**: DebugHUD, BTDebugPanel, and DevConsole fail to load `.rml` files because the build binary runs from `build/dev-debug/bin/` while assets live in the source tree.
-
-7. **4 AppContext optional fields never wired**: `inputSystem`, `platformInfo`, `renderCaps`, and `cursorManager` are declared in AppContext but never populated in `FabricApp::run()`.
-
-8. **No render state validation**: Unit tests run against a bgfx noop backend and verify CPU-side logic. There is no mechanism to assert uniform values, draw state, or view configuration at submit time. Visual correctness remains unverifiable in CI.
+```sh
+mise run test           # run unit tests
+mise run test:e2e       # run E2E tests
+mise run test:all       # run unit + E2E tests
+```

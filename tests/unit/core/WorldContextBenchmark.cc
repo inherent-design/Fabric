@@ -37,12 +37,12 @@ using recurse::simulation::material_ids::STONE;
 //   objdump -d build/release/tests/UnitTests | grep -A 30 'readDirect\|readViaResolve'
 
 FABRIC_NOINLINE const VoxelCell* readDirect(recurse::WorldSession& session, int cx, int cy, int cz) {
-    return session.resolve(recurse::ops::ReadBuffer{cx, cy, cz, 0});
+    return session.resolve(recurse::ops::ReadBuffer{cx, cy, cz});
 }
 
 FABRIC_NOINLINE const VoxelCell* readViaResolve(fabric::fx::WorldContext<recurse::WorldSession>& ctx, int cx, int cy,
                                                 int cz) {
-    return ctx.resolve(recurse::ops::ReadBuffer{cx, cy, cz, 0});
+    return ctx.resolve(recurse::ops::ReadBuffer{cx, cy, cz});
 }
 
 class WorldContextBenchmark : public ::testing::Test {
