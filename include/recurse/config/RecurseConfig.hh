@@ -12,7 +12,7 @@ namespace recurse {
 struct RecurseConfig {
 
     // -- Pipeline budgets --
-    static constexpr int K_DEFAULT_MAX_ASYNC_LOADS = 32;
+    static constexpr int K_DEFAULT_MAX_ASYNC_LOADS = 256;
     static constexpr int K_DEFAULT_MAX_GENERATES = 512;
     static constexpr int K_DEFAULT_MAX_LOAD_COMPLETIONS = 16;
     static constexpr int K_DEFAULT_LOD_HYSTERESIS = 2;

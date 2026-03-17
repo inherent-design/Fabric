@@ -244,6 +244,19 @@ bool SqliteChunkStore::isInSavedRegion(int cx, int cy, int cz) const {
            cy <= savedBounds_.maxCy && cz >= savedBounds_.minCz && cz <= savedBounds_.maxCz;
 }
 
+void SqliteChunkStore::expandBounds(int cx, int cy, int cz) {
+    if (savedBounds_.empty) {
+        savedBounds_ = {cx, cx, cy, cy, cz, cz, false};
+    } else {
+        savedBounds_.minCx = std::min(savedBounds_.minCx, cx);
+        savedBounds_.maxCx = std::max(savedBounds_.maxCx, cx);
+        savedBounds_.minCy = std::min(savedBounds_.minCy, cy);
+        savedBounds_.maxCy = std::max(savedBounds_.maxCy, cy);
+        savedBounds_.minCz = std::min(savedBounds_.minCz, cz);
+        savedBounds_.maxCz = std::max(savedBounds_.maxCz, cz);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // ChunkStore v2 API
 // ---------------------------------------------------------------------------
@@ -294,6 +307,8 @@ void SqliteChunkStore::saveChunk(int cx, int cy, int cz, const ChunkBlob& data) 
 
     if (rc != SQLITE_DONE) {
         FABRIC_LOG_ERROR("saveChunk({},{},{}) failed: {}", cx, cy, cz, sqlite3_errmsg(writerDb_));
+    } else {
+        expandBounds(cx, cy, cz);
     }
 }
 
@@ -355,6 +370,7 @@ void SqliteChunkStore::saveBatch(const std::vector<std::pair<fabric::ChunkCoord,
             sqlite3_exec(writerDb_, "ROLLBACK", nullptr, nullptr, nullptr);
             return;
         }
+        expandBounds(coord.x, coord.y, coord.z);
     }
 
     execSql(writerDb_, "COMMIT");

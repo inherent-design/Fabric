@@ -92,6 +92,7 @@ class SqliteChunkStore : public ChunkStore {
     SavedBounds savedBounds_;
 
     void computeSavedBounds();
+    void expandBounds(int cx, int cy, int cz);
 };
 
 } // namespace recurse

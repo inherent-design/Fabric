@@ -176,6 +176,9 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
                 ++loadsDispatched;
                 continue;
             }
+        } else if (maybeInDb) {
+            // Load budget exhausted; defer to next frame rather than regenerating.
+            continue;
         }
 
         if (generatesQueued < maxGeneratesPerFrame_) {
