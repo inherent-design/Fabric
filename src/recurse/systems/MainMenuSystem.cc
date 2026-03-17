@@ -852,8 +852,11 @@ void MainMenuSystem::onQuitToTitleClicked() {
 }
 
 void MainMenuSystem::resetWorldState() {
+    if (activeWorldUUID_.empty())
+        return;
+
     // Save player position to world.toml before tearing down
-    if (worldRegistry_ && !activeWorldUUID_.empty()) {
+    if (worldRegistry_) {
         auto meta = worldRegistry_->getWorld(activeWorldUUID_);
         if (meta && characterMovement_) {
             auto pos = characterMovement_->playerPosition();

@@ -68,6 +68,9 @@ class CharacterMovementSystem : public fabric::System<CharacterMovementSystem> {
                                                               static_cast<double>(K_DEFAULT_SPAWN_Z)};
     Velocity playerVel_{};
     flecs::entity playerEntity_;
+    flecs::world* ecsWorld_ = nullptr;
+    int streamRadius_ = 8;
+    int collisionRadius_ = 4;
 };
 
 } // namespace recurse::systems

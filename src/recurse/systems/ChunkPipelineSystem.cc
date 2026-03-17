@@ -14,6 +14,8 @@
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/ChunkOps.hh"
 
+#include "fabric/world/ChunkCoordUtils.hh"
+
 #include "recurse/config/RecurseConfig.hh"
 
 #include "fabric/core/AppContext.hh"
@@ -111,8 +113,23 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
         if (lodSystem_)
             lodSystem_->onChunkReady(cl.cx, cl.cy, cl.cz);
 
+        if (meshingSystem_)
+            meshingSystem_->removeChunkMesh({cl.cx, cl.cy, cl.cz});
+
         if (physics_)
             physics_->insertDirtyChunk(cl.cx, cl.cy, cl.cz);
+
+        if (simSystem_) {
+            auto& grid = simSystem_->simulationGrid();
+            auto& tracker = simSystem_->activityTracker();
+            for (int d = 0; d < 10; ++d) {
+                int nx = cl.cx + fabric::K_FACE_DIAGONAL_NEIGHBORS[d][0];
+                int ny = cl.cy + fabric::K_FACE_DIAGONAL_NEIGHBORS[d][1];
+                int nz = cl.cz + fabric::K_FACE_DIAGONAL_NEIGHBORS[d][2];
+                if (grid.hasChunk(nx, ny, nz))
+                    tracker.notifyBoundaryChange(fabric::ChunkCoord{nx, ny, nz});
+            }
+        }
 
         fabric::ChunkCoord coord{cl.cx, cl.cy, cl.cz};
         auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(

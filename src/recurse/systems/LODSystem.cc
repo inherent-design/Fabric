@@ -80,89 +80,86 @@ void LODSystem::doShutdown() {
 }
 
 void LODSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fixedDt*/) {
-    if (!scheduler_ || !grid_)
-        return;
-
-    // Phase 0: Collect batch and pre-allocate sections on main thread.
-    // getOrCreate() modifies sections_ map; must not be called from workers.
-    struct GenTask {
-        LODSection* section;
-        int cx, cy, cz;
-        bool useWorldGen;
-    };
-    std::vector<GenTask> tasks;
-    tasks.reserve(static_cast<size_t>(genBudget_));
-
-    while (simGrid_ && !pendingChunks_.empty() && static_cast<int>(tasks.size()) < genBudget_) {
-        auto [cx, cy, cz] = pendingChunks_.front();
-        pendingChunks_.pop_front();
-        auto* section = grid_->getOrCreate(0, cx, cy, cz);
-        if (!section)
-            continue;
-        tasks.push_back({section, cx, cy, cz, false});
-    }
-
-    while (worldGen_ && !pendingDirectChunks_.empty() && static_cast<int>(tasks.size()) < genBudget_) {
-        auto [cx, cy, cz] = pendingDirectChunks_.front();
-        pendingDirectChunks_.pop_front();
-        auto* section = grid_->getOrCreate(0, cx, cy, cz);
-        if (!section)
-            continue;
-        tasks.push_back({section, cx, cy, cz, true});
-    }
-
-    if (tasks.empty())
-        return;
-
-    // Phase 1: Parallel fill (C-P2). Each worker writes to its own
-    // LODSection; no contention. parallelFor blocks, so all sections
-    // have dirty=true on return and render() picks them up safely.
-    auto* grid = simGrid_;
-    auto* gen = worldGen_;
-    scheduler_->parallelFor(tasks.size(), [&tasks, grid, gen](size_t idx, size_t /*workerIdx*/) {
-        auto& task = tasks[idx];
-        auto* section = task.section;
-
-        section->origin = Vec3i(task.cx * LODGrid::K_SECTION_WORLD_SIZE, task.cy * LODGrid::K_SECTION_WORLD_SIZE,
-                                task.cz * LODGrid::K_SECTION_WORLD_SIZE);
-        section->palette.clear();
-        section->palette.push_back(1);
-        section->blockIndices.assign(LODSection::K_VOLUME, 0);
-
-        for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
-            for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
-                for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
-                    int wx = section->origin.x + lx;
-                    int wy = section->origin.y + ly;
-                    int wz = section->origin.z + lz;
-
-                    uint16_t matId;
-                    if (task.useWorldGen) {
-                        matId = gen->sampleMaterial(wx, wy, wz);
-                    } else {
-                        matId = grid->readCell(wx, wy, wz).materialId;
-                    }
-
-                    uint16_t palIdx = 0;
-                    auto it = std::find(section->palette.begin(), section->palette.end(), matId);
-                    if (it != section->palette.end()) {
-                        palIdx = static_cast<uint16_t>(std::distance(section->palette.begin(), it));
-                    } else {
-                        palIdx = static_cast<uint16_t>(section->palette.size());
-                        section->palette.push_back(matId);
-                    }
-                    section->set(lx, ly, lz, palIdx);
-                }
-            }
-        }
-
-        section->dirty = true;
-    });
+    // LODSystem is registered in PreRender (dispatches render(), not fixedUpdate()).
+    // Generation logic lives in render() alongside upload and submission.
 }
 
 void LODSystem::render(fabric::AppContext& ctx) {
-    if (!grid_) {
+    if (!grid_)
         return;
+
+    // Generate pending LOD sections (budget-capped parallel fill).
+    if (scheduler_) {
+        struct GenTask {
+            LODSection* section;
+            int cx, cy, cz;
+            bool useWorldGen;
+        };
+        std::vector<GenTask> tasks;
+        tasks.reserve(static_cast<size_t>(genBudget_));
+
+        while (simGrid_ && !pendingChunks_.empty() && static_cast<int>(tasks.size()) < genBudget_) {
+            auto [cx, cy, cz] = pendingChunks_.front();
+            pendingChunks_.pop_front();
+            auto* section = grid_->getOrCreate(0, cx, cy, cz);
+            if (!section)
+                continue;
+            tasks.push_back({section, cx, cy, cz, false});
+        }
+
+        while (worldGen_ && !pendingDirectChunks_.empty() && static_cast<int>(tasks.size()) < genBudget_) {
+            auto [cx, cy, cz] = pendingDirectChunks_.front();
+            pendingDirectChunks_.pop_front();
+            auto* section = grid_->getOrCreate(0, cx, cy, cz);
+            if (!section)
+                continue;
+            tasks.push_back({section, cx, cy, cz, true});
+        }
+
+        if (!tasks.empty()) {
+            auto* grid = simGrid_;
+            auto* gen = worldGen_;
+            scheduler_->parallelFor(tasks.size(), [&tasks, grid, gen](size_t idx, size_t /*workerIdx*/) {
+                auto& task = tasks[idx];
+                auto* section = task.section;
+
+                section->origin =
+                    Vec3i(task.cx * LODGrid::K_SECTION_WORLD_SIZE, task.cy * LODGrid::K_SECTION_WORLD_SIZE,
+                          task.cz * LODGrid::K_SECTION_WORLD_SIZE);
+                section->palette.clear();
+                section->palette.push_back(1);
+                section->blockIndices.assign(LODSection::K_VOLUME, 0);
+
+                for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
+                    for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
+                        for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
+                            int wx = section->origin.x + lx;
+                            int wy = section->origin.y + ly;
+                            int wz = section->origin.z + lz;
+
+                            uint16_t matId;
+                            if (task.useWorldGen) {
+                                matId = gen->sampleMaterial(wx, wy, wz);
+                            } else {
+                                matId = grid->readCell(wx, wy, wz).materialId;
+                            }
+
+                            uint16_t palIdx = 0;
+                            auto it = std::find(section->palette.begin(), section->palette.end(), matId);
+                            if (it != section->palette.end()) {
+                                palIdx = static_cast<uint16_t>(std::distance(section->palette.begin(), it));
+                            } else {
+                                palIdx = static_cast<uint16_t>(section->palette.size());
+                                section->palette.push_back(matId);
+                            }
+                            section->set(lx, ly, lz, palIdx);
+                        }
+                    }
+                }
+
+                section->dirty = true;
+            });
+        }
     }
 
     // Process dirty sections with mesh generation and GPU upload

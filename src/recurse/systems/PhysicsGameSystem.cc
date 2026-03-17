@@ -33,6 +33,8 @@ void PhysicsGameSystem::doInit(fabric::AppContext& ctx) {
 
     dispatcher_ = &ctx.dispatcher;
     voxelChangedListenerId_ = ctx.dispatcher.addEventListener(K_VOXEL_CHANGED_EVENT, [this](fabric::Event& e) {
+        if (!worldActive_)
+            return;
         int cx = e.getData<int>("cx");
         int cy = e.getData<int>("cy");
         int cz = e.getData<int>("cz");
@@ -150,10 +152,12 @@ void PhysicsGameSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) 
 }
 
 void PhysicsGameSystem::onWorldBegin() {
+    worldActive_ = true;
     dirtyCollisionChunks_.clear();
 }
 
 void PhysicsGameSystem::onWorldEnd() {
+    worldActive_ = false;
     dirtyCollisionChunks_.clear();
     focalPoints_.clear();
     lastFocalChunkCoords_.clear();

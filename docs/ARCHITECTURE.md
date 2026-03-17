@@ -200,7 +200,7 @@ Recurse constructs a `FabricAppDesc`, registers 17 game systems via `desc.regist
 
 ### Dependency Resolution
 
-`SystemRegistry` resolves inter-system dependencies within each phase using Kahn's algorithm (topological sort). Registration order does not determine execution order; the toposort does. Circular dependencies are detected at registration time and cause a fatal error.
+`SystemRegistry` resolves inter-system dependencies globally across all phases using Kahn's algorithm (topological sort), then derives per-phase execution order as a filtered subsequence of the global ordering. Registration order does not determine execution order; the toposort does. Cross-phase `after<T>()`/`before<T>()` edges affect the global ordering and init/shutdown sequence. Circular dependencies are detected at registration time and cause a fatal error.
 
 ### 9-Phase Application Lifecycle
 
@@ -212,7 +212,7 @@ Recurse constructs a `FabricAppDesc`, registers 17 game systems via `desc.regist
 | 2. Platform Init | SDL_Init, PlatformInfo::populate(), config loading, window creation, bgfx::init() |
 | 3. Infrastructure | Create AppContext, ECS world, Timeline, EventDispatcher, ResourceHub, SystemRegistry |
 | 4. System Registration | Execute FabricAppDesc system factories (registerSystem calls) |
-| 5. Dependency Resolution | Kahn toposort within each SystemPhase |
+| 5. Dependency Resolution | Global Kahn toposort, then per-phase filtering |
 | 6. System Init | Call init() on all systems in dependency order (wrapped in try-catch) |
 | 7. Application Init | Execute FabricAppDesc::onInit callback (key bindings, ECS setup) |
 | 8. Main Loop | Fixed timestep loop: SDL events, phase runners (PreUpdate through PostRender) |
@@ -243,7 +243,7 @@ Recurse registers 17 systems across four phases. Systems without declared depend
 | PreRender (3) | VoxelMeshingSystem, LODSystem, ShadowRenderSystem |
 | Render (3) | VoxelRenderSystem, OITRenderSystem, DebugOverlaySystem |
 
-Declared dependency chains within FixedUpdate: TerrainSystem runs before PhysicsGameSystem, which runs before CharacterMovementSystem, which runs before ChunkPipelineSystem and VoxelInteractionSystem. AIGameSystem and ParticleGameSystem have no declared dependencies on other game systems; the toposort places them at any valid position within the phase.
+The primary FixedUpdate dependency chain is: TerrainSystem -> ChunkPipelineSystem -> VoxelSimulationSystem -> PhysicsGameSystem -> CharacterMovementSystem -> VoxelInteractionSystem. AIGameSystem and ParticleGameSystem have no declared dependencies; the toposort places them at any valid position within the phase. ChunkPipelineSystem reads the previous tick's player position from CharacterMovementSystem (intentional one-tick lag for streaming).
 
 ## Namespace Table
 

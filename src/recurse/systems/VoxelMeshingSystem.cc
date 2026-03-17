@@ -160,12 +160,16 @@ void VoxelMeshingSystem::processFrame() {
 
     int remaining = meshBudget_ - static_cast<int>(activeChunks.size());
     if (remaining > 0 && simGrid_) {
+        auto& registry = simGrid_->registry();
         auto allChunks = simGrid_->allChunks();
         for (const auto& [cx, cy, cz] : allChunks) {
             if (static_cast<int>(toMesh.size()) >= meshBudget_)
                 break;
             fabric::ChunkCoord coord{cx, cy, cz};
             if (scheduled.contains(coord))
+                continue;
+            auto* slot = registry.find(cx, cy, cz);
+            if (!slot || slot->state != recurse::simulation::ChunkSlotState::Active)
                 continue;
             if (gpuMeshes_.find(coord) != gpuMeshes_.end())
                 continue;

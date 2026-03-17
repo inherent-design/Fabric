@@ -35,6 +35,7 @@ void CharacterMovementSystem::doShutdown() {
 
     flightCtrl_.reset();
     joltCharCtrl_ = nullptr;
+    ecsWorld_ = nullptr;
     terrain_ = nullptr;
     camera_ = nullptr;
     physics_ = nullptr;
@@ -59,6 +60,10 @@ void CharacterMovementSystem::setPlayerPosition(const fabric::Vec3f& pos) {
 
 namespace {
 
+constexpr float K_CHAR_WIDTH = 0.6f;
+constexpr float K_CHAR_HEIGHT = 1.8f;
+constexpr float K_CHAR_DEPTH = 0.6f;
+
 void syncPlayerPositionViews(fabric::Vector3<double, fabric::Space::World>& playerPosD, fabric::Vec3f& playerPos,
                              const fabric::Vec3f& resolved) {
     playerPos = resolved;
@@ -80,11 +85,6 @@ void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
     physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
-    constexpr float K_CHAR_WIDTH = 0.6f;
-    constexpr float K_CHAR_HEIGHT = 1.8f;
-    constexpr float K_CHAR_DEPTH = 0.6f;
-
-    // Flight controller for Flying/Noclip modes
     flightCtrl_ = std::make_unique<FlightController>(K_CHAR_WIDTH, K_CHAR_HEIGHT, K_CHAR_DEPTH);
 
     // Jolt-based controller required for ground movement
@@ -137,17 +137,17 @@ void CharacterMovementSystem::doInit(fabric::AppContext& ctx) {
         }
     });
 
-    int streamRadius = ctx.configManager.get<int>("terrain.chunk_radius", 8);
-    int collisionRadius =
+    ecsWorld_ = &ctx.world.get();
+    streamRadius_ = ctx.configManager.get<int>("terrain.chunk_radius", 8);
+    collisionRadius_ =
         ctx.configManager.get<int>("physics.collision_radius", recurse::RecurseConfig::K_DEFAULT_COLLISION_RADIUS);
-    playerEntity_ = ctx.world.get()
-                        .entity("player")
+    playerEntity_ = ecsWorld_->entity("player")
                         .add<fabric::WorldScoped>()
                         .set<fabric::Position>({playerPos_.x, playerPos_.y, playerPos_.z})
-                        .set<recurse::StreamSource>({streamRadius, collisionRadius});
+                        .set<recurse::StreamSource>({streamRadius_, collisionRadius_});
 
     FABRIC_LOG_INFO("CharacterMovementSystem initialized (player entity created, stream={}, collision={})",
-                    streamRadius, collisionRadius);
+                    streamRadius_, collisionRadius_);
 }
 
 void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
@@ -274,7 +274,23 @@ void CharacterMovementSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt
 }
 
 void CharacterMovementSystem::onWorldBegin() {
-    // Player state is set by MainMenuSystem/setPlayerPosition before simulation starts.
+    if (physics_ && physics_->physicsWorld().initialized()) {
+        JoltCharacterConfig config;
+        config.width = K_CHAR_WIDTH;
+        config.height = K_CHAR_HEIGHT;
+        config.mass = 70.0f;
+        config.maxSlopeAngle = charConfig_.slopeLimit;
+        joltCharCtrl_ = physics_->physicsWorld().createCharacter(config);
+        if (joltCharCtrl_)
+            joltCharCtrl_->setPosition(playerPos_);
+    }
+
+    if (ecsWorld_) {
+        playerEntity_ = ecsWorld_->entity("player")
+                            .add<fabric::WorldScoped>()
+                            .set<fabric::Position>({playerPos_.x, playerPos_.y, playerPos_.z})
+                            .set<recurse::StreamSource>({streamRadius_, collisionRadius_});
+    }
 }
 
 void CharacterMovementSystem::onWorldEnd() {

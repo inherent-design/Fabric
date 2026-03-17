@@ -71,6 +71,7 @@ class PhysicsGameSystem : public fabric::System<PhysicsGameSystem> {
     std::vector<recurse::FocalPoint> focalPoints_;
     std::vector<recurse::CollisionCenter> lastFocalChunkCoords_;
     std::string voxelChangedListenerId_;
+    bool worldActive_ = false;
 
     int collisionBudget_ = RecurseConfig::K_DEFAULT_COLLISION_BUDGET;
     int collisionRadius_ = RecurseConfig::K_DEFAULT_COLLISION_RADIUS;
