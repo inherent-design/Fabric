@@ -8,9 +8,8 @@ namespace recurse::simulation {
 namespace {
 // Directional-alternating sweep: reverses x/z iteration each frame to prevent
 // systematic bias in cellular automata. cellFn returns true if it moved a cell.
-template <typename Fn> bool sweepChunk(uint64_t frameIndex, Fn&& cellFn) {
+template <typename Fn> bool sweepChunk(bool reverseDir, Fn&& cellFn) {
     bool anyChange = false;
-    bool reverseDir = (frameIndex & 1) != 0;
 
     for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
         int lxStart = reverseDir ? K_CHUNK_SIZE - 1 : 0;
@@ -98,10 +97,10 @@ void FallingSandSystem::writeSwap(ChunkCoord pos, int srcLx, int srcLy, int srcL
 }
 
 bool FallingSandSystem::simulateGravity(ChunkCoord pos, SimulationGrid& grid, const GhostCellManager& ghosts,
-                                        ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
+                                        ChunkActivityTracker& tracker, bool reverseDir, std::mt19937& rng,
                                         BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps) {
 
-    return sweepChunk(frameIndex, [&](int lx, int ly, int lz) -> bool {
+    return sweepChunk(reverseDir, [&](int lx, int ly, int lz) -> bool {
         VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
         if (cell.materialId == material_ids::AIR)
             return false;
@@ -139,10 +138,10 @@ bool FallingSandSystem::simulateGravity(ChunkCoord pos, SimulationGrid& grid, co
 }
 
 bool FallingSandSystem::simulateLiquid(ChunkCoord pos, SimulationGrid& grid, const GhostCellManager& ghosts,
-                                       ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
+                                       ChunkActivityTracker& tracker, bool reverseDir, std::mt19937& rng,
                                        BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps) {
 
-    return sweepChunk(frameIndex, [&](int lx, int ly, int lz) -> bool {
+    return sweepChunk(reverseDir, [&](int lx, int ly, int lz) -> bool {
         VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
         const auto& def = registry_.get(cell.materialId);
         if (def.moveType != MoveType::Liquid)
@@ -188,10 +187,10 @@ bool FallingSandSystem::simulateLiquid(ChunkCoord pos, SimulationGrid& grid, con
 }
 
 bool FallingSandSystem::simulateChunk(ChunkCoord pos, SimulationGrid& grid, const GhostCellManager& ghosts,
-                                      ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
+                                      ChunkActivityTracker& tracker, bool reverseDir, std::mt19937& rng,
                                       BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps) {
-    bool gravityChanged = simulateGravity(pos, grid, ghosts, tracker, frameIndex, rng, boundaryWrites, cellSwaps);
-    bool liquidChanged = simulateLiquid(pos, grid, ghosts, tracker, frameIndex, rng, boundaryWrites, cellSwaps);
+    bool gravityChanged = simulateGravity(pos, grid, ghosts, tracker, reverseDir, rng, boundaryWrites, cellSwaps);
+    bool liquidChanged = simulateLiquid(pos, grid, ghosts, tracker, reverseDir, rng, boundaryWrites, cellSwaps);
     bool settled = !gravityChanged && !liquidChanged;
     if (settled)
         tracker.putToSleep(pos);

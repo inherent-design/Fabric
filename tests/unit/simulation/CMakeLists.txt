@@ -11,4 +11,5 @@ target_sources(UnitTests
   FallingSandPhysicsChangeTest.cc
   VoxelSimulationSystemTest.cc
   ParallelSimulationTest.cc
+  ChangeVelocityTrackerTest.cc
 )

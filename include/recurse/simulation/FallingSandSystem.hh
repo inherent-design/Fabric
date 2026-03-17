@@ -16,16 +16,16 @@ class FallingSandSystem {
     explicit FallingSandSystem(const MaterialRegistry& registry);
 
     bool simulateGravity(ChunkCoord pos, SimulationGrid& grid, const GhostCellManager& ghosts,
-                         ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
+                         ChunkActivityTracker& tracker, bool reverseDir, std::mt19937& rng,
                          BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps);
 
     bool simulateLiquid(ChunkCoord pos, SimulationGrid& grid, const GhostCellManager& ghosts,
-                        ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
+                        ChunkActivityTracker& tracker, bool reverseDir, std::mt19937& rng,
                         BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps);
 
     /// Simulate one chunk. Returns true if the chunk settled (no movement; put to sleep).
     bool simulateChunk(ChunkCoord pos, SimulationGrid& grid, const GhostCellManager& ghosts,
-                       ChunkActivityTracker& tracker, uint64_t frameIndex, std::mt19937& rng,
+                       ChunkActivityTracker& tracker, bool reverseDir, std::mt19937& rng,
                        BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps);
 
   private:

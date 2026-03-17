@@ -9,7 +9,6 @@ void VoxelSimulationSystem::tick() {
     FABRIC_ZONE_SCOPED_N("voxel_sim_tick");
 
     settledChunks_.clear();
-    physicsChanges_.clear();
 
     // 1. Collect active + boundary-dirty chunks, then filter.
     // BoundaryDirty chunks need remeshing only (not simulation).
@@ -73,9 +72,10 @@ void VoxelSimulationSystem::tick() {
     {
         FABRIC_ZONE_SCOPED_N("phase_3_simulate");
         scheduler_.parallelFor(active.size(), [&](size_t jobIdx, size_t workerIdx) {
-            std::mt19937 rng(frameIndex_ + jobIdx);
             const auto& pos = active[jobIdx].pos;
-            bool settled = sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, frameIndex_, rng,
+            std::mt19937 rng(static_cast<uint32_t>(worldSeed_ ^ spatialHash(pos)));
+            bool reverseDir = (spatialHash(pos) & 1) != 0;
+            bool settled = sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, reverseDir, rng,
                                                      boundaryQueues[workerIdx], cellSwapsPerWorker[workerIdx]);
             if (settled) {
                 settledPerWorker[workerIdx].push_back(pos);
@@ -91,10 +91,14 @@ void VoxelSimulationSystem::tick() {
     for (auto& v : settledPerWorker) {
         settledChunks_.insert(settledChunks_.end(), v.begin(), v.end());
     }
-    for (auto& swaps : cellSwapsPerWorker) {
-        for (auto& swap : swaps) {
-            physicsChanges_[swap.chunk].push_back(swap);
+    {
+        std::unordered_map<ChunkCoord, uint32_t, ChunkCoordHash> swapCounts;
+        for (const auto& swaps : cellSwapsPerWorker) {
+            for (const auto& swap : swaps)
+                swapCounts[swap.chunk]++;
         }
+        for (const auto& [pos, count] : swapCounts)
+            velocityTracker_.record(pos, count, frameIndex_);
     }
 
     // Phase 3b: Drain boundary write queues (single-threaded)
@@ -174,12 +178,23 @@ const std::vector<ChunkCoord>& VoxelSimulationSystem::settledChunks() const {
 fabric::JobScheduler& VoxelSimulationSystem::scheduler() {
     return scheduler_;
 }
+ChangeVelocityTracker& VoxelSimulationSystem::velocityTracker() {
+    return velocityTracker_;
+}
+const ChangeVelocityTracker& VoxelSimulationSystem::velocityTracker() const {
+    return velocityTracker_;
+}
 
 void VoxelSimulationSystem::resetWorldState() {
     ghosts_.clear();
     settledChunks_.clear();
-    physicsChanges_.clear();
+    velocityTracker_.clear();
     frameIndex_ = 0;
+    worldSeed_ = 0;
+}
+
+void VoxelSimulationSystem::setWorldSeed(int64_t seed) {
+    worldSeed_ = seed;
 }
 
 } // namespace recurse::simulation

@@ -75,6 +75,11 @@ void VoxelSimulationSystem::onWorldEnd() {
     resetWorld();
 }
 
+void VoxelSimulationSystem::setWorldSeed(int64_t seed) {
+    if (fabSim_)
+        fabSim_->setWorldSeed(seed);
+}
+
 void VoxelSimulationSystem::configureDependencies() {
     after<TerrainSystem>();
     after<ChunkPipelineSystem>();
@@ -155,6 +160,10 @@ const recurse::simulation::MaterialRegistry& VoxelSimulationSystem::materials() 
 
 fabric::JobScheduler& VoxelSimulationSystem::scheduler() {
     return fabSim_->scheduler();
+}
+
+const recurse::simulation::ChangeVelocityTracker& VoxelSimulationSystem::velocityTracker() const {
+    return fabSim_->velocityTracker();
 }
 
 void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
@@ -298,6 +307,7 @@ void VoxelSimulationSystem::removeActiveChunk(recurse::simulation::ChunkRef<recu
         recurse::simulation::transition<recurse::simulation::Active, recurse::simulation::Draining>(ref, registry);
     fabSim_->grid().removeChunk(draining.cx(), draining.cy(), draining.cz());
     fabSim_->activityTracker().remove(fabric::ChunkCoord{draining.cx(), draining.cy(), draining.cz()});
+    fabSim_->velocityTracker().remove(fabric::ChunkCoord{draining.cx(), draining.cy(), draining.cz()});
 }
 
 void VoxelSimulationSystem::cancelChunk(recurse::simulation::ChunkRef<recurse::simulation::Generating> ref) {
@@ -306,6 +316,7 @@ void VoxelSimulationSystem::cancelChunk(recurse::simulation::ChunkRef<recurse::s
     auto& registry = fabSim_->grid().registry();
     recurse::simulation::cancelAndRemove(ref, registry);
     fabSim_->activityTracker().remove(fabric::ChunkCoord{ref.cx(), ref.cy(), ref.cz()});
+    fabSim_->velocityTracker().remove(fabric::ChunkCoord{ref.cx(), ref.cy(), ref.cz()});
 }
 
 void VoxelSimulationSystem::removeChunk(int cx, int cy, int cz) {
@@ -319,6 +330,7 @@ void VoxelSimulationSystem::removeChunk(int cx, int cy, int cz) {
     } else {
         fabSim_->grid().removeChunk(cx, cy, cz);
         fabSim_->activityTracker().remove(recurse::simulation::ChunkCoord{cx, cy, cz});
+        fabSim_->velocityTracker().remove(recurse::simulation::ChunkCoord{cx, cy, cz});
     }
 }
 

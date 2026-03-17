@@ -99,8 +99,8 @@ TEST_F(FallingSandPhysicsChangeTest, LiquidFlowRecordsCellSwaps) {
     }
 }
 
-// 3. physicsChanges() populated after tick
-TEST_F(FallingSandPhysicsChangeTest, PhysicsChangesPopulatedAfterTick) {
+// 3. velocityTracker records swap counts after tick
+TEST_F(FallingSandPhysicsChangeTest, VelocityTrackerRecordsAfterTick) {
     VoxelSimulationSystem sim;
     sim.scheduler().disableForTesting();
     auto& g = sim.grid();
@@ -113,22 +113,19 @@ TEST_F(FallingSandPhysicsChangeTest, PhysicsChangesPopulatedAfterTick) {
             for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
                 sim.activityTracker().markSubRegionActive(ChunkCoord{0, 0, 0}, lx, ly, lz);
 
-    // Place sand that will fall
     g.writeCell(16, 31, 16, makeMaterial(material_ids::SAND));
     g.advanceEpoch();
 
     sim.tick();
 
-    const auto& changes = sim.physicsChanges();
-    EXPECT_FALSE(changes.empty());
-
-    auto it = changes.find(ChunkCoord{0, 0, 0});
-    ASSERT_NE(it, changes.end());
-    EXPECT_GE(it->second.size(), 2u);
+    const auto* ring = sim.velocityTracker().history(ChunkCoord{0, 0, 0});
+    ASSERT_NE(ring, nullptr);
+    EXPECT_GT(ring->size(), 0u);
+    EXPECT_GT(ring->at(0).swapCount, 0u);
 }
 
-// 4. Settled chunk with only stone has no physics changes
-TEST_F(FallingSandPhysicsChangeTest, SettledChunkHasNoPhysicsChanges) {
+// 4. Settled chunk with only stone has zero velocity
+TEST_F(FallingSandPhysicsChangeTest, SettledChunkHasZeroVelocity) {
     VoxelSimulationSystem sim;
     sim.scheduler().disableForTesting();
     auto& g = sim.grid();
@@ -136,7 +133,6 @@ TEST_F(FallingSandPhysicsChangeTest, SettledChunkHasNoPhysicsChanges) {
     g.fillChunk(0, 0, 0, VoxelCell{});
     g.materializeChunk(0, 0, 0);
 
-    // Fill with stone (static; no movement possible)
     for (int z = 0; z < K_CHUNK_SIZE; ++z)
         for (int y = 0; y < K_CHUNK_SIZE; ++y)
             for (int x = 0; x < K_CHUNK_SIZE; ++x)
@@ -151,12 +147,7 @@ TEST_F(FallingSandPhysicsChangeTest, SettledChunkHasNoPhysicsChanges) {
 
     sim.tick();
 
-    const auto& changes = sim.physicsChanges();
-    auto it = changes.find(ChunkCoord{0, 0, 0});
-    if (it != changes.end()) {
-        EXPECT_TRUE(it->second.empty());
-    }
-    // Chunk should have settled
+    EXPECT_FLOAT_EQ(sim.velocityTracker().velocity(ChunkCoord{0, 0, 0}), 0.0f);
     EXPECT_EQ(sim.activityTracker().getState(ChunkCoord{0, 0, 0}), ChunkState::Sleeping);
 }
 

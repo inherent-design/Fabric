@@ -16,6 +16,7 @@ namespace recurse::simulation {
 class ChunkActivityTracker;
 class MaterialRegistry;
 class SimulationGrid;
+class ChangeVelocityTracker;
 class VoxelSimulationSystem;
 } // namespace recurse::simulation
 
@@ -38,6 +39,8 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
 
     void onWorldBegin();
     void onWorldEnd();
+
+    void setWorldSeed(int64_t seed);
 
     /// Read-only access for VoxelMeshingSystem, ChunkPipelineSystem, DebugOverlaySystem
     recurse::simulation::SimulationGrid& simulationGrid();
@@ -74,6 +77,8 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
 
     /// Access the underlying JobScheduler (owned by the inner simulation system).
     fabric::JobScheduler& scheduler();
+
+    const recurse::simulation::ChangeVelocityTracker& velocityTracker() const;
 
     /// Number of chunks actively simulated last tick (for debug overlay)
     size_t activeChunkCount() const { return lastActiveCount_; }

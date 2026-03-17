@@ -108,6 +108,9 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
 
         activeWorldUUID_ = uuid;
 
+        if (voxelSim_)
+            voxelSim_->setWorldSeed(seed);
+
         // Wire persistence before generation so streaming can save/load chunks
         if (chunkPipeline_ && worldRegistry_ && !uuid.empty()) {
             chunkPipeline_->loadWorld(worldRegistry_->worldPath(uuid).string(), voxelSim_->scheduler());

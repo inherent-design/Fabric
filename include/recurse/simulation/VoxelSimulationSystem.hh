@@ -1,6 +1,7 @@
 #pragma once
 #include "fabric/platform/JobScheduler.hh"
 #include "recurse/simulation/BoundaryWriteQueue.hh"
+#include "recurse/simulation/ChangeVelocityTracker.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
@@ -8,11 +9,16 @@
 #include "recurse/simulation/SimulationGrid.hh"
 #include <bit>
 #include <cstdint>
-#include <random>
-#include <unordered_map>
 #include <vector>
 
 namespace recurse::simulation {
+
+inline uint64_t spatialHash(ChunkCoord pos) {
+    uint64_t h = static_cast<uint64_t>(static_cast<uint32_t>(pos.x)) * 73856093ULL;
+    h ^= static_cast<uint64_t>(static_cast<uint32_t>(pos.y)) * 19349663ULL;
+    h ^= static_cast<uint64_t>(static_cast<uint32_t>(pos.z)) * 83492791ULL;
+    return h;
+}
 
 /// Per-cell change record from physics simulation (FallingSand writeSwap).
 /// Simulation-layer only; converted to VoxelChangeDetail at system boundary.
@@ -47,6 +53,8 @@ class VoxelSimulationSystem {
     /// the caller (outer system clears them separately).
     void resetWorldState();
 
+    void setWorldSeed(int64_t seed);
+
     /// Chunks that settled (no movement) during the last tick().
     /// Used by the outer system to dispatch collision rebuild events.
     const std::vector<ChunkCoord>& settledChunks() const;
@@ -59,9 +67,9 @@ class VoxelSimulationSystem {
     FallingSandSystem sandSystem_;
     fabric::JobScheduler scheduler_;
     uint64_t frameIndex_ = 0;
-    std::mt19937 rng_{42};
+    int64_t worldSeed_ = 0;
     std::vector<ChunkCoord> settledChunks_;
-    std::unordered_map<ChunkCoord, std::vector<CellSwap>, ChunkCoordHash> physicsChanges_;
+    ChangeVelocityTracker velocityTracker_;
 
     void propagateDirty(const std::vector<ActiveChunkEntry>& active);
     void drainBoundaryWrites(std::vector<BoundaryWriteQueue>& queues);
@@ -69,9 +77,8 @@ class VoxelSimulationSystem {
   public:
     fabric::JobScheduler& scheduler();
 
-    /// Per-chunk cell swaps from the last tick(). Used by the outer system
-    /// to emit detailed K_VOXEL_CHANGED_EVENT for rollback logging.
-    const auto& physicsChanges() const { return physicsChanges_; }
+    ChangeVelocityTracker& velocityTracker();
+    const ChangeVelocityTracker& velocityTracker() const;
 };
 
 } // namespace recurse::simulation

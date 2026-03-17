@@ -316,6 +316,7 @@ set(FABRIC_SIMULATION_SOURCE_FILES
     src/recurse/simulation/FallingSandSystem.cc
     src/recurse/simulation/VoxelSimulationSystem.cc
     src/recurse/simulation/EssenceAssigner.cc
+    src/recurse/simulation/ChangeVelocityTracker.cc
 )
 
 # Utils library components
