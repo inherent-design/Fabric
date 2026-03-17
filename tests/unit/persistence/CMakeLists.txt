@@ -2,6 +2,7 @@ target_sources(UnitTests
   PRIVATE
   WorldMetadataTest.cc
   SqliteChunkStoreTest.cc
+  FchkCodecTest.cc
   WorldRegistryTest.cc
   ChunkSaveServiceTest.cc
   EditTriggeredSaveTest.cc

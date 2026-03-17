@@ -142,6 +142,10 @@ FchkDecoded FchkCodec::decode(const ChunkBlob& blob) {
     FchkDecoded result;
     result.cells.assign(postHeader, postHeader + cellsByteCount);
 
+    constexpr uint8_t kRuntimeFlagsMask = static_cast<uint8_t>(~(0x01 | 0x02));
+    for (size_t i = 3; i < result.cells.size(); i += 4)
+        result.cells[i] &= kRuntimeFlagsMask;
+
     if (header.version == 1) {
         // v1 fixup: zero out essenceIdx byte (offset 2 within each 4-byte VoxelCell).
         // Old files have temperature=128 in that byte, which would cause OOB palette lookups.

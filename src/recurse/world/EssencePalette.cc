@@ -90,6 +90,14 @@ uint16_t EssencePalette::addEntry(const Vector4<float, Space::World>& essence) {
     return idx;
 }
 
+uint16_t EssencePalette::addEntryRaw(const Vector4<float, Space::World>& essence) {
+    auto idx = static_cast<uint16_t>(entries_.size());
+    entries_.push_back(essence);
+    if (epsilon_ > 0.0f)
+        gridMap_[toGridKey(essence)] = idx;
+    return idx;
+}
+
 uint16_t EssencePalette::mergeClosestPair() {
     FABRIC_ZONE_SCOPED;
 

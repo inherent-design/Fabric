@@ -127,7 +127,7 @@ TEST_F(SqliteChunkStoreTest, SaveLoadWithFchkDecode) {
     constexpr size_t cellsSize = 32 * 32 * 32 * 4;
     std::vector<uint8_t> cells(cellsSize, 0);
     cells[0] = 0xAA;
-    cells[cellsSize - 1] = 0xBB;
+    cells[cellsSize - 1] = 0xBC;
 
     float paletteData[] = {
         0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f,
@@ -142,7 +142,7 @@ TEST_F(SqliteChunkStoreTest, SaveLoadWithFchkDecode) {
     auto decoded = recurse::FchkCodec::decode(*loaded);
     EXPECT_EQ(decoded.cells.size(), cellsSize);
     EXPECT_EQ(decoded.cells[0], 0xAA);
-    EXPECT_EQ(decoded.cells[cellsSize - 1], 0xBB);
+    EXPECT_EQ(decoded.cells[cellsSize - 1], 0xBC);
     EXPECT_EQ(decoded.paletteEntryCount, 2u);
     ASSERT_EQ(decoded.paletteData.size(), 8u);
     for (int i = 0; i < 8; ++i) {

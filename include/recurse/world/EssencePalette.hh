@@ -38,6 +38,8 @@ class EssencePalette {
     /// Returns the index of the entry (existing or new).
     uint16_t addEntry(const Vector4<float, Space::World>& essence);
 
+    uint16_t addEntryRaw(const Vector4<float, Space::World>& essence);
+
     size_t paletteSize() const;
     uint16_t maxSize() const;
     float epsilon() const;

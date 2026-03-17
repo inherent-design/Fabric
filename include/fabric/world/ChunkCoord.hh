@@ -1,4 +1,5 @@
 #pragma once
+#include <compare>
 #include <cstdint>
 #include <functional>
 
@@ -7,6 +8,7 @@ namespace fabric {
 struct ChunkCoord {
     int32_t x{0}, y{0}, z{0};
     bool operator==(const ChunkCoord&) const = default;
+    auto operator<=>(const ChunkCoord&) const = default;
 };
 
 struct ChunkCoordHash {

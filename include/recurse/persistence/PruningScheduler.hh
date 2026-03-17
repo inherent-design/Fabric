@@ -9,7 +9,7 @@ class WriterQueue;
 
 namespace recurse {
 
-inline constexpr float K_PRUNE_INTERVAL_SECONDS = 3600.0f;
+inline constexpr float K_PRUNE_INTERVAL_SECONDS = 300.0f;
 inline constexpr int64_t K_CHANGE_RETENTION_MS = 24LL * 60 * 60 * 1000;
 inline constexpr int64_t K_SNAPSHOT_RETENTION_MS = 7LL * 24 * 60 * 60 * 1000;
 

@@ -200,6 +200,7 @@ class WorldSession {
 
     int maxLoadCompletions_ = 16;
     int lodHysteresis_ = 2;
+    float checkpointElapsed_{0.0f};
 
     // Non-owning references (outlive session)
     fabric::EventDispatcher& dispatcher_;

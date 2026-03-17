@@ -64,28 +64,6 @@ void VoxelSimulationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fix
             e.setData("source", static_cast<int>(ChangeSource::Physics));
             dispatcher_->dispatchEvent(e);
         }
-
-        // Emit per-voxel physics change events for rollback completeness.
-        // Settled events (above) remain chunk-level for collision rebuild.
-        // Physics detail events carry VoxelChangeDetail for change logging.
-        for (const auto& [chunkPos, swaps] : fabSim_->physicsChanges()) {
-            if (swaps.empty())
-                continue;
-            std::vector<VoxelChangeDetail> details;
-            details.reserve(swaps.size());
-            for (const auto& swap : swaps) {
-                VoxelChangeDetail d;
-                d.vx = swap.lx;
-                d.vy = swap.ly;
-                d.vz = swap.lz;
-                d.oldCell = swap.oldCell;
-                d.newCell = swap.newCell;
-                d.playerId = 0;
-                d.source = ChangeSource::Physics;
-                details.push_back(d);
-            }
-            emitVoxelChanged(*dispatcher_, chunkPos.x, chunkPos.y, chunkPos.z, std::move(details));
-        }
     }
 }
 

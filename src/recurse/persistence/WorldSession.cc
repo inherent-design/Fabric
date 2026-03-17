@@ -28,6 +28,8 @@
 #include <cmath>
 #include <cstring>
 
+inline constexpr float K_CHECKPOINT_INTERVAL_SECONDS = 5.0f;
+
 namespace recurse {
 
 // ---------------------------------------------------------------------------
@@ -134,6 +136,10 @@ WorldSession::~WorldSession() {
     // Step 2: Flush snapshot scheduler
     if (snapshotScheduler_)
         snapshotScheduler_->flush();
+
+    // Step 2b: Final prune pass before shutdown
+    if (pruningScheduler_)
+        pruningScheduler_->pruneNow();
 
     // Step 3: Flush save service
     if (saveService_)
@@ -286,8 +292,8 @@ std::vector<ops::CompletedLoad> WorldSession::pollPendingLoads() {
                     palette->clear();
                     for (uint16_t i = 0; i < entry.result.paletteEntryCount; ++i) {
                         size_t base = static_cast<size_t>(i) * 4;
-                        palette->addEntry({entry.result.paletteData[base], entry.result.paletteData[base + 1],
-                                           entry.result.paletteData[base + 2], entry.result.paletteData[base + 3]});
+                        palette->addEntryRaw({entry.result.paletteData[base], entry.result.paletteData[base + 1],
+                                              entry.result.paletteData[base + 2], entry.result.paletteData[base + 3]});
                     }
                 }
             }
@@ -524,6 +530,12 @@ void WorldSession::submit(ops::Tick op) {
     updateSaveService(op.dt);
     updateSnapshotScheduler(op.dt);
     updatePruningScheduler(op.dt);
+
+    checkpointElapsed_ += op.dt;
+    if (checkpointElapsed_ >= K_CHECKPOINT_INTERVAL_SECONDS) {
+        checkpointElapsed_ = 0.0f;
+        writerQueue_.submit([this]() { store_->maybeCheckpoint(); });
+    }
 }
 
 void WorldSession::submit(ops::UpdateLODRing op) {

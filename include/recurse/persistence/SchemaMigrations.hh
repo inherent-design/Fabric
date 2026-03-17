@@ -64,6 +64,11 @@ CREATE TABLE schema_version (
 );
 )sql",
         "initial schema: chunk_state, change_log, chunk_snapshot, schema_version"},
+    Migration{
+        R"sql(
+CREATE INDEX idx_changelog_ts ON change_log (ts);
+)sql",
+        "add ts-only index for pruning queries"},
 };
 
 inline constexpr int K_SCHEMA_VERSION = static_cast<int>(K_SCHEMA_MIGRATIONS.size());
