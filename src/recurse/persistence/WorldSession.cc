@@ -25,8 +25,11 @@
 #include "fabric/log/Log.hh"
 #include "fabric/platform/JobScheduler.hh"
 
+#include "recurse/simulation/EssenceAssigner.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/world/EssencePalette.hh"
 
 #include <algorithm>
 #include <array>
@@ -119,7 +122,7 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
     if (simSystem_) {
         replayExecutor_ = std::make_unique<persistence::ReplayExecutor>(
             *txStore_, simSystem_->simulationGrid(), simSystem_->fallingSandSystem(), simSystem_->ghostCellManager(),
-            simSystem_->activityTracker(), simSystem_->worldSeed(), worldGen_);
+            simSystem_->activityTracker(), simSystem_->worldSeed(), &simSystem_->materials(), worldGen_);
 
         chunkSnapshotProvider_ = std::make_unique<ChunkSnapshotProvider>(
             *txStore_, *snapshotScheduler_, simSystem_->simulationGrid(), *replayExecutor_);
@@ -248,10 +251,14 @@ ChunkBlob WorldSession::encodeChunkBlob(int cx, int cy, int cz) {
         palettePtr = paletteFloats.data();
     }
 
-    // Delta path: generate reference, diff against current
+    // Delta path: generate reference (terrain + essence), diff against current.
+    // The reference must match the full generation pipeline so that only
+    // actual modifications (simulation, player edits) produce diff entries.
     if (worldGen_) {
         std::vector<simulation::VoxelCell> refBuf(simulation::K_CHUNK_VOLUME);
         worldGen_->generateToBuffer(refBuf.data(), cx, cy, cz);
+        EssencePalette refPalette;
+        simulation::assignEssence(refBuf.data(), cx, cy, cz, simSystem_->materials(), refPalette, 42);
         return FchkCodec::encodeDelta(buf->data(), refBuf.data(), sizeof(*buf), worldgenVersion_, 1, 1, palettePtr,
                                       paletteCount);
     }
@@ -286,8 +293,9 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
 
     auto* storePtr = store_.get();
     auto* worldGen = worldGen_;
+    const auto* materials = simSystem_ ? &simSystem_->materials() : nullptr;
 
-    auto future = scheduler_.submit([storePtr, cx, cy, cz, buf, worldGen]() -> AsyncLoadResult {
+    auto future = scheduler_.submit([storePtr, cx, cy, cz, buf, worldGen, materials]() -> AsyncLoadResult {
         AsyncLoadResult r;
         auto blob = storePtr->loadChunk(cx, cy, cz);
         if (!blob)
@@ -295,9 +303,12 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
 
         FchkDecoded decoded;
         if (FchkCodec::isDelta(*blob) && worldGen) {
-            // Heap-allocate reference buffer (128KB, too large for 64KB fiber stacks)
             auto refBuf = std::make_unique<std::array<simulation::VoxelCell, simulation::K_CHUNK_VOLUME>>();
             worldGen->generateToBuffer(refBuf->data(), cx, cy, cz);
+            if (materials) {
+                EssencePalette refPalette;
+                simulation::assignEssence(refBuf->data(), cx, cy, cz, *materials, refPalette, 42);
+            }
             decoded = FchkCodec::decodeAny(*blob, refBuf->data());
         } else {
             decoded = FchkCodec::decodeAny(*blob);

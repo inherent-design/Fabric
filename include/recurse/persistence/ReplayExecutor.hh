@@ -18,6 +18,7 @@ class SimulationGrid;
 class FallingSandSystem;
 class GhostCellManager;
 class ChunkActivityTracker;
+class MaterialRegistry;
 } // namespace recurse::simulation
 
 namespace recurse::persistence {
@@ -88,7 +89,8 @@ class ReplayExecutor {
   public:
     ReplayExecutor(WorldTransactionStore& txStore, simulation::SimulationGrid& grid,
                    simulation::FallingSandSystem& sandSystem, simulation::GhostCellManager& ghosts,
-                   simulation::ChunkActivityTracker& tracker, int64_t worldSeed, WorldGenerator* worldGen = nullptr);
+                   simulation::ChunkActivityTracker& tracker, int64_t worldSeed,
+                   const simulation::MaterialRegistry* materials = nullptr, WorldGenerator* worldGen = nullptr);
 
     ReplayResult replayDelta(const SnapshotSet& snapshot, std::span<const VoxelChange> userEdits, uint64_t tickCount,
                              ReplayConfig config = {}, ReplayObserver observer = nullptr);
@@ -106,6 +108,7 @@ class ReplayExecutor {
     simulation::GhostCellManager& ghosts_;
     simulation::ChunkActivityTracker& tracker_;
     int64_t worldSeed_;
+    const simulation::MaterialRegistry* materials_ = nullptr;
     WorldGenerator* worldGen_ = nullptr;
 };
 

@@ -4,10 +4,13 @@
 #include "recurse/persistence/WorldTransactionStore.hh"
 #include "recurse/simulation/BoundaryWriteQueue.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/EssenceAssigner.hh"
 #include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
+#include "recurse/world/EssencePalette.hh"
 #include "recurse/world/WorldGenerator.hh"
 #include <algorithm>
 #include <array>
@@ -26,13 +29,15 @@ constexpr double K_TICK_DURATION_MS = 1000.0 / 60.0;
 
 ReplayExecutor::ReplayExecutor(WorldTransactionStore& txStore, simulation::SimulationGrid& grid,
                                simulation::FallingSandSystem& sandSystem, simulation::GhostCellManager& ghosts,
-                               simulation::ChunkActivityTracker& tracker, int64_t worldSeed, WorldGenerator* worldGen)
+                               simulation::ChunkActivityTracker& tracker, int64_t worldSeed,
+                               const simulation::MaterialRegistry* materials, WorldGenerator* worldGen)
     : txStore_(txStore),
       grid_(grid),
       sandSystem_(sandSystem),
       ghosts_(ghosts),
       tracker_(tracker),
       worldSeed_(worldSeed),
+      materials_(materials),
       worldGen_(worldGen) {}
 
 ReplayResult ReplayExecutor::replayDelta(const SnapshotSet& snapshot, std::span<const VoxelChange> userEdits,
@@ -65,6 +70,11 @@ ReplayResult ReplayExecutor::runLoop(const SnapshotSet& snapshot, std::span<cons
         if (FchkCodec::isDelta(cs.blob) && worldGen_) {
             auto refBuf = std::make_unique<std::array<VoxelCell, K_CHUNK_VOLUME>>();
             worldGen_->generateToBuffer(refBuf->data(), cs.coord.x, cs.coord.y, cs.coord.z);
+            if (materials_) {
+                EssencePalette refPalette;
+                simulation::assignEssence(refBuf->data(), cs.coord.x, cs.coord.y, cs.coord.z, *materials_, refPalette,
+                                          42);
+            }
             decoded = FchkCodec::decodeAny(cs.blob, refBuf->data());
         } else {
             decoded = FchkCodec::decodeAny(cs.blob);
