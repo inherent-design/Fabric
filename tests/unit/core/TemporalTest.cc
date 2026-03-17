@@ -374,6 +374,159 @@ TEST_F(TemporalTest, EntityStateSizeMismatchReturnsNullopt) {
     EXPECT_FALSE(result.has_value());
 }
 
+// ============================================================
+// SnapshotProvider protocol tests
+// ============================================================
+
+class MockProvider : public fabric::SnapshotProvider {
+  public:
+    int64_t onCreateSnapshot(double timelineTime) override {
+        createCalls.push_back(timelineTime);
+        return nextToken++;
+    }
+
+    void onRestoreSnapshot(int64_t snapshotToken) override { restoreCalls.push_back(snapshotToken); }
+
+    const char* providerName() const override { return name; }
+
+    const char* name = "mock";
+    int64_t nextToken = 100;
+    std::vector<double> createCalls;
+    std::vector<int64_t> restoreCalls;
+};
+
+TEST_F(TemporalTest, ProviderCalledOnCreateSnapshot) {
+    Timeline timeline;
+    MockProvider provider;
+    timeline.addProvider(&provider);
+
+    timeline.update(5.0);
+    auto snapshot = timeline.createSnapshot();
+
+    ASSERT_EQ(provider.createCalls.size(), 1u);
+    EXPECT_DOUBLE_EQ(provider.createCalls[0], 5.0);
+}
+
+TEST_F(TemporalTest, ProviderCalledOnRestoreSnapshot) {
+    Timeline timeline;
+    MockProvider provider;
+    timeline.addProvider(&provider);
+
+    timeline.update(5.0);
+    auto snapshot = timeline.createSnapshot();
+
+    timeline.update(5.0);
+    timeline.restoreSnapshot(snapshot);
+
+    ASSERT_EQ(provider.restoreCalls.size(), 1u);
+    EXPECT_EQ(provider.restoreCalls[0], 100);
+    EXPECT_DOUBLE_EQ(timeline.getCurrentTime(), 5.0);
+}
+
+TEST_F(TemporalTest, MultipleProvidersCalledInOrder) {
+    Timeline timeline;
+    MockProvider p1;
+    p1.name = "first";
+    p1.nextToken = 10;
+    MockProvider p2;
+    p2.name = "second";
+    p2.nextToken = 20;
+
+    timeline.addProvider(&p1);
+    timeline.addProvider(&p2);
+
+    auto snapshot = timeline.createSnapshot();
+
+    EXPECT_EQ(p1.createCalls.size(), 1u);
+    EXPECT_EQ(p2.createCalls.size(), 1u);
+
+    timeline.restoreSnapshot(snapshot);
+
+    EXPECT_EQ(p1.restoreCalls.size(), 1u);
+    EXPECT_EQ(p1.restoreCalls[0], 10);
+    EXPECT_EQ(p2.restoreCalls.size(), 1u);
+    EXPECT_EQ(p2.restoreCalls[0], 20);
+}
+
+TEST_F(TemporalTest, RemoveProviderStopsCallbacks) {
+    Timeline timeline;
+    MockProvider provider;
+    timeline.addProvider(&provider);
+
+    timeline.createSnapshot();
+    EXPECT_EQ(provider.createCalls.size(), 1u);
+
+    timeline.removeProvider(&provider);
+
+    timeline.createSnapshot();
+    EXPECT_EQ(provider.createCalls.size(), 1u);
+}
+
+TEST_F(TemporalTest, ProviderTokenStoredInTimeState) {
+    Timeline timeline;
+    MockProvider provider;
+    provider.nextToken = 42;
+    timeline.addProvider(&provider);
+
+    auto snapshot = timeline.createSnapshot();
+
+    auto token = snapshot.getEntityState<int64_t>("__provider:mock");
+    ASSERT_TRUE(token.has_value());
+    EXPECT_EQ(token.value(), 42);
+}
+
+TEST_F(TemporalTest, RestoreWithoutProviderTokenIsNoOp) {
+    Timeline timeline;
+    MockProvider provider;
+    timeline.addProvider(&provider);
+
+    Timeline timeline2;
+    auto snapshot = timeline2.createSnapshot();
+
+    timeline.restoreSnapshot(snapshot);
+
+    EXPECT_EQ(provider.restoreCalls.size(), 0u);
+}
+
+TEST_F(TemporalTest, DuplicateAddProviderIgnored) {
+    Timeline timeline;
+    MockProvider provider;
+    timeline.addProvider(&provider);
+    timeline.addProvider(&provider);
+
+    timeline.createSnapshot();
+    EXPECT_EQ(provider.createCalls.size(), 1u);
+}
+
+TEST_F(TemporalTest, AutomaticSnapshotsInvokeProviders) {
+    Timeline timeline;
+    MockProvider provider;
+    timeline.addProvider(&provider);
+
+    timeline.setAutomaticSnapshots(true, 1.0);
+    timeline.update(2.5);
+
+    EXPECT_EQ(provider.createCalls.size(), 2u);
+}
+
+TEST_F(TemporalTest, JumpToSnapshotInvokesProviderRestore) {
+    Timeline timeline;
+    MockProvider provider;
+    provider.nextToken = 50;
+    timeline.addProvider(&provider);
+
+    timeline.setAutomaticSnapshots(true, 1.0);
+    timeline.update(3.0);
+
+    ASSERT_TRUE(timeline.jumpToSnapshot(0));
+    ASSERT_EQ(provider.restoreCalls.size(), 1u);
+    EXPECT_EQ(provider.restoreCalls[0], 50);
+}
+
+// ============================================================
+// Entity state tests continued
+// ============================================================
+
 TEST_F(TemporalTest, EntityStateCopyPreservesData) {
     TimeState original(10.0);
     original.setEntityState("e1", 100);

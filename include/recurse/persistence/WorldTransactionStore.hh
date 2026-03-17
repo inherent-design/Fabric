@@ -34,13 +34,7 @@ struct ChangeQuery {
     int64_t offset{0};
 };
 
-struct RollbackSpec {
-    std::pair<fabric::ChunkCoord, fabric::ChunkCoord> chunkRange;
-    int64_t targetTime;
-    int32_t playerId{0};
-};
-
-/// Abstract interface for per-voxel change logging, snapshots, and rollback.
+/// Abstract interface for per-voxel change logging and snapshots.
 /// Complements ChunkStore (materialized state) with historical tracking.
 class WorldTransactionStore {
   public:
@@ -60,10 +54,6 @@ class WorldTransactionStore {
 
     /// Load the most recent snapshot before a given time. Returns nullopt if none exists.
     virtual std::optional<ChunkBlob> loadSnapshot(int cx, int cy, int cz, int64_t beforeTime) = 0;
-
-    /// Identify chunks affected by a rollback. Returns distinct chunk coordinates.
-    /// Cell-level reverse-apply is the caller's responsibility (WT-5).
-    virtual std::vector<fabric::ChunkCoord> rollback(const RollbackSpec& spec) = 0;
 
     /// Delete change log and snapshot entries older than the given thresholds.
     virtual void prune(int64_t retainChangesAfter, int64_t retainSnapshotsAfter) = 0;

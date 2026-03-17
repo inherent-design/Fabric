@@ -8,4 +8,5 @@ target_sources(UnitTests
   EditTriggeredSaveTest.cc
   WorldSessionIntegrationTest.cc
   PollPendingLoadsTest.cc
+  ReplayExecutorTest.cc
 )

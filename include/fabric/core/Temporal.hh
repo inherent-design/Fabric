@@ -12,6 +12,30 @@
 
 namespace fabric {
 
+/// Domain-specific snapshot provider. Registered with Timeline to participate
+/// in snapshot/restore operations. Providers persist domain state outside
+/// the in-memory TimeState (which is sized for small entity blobs, not bulk
+/// data like chunk grids).
+///
+/// Lifecycle: the registrant owns the provider and must call removeProvider()
+/// before destroying the provider.
+class SnapshotProvider {
+  public:
+    virtual ~SnapshotProvider() = default;
+
+    /// Called during Timeline::createSnapshot(). Persist domain state and
+    /// return a token that can restore it later.
+    virtual int64_t onCreateSnapshot(double timelineTime) = 0;
+
+    /// Called during Timeline::restoreSnapshot(). Restore domain state
+    /// to the point identified by snapshotToken.
+    virtual void onRestoreSnapshot(int64_t snapshotToken) = 0;
+
+    /// Stable name used as key when storing tokens in TimeState.
+    /// Must be unique across all registered providers.
+    virtual const char* providerName() const = 0;
+};
+
 class TimeState {
   public:
     using EntityID = std::string;
@@ -93,6 +117,9 @@ class Timeline {
     void clearHistory();
     bool jumpToSnapshot(size_t index);
 
+    void addProvider(SnapshotProvider* provider);
+    void removeProvider(SnapshotProvider* provider);
+
     Timeline(const Timeline&) = delete;
     Timeline& operator=(const Timeline&) = delete;
 
@@ -109,6 +136,7 @@ class Timeline {
     std::deque<TimeState> history_;
 
     std::vector<std::unique_ptr<TimeRegion>> regions_;
+    std::vector<SnapshotProvider*> providers_;
     mutable std::mutex mutex_;
 };
 

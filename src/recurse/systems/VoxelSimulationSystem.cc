@@ -162,6 +162,26 @@ fabric::JobScheduler& VoxelSimulationSystem::scheduler() {
     return fabSim_->scheduler();
 }
 
+recurse::simulation::FallingSandSystem& VoxelSimulationSystem::fallingSandSystem() {
+    return fabSim_->fallingSandSystem();
+}
+
+const recurse::simulation::FallingSandSystem& VoxelSimulationSystem::fallingSandSystem() const {
+    return fabSim_->fallingSandSystem();
+}
+
+recurse::simulation::GhostCellManager& VoxelSimulationSystem::ghostCellManager() {
+    return fabSim_->ghostCellManager();
+}
+
+const recurse::simulation::GhostCellManager& VoxelSimulationSystem::ghostCellManager() const {
+    return fabSim_->ghostCellManager();
+}
+
+int64_t VoxelSimulationSystem::worldSeed() const {
+    return fabSim_->worldSeed();
+}
+
 const recurse::simulation::ChangeVelocityTracker& VoxelSimulationSystem::velocityTracker() const {
     return fabSim_->velocityTracker();
 }

@@ -32,12 +32,17 @@ struct Position;
 
 namespace recurse {
 
+class ChunkSnapshotProvider;
 class SqliteChunkStore;
 class SqliteTransactionStore;
 class ChunkSaveService;
 class SnapshotScheduler;
 class PruningScheduler;
 struct StreamSource;
+
+namespace persistence {
+class ReplayExecutor;
+} // namespace persistence
 
 namespace systems {
 class VoxelSimulationSystem;
@@ -99,6 +104,8 @@ class WorldSession {
     SqliteChunkStore* chunkStore() const;
     ChunkSaveService* saveService() const;
     WorldTransactionStore* transactionStore() const;
+    ChunkSnapshotProvider* chunkSnapshotProvider() const;
+    persistence::ReplayExecutor* replayExecutor() const;
 
     auto& chunkEntities() { return chunkEntities_; }
     const auto& chunkEntities() const { return chunkEntities_; }
@@ -185,6 +192,8 @@ class WorldSession {
     std::unique_ptr<SqliteTransactionStore> txStore_;
     std::unique_ptr<ChunkSaveService> saveService_;
     std::unique_ptr<SnapshotScheduler> snapshotScheduler_;
+    std::unique_ptr<persistence::ReplayExecutor> replayExecutor_;
+    std::unique_ptr<ChunkSnapshotProvider> chunkSnapshotProvider_;
     std::unique_ptr<PruningScheduler> pruningScheduler_;
 
     // Per-world state

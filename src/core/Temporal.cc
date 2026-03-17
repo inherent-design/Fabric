@@ -94,7 +94,13 @@ TimeState Timeline::createSnapshot() const {
 }
 
 TimeState Timeline::createSnapshotLocked() const {
-    return TimeState(currentTime_);
+    TimeState state(currentTime_);
+    for (auto* provider : providers_) {
+        int64_t token = provider->onCreateSnapshot(currentTime_);
+        std::string key = std::string("__provider:") + provider->providerName();
+        state.setEntityState(key, token);
+    }
+    return state;
 }
 
 void Timeline::restoreSnapshot(const TimeState& state) {
@@ -106,6 +112,29 @@ void Timeline::restoreSnapshotLocked(const TimeState& state) {
     currentTime_ = state.getTimestamp();
     for (auto& region : regions_) {
         region->restoreSnapshot(state);
+    }
+    for (auto* provider : providers_) {
+        std::string key = std::string("__provider:") + provider->providerName();
+        auto token = state.getEntityState<int64_t>(key);
+        if (token.has_value()) {
+            provider->onRestoreSnapshot(token.value());
+        }
+    }
+}
+
+void Timeline::addProvider(SnapshotProvider* provider) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = std::find(providers_.begin(), providers_.end(), provider);
+    if (it == providers_.end()) {
+        providers_.push_back(provider);
+    }
+}
+
+void Timeline::removeProvider(SnapshotProvider* provider) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = std::find(providers_.begin(), providers_.end(), provider);
+    if (it != providers_.end()) {
+        providers_.erase(it);
     }
 }
 

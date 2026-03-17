@@ -1,5 +1,7 @@
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "fabric/utils/Profiler.hh"
+#include <algorithm>
+#include <tuple>
 
 namespace recurse::simulation {
 
@@ -139,15 +141,38 @@ void VoxelSimulationSystem::propagateDirty(const std::vector<ActiveChunkEntry>& 
 }
 
 void VoxelSimulationSystem::drainBoundaryWrites(std::vector<BoundaryWriteQueue>& queues) {
+    std::vector<BoundaryWrite> merged;
     for (auto& queue : queues) {
-        for (const auto& bw : queue) {
-            if (grid_.writeCellIfExists(bw.dstWx, bw.dstWy, bw.dstWz, bw.writeCell)) {
-                tracker_.notifyBoundaryChange(bw.neighborChunk);
-            } else {
-                grid_.writeCell(bw.srcWx, bw.srcWy, bw.srcWz, bw.undoCell);
-            }
-        }
+        merged.insert(merged.end(), queue.begin(), queue.end());
         queue.clear();
+    }
+
+    std::sort(merged.begin(), merged.end(), [](const BoundaryWrite& a, const BoundaryWrite& b) {
+        return std::tie(a.dstWx, a.dstWy, a.dstWz, a.srcWx, a.srcWy, a.srcWz) <
+               std::tie(b.dstWx, b.dstWy, b.dstWz, b.srcWx, b.srcWy, b.srcWz);
+    });
+
+    int lastDstWx = 0, lastDstWy = 0, lastDstWz = 0;
+    bool hasPrev = false;
+
+    for (const auto& bw : merged) {
+        bool duplicate = hasPrev && bw.dstWx == lastDstWx && bw.dstWy == lastDstWy && bw.dstWz == lastDstWz;
+
+        if (duplicate) {
+            grid_.writeCell(bw.srcWx, bw.srcWy, bw.srcWz, bw.undoCell);
+            continue;
+        }
+
+        if (grid_.writeCellIfExists(bw.dstWx, bw.dstWy, bw.dstWz, bw.writeCell)) {
+            tracker_.notifyBoundaryChange(bw.neighborChunk);
+        } else {
+            grid_.writeCell(bw.srcWx, bw.srcWy, bw.srcWz, bw.undoCell);
+        }
+
+        lastDstWx = bw.dstWx;
+        lastDstWy = bw.dstWy;
+        lastDstWz = bw.dstWz;
+        hasPrev = true;
     }
 }
 

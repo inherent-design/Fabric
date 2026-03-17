@@ -12,4 +12,5 @@ target_sources(UnitTests
   VoxelSimulationSystemTest.cc
   ParallelSimulationTest.cc
   ChangeVelocityTrackerTest.cc
+  BoundaryDrainTest.cc
 )

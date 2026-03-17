@@ -255,7 +255,8 @@ set(RECURSE_GAME_SOURCE_FILES
     src/recurse/persistence/SnapshotScheduler.cc
     src/recurse/persistence/PruningScheduler.cc
     src/recurse/persistence/WorldSession.cc
-    src/recurse/persistence/RollbackExecutor.cc
+    src/recurse/persistence/ReplayExecutor.cc
+    src/recurse/persistence/ChunkSnapshotProvider.cc
     src/recurse/persistence/DataLoader.cc
     src/recurse/persistence/InputRecorder.cc
     # ui/

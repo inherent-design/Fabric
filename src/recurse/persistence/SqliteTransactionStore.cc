@@ -281,47 +281,6 @@ std::optional<ChunkBlob> SqliteTransactionStore::loadSnapshot(int cx, int cy, in
 }
 
 // ---------------------------------------------------------------------------
-// rollback
-// ---------------------------------------------------------------------------
-
-std::vector<fabric::ChunkCoord> SqliteTransactionStore::rollback(const RollbackSpec& spec) {
-    const auto& [lo, hi] = spec.chunkRange;
-
-    std::string sql = "SELECT DISTINCT cx, cy, cz FROM change_log "
-                      "WHERE cx >= " +
-                      std::to_string(lo.x) + " AND cx <= " + std::to_string(hi.x) +
-                      " AND cy >= " + std::to_string(lo.y) + " AND cy <= " + std::to_string(hi.y) +
-                      " AND cz >= " + std::to_string(lo.z) + " AND cz <= " + std::to_string(hi.z) +
-                      " AND ts >= " + std::to_string(spec.targetTime);
-
-    if (spec.playerId != 0) {
-        sql += " AND player_id = " + std::to_string(spec.playerId);
-    }
-
-    sqlite3_stmt* stmt = nullptr;
-    int rc = sqlite3_prepare_v2(readerDb_, sql.c_str(), -1, &stmt, nullptr);
-    if (rc != SQLITE_OK) {
-        FABRIC_LOG_ERROR("rollback: prepare failed: {}", sqlite3_errmsg(readerDb_));
-        return {};
-    }
-
-    std::vector<fabric::ChunkCoord> affected;
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        fabric::ChunkCoord coord{};
-        coord.x = sqlite3_column_int(stmt, 0);
-        coord.y = sqlite3_column_int(stmt, 1);
-        coord.z = sqlite3_column_int(stmt, 2);
-        affected.push_back(coord);
-    }
-
-    sqlite3_finalize(stmt);
-
-    FABRIC_LOG_WARN("rollback: returning {} affected chunks; cell-level reverse-apply not yet implemented (WT-5)",
-                    affected.size());
-    return affected;
-}
-
-// ---------------------------------------------------------------------------
 // prune
 // ---------------------------------------------------------------------------
 

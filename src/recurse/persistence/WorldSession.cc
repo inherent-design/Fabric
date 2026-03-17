@@ -3,8 +3,10 @@
 #include "recurse/character/VoxelInteraction.hh"
 #include "recurse/components/StreamSource.hh"
 #include "recurse/persistence/ChunkSaveService.hh"
+#include "recurse/persistence/ChunkSnapshotProvider.hh"
 #include "recurse/persistence/FchkCodec.hh"
 #include "recurse/persistence/PruningScheduler.hh"
+#include "recurse/persistence/ReplayExecutor.hh"
 #include "recurse/persistence/SnapshotScheduler.hh"
 #include "recurse/persistence/SqliteChunkStore.hh"
 #include "recurse/persistence/SqliteTransactionStore.hh"
@@ -85,6 +87,15 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
     snapshotScheduler_ = std::make_unique<SnapshotScheduler>(*txStore_, writerQueue_, provider);
     pruningScheduler_ = std::make_unique<PruningScheduler>(*txStore_, writerQueue_);
 
+    if (simSystem_) {
+        replayExecutor_ = std::make_unique<persistence::ReplayExecutor>(
+            *txStore_, simSystem_->simulationGrid(), simSystem_->fallingSandSystem(), simSystem_->ghostCellManager(),
+            simSystem_->activityTracker(), simSystem_->worldSeed());
+
+        chunkSnapshotProvider_ = std::make_unique<ChunkSnapshotProvider>(
+            *txStore_, *snapshotScheduler_, simSystem_->simulationGrid(), *replayExecutor_);
+    }
+
     // Subscribe to voxel change events for save/snapshot/transaction tracking.
     // Handler ID stored for destructor unsubscription (fixes K32).
     listenerHandlerId_ = dispatcher_.addEventListener(K_VOXEL_CHANGED_EVENT, [this](fabric::Event& e) {
@@ -154,6 +165,8 @@ WorldSession::~WorldSession() {
 
     // Steps 6-8: unique_ptrs destroy in reverse declaration order
     pruningScheduler_.reset();
+    chunkSnapshotProvider_.reset();
+    replayExecutor_.reset();
     snapshotScheduler_.reset();
     saveService_.reset();
     txStore_.reset();
@@ -297,6 +310,10 @@ std::vector<ops::CompletedLoad> WorldSession::pollPendingLoads() {
                     }
                 }
             }
+
+            // F42: Snapshot the chunk's initial state so replay has an anchor.
+            if (snapshotScheduler_)
+                snapshotScheduler_->markDirty(cx, cy, cz);
 
             completions.push_back({cx, cy, cz, meta.bufferIndex, true});
         } else {
@@ -483,6 +500,14 @@ ChunkSaveService* WorldSession::saveService() const {
 
 WorldTransactionStore* WorldSession::transactionStore() const {
     return txStore_.get();
+}
+
+ChunkSnapshotProvider* WorldSession::chunkSnapshotProvider() const {
+    return chunkSnapshotProvider_.get();
+}
+
+persistence::ReplayExecutor* WorldSession::replayExecutor() const {
+    return replayExecutor_.get();
 }
 
 // ---------------------------------------------------------------------------

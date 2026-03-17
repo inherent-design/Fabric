@@ -77,6 +77,12 @@ class VoxelSimulationSystem {
   public:
     fabric::JobScheduler& scheduler();
 
+    FallingSandSystem& fallingSandSystem() { return sandSystem_; }
+    const FallingSandSystem& fallingSandSystem() const { return sandSystem_; }
+    GhostCellManager& ghostCellManager() { return ghosts_; }
+    const GhostCellManager& ghostCellManager() const { return ghosts_; }
+    int64_t worldSeed() const { return worldSeed_; }
+
     ChangeVelocityTracker& velocityTracker();
     const ChangeVelocityTracker& velocityTracker() const;
 };

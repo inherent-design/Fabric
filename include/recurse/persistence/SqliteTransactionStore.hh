@@ -30,7 +30,6 @@ class SqliteTransactionStore : public WorldTransactionStore {
     int64_t countChanges(const ChangeQuery& query) override;
     void saveSnapshot(int cx, int cy, int cz, const ChunkBlob& data) override;
     std::optional<ChunkBlob> loadSnapshot(int cx, int cy, int cz, int64_t beforeTime) override;
-    std::vector<fabric::ChunkCoord> rollback(const RollbackSpec& spec) override;
     void prune(int64_t retainChangesAfter, int64_t retainSnapshotsAfter) override;
     void flush() override;
 
