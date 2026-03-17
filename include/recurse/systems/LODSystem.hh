@@ -20,7 +20,6 @@ class JobScheduler;
 
 namespace recurse {
 class VoxelRenderer;
-class WorldGenerator;
 } // namespace recurse
 
 namespace recurse::systems {
@@ -32,6 +31,7 @@ struct LODDebugInfo {
     size_t estimatedGpuBytes = 0;
 };
 
+class TerrainSystem;
 class VoxelRenderSystem;
 
 /// ECS system that manages LOD generation, cascade, selection, and rendering.
@@ -103,7 +103,7 @@ class LODSystem : public fabric::System<LODSystem> {
     const recurse::simulation::MaterialRegistry* materials_ = nullptr;
     fabric::JobScheduler* scheduler_ = nullptr;
     recurse::VoxelRenderer* voxelRenderer_ = nullptr;
-    recurse::WorldGenerator* worldGen_ = nullptr;
+    TerrainSystem* terrain_ = nullptr;
 
     // GPU resources
     std::unordered_map<uint64_t, GPUSection> gpuSections_;

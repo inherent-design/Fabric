@@ -60,9 +60,7 @@ void LODSystem::doInit(fabric::AppContext& ctx) {
     if (renderSystem)
         voxelRenderer_ = &renderSystem->voxelRenderer();
 
-    auto* terrainSystem = ctx.systemRegistry.get<TerrainSystem>();
-    if (terrainSystem)
-        worldGen_ = &terrainSystem->worldGenerator();
+    terrain_ = ctx.systemRegistry.get<TerrainSystem>();
 }
 
 void LODSystem::doShutdown() {
@@ -74,7 +72,7 @@ void LODSystem::doShutdown() {
     materials_ = nullptr;
     scheduler_ = nullptr;
     voxelRenderer_ = nullptr;
-    worldGen_ = nullptr;
+    terrain_ = nullptr;
 
     FABRIC_LOG_INFO("LODSystem shut down");
 }
@@ -107,7 +105,7 @@ void LODSystem::render(fabric::AppContext& ctx) {
             tasks.push_back({section, cx, cy, cz, false});
         }
 
-        while (worldGen_ && !pendingDirectChunks_.empty() && static_cast<int>(tasks.size()) < genBudget_) {
+        while (terrain_ && !pendingDirectChunks_.empty() && static_cast<int>(tasks.size()) < genBudget_) {
             auto [cx, cy, cz] = pendingDirectChunks_.front();
             pendingDirectChunks_.pop_front();
             auto* section = grid_->getOrCreate(0, cx, cy, cz);
@@ -118,7 +116,7 @@ void LODSystem::render(fabric::AppContext& ctx) {
 
         if (!tasks.empty()) {
             auto* grid = simGrid_;
-            auto* gen = worldGen_;
+            auto* gen = terrain_ ? &terrain_->worldGenerator() : nullptr;
             scheduler_->parallelFor(tasks.size(), [&tasks, grid, gen](size_t idx, size_t /*workerIdx*/) {
                 auto& task = tasks[idx];
                 auto* section = task.section;
