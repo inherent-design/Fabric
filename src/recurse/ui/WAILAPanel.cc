@@ -1,4 +1,4 @@
-#include "fabric/ui/WAILAPanel.hh"
+#include "recurse/ui/WAILAPanel.hh"
 
 #include "fabric/log/Log.hh"
 #include <RmlUi/Core/Context.h>
@@ -6,7 +6,9 @@
 
 #include <cstdio>
 
-namespace fabric {
+using namespace fabric;
+
+namespace recurse {
 
 void WAILAPanel::init(Rml::Context* context) {
     if (!context) {
@@ -92,4 +94,4 @@ void WAILAPanel::setMode(AppMode mode) {
     }
 }
 
-} // namespace fabric
+} // namespace recurse

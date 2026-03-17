@@ -4,17 +4,8 @@
 #include "fabric/utils/ErrorHandling.hh"
 #include "fabric/utils/Profiler.hh"
 
-// Vulkan-only: suppress all non-SPIR-V shader profiles so
-// BGFX_EMBEDDED_SHADER only references *_spv symbol arrays.
-#define BGFX_PLATFORM_SUPPORTS_DXBC 0
-#define BGFX_PLATFORM_SUPPORTS_DXIL 0
-#define BGFX_PLATFORM_SUPPORTS_ESSL 0
-#define BGFX_PLATFORM_SUPPORTS_GLSL 0
-#define BGFX_PLATFORM_SUPPORTS_METAL 0
-#define BGFX_PLATFORM_SUPPORTS_NVN 0
-#define BGFX_PLATFORM_SUPPORTS_PSSL 0
-#define BGFX_PLATFORM_SUPPORTS_WGSL 0
-#include <bgfx/embedded_shader.h>
+#include "fabric/render/ShaderProgram.hh"
+#include "fabric/render/SpvOnly.hh"
 
 // Compiled SPIR-V shader bytecode generated at build time from .sc sources.
 #include "spv/fs_skinned.sc.bin.h"
@@ -53,9 +44,7 @@ void SkinnedRenderer::render(bgfx::ViewId view, const MeshData& mesh, const Skin
 
     // Lazy-init program on first render (requires bgfx to be active)
     if (!program_.isValid()) {
-        bgfx::RendererType::Enum type = bgfx::getRendererType();
-        program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_skinnedShaders, type, "vs_skinned"),
-                                           bgfx::createEmbeddedShader(s_skinnedShaders, type, "fs_skinned"), true));
+        program_.reset(fabric::render::createProgramFromEmbedded(s_skinnedShaders, "vs_skinned", "fs_skinned"));
 
         uniformJointMatrices_.reset(bgfx::createUniform("u_jointMatrices", bgfx::UniformType::Mat4, K_MAX_GPU_JOINTS));
 

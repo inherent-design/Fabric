@@ -4,17 +4,9 @@
 #include "fabric/render/Rendering.hh"
 #include "fabric/utils/Profiler.hh"
 
-// Vulkan-only: suppress all non-SPIR-V shader profiles so
-// BGFX_EMBEDDED_SHADER only references *_spv symbol arrays.
-#define BGFX_PLATFORM_SUPPORTS_DXBC 0
-#define BGFX_PLATFORM_SUPPORTS_DXIL 0
-#define BGFX_PLATFORM_SUPPORTS_ESSL 0
-#define BGFX_PLATFORM_SUPPORTS_GLSL 0
-#define BGFX_PLATFORM_SUPPORTS_METAL 0
-#define BGFX_PLATFORM_SUPPORTS_NVN 0
-#define BGFX_PLATFORM_SUPPORTS_PSSL 0
-#define BGFX_PLATFORM_SUPPORTS_WGSL 0
-#include <bgfx/embedded_shader.h>
+#include "fabric/render/FullscreenQuad.hh"
+#include "fabric/render/ShaderProgram.hh"
+#include "fabric/render/SpvOnly.hh"
 
 // Compiled SPIR-V shader bytecode generated at build time from .sc sources.
 #include "spv/fs_oit_accum.sc.bin.h"
@@ -25,11 +17,6 @@
 static const bgfx::EmbeddedShader s_oitShaders[] = {
     BGFX_EMBEDDED_SHADER(vs_oit_accum), BGFX_EMBEDDED_SHADER(fs_oit_accum), BGFX_EMBEDDED_SHADER(vs_fullscreen),
     BGFX_EMBEDDED_SHADER(fs_oit_composite), BGFX_EMBEDDED_SHADER_END()};
-
-// Fullscreen triangle vertices in clip space (same as PostProcess).
-static const float s_fullscreenVertices[] = {
-    -1.0f, -1.0f, 0.0f, 3.0f, -1.0f, 0.0f, -1.0f, 3.0f, 0.0f,
-};
 
 using namespace fabric;
 
@@ -98,7 +85,6 @@ void OITCompositor::shutdown() {
     samplerRevealage_.reset();
     samplerAccum_.reset();
     uniformOitColor_.reset();
-    vbh_.reset();
     compositeProgram_.reset();
     accumProgram_.reset();
 
@@ -156,7 +142,7 @@ void OITCompositor::composite(uint8_t viewId, uint16_t width, uint16_t height) {
     bgfx::setTexture(0, samplerAccum_.get(), bgfx::getTexture(oitFb_.get(), 0));
     bgfx::setTexture(1, samplerRevealage_.get(), bgfx::getTexture(oitFb_.get(), 1));
 
-    bgfx::setVertexBuffer(0, vbh_.get());
+    bgfx::setVertexBuffer(0, fabric::render::fullscreenTriangleVB());
 
     // Alpha blending: srcAlpha * src + (1 - srcAlpha) * dst
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
@@ -192,27 +178,17 @@ uint8_t OITCompositor::compositeViewId() const {
 }
 
 void OITCompositor::initPrograms() {
-    bgfx::RendererType::Enum type = bgfx::getRendererType();
-
-    auto accumVs = bgfx::createEmbeddedShader(s_oitShaders, type, "vs_oit_accum");
-    auto accumFs = bgfx::createEmbeddedShader(s_oitShaders, type, "fs_oit_accum");
-    accumProgram_.reset(bgfx::createProgram(accumVs, accumFs, true));
-
-    auto compositeVs = bgfx::createEmbeddedShader(s_oitShaders, type, "vs_fullscreen");
-    auto compositeFs = bgfx::createEmbeddedShader(s_oitShaders, type, "fs_oit_composite");
-    compositeProgram_.reset(bgfx::createProgram(compositeVs, compositeFs, true));
+    accumProgram_.reset(fabric::render::createProgramFromEmbedded(s_oitShaders, "vs_oit_accum", "fs_oit_accum"));
+    compositeProgram_.reset(
+        fabric::render::createProgramFromEmbedded(s_oitShaders, "vs_fullscreen", "fs_oit_composite"));
 
     uniformOitColor_.reset(bgfx::createUniform("u_oitColor", bgfx::UniformType::Vec4));
     samplerAccum_.reset(bgfx::createUniform("s_oitAccum", bgfx::UniformType::Sampler));
     samplerRevealage_.reset(bgfx::createUniform("s_oitRevealage", bgfx::UniformType::Sampler));
 
-    // Fullscreen triangle vertex buffer (for composite pass)
-    bgfx::VertexLayout layout;
-    layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
-    vbh_.reset(bgfx::createVertexBuffer(bgfx::makeRef(s_fullscreenVertices, sizeof(s_fullscreenVertices)), layout));
-
-    if (!accumProgram_.isValid() || !compositeProgram_.isValid() || !vbh_.isValid()) {
-        FABRIC_LOG_ERROR("OITCompositor shader init failed for renderer {}", bgfx::getRendererName(type));
+    if (!accumProgram_.isValid() || !compositeProgram_.isValid()) {
+        FABRIC_LOG_ERROR("OITCompositor shader init failed for renderer {}",
+                         bgfx::getRendererName(bgfx::getRendererType()));
         shutdown();
     }
 }

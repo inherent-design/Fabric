@@ -8,17 +8,8 @@
 #include <bx/math.h>
 #include <vector>
 
-// Vulkan-only: suppress all non-SPIR-V shader profiles so
-// BGFX_EMBEDDED_SHADER only references *_spv symbol arrays.
-#define BGFX_PLATFORM_SUPPORTS_DXBC 0
-#define BGFX_PLATFORM_SUPPORTS_DXIL 0
-#define BGFX_PLATFORM_SUPPORTS_ESSL 0
-#define BGFX_PLATFORM_SUPPORTS_GLSL 0
-#define BGFX_PLATFORM_SUPPORTS_METAL 0
-#define BGFX_PLATFORM_SUPPORTS_NVN 0
-#define BGFX_PLATFORM_SUPPORTS_PSSL 0
-#define BGFX_PLATFORM_SUPPORTS_WGSL 0
-#include <bgfx/embedded_shader.h>
+#include "fabric/render/ShaderProgram.hh"
+#include "fabric/render/SpvOnly.hh"
 
 // Compiled SPIR-V shader bytecode generated at build time from .sc sources.
 #include "spv/fs_smooth.sc.bin.h"
@@ -52,9 +43,7 @@ void VoxelRenderer::shutdown() {
 }
 
 void VoxelRenderer::initProgram() {
-    bgfx::RendererType::Enum type = bgfx::getRendererType();
-    program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_voxelShaders, type, "vs_smooth"),
-                                       bgfx::createEmbeddedShader(s_voxelShaders, type, "fs_smooth"), true));
+    program_.reset(fabric::render::createProgramFromEmbedded(s_voxelShaders, "vs_smooth", "fs_smooth"));
 
     uniformPalette_.reset(bgfx::createUniform("u_palette", bgfx::UniformType::Vec4, 128));
     uniformLightDir_.reset(bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4));
@@ -68,7 +57,7 @@ void VoxelRenderer::initProgram() {
         !uniformViewPos_.isValid() || !uniformLitColor_.isValid() || !uniformShadowColor_.isValid() ||
         !uniformRimParams_.isValid() || !uniformOceanParams_.isValid()) {
         FABRIC_LOG_RENDER_ERROR("VoxelRenderer shader/uniform init failed for renderer {}",
-                                bgfx::getRendererName(type));
+                                bgfx::getRendererName(bgfx::getRendererType()));
         shutdown();
         return;
     }

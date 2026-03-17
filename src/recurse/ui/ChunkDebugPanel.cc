@@ -1,10 +1,10 @@
-#include "fabric/ui/ChunkDebugPanel.hh"
+#include "recurse/ui/ChunkDebugPanel.hh"
 
 #include "fabric/log/Log.hh"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
 
-namespace fabric {
+namespace recurse {
 
 void ChunkDebugPanel::init(Rml::Context* context) {
     if (!context) {
@@ -61,4 +61,4 @@ void ChunkDebugPanel::update(const ChunkDebugData& data) {
     }
 }
 
-} // namespace fabric
+} // namespace recurse

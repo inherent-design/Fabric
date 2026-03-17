@@ -5,17 +5,9 @@
 #include <algorithm> // for std::lerp
 #include <cmath>
 
-// Vulkan-only: suppress all non-SPIR-V shader profiles so
-// BGFX_EMBEDDED_SHADER only references *_spv symbol arrays.
-#define BGFX_PLATFORM_SUPPORTS_DXBC 0
-#define BGFX_PLATFORM_SUPPORTS_DXIL 0
-#define BGFX_PLATFORM_SUPPORTS_ESSL 0
-#define BGFX_PLATFORM_SUPPORTS_GLSL 0
-#define BGFX_PLATFORM_SUPPORTS_METAL 0
-#define BGFX_PLATFORM_SUPPORTS_NVN 0
-#define BGFX_PLATFORM_SUPPORTS_PSSL 0
-#define BGFX_PLATFORM_SUPPORTS_WGSL 0
-#include <bgfx/embedded_shader.h>
+#include "fabric/render/FullscreenQuad.hh"
+#include "fabric/render/ShaderProgram.hh"
+#include "fabric/render/SpvOnly.hh"
 
 // Compiled SPIR-V shader bytecode generated at build time from .sc sources.
 #include "spv/fs_panini.sc.bin.h"
@@ -23,13 +15,6 @@
 
 static const bgfx::EmbeddedShader s_paniniShaders[] = {BGFX_EMBEDDED_SHADER(vs_fullscreen),
                                                        BGFX_EMBEDDED_SHADER(fs_panini), BGFX_EMBEDDED_SHADER_END()};
-
-// Fullscreen triangle vertices in clip space.
-static const float s_fullscreenVertices[] = {
-    -1.0f, -1.0f, 0.0f, // vertex 0
-    3.0f,  -1.0f, 0.0f, // vertex 1
-    -1.0f, 3.0f,  0.0f, // vertex 2
-};
 
 namespace fabric {
 
@@ -53,7 +38,6 @@ void PaniniPass::init(uint16_t width, uint16_t height) {
     height_ = height;
 
     initPrograms();
-    createVertexBuffer();
 
     if (!program_.isValid()) {
         FABRIC_LOG_ERROR("PaniniPass shader init failed");
@@ -66,7 +50,6 @@ void PaniniPass::init(uint16_t width, uint16_t height) {
 }
 
 void PaniniPass::shutdown() {
-    fullscreenQuad_.reset();
     u_paniniExtra_.reset();
     u_viewportSize_.reset();
     u_params_.reset();
@@ -145,7 +128,7 @@ void PaniniPass::execute(bgfx::TextureHandle sceneColor, bgfx::ViewId viewId) {
     bgfx::setTexture(0, u_sceneTex_.get(), sceneColor);
 
     // Set vertex buffer and state
-    bgfx::setVertexBuffer(0, fullscreenQuad_.get());
+    bgfx::setVertexBuffer(0, render::fullscreenTriangleVB());
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
 
     // Submit
@@ -204,10 +187,7 @@ void PaniniPass::cycleStrength() {
 }
 
 void PaniniPass::initPrograms() {
-    bgfx::RendererType::Enum type = bgfx::getRendererType();
-
-    program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_paniniShaders, type, "vs_fullscreen"),
-                                       bgfx::createEmbeddedShader(s_paniniShaders, type, "fs_panini"), true));
+    program_.reset(render::createProgramFromEmbedded(s_paniniShaders, "vs_fullscreen", "fs_panini"));
 
     u_sceneTex_.reset(bgfx::createUniform("s_sceneTex", bgfx::UniformType::Sampler));
     u_params_.reset(bgfx::createUniform("u_params", bgfx::UniformType::Vec4));
@@ -215,15 +195,9 @@ void PaniniPass::initPrograms() {
     u_paniniExtra_.reset(bgfx::createUniform("u_paniniExtra", bgfx::UniformType::Vec4));
 
     if (!program_.isValid()) {
-        FABRIC_LOG_ERROR("PaniniPass failed to create shader program for renderer {}", bgfx::getRendererName(type));
+        FABRIC_LOG_ERROR("PaniniPass failed to create shader program for renderer {}",
+                         bgfx::getRendererName(bgfx::getRendererType()));
     }
-}
-
-void PaniniPass::createVertexBuffer() {
-    bgfx::VertexLayout layout;
-    layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
-    fullscreenQuad_.reset(
-        bgfx::createVertexBuffer(bgfx::makeRef(s_fullscreenVertices, sizeof(s_fullscreenVertices)), layout));
 }
 
 } // namespace fabric

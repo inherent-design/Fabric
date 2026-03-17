@@ -4,17 +4,9 @@
 #include "fabric/render/Rendering.hh"
 #include "fabric/utils/Profiler.hh"
 
-// Vulkan-only: suppress all non-SPIR-V shader profiles so
-// BGFX_EMBEDDED_SHADER only references *_spv symbol arrays.
-#define BGFX_PLATFORM_SUPPORTS_DXBC 0
-#define BGFX_PLATFORM_SUPPORTS_DXIL 0
-#define BGFX_PLATFORM_SUPPORTS_ESSL 0
-#define BGFX_PLATFORM_SUPPORTS_GLSL 0
-#define BGFX_PLATFORM_SUPPORTS_METAL 0
-#define BGFX_PLATFORM_SUPPORTS_NVN 0
-#define BGFX_PLATFORM_SUPPORTS_PSSL 0
-#define BGFX_PLATFORM_SUPPORTS_WGSL 0
-#include <bgfx/embedded_shader.h>
+#include "fabric/render/FullscreenQuad.hh"
+#include "fabric/render/ShaderProgram.hh"
+#include "fabric/render/SpvOnly.hh"
 
 // Compiled SPIR-V shader bytecode generated at build time from .sc sources.
 #include "spv/fs_blur.sc.bin.h"
@@ -25,11 +17,6 @@
 static const bgfx::EmbeddedShader g_s_postShaders[] = {BGFX_EMBEDDED_SHADER(vs_fullscreen),
                                                        BGFX_EMBEDDED_SHADER(fs_bright), BGFX_EMBEDDED_SHADER(fs_blur),
                                                        BGFX_EMBEDDED_SHADER(fs_tonemap), BGFX_EMBEDDED_SHADER_END()};
-
-// Fullscreen triangle vertices in clip space.
-static const float g_s_fullscreenVertices[] = {
-    -1.0f, -1.0f, 0.0f, 3.0f, -1.0f, 0.0f, -1.0f, 3.0f, 0.0f,
-};
 
 namespace fabric {
 
@@ -73,7 +60,6 @@ void PostProcess::shutdown() {
     uniformTonemapParams_.reset();
     uniformTexelSize_.reset();
     uniformBloomParams_.reset();
-    vbh_.reset();
     tonemapProgram_.reset();
     blurProgram_.reset();
     brightProgram_.reset();
@@ -157,7 +143,7 @@ void PostProcess::render(uint8_t baseViewId) {
         bgfx::setUniform(uniformBloomParams_.get(), bloomParams);
 
         bgfx::setTexture(0, samplerHdrColor_.get(), bgfx::getTexture(hdrFb_.get(), 0));
-        bgfx::setVertexBuffer(0, vbh_.get());
+        bgfx::setVertexBuffer(0, render::fullscreenTriangleVB());
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
         bgfx::submit(view, brightProgram_.get());
     }
@@ -182,7 +168,7 @@ void PostProcess::render(uint8_t baseViewId) {
         bgfx::setUniform(uniformTexelSize_.get(), texelSize);
 
         bgfx::setTexture(0, samplerInputTex_.get(), bgfx::getTexture(bloomFb_[i - 1].get(), 0));
-        bgfx::setVertexBuffer(0, vbh_.get());
+        bgfx::setVertexBuffer(0, render::fullscreenTriangleVB());
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
         bgfx::submit(view, blurProgram_.get());
     }
@@ -200,23 +186,16 @@ void PostProcess::render(uint8_t baseViewId) {
 
         bgfx::setTexture(0, samplerHdrColor_.get(), bgfx::getTexture(hdrFb_.get(), 0));
         bgfx::setTexture(1, samplerBloomTex_.get(), bgfx::getTexture(bloomFb_[K_BLUR_PASSES - 1].get(), 0));
-        bgfx::setVertexBuffer(0, vbh_.get());
+        bgfx::setVertexBuffer(0, render::fullscreenTriangleVB());
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
         bgfx::submit(view, tonemapProgram_.get());
     }
 }
 
 void PostProcess::initPrograms() {
-    bgfx::RendererType::Enum type = bgfx::getRendererType();
-
-    brightProgram_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
-                                             bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_bright"), true));
-
-    blurProgram_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
-                                           bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_blur"), true));
-
-    tonemapProgram_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(g_s_postShaders, type, "vs_fullscreen"),
-                                              bgfx::createEmbeddedShader(g_s_postShaders, type, "fs_tonemap"), true));
+    brightProgram_.reset(render::createProgramFromEmbedded(g_s_postShaders, "vs_fullscreen", "fs_bright"));
+    blurProgram_.reset(render::createProgramFromEmbedded(g_s_postShaders, "vs_fullscreen", "fs_blur"));
+    tonemapProgram_.reset(render::createProgramFromEmbedded(g_s_postShaders, "vs_fullscreen", "fs_tonemap"));
 
     uniformBloomParams_.reset(bgfx::createUniform("u_bloomParams", bgfx::UniformType::Vec4));
     uniformTexelSize_.reset(bgfx::createUniform("u_texelSize", bgfx::UniformType::Vec4));
@@ -225,13 +204,9 @@ void PostProcess::initPrograms() {
     samplerBloomTex_.reset(bgfx::createUniform("s_bloomTex", bgfx::UniformType::Sampler));
     samplerInputTex_.reset(bgfx::createUniform("s_inputTex", bgfx::UniformType::Sampler));
 
-    // Fullscreen triangle vertex buffer
-    bgfx::VertexLayout layout;
-    layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
-    vbh_.reset(bgfx::createVertexBuffer(bgfx::makeRef(g_s_fullscreenVertices, sizeof(g_s_fullscreenVertices)), layout));
-
-    if (!brightProgram_.isValid() || !blurProgram_.isValid() || !tonemapProgram_.isValid() || !vbh_.isValid()) {
-        FABRIC_LOG_ERROR("PostProcess shader init failed for renderer {}", bgfx::getRendererName(type));
+    if (!brightProgram_.isValid() || !blurProgram_.isValid() || !tonemapProgram_.isValid()) {
+        FABRIC_LOG_ERROR("PostProcess shader init failed for renderer {}",
+                         bgfx::getRendererName(bgfx::getRendererType()));
         shutdown();
     }
 }

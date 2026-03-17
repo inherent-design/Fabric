@@ -1,5 +1,6 @@
 #include "fabric/render/PostProcess.hh"
 #include "fabric/render/Rendering.hh"
+#include "fabric/render/ViewLayout.hh"
 #include "recurse/render/OITCompositor.hh"
 #include "recurse/render/ParticleSystem.hh"
 #include "recurse/world/VoxelVertex.hh"
@@ -11,6 +12,7 @@
 
 using namespace fabric;
 using namespace recurse;
+using namespace fabric::render::view;
 
 // ---------------------------------------------------------------------------
 // Shader Profile Tests
@@ -21,15 +23,7 @@ using namespace recurse;
 // renderer .cc files declare.
 // ---------------------------------------------------------------------------
 
-#define BGFX_PLATFORM_SUPPORTS_DXBC 0
-#define BGFX_PLATFORM_SUPPORTS_DXIL 0
-#define BGFX_PLATFORM_SUPPORTS_ESSL 0
-#define BGFX_PLATFORM_SUPPORTS_GLSL 0
-#define BGFX_PLATFORM_SUPPORTS_METAL 0
-#define BGFX_PLATFORM_SUPPORTS_NVN 0
-#define BGFX_PLATFORM_SUPPORTS_PSSL 0
-#define BGFX_PLATFORM_SUPPORTS_WGSL 0
-#include <bgfx/embedded_shader.h>
+#include "fabric/render/SpvOnly.hh"
 
 TEST(VulkanRegression, NonSpirvProfilesSuppressed) {
     EXPECT_EQ(BGFX_PLATFORM_SUPPORTS_DXBC, 0);
@@ -62,49 +56,22 @@ TEST(VulkanRegression, SpirvProfileEnabled) {
 // ---------------------------------------------------------------------------
 
 TEST(VulkanRegression, ViewIdConstantsNoConflicts) {
-    // Collect every known view ID into a set; duplicates collapse.
-    constexpr uint8_t K_SKY_VIEW_ID = 0;
-    constexpr uint8_t K_GEOMETRY_VIEW_ID = 1;
-    constexpr uint8_t K_TRANSPARENT_VIEW_ID = 2;
-    constexpr uint8_t K_UI_VIEW_ID = 255; // BgfxRenderInterface::K_DEFAULT_VIEW_ID (private)
-
     std::set<uint8_t> ids = {
-        K_SKY_VIEW_ID,
-        K_GEOMETRY_VIEW_ID,
-        K_TRANSPARENT_VIEW_ID,
-        ParticleSystem::K_VIEW_ID, // 10
-        200,
-        201,
-        202,
-        203,
-        204,                     // PostProcess range
-        K_OIT_ACCUM_VIEW_ID,     // 210
-        K_OIT_COMPOSITE_VIEW_ID, // 211
-        K_UI_VIEW_ID,            // 255
+        K_SKY,         K_GEOMETRY,     K_TRANSPARENT, K_PARTICLES, K_POST_BRIGHT,   K_POST_BLUR_1, K_POST_BLUR_2,
+        K_POST_BLUR_3, K_POST_TONEMAP, K_PANINI,      K_OIT_ACCUM, K_OIT_COMPOSITE, K_UI,
     };
-    EXPECT_EQ(ids.size(), 12u) << "Duplicate view IDs detected";
+    EXPECT_EQ(ids.size(), 13u) << "Duplicate view IDs detected";
 }
 
 TEST(VulkanRegression, ViewIdExecutionOrder) {
-    // bgfx renders views in ascending ID order.
-    // Sky < Geometry < Transparent < Particles < PostProcess < OIT < UI
-    constexpr uint8_t K_SKY_VIEW_ID = 0;
-    constexpr uint8_t K_GEOMETRY_VIEW_ID = 1;
-    constexpr uint8_t K_TRANSPARENT_VIEW_ID = 2;
-    constexpr uint8_t K_UI_VIEW_ID = 255;
-
-    EXPECT_LT(K_SKY_VIEW_ID, K_GEOMETRY_VIEW_ID);
-    EXPECT_LT(K_GEOMETRY_VIEW_ID, K_TRANSPARENT_VIEW_ID);
-    EXPECT_LT(K_TRANSPARENT_VIEW_ID, ParticleSystem::K_VIEW_ID);
-    EXPECT_LT(K_OIT_ACCUM_VIEW_ID, K_OIT_COMPOSITE_VIEW_ID);
-
-    // OIT composite (211) must execute AFTER opaque geometry (1).
-    // This ordering caused the black screen bug -- the composite overwrites
-    // the backbuffer if it writes opaque black.
-    EXPECT_GT(K_OIT_COMPOSITE_VIEW_ID, K_GEOMETRY_VIEW_ID);
-
-    // UI overlay is always last.
-    EXPECT_GT(K_UI_VIEW_ID, K_OIT_COMPOSITE_VIEW_ID);
+    EXPECT_LT(K_SKY, K_GEOMETRY);
+    EXPECT_LT(K_GEOMETRY, K_TRANSPARENT);
+    EXPECT_LT(K_TRANSPARENT, K_PARTICLES);
+    EXPECT_LT(K_OIT_ACCUM, K_OIT_COMPOSITE);
+    EXPECT_LT(K_POST_TONEMAP, K_PANINI);
+    EXPECT_LT(K_PANINI, K_OIT_ACCUM);
+    EXPECT_GT(K_OIT_COMPOSITE, K_GEOMETRY);
+    EXPECT_GT(K_UI, K_OIT_COMPOSITE);
 }
 
 // ---------------------------------------------------------------------------
@@ -124,15 +91,12 @@ TEST(VulkanRegression, OITCompositorNotValidByDefault) {
 }
 
 TEST(VulkanRegression, OITCompositeViewIdIsAfterAccum) {
-    // The composite pass must come after accumulation in view order.
-    EXPECT_GT(K_OIT_COMPOSITE_VIEW_ID, K_OIT_ACCUM_VIEW_ID);
-    EXPECT_EQ(K_OIT_COMPOSITE_VIEW_ID, K_OIT_ACCUM_VIEW_ID + 1);
+    EXPECT_GT(K_OIT_COMPOSITE, K_OIT_ACCUM);
+    EXPECT_EQ(K_OIT_COMPOSITE, K_OIT_ACCUM + 1);
 }
 
 TEST(VulkanRegression, OITAccumViewIdDoesNotOverlapPostProcess) {
-    // PostProcess uses views 200..204; OIT starts at 210.
-    constexpr uint8_t K_POST_PROCESS_END_VIEW_ID = 204;
-    EXPECT_GT(K_OIT_ACCUM_VIEW_ID, K_POST_PROCESS_END_VIEW_ID);
+    EXPECT_GT(K_OIT_ACCUM, K_POST_TONEMAP);
 }
 
 // ---------------------------------------------------------------------------

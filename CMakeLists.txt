@@ -191,6 +191,10 @@ set(FABRIC_ENGINE_SOURCE_FILES
     src/fabric/ui/font/TextureLayoutTexture.cc
     # Panini projection post-processing
     src/fabric/render/PaniniPass.cc
+    # Shared shader loading utility
+    src/fabric/render/ShaderProgram.cc
+    # Shared fullscreen triangle vertex buffer
+    src/fabric/render/FullscreenQuad.cc
 )
 
 #------------------------------------------------------------------------------
@@ -257,6 +261,10 @@ set(RECURSE_GAME_SOURCE_FILES
     # ui/
     src/recurse/ui/ContentBrowser.cc
     src/recurse/ui/DevConsole.cc
+    src/recurse/ui/ChunkDebugPanel.cc
+    src/recurse/ui/DebugHUD.cc
+    src/recurse/ui/LODStatsPanel.cc
+    src/recurse/ui/WAILAPanel.cc
     src/recurse/simulation/DebrisPool.cc
 
     # config/
@@ -310,10 +318,6 @@ set(FABRIC_SIMULATION_SOURCE_FILES
     src/recurse/simulation/EssenceAssigner.cc
 )
 
-# World library components (fabric::world namespace)
-set(FABRIC_WORLD_SOURCE_FILES
-)
-
 # Utils library components
 set(FABRIC_UTILS_SOURCE_FILES
     src/utils/ErrorHandling.cc
@@ -335,11 +339,7 @@ set(FABRIC_UI_SOURCE_FILES
     src/ui/BgfxSystemInterface.cc
     src/ui/StbImage.cc
     src/ui/RmlPanel.cc
-    src/ui/DebugHUD.cc
-    src/ui/ChunkDebugPanel.cc
-    src/ui/LODStatsPanel.cc
     src/ui/ConcurrencyPanel.cc
-    src/ui/WAILAPanel.cc
     src/ui/HotkeyPanel.cc
     src/ui/ToastManager.cc
 )
@@ -349,12 +349,9 @@ set(FABRIC_BGFX_DEBUGDRAW_SOURCE
     ${bgfx_SOURCE_DIR}/bgfx/examples/common/debugdraw/debugdraw.cpp
 )
 
-# Create internal static library (compile sources once, link into all targets)
+# Create engine static library (fabric:: namespace only)
 add_library(FabricLib STATIC
     ${FABRIC_ENGINE_SOURCE_FILES}
-    ${FABRIC_SIMULATION_SOURCE_FILES}
-    ${FABRIC_WORLD_SOURCE_FILES}
-    ${RECURSE_GAME_SOURCE_FILES}
     ${FABRIC_UTILS_SOURCE_FILES}
     ${FABRIC_PLATFORM_SOURCE_FILES}
     ${FABRIC_UI_SOURCE_FILES}
@@ -443,11 +440,11 @@ include(FabricOITShaders)
 # Panini projection shaders (vs_panini, fs_panini)
 include(FabricPaniniShaders)
 
-# Add shader output to include path
-target_include_directories(FabricLib PRIVATE ${FABRIC_SKINNED_SHADER_OUT} ${FABRIC_SMOOTH_SHADER_OUT} ${FABRIC_SKY_SHADER_OUT} ${FABRIC_POST_SHADER_OUT} ${FABRIC_PARTICLE_SHADER_OUT} ${FABRIC_OIT_SHADER_OUT} ${FABRIC_PANINI_SHADER_OUT})
+# Add engine shader output to include path (game shaders go on RecurseGame)
+target_include_directories(FabricLib PRIVATE ${FABRIC_SKY_SHADER_OUT} ${FABRIC_POST_SHADER_OUT} ${FABRIC_PANINI_SHADER_OUT})
 
 # Shader compilation must finish before FabricLib sources compile
-add_dependencies(FabricLib FabricRmlUiShaders FabricSkinnedShaders FabricSmoothShaders FabricSkyShaders FabricPostShaders FabricParticleShaders FabricOITShaders FabricPaniniShaders)
+add_dependencies(FabricLib FabricRmlUiShaders FabricSkyShaders FabricPostShaders FabricPaniniShaders)
 
 # Per-target compile options (replaces global CMAKE_CXX_FLAGS_* variables)
 target_compile_options(FabricLib PRIVATE
@@ -470,10 +467,9 @@ if(FABRIC_USE_WEBVIEW)
     target_compile_definitions(FabricLib PUBLIC FABRIC_USE_WEBVIEW)
 endif()
 
-# Mark public API source files
+# Mark engine source files
 set_source_files_properties(
     ${FABRIC_ENGINE_SOURCE_FILES}
-    ${RECURSE_GAME_SOURCE_FILES}
     PROPERTIES
     COMPILE_DEFINITIONS "FABRIC_CORE_API"
 )
@@ -482,14 +478,58 @@ set_source_files_properties(
 include(FabricHomebrew)
 fabric_fix_homebrew_llvm_rpath(FabricLib)
 
+#------------------------------------------------------------------------------
+# Game Object Library (recurse:: namespace, compiled once, linked into targets)
+#------------------------------------------------------------------------------
+add_library(RecurseGame OBJECT
+    ${RECURSE_GAME_SOURCE_FILES}
+    ${FABRIC_SIMULATION_SOURCE_FILES}
+)
+
+target_link_libraries(RecurseGame PUBLIC FabricLib)
+
+# Game sources need shader output directories and bgfx debugdraw headers
+target_include_directories(RecurseGame PRIVATE
+    ${FABRIC_SKINNED_SHADER_OUT}
+    ${FABRIC_SMOOTH_SHADER_OUT}
+    ${FABRIC_PARTICLE_SHADER_OUT}
+    ${FABRIC_OIT_SHADER_OUT}
+    ${bgfx_SOURCE_DIR}/bgfx/examples/common
+    ${bgfx_SOURCE_DIR}/bgfx/examples/common/debugdraw
+)
+
+target_compile_definitions(RecurseGame PRIVATE FABRIC_CORE_API)
+
+# Game compile options (match FabricLib)
+target_compile_options(RecurseGame PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:
+        /W4
+        $<$<CONFIG:Debug>:/Zi /Od>
+        $<$<CONFIG:Release>:/O2>
+        $<$<CONFIG:RelWithDebInfo>:/Zi /O2>
+    >
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:
+        -Wall -Wextra
+        $<$<CONFIG:Debug>:-g -O0>
+        $<$<CONFIG:Release>:-O3>
+        $<$<CONFIG:RelWithDebInfo>:-g -O3>
+    >
+)
+
+# Shader compilation must finish before RecurseGame sources compile
+add_dependencies(RecurseGame FabricSkinnedShaders FabricSmoothShaders FabricParticleShaders FabricOITShaders)
+
+# Tracy profiling for game code
+fabric_link_tracy(RecurseGame)
+
 # Create the Recurse executable (canonical entry point, FabricAppDesc pattern).
 # Uses FabricApp::run() with lifecycle callbacks; all game logic in Recurse.cc.
 if(FABRIC_USE_MIMALLOC)
     add_executable(Recurse src/recurse/Recurse.cc src/core/MimallocOverride.cc)
-    target_link_libraries(Recurse PRIVATE FabricLib mimalloc-static)
+    target_link_libraries(Recurse PRIVATE FabricLib RecurseGame mimalloc-static)
 else()
     add_executable(Recurse src/recurse/Recurse.cc)
-    target_link_libraries(Recurse PRIVATE FabricLib)
+    target_link_libraries(Recurse PRIVATE FabricLib RecurseGame)
 endif()
 
 if(APPLE)
@@ -527,6 +567,7 @@ if(FABRIC_BUILD_TESTS)
     foreach(TEST_TARGET UnitTests E2ETests)
         target_link_libraries(${TEST_TARGET} PRIVATE
             FabricLib
+            RecurseGame
             GTest::gtest
             GTest::gmock
             ozz_animation_offline

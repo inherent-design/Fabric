@@ -62,9 +62,6 @@ class OITCompositor {
     fabric::BgfxHandle<bgfx::ProgramHandle> accumProgram_;
     fabric::BgfxHandle<bgfx::ProgramHandle> compositeProgram_;
 
-    // Fullscreen triangle vertex buffer (for composite pass)
-    fabric::BgfxHandle<bgfx::VertexBufferHandle> vbh_;
-
     // Uniforms
     fabric::BgfxHandle<bgfx::UniformHandle> uniformOitColor_;
 

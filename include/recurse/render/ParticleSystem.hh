@@ -2,6 +2,7 @@
 
 #include "fabric/core/Spatial.hh"
 #include "fabric/render/BgfxHandle.hh"
+#include "fabric/render/ViewLayout.hh"
 
 #include <array>
 #include <bgfx/bgfx.h>
@@ -39,7 +40,7 @@ struct Particle {
 class ParticleSystem {
   public:
     static constexpr size_t K_MAX_PARTICLES = 10000;
-    static constexpr uint8_t K_VIEW_ID = 10;
+    static constexpr uint8_t K_VIEW_ID = fabric::render::view::K_PARTICLES;
     static constexpr size_t K_INSTANCE_STRIDE = 48; // 3 x vec4
 
     ParticleSystem();

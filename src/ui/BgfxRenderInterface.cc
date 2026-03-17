@@ -4,17 +4,8 @@
 
 #include "stb_image.h"
 
-// Vulkan-only: suppress all non-SPIR-V shader profiles so
-// BGFX_EMBEDDED_SHADER only references *_spv symbol arrays.
-#define BGFX_PLATFORM_SUPPORTS_DXBC 0
-#define BGFX_PLATFORM_SUPPORTS_DXIL 0
-#define BGFX_PLATFORM_SUPPORTS_ESSL 0
-#define BGFX_PLATFORM_SUPPORTS_GLSL 0
-#define BGFX_PLATFORM_SUPPORTS_METAL 0
-#define BGFX_PLATFORM_SUPPORTS_NVN 0
-#define BGFX_PLATFORM_SUPPORTS_PSSL 0
-#define BGFX_PLATFORM_SUPPORTS_WGSL 0
-#include <bgfx/embedded_shader.h>
+#include "fabric/render/ShaderProgram.hh"
+#include "fabric/render/SpvOnly.hh"
 
 #include <bx/math.h>
 
@@ -50,9 +41,7 @@ BgfxRenderInterface::~BgfxRenderInterface() = default;
 void BgfxRenderInterface::init() {
     FABRIC_ZONE_SCOPED;
 
-    bgfx::RendererType::Enum type = bgfx::getRendererType();
-    program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_embeddedShaders, type, "vs_rmlui"),
-                                       bgfx::createEmbeddedShader(s_embeddedShaders, type, "fs_rmlui"), true));
+    program_.reset(render::createProgramFromEmbedded(s_embeddedShaders, "vs_rmlui", "fs_rmlui"));
 
     texUniform_.reset(bgfx::createUniform("s_tex", bgfx::UniformType::Sampler));
 

@@ -8,17 +8,8 @@
 #include <cstring>
 #include <random>
 
-// Vulkan-only: suppress all non-SPIR-V shader profiles so
-// BGFX_EMBEDDED_SHADER only references *_spv symbol arrays.
-#define BGFX_PLATFORM_SUPPORTS_DXBC 0
-#define BGFX_PLATFORM_SUPPORTS_DXIL 0
-#define BGFX_PLATFORM_SUPPORTS_ESSL 0
-#define BGFX_PLATFORM_SUPPORTS_GLSL 0
-#define BGFX_PLATFORM_SUPPORTS_METAL 0
-#define BGFX_PLATFORM_SUPPORTS_NVN 0
-#define BGFX_PLATFORM_SUPPORTS_PSSL 0
-#define BGFX_PLATFORM_SUPPORTS_WGSL 0
-#include <bgfx/embedded_shader.h>
+#include "fabric/render/ShaderProgram.hh"
+#include "fabric/render/SpvOnly.hh"
 
 // Compiled SPIR-V shader bytecode generated at build time from .sc sources.
 #include "spv/fs_particle.sc.bin.h"
@@ -65,9 +56,7 @@ void ParticleSystem::init() {
     if (initialized_)
         return;
 
-    bgfx::RendererType::Enum type = bgfx::getRendererType();
-    program_.reset(bgfx::createProgram(bgfx::createEmbeddedShader(s_particleShaders, type, "vs_particle"),
-                                       bgfx::createEmbeddedShader(s_particleShaders, type, "fs_particle"), true));
+    program_.reset(fabric::render::createProgramFromEmbedded(s_particleShaders, "vs_particle", "fs_particle"));
 
     bgfx::VertexLayout layout;
     layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
@@ -76,7 +65,8 @@ void ParticleSystem::init() {
     ibh_.reset(bgfx::createIndexBuffer(bgfx::makeRef(s_quadIndices, sizeof(s_quadIndices))));
 
     if (!program_.isValid() || !vbh_.isValid() || !ibh_.isValid()) {
-        FABRIC_LOG_ERROR("ParticleSystem shader/buffer init failed for renderer {}", bgfx::getRendererName(type));
+        FABRIC_LOG_ERROR("ParticleSystem shader/buffer init failed for renderer {}",
+                         bgfx::getRendererName(bgfx::getRendererType()));
         shutdown();
         return;
     }

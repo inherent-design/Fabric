@@ -2,14 +2,11 @@
 #include "fabric/core/Spatial.hh"
 #include "fabric/ecs/ECS.hh"
 #include "fabric/log/Log.hh"
+#include "fabric/render/ViewLayout.hh"
 #include "fabric/utils/Profiler.hh"
 #include <bgfx/bgfx.h>
 
 namespace fabric {
-
-namespace {
-constexpr uint8_t K_PROJECTION_VIEW_ID = 210;
-}
 
 SceneView::SceneView(uint8_t viewId, Camera& camera, flecs::world& world)
     : viewId_(viewId), camera_(camera), world_(world), projectionMode_(ProjectionMode::Panini) {}
@@ -133,7 +130,7 @@ void SceneView::render() {
         if (applyProjection) {
             auto projTex = bgfx::getTexture(projectionFb_.get(), 0);
             paniniPass_.setEnabled(true);
-            paniniPass_.execute(projTex, K_PROJECTION_VIEW_ID);
+            paniniPass_.execute(projTex, render::view::K_PANINI);
         }
     }
 }

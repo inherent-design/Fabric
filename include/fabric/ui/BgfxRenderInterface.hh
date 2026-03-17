@@ -2,6 +2,7 @@
 
 #include "fabric/render/BgfxHandle.hh"
 #include "fabric/render/HandleMap.hh"
+#include "fabric/render/ViewLayout.hh"
 
 #include <RmlUi/Core/RenderInterface.h>
 
@@ -62,7 +63,7 @@ class BgfxRenderInterface : public Rml::RenderInterface {
         uint32_t indexCount;
     };
 
-    static constexpr bgfx::ViewId K_DEFAULT_VIEW_ID = 255;
+    static constexpr bgfx::ViewId K_DEFAULT_VIEW_ID = render::view::K_UI;
 
     bgfx::ViewId viewId_ = K_DEFAULT_VIEW_ID;
     bgfx::VertexLayout layout_;

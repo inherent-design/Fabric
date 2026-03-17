@@ -3,6 +3,7 @@
 #include "fabric/render/DrawCall.hh"
 #include "fabric/render/Geometry.hh"
 #include "fabric/render/RenderCaps.hh"
+#include "fabric/render/ViewLayout.hh"
 #include <cstdint>
 #include <flecs.h>
 #include <functional>
@@ -47,9 +48,7 @@ void transparentSort(std::vector<flecs::entity>& entities, const Vec3f& cameraPo
 // Global render capabilities, populated after bgfx::init().
 const RenderCaps& renderCaps();
 
-// OIT (order-independent transparency) view ID constants.
-// Placed between post-process (200..205) and shadows (240..243).
-constexpr uint8_t K_OIT_ACCUM_VIEW_ID = 210;
-constexpr uint8_t K_OIT_COMPOSITE_VIEW_ID = 211;
+inline constexpr uint8_t K_OIT_ACCUM_VIEW_ID = render::view::K_OIT_ACCUM;
+inline constexpr uint8_t K_OIT_COMPOSITE_VIEW_ID = render::view::K_OIT_COMPOSITE;
 
 } // namespace fabric

@@ -40,7 +40,6 @@ class SkyRenderer {
     void initProgram();
 
     BgfxHandle<bgfx::ProgramHandle> program_;
-    BgfxHandle<bgfx::VertexBufferHandle> vbh_;
     BgfxHandle<bgfx::UniformHandle> uniformSunDir_;
     BgfxHandle<bgfx::UniformHandle> uniformParams_;
     Vector3<float, Space::World> sunDir_;

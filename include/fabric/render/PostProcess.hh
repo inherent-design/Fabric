@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fabric/render/BgfxHandle.hh"
+#include "fabric/render/ViewLayout.hh"
 
 #include <bgfx/bgfx.h>
 #include <cstdint>
@@ -51,7 +52,7 @@ class PostProcess {
 
     // Execute the post-process chain. Call after scene has been rendered
     // into hdrFramebuffer(). Writes final result to the default backbuffer.
-    void render(uint8_t baseViewId = 200);
+    void render(uint8_t baseViewId = render::view::K_POST_BASE);
 
     // Set output framebuffer for the tonemap pass. BGFX_INVALID_HANDLE = backbuffer.
     void setOutputTarget(bgfx::FrameBufferHandle fb);
@@ -67,9 +68,6 @@ class PostProcess {
     BgfxHandle<bgfx::ProgramHandle> brightProgram_;
     BgfxHandle<bgfx::ProgramHandle> blurProgram_;
     BgfxHandle<bgfx::ProgramHandle> tonemapProgram_;
-
-    // Fullscreen triangle vertex buffer (shared across all passes)
-    BgfxHandle<bgfx::VertexBufferHandle> vbh_;
 
     // Uniforms
     BgfxHandle<bgfx::UniformHandle> uniformBloomParams_;   // threshold, soft knee

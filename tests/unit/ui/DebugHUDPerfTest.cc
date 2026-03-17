@@ -1,7 +1,7 @@
-#include "fabric/ui/DebugHUD.hh"
+#include "recurse/ui/DebugHUD.hh"
 #include <gtest/gtest.h>
 
-using namespace fabric;
+using namespace recurse;
 
 // EF-18: Tests for perf overlay fields in DebugData
 

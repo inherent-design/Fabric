@@ -4,7 +4,7 @@
 #include "fabric/ui/RmlPanel.hh"
 #include <RmlUi/Core/Types.h>
 
-namespace fabric {
+namespace recurse {
 
 struct WAILAData {
     bool hasHit = false;
@@ -16,17 +16,17 @@ struct WAILAData {
     float essenceO = 0.0f, essenceC = 0.0f, essenceL = 0.0f, essenceD = 0.0f;
 };
 
-class WAILAPanel : public RmlPanel {
+class WAILAPanel : public fabric::RmlPanel {
   public:
     WAILAPanel() = default;
     ~WAILAPanel() override = default;
 
     void init(Rml::Context* context);
     void update(const WAILAData& data);
-    void setMode(AppMode mode);
+    void setMode(fabric::AppMode mode);
 
   private:
-    AppMode currentMode_ = AppMode::Game;
+    fabric::AppMode currentMode_ = fabric::AppMode::Game;
 
     bool hasHit_ = false;
     Rml::String displayText_;
@@ -38,4 +38,4 @@ class WAILAPanel : public RmlPanel {
     Rml::String essenceStr_;
 };
 
-} // namespace fabric
+} // namespace recurse

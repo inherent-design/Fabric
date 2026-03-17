@@ -1,11 +1,11 @@
-#include "fabric/ui/DebugHUD.hh"
+#include "recurse/ui/DebugHUD.hh"
 
 #include "fabric/log/Log.hh"
 #include "fabric/utils/Profiler.hh"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
 
-namespace fabric {
+namespace recurse {
 
 void DebugHUD::init(Rml::Context* context) {
     if (!context) {
@@ -81,4 +81,4 @@ void DebugHUD::update(const DebugData& data) {
     }
 }
 
-} // namespace fabric
+} // namespace recurse

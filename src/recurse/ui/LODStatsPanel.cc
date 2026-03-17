@@ -1,10 +1,10 @@
-#include "fabric/ui/LODStatsPanel.hh"
+#include "recurse/ui/LODStatsPanel.hh"
 
 #include "fabric/log/Log.hh"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
 
-namespace fabric {
+namespace recurse {
 
 void LODStatsPanel::init(Rml::Context* context) {
     if (!context) {
@@ -43,4 +43,4 @@ void LODStatsPanel::update(const LODStatsData& data) {
     }
 }
 
-} // namespace fabric
+} // namespace recurse

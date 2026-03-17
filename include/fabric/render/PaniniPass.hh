@@ -54,13 +54,9 @@ class PaniniPass {
 
   private:
     void initPrograms();
-    void createVertexBuffer();
 
     // Shader program
     BgfxHandle<bgfx::ProgramHandle> program_;
-
-    // Fullscreen triangle vertex buffer
-    BgfxHandle<bgfx::VertexBufferHandle> fullscreenQuad_;
 
     // Uniforms
     BgfxHandle<bgfx::UniformHandle> u_sceneTex_;     // sampler

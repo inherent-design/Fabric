@@ -5,7 +5,7 @@
 #include <RmlUi/Core/Types.h>
 #include <string>
 
-namespace fabric {
+namespace recurse {
 
 struct DebugData {
     float fps = 0.0f;
@@ -14,7 +14,7 @@ struct DebugData {
     int visibleChunks = 0;
     int totalChunks = 0;
     int triangleCount = 0;
-    Vector3<float, Space::World> cameraPosition;
+    fabric::Vector3<float, fabric::Space::World> cameraPosition;
     int currentRadius = 0;
     std::string currentState = "None";
 
@@ -27,7 +27,7 @@ struct DebugData {
     int chunkMeshQueueSize = 0;
 };
 
-class DebugHUD : public RmlPanel {
+class DebugHUD : public fabric::RmlPanel {
   public:
     DebugHUD() = default;
     ~DebugHUD() override = default;
@@ -57,4 +57,4 @@ class DebugHUD : public RmlPanel {
     int chunkMeshQueueSize_ = 0;
 };
 
-} // namespace fabric
+} // namespace recurse

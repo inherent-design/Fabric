@@ -3,17 +3,18 @@
 #include "fabric/world/ChunkCoord.hh"
 #include <Jolt/Jolt.h>
 
-#include <Jolt/Core/JobSystemThreadPool.h>
-#include <Jolt/Core/TempAllocator.h>
-#include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
-#include <Jolt/Physics/Collision/Shape/SphereShape.h>
-#include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
-#include <Jolt/Physics/Constraints/FixedConstraint.h>
-#include <Jolt/Physics/PhysicsSystem.h>
+
+namespace JPH {
+class JobSystemThreadPool;
+class TempAllocator;
+class TempAllocatorImpl;
+class PhysicsSystem;
+class Constraint;
+} // namespace JPH
 
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/VoxelConstants.hh"

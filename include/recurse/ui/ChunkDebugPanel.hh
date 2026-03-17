@@ -3,7 +3,7 @@
 #include "fabric/ui/RmlPanel.hh"
 #include <cstddef>
 
-namespace fabric {
+namespace recurse {
 
 struct ChunkDebugData {
     size_t activeChunks = 0;
@@ -21,7 +21,7 @@ struct ChunkDebugData {
     int meshBudgetRemaining = 0;
 };
 
-class ChunkDebugPanel : public RmlPanel {
+class ChunkDebugPanel : public fabric::RmlPanel {
   public:
     ChunkDebugPanel() = default;
     ~ChunkDebugPanel() override = default;
@@ -45,4 +45,4 @@ class ChunkDebugPanel : public RmlPanel {
     int meshBudgetRemaining_ = 0;
 };
 
-} // namespace fabric
+} // namespace recurse

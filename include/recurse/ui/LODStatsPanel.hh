@@ -3,7 +3,7 @@
 #include "fabric/ui/RmlPanel.hh"
 #include <cstddef>
 
-namespace fabric {
+namespace recurse {
 
 struct LODStatsData {
     int pendingSections = 0;
@@ -12,7 +12,7 @@ struct LODStatsData {
     float estimatedGpuMB = 0.0f;
 };
 
-class LODStatsPanel : public RmlPanel {
+class LODStatsPanel : public fabric::RmlPanel {
   public:
     LODStatsPanel() = default;
     ~LODStatsPanel() override = default;
@@ -27,4 +27,4 @@ class LODStatsPanel : public RmlPanel {
     float estimatedGpuMB_ = 0.0f;
 };
 
-} // namespace fabric
+} // namespace recurse

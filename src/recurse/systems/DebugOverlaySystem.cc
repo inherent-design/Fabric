@@ -37,6 +37,7 @@
 #include "recurse/world/ChunkStreaming.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
 #include "recurse/world/VoxelRaycast.hh"
+#include <Jolt/Physics/PhysicsSystem.h>
 
 #include <bgfx/bgfx.h>
 #include <SDL3/SDL.h>
@@ -332,7 +333,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
                                                  static_cast<double>(stats->cpuTimerFreq));
         }
 
-        fabric::DebugData debugData;
+        DebugData debugData;
         debugData.fps = (cpuMs > 0.0f) ? 1000.0f / cpuMs : 0.0f;
         debugData.frameTimeMs = cpuMs;
         debugData.visibleChunks = meshSystem_ ? static_cast<int>(meshSystem_->gpuMeshes().size()) : 0;
@@ -382,7 +383,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
 
     // WAILA crosshair raycast (every frame - always visible)
     {
-        fabric::WAILAData waila;
+        WAILAData waila;
         auto camPos = camera_->position();
         auto camFwd = camera_->forward();
         auto hit = recurse::castRay(voxelSim_->simulationGrid(), camPos.x, camPos.y, camPos.z, camFwd.x, camFwd.y,
@@ -420,7 +421,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
 
     // Chunk debug panel
     if (chunkDebugPanel_.isVisible() && meshSystem_) {
-        fabric::ChunkDebugData chunkData;
+        ChunkDebugData chunkData;
         chunkData.activeChunks = meshSystem_->gpuMeshCount();
         chunkData.gpuMeshCount = meshSystem_->gpuMeshCount();
         chunkData.dirtyChunksPending = meshSystem_->pendingMeshCount();
@@ -445,7 +446,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
     // LOD stats panel
     if (lodStatsPanel_.isVisible() && lodSystem_) {
         auto lodInfo = lodSystem_->debugInfo();
-        fabric::LODStatsData lodData;
+        LODStatsData lodData;
         lodData.pendingSections = lodInfo.pendingSections;
         lodData.gpuResidentSections = lodInfo.gpuResidentSections;
         lodData.visibleSections = lodInfo.visibleSections;

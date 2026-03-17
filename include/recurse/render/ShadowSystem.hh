@@ -2,6 +2,7 @@
 
 #include "fabric/core/Spatial.hh"
 #include "fabric/render/Camera.hh"
+#include "fabric/render/ViewLayout.hh"
 #include <array>
 #include <cstdint>
 
@@ -42,7 +43,7 @@ struct CascadeData {
 // bgfx view IDs 240-243 are reserved for shadow cascade rendering passes.
 class ShadowSystem {
   public:
-    static constexpr uint8_t K_SHADOW_VIEW_BASE = 240;
+    static constexpr uint8_t K_SHADOW_VIEW_BASE = fabric::render::view::K_SHADOW_BASE;
     static constexpr int K_MAX_CASCADES = 4;
 
     explicit ShadowSystem(const ShadowConfig& config = {});

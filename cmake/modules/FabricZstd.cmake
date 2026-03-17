@@ -18,6 +18,6 @@ CPMAddPackage(
 
 if(zstd_ADDED)
     target_include_directories(libzstd_static SYSTEM INTERFACE
-        "${zstd_SOURCE_DIR}/lib"
+        $<BUILD_INTERFACE:${zstd_SOURCE_DIR}/lib>
     )
 endif()
