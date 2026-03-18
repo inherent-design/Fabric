@@ -1,0 +1,13 @@
+<rml>
+<head>
+    <link type="text/rcss" href="autosave.rcss" />
+</head>
+<body data-model="autosave">
+<div id="autosave-anchor">
+    <div id="autosave-panel">
+        <div class="autosave-status">{{ status_text }}</div>
+        <div class="autosave-detail">{{ detail_text }}</div>
+    </div>
+</div>
+</body>
+</rml>

@@ -1,0 +1,33 @@
+body {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    font-family: "Commit Mono";
+}
+
+#autosave-anchor {
+    position: fixed;
+    top: 12dp;
+    right: 12dp;
+    width: 100%;
+}
+
+#autosave-panel {
+    margin-left: auto;
+    width: 220dp;
+    padding: 6dp 10dp;
+    background-color: #000000aa;
+    border: 1dp #ffffff22;
+    text-align: right;
+}
+
+.autosave-status {
+    color: #f0f0f0;
+    font-size: 12dp;
+}
+
+.autosave-detail {
+    color: #a8a8a8;
+    font-size: 10dp;
+    margin-top: 2dp;
+}

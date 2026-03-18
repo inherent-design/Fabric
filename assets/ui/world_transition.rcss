@@ -1,0 +1,38 @@
+body {
+    width: 100%;
+    height: 100%;
+    font-family: "Commit Mono";
+    background-color: rgba(4, 6, 10, 0.92);
+}
+
+#world-transition-root {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#world-transition-card {
+    width: 460dp;
+    padding: 28dp 32dp;
+    background-color: rgba(12, 16, 24, 0.94);
+    border: 1dp rgba(255, 255, 255, 0.12);
+}
+
+.transition-title {
+    color: #f5f7fa;
+    font-size: 28dp;
+    margin-bottom: 10dp;
+}
+
+.transition-stage {
+    color: #8fd4ff;
+    font-size: 16dp;
+    margin-bottom: 10dp;
+}
+
+.transition-detail {
+    color: #c7d0da;
+    font-size: 12dp;
+}

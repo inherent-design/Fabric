@@ -1,0 +1,14 @@
+<rml>
+<head>
+    <link type="text/rcss" href="world_transition.rcss" />
+</head>
+<body data-model="main_menu">
+<div id="world-transition-root">
+    <div id="world-transition-card">
+        <div class="transition-title">{{ transition_title }}</div>
+        <div class="transition-stage">{{ transition_stage }}</div>
+        <div class="transition-detail">{{ transition_detail }}</div>
+    </div>
+</div>
+</body>
+</rml>
