@@ -16,6 +16,7 @@ LODMeshManager::~LODMeshManager() = default;
 
 LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section) {
     MeshResult result;
+    const float voxelScale = static_cast<float>(LODGrid::sectionScale(section.level));
 
     // Check if section has any solid voxels
     bool hasSolid = false;
@@ -34,7 +35,6 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
     // We fill a 34^3 cache to match the mesher's expected interface
 
     ChunkDensityCache density;
-    ChunkMaterialCache material;
 
     // Fill density cache: 1.0 = solid, 0.0 = air
     // The LOD section is 32^3, the cache is 34^3 (adds 1-voxel border)
@@ -195,9 +195,10 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
 
                     if (nMat == 0) {
                         // Exposed face - add quad
-                        float x = static_cast<float>(lx);
-                        float y = static_cast<float>(ly);
-                        float z = static_cast<float>(lz);
+                        float x = static_cast<float>(lx) * voxelScale;
+                        float y = static_cast<float>(ly) * voxelScale;
+                        float z = static_cast<float>(lz) * voxelScale;
+                        float step = voxelScale;
 
                         // Normal direction
                         float ndx = static_cast<float>(dx[f]);
@@ -209,82 +210,82 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
 
                         // Vertex positions depend on face direction
                         if (f == 0) { // +X
-                            v0.px = x + 1;
+                            v0.px = x + step;
                             v0.py = y;
                             v0.pz = z;
-                            v1.px = x + 1;
-                            v1.py = y + 1;
+                            v1.px = x + step;
+                            v1.py = y + step;
                             v1.pz = z;
-                            v2.px = x + 1;
-                            v2.py = y + 1;
-                            v2.pz = z + 1;
-                            v3.px = x + 1;
+                            v2.px = x + step;
+                            v2.py = y + step;
+                            v2.pz = z + step;
+                            v3.px = x + step;
                             v3.py = y;
-                            v3.pz = z + 1;
+                            v3.pz = z + step;
                         } else if (f == 1) { // -X
                             v0.px = x;
                             v0.py = y;
-                            v0.pz = z + 1;
+                            v0.pz = z + step;
                             v1.px = x;
-                            v1.py = y + 1;
-                            v1.pz = z + 1;
+                            v1.py = y + step;
+                            v1.pz = z + step;
                             v2.px = x;
-                            v2.py = y + 1;
+                            v2.py = y + step;
                             v2.pz = z;
                             v3.px = x;
                             v3.py = y;
                             v3.pz = z;
                         } else if (f == 2) { // +Y
                             v0.px = x;
-                            v0.py = y + 1;
+                            v0.py = y + step;
                             v0.pz = z;
                             v1.px = x;
-                            v1.py = y + 1;
-                            v1.pz = z + 1;
-                            v2.px = x + 1;
-                            v2.py = y + 1;
-                            v2.pz = z + 1;
-                            v3.px = x + 1;
-                            v3.py = y + 1;
+                            v1.py = y + step;
+                            v1.pz = z + step;
+                            v2.px = x + step;
+                            v2.py = y + step;
+                            v2.pz = z + step;
+                            v3.px = x + step;
+                            v3.py = y + step;
                             v3.pz = z;
                         } else if (f == 3) { // -Y
                             v0.px = x;
                             v0.py = y;
-                            v0.pz = z + 1;
+                            v0.pz = z + step;
                             v1.px = x;
                             v1.py = y;
                             v1.pz = z;
-                            v2.px = x + 1;
+                            v2.px = x + step;
                             v2.py = y;
                             v2.pz = z;
-                            v3.px = x + 1;
+                            v3.px = x + step;
                             v3.py = y;
-                            v3.pz = z + 1;
+                            v3.pz = z + step;
                         } else if (f == 4) { // +Z
                             v0.px = x;
                             v0.py = y;
-                            v0.pz = z + 1;
-                            v1.px = x + 1;
+                            v0.pz = z + step;
+                            v1.px = x + step;
                             v1.py = y;
-                            v1.pz = z + 1;
-                            v2.px = x + 1;
-                            v2.py = y + 1;
-                            v2.pz = z + 1;
+                            v1.pz = z + step;
+                            v2.px = x + step;
+                            v2.py = y + step;
+                            v2.pz = z + step;
                             v3.px = x;
-                            v3.py = y + 1;
-                            v3.pz = z + 1;
+                            v3.py = y + step;
+                            v3.pz = z + step;
                         } else { // -Z
-                            v0.px = x + 1;
+                            v0.px = x + step;
                             v0.py = y;
                             v0.pz = z;
                             v1.px = x;
                             v1.py = y;
                             v1.pz = z;
                             v2.px = x;
-                            v2.py = y + 1;
+                            v2.py = y + step;
                             v2.pz = z;
-                            v3.px = x + 1;
-                            v3.py = y + 1;
+                            v3.px = x + step;
+                            v3.py = y + step;
                             v3.pz = z;
                         }
 
@@ -302,10 +303,10 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
                         v3.ny = ndy;
                         v3.nz = ndz;
 
-                        v0.material = SmoothVoxelVertex::packMaterial(palIdx);
-                        v1.material = SmoothVoxelVertex::packMaterial(palIdx);
-                        v2.material = SmoothVoxelVertex::packMaterial(palIdx);
-                        v3.material = SmoothVoxelVertex::packMaterial(palIdx);
+                        v0.material = SmoothVoxelVertex::packShaderMaterial(palIdx);
+                        v1.material = SmoothVoxelVertex::packShaderMaterial(palIdx);
+                        v2.material = SmoothVoxelVertex::packShaderMaterial(palIdx);
+                        v3.material = SmoothVoxelVertex::packShaderMaterial(palIdx);
 
                         uint32_t base = static_cast<uint32_t>(result.vertices.size());
                         result.vertices.insert(result.vertices.end(), {v0, v1, v2, v3});
