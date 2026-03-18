@@ -28,7 +28,19 @@ struct LODDebugInfo {
     int pendingSections = 0;
     int gpuResidentSections = 0;
     int visibleSections = 0;
+    int fullResRejectedSections = 0;
+    int fullResCenterCX = 0;
+    int fullResCenterCY = 0;
+    int fullResCenterCZ = 0;
+    int fullResRadius = 0;
     size_t estimatedGpuBytes = 0;
+};
+
+struct TerrainOwnershipSnapshot {
+    ChunkCoverageBox sectionCoverage;
+    ChunkCoverageBox fullResCoverage;
+    int desiredLevel = 0;
+    bool hiddenByFullRes = false;
 };
 
 class TerrainSystem;
@@ -70,6 +82,10 @@ class LODSystem : public fabric::System<LODSystem> {
     /// the section exits the LOD ring and will not be needed again.
     void removeSectionFully(int cx, int cy, int cz);
 
+    void setFullResCoverage(int centerCX, int centerCY, int centerCZ, int radius);
+    void clearFullResCoverage();
+    TerrainOwnershipSnapshot inspectTerrainOwnership(const LODSection& section, const fabric::Camera& camera) const;
+
     // Statistics
     size_t gpuResidentCount() const { return gpuSections_.size(); }
     size_t totalSectionCount() const { return grid_ ? grid_->sectionCount() : 0; }
@@ -83,7 +99,7 @@ class LODSystem : public fabric::System<LODSystem> {
         float distance;
         LODSectionKey key;
     };
-    void selectVisibleSections(const fabric::Camera& camera, float baseRadius);
+    void selectVisibleSections(const fabric::Camera& camera);
 
     // GPU mesh management
     struct GPUSection {
@@ -118,6 +134,9 @@ class LODSystem : public fabric::System<LODSystem> {
     int genBudget_ = 16;
     int maxLODLevel_ = 6;
     float baseRadius_ = 10.0f;
+    ChunkCoverageBox fullResCoverage_;
+    bool hasFullResCoverage_ = false;
+    int fullResRejectedSections_ = 0;
 };
 
 } // namespace recurse::systems

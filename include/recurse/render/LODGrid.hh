@@ -32,6 +32,25 @@ struct LODSectionKey {
     bool operator==(const LODSectionKey& other) const { return value == other.value; }
 };
 
+struct ChunkCoverageBox {
+    int minCX = 0;
+    int minCY = 0;
+    int minCZ = 0;
+    int maxCX = -1;
+    int maxCY = -1;
+    int maxCZ = -1;
+
+    bool isValid() const { return maxCX >= minCX && maxCY >= minCY && maxCZ >= minCZ; }
+
+    bool intersects(const ChunkCoverageBox& other) const {
+        if (!isValid() || !other.isValid()) {
+            return false;
+        }
+        return !(maxCX < other.minCX || other.maxCX < minCX || maxCY < other.minCY || other.maxCY < minCY ||
+                 maxCZ < other.minCZ || other.maxCZ < minCZ);
+    }
+};
+
 // 32^3 section at a specific LOD level
 struct LODSection {
     static constexpr int K_SIZE = 32;
@@ -69,6 +88,7 @@ class LODGrid {
 
     static constexpr int sectionScale(int level) { return 1 << level; }
     static constexpr int sectionWorldSize(int level) { return K_SECTION_WORLD_SIZE * sectionScale(level); }
+    static constexpr int sectionChunkSpan(int level) { return 1 << level; }
     static Vec3i sectionOrigin(int level, int sx, int sy, int sz) {
         const int worldSize = sectionWorldSize(level);
         return Vec3i(sx * worldSize, sy * worldSize, sz * worldSize);
@@ -76,10 +96,24 @@ class LODGrid {
     static constexpr int sectionCoordFromOrigin(int level, int originComponent) {
         return originComponent / sectionWorldSize(level);
     }
+    static constexpr ChunkCoverageBox sectionChunkCoverage(int level, int sx, int sy, int sz) {
+        const int span = sectionChunkSpan(level);
+        return ChunkCoverageBox{.minCX = sx * span,
+                                .minCY = sy * span,
+                                .minCZ = sz * span,
+                                .maxCX = sx * span + span - 1,
+                                .maxCY = sy * span + span - 1,
+                                .maxCZ = sz * span + span - 1};
+    }
     static LODSectionKey keyForSection(const LODSection& section) {
         return LODSectionKey::make(section.level, sectionCoordFromOrigin(section.level, section.origin.x),
                                    sectionCoordFromOrigin(section.level, section.origin.y),
                                    sectionCoordFromOrigin(section.level, section.origin.z));
+    }
+    static ChunkCoverageBox sectionChunkCoverage(const LODSection& section) {
+        return sectionChunkCoverage(section.level, sectionCoordFromOrigin(section.level, section.origin.x),
+                                    sectionCoordFromOrigin(section.level, section.origin.y),
+                                    sectionCoordFromOrigin(section.level, section.origin.z));
     }
 
     LODSection* get(LODSectionKey key);
