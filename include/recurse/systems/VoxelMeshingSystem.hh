@@ -158,13 +158,9 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     void setMeshBudget(int budget) { meshBudget_ = budget; }
     int meshBudget() const { return meshBudget_; }
 
-    /// Checkpoint 0 seam lock: SnapMC remains the default and effective
-    /// mesher. Greedy is a reserved selection that currently falls back to
-    /// SnapMC until the dedicated greedy CPU path lands.
-    void setNearChunkMesher(NearChunkMesher mesher) {
-        nearChunkMesher_ = mesher;
-        greedyFallbackLogged_ = false;
-    }
+    /// SnapMC remains the default for rollback posture, while Greedy routes the
+    /// near chunk path through the direct voxel extraction flow.
+    void setNearChunkMesher(NearChunkMesher mesher) { nearChunkMesher_ = mesher; }
     NearChunkMesher nearChunkMesher() const { return nearChunkMesher_; }
 
     /// When true, requires all 6 face-adjacent neighbors to exist before meshing.
@@ -212,7 +208,6 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     int meshBudget_ = 50; // Increased from 3 to handle initial load in one frame
     bool gpuUploadEnabled_ = false;
     bool requireNeighborsForMeshing_ = true;
-    mutable bool greedyFallbackLogged_ = false;
 
     int meshedThisFrame_ = 0;
     int emptySkippedThisFrame_ = 0;
