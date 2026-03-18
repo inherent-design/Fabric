@@ -34,10 +34,19 @@ class WorldGenerator {
     virtual uint16_t sampleMaterial(int wx, int wy, int wz) const;
 
     /// Conservative upper bound on the maximum Y coordinate where visible
-    /// material (non-air) exists in the chunk column at (cx, cz).
+    /// material (non-air) exists anywhere in the chunk footprint at (cx, cz).
     /// Used to skip LOD generation for all-air and all-underground chunks.
     /// Default returns 1024 (never skip for unknown generators).
     virtual int maxSurfaceHeight(int cx, int cz) const;
+
+    /// Stable semantic identity source for persistence/reference regeneration.
+    /// Implementations should include any rule/config values that change the
+    /// baseline terrain produced by generateToBuffer()/sampleMaterial().
+    virtual std::string worldgenFingerprintSource() const;
+
+    /// Stable 32-bit fingerprint of the generator's baseline terrain contract.
+    /// Used by persistence/replay reference regeneration compatibility checks.
+    uint32_t worldgenFingerprint() const;
 
     /// Human-readable name for logging
     virtual std::string name() const = 0;

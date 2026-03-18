@@ -2,6 +2,7 @@
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <cmath>
+#include <limits>
 #include <vector>
 
 namespace recurse {
@@ -11,6 +12,10 @@ namespace material_ids = simulation::material_ids;
 using simulation::VoxelCell;
 
 namespace {
+
+constexpr float K_STONE_DENSITY_THRESHOLD = 3.0f;
+constexpr float K_FILLED_DENSITY_THRESHOLD = 0.0f;
+constexpr uint32_t K_TERRAIN_RULE_VERSION = 2;
 
 int floorChunkCoord(int worldCoord) {
     int chunk = worldCoord / simulation::K_CHUNK_SIZE;
@@ -50,12 +55,51 @@ float MinecraftNoiseGenerator::computeBaseHeight(float continental, float erosio
     return config_.seaLevel + (continental * 0.6f + peaks * 0.3f - erosion * 0.2f) * config_.terrainHeight;
 }
 
+std::string MinecraftNoiseGenerator::worldgenFingerprintSource() const {
+    return std::string{"terrain-baseline:minecraft-noise-heightfield|ruleVersion="} +
+           std::to_string(K_TERRAIN_RULE_VERSION) + "|seed=" + std::to_string(config_.seed) +
+           "|seaLevel=" + std::to_string(config_.seaLevel) + "|terrainHeight=" + std::to_string(config_.terrainHeight) +
+           "|continentalFreq=" + std::to_string(config_.continentalFreq) +
+           "|erosionFreq=" + std::to_string(config_.erosionFreq) + "|peaksFreq=" + std::to_string(config_.peaksFreq) +
+           "|temperatureFreq=" + std::to_string(config_.temperatureFreq) +
+           "|humidityFreq=" + std::to_string(config_.humidityFreq);
+}
+
 MaterialId MinecraftNoiseGenerator::selectSurfaceMaterial(float /*temp*/, float /*humid*/, float wy) const {
     // TODO(human): Implement biome-aware surface material selection.
     if (std::abs(wy - config_.seaLevel) <= 3.0f) {
         return material_ids::SAND;
     }
     return material_ids::DIRT;
+}
+
+MinecraftNoiseGenerator::ColumnSample MinecraftNoiseGenerator::sampleColumn(int wx, int wz) const {
+    float c = sampleChunkAlignedNoise2D(continentalNode_, wx, wz, config_.continentalFreq, config_.seed);
+    float e = sampleChunkAlignedNoise2D(erosionNode_, wx, wz, config_.erosionFreq, config_.seed + 1);
+    float p = sampleChunkAlignedNoise2D(peaksNode_, wx, wz, config_.peaksFreq, config_.seed + 2);
+    float temp = sampleChunkAlignedNoise2D(temperatureNode_, wx, wz, config_.temperatureFreq, config_.seed + 3);
+    float humid = sampleChunkAlignedNoise2D(humidityNode_, wx, wz, config_.humidityFreq, config_.seed + 4);
+
+    return ColumnSample{
+        .baseHeight = computeBaseHeight(c, e, p),
+        .temperature = temp,
+        .humidity = humid,
+    };
+}
+
+uint16_t MinecraftNoiseGenerator::classifyMaterial(const ColumnSample& column, int wy) const {
+    float density = column.baseHeight - static_cast<float>(wy);
+    if (density > K_STONE_DENSITY_THRESHOLD)
+        return material_ids::STONE;
+    if (density > K_FILLED_DENSITY_THRESHOLD)
+        return selectSurfaceMaterial(column.temperature, column.humidity, static_cast<float>(wy));
+    if (static_cast<float>(wy) < config_.seaLevel)
+        return material_ids::WATER;
+    return material_ids::AIR;
+}
+
+int MinecraftNoiseGenerator::conservativeVisibleTopY(float baseHeight) const {
+    return static_cast<int>(std::ceil(std::max(baseHeight, config_.seaLevel)));
 }
 
 void MinecraftNoiseGenerator::generate(simulation::SimulationGrid& grid, int cx, int cy, int cz) {
@@ -100,23 +144,21 @@ void MinecraftNoiseGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy
             float temp = temperature[idx2d];
             float humid = humidity[idx2d];
 
-            float bh = computeBaseHeight(c, e, p);
+            ColumnSample column{
+                .baseHeight = computeBaseHeight(c, e, p),
+                .temperature = temp,
+                .humidity = humid,
+            };
 
             for (int ly = 0; ly < K_SIZE; ++ly) {
                 int wy = baseY + ly;
-                float density = bh - static_cast<float>(wy);
-
-                VoxelCell cell;
-                if (density > 3.0f) {
-                    cell.materialId = material_ids::STONE;
-                } else if (density > 0.0f) {
-                    cell.materialId = selectSurfaceMaterial(temp, humid, static_cast<float>(wy));
-                } else if (static_cast<float>(wy) < config_.seaLevel) {
-                    cell.materialId = material_ids::WATER;
-                } else {
+                const uint16_t materialId = classifyMaterial(column, wy);
+                if (materialId == material_ids::AIR) {
                     continue;
                 }
 
+                VoxelCell cell;
+                cell.materialId = materialId;
                 int idx = lx + ly * K_SIZE + lz * K_SIZE * K_SIZE;
                 buffer[idx] = cell;
             }
@@ -125,39 +167,30 @@ void MinecraftNoiseGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy
 }
 
 int MinecraftNoiseGenerator::maxSurfaceHeight(int cx, int cz) const {
-    float centerX = static_cast<float>(cx * K_SIZE + K_SIZE / 2);
-    float centerZ = static_cast<float>(cz * K_SIZE + K_SIZE / 2);
+    const int baseX = cx * K_SIZE;
+    const int baseZ = cz * K_SIZE;
 
-    float c = continentalNode_->GenSingle2D(centerX * config_.continentalFreq, centerZ * config_.continentalFreq,
-                                            config_.seed);
-    float e = erosionNode_->GenSingle2D(centerX * config_.erosionFreq, centerZ * config_.erosionFreq, config_.seed + 1);
-    float p = peaksNode_->GenSingle2D(centerX * config_.peaksFreq, centerZ * config_.peaksFreq, config_.seed + 2);
+    std::array<float, K_SIZE * K_SIZE> continental{};
+    std::array<float, K_SIZE * K_SIZE> erosion{};
+    std::array<float, K_SIZE * K_SIZE> peaks{};
 
-    float bh = computeBaseHeight(c, e, p);
+    batchNoise2D(continentalNode_, config_.continentalFreq, static_cast<float>(baseX), static_cast<float>(baseZ),
+                 continental.data(), config_.seed);
+    batchNoise2D(erosionNode_, config_.erosionFreq, static_cast<float>(baseX), static_cast<float>(baseZ),
+                 erosion.data(), config_.seed + 1);
+    batchNoise2D(peaksNode_, config_.peaksFreq, static_cast<float>(baseX), static_cast<float>(baseZ), peaks.data(),
+                 config_.seed + 2);
 
-    constexpr float K_MARGIN = 16.0f;
-    float maxHeight = std::max(bh + K_MARGIN, config_.seaLevel);
+    float maxBaseHeight = -std::numeric_limits<float>::infinity();
+    for (int idx = 0; idx < K_SIZE * K_SIZE; ++idx) {
+        maxBaseHeight = std::max(maxBaseHeight, computeBaseHeight(continental[idx], erosion[idx], peaks[idx]));
+    }
 
-    return static_cast<int>(std::ceil(maxHeight));
+    return conservativeVisibleTopY(maxBaseHeight);
 }
 
 uint16_t MinecraftNoiseGenerator::sampleMaterial(int wx, int wy, int wz) const {
-    float c = sampleChunkAlignedNoise2D(continentalNode_, wx, wz, config_.continentalFreq, config_.seed);
-    float e = sampleChunkAlignedNoise2D(erosionNode_, wx, wz, config_.erosionFreq, config_.seed + 1);
-    float p = sampleChunkAlignedNoise2D(peaksNode_, wx, wz, config_.peaksFreq, config_.seed + 2);
-    float temp = sampleChunkAlignedNoise2D(temperatureNode_, wx, wz, config_.temperatureFreq, config_.seed + 3);
-    float humid = sampleChunkAlignedNoise2D(humidityNode_, wx, wz, config_.humidityFreq, config_.seed + 4);
-
-    float bh = computeBaseHeight(c, e, p);
-    float density = bh - static_cast<float>(wy);
-
-    if (density > 3.0f)
-        return material_ids::STONE;
-    if (density > 0.0f)
-        return selectSurfaceMaterial(temp, humid, static_cast<float>(wy));
-    if (static_cast<float>(wy) < config_.seaLevel)
-        return material_ids::WATER;
-    return material_ids::AIR;
+    return classifyMaterial(sampleColumn(wx, wz), wy);
 }
 
 } // namespace recurse

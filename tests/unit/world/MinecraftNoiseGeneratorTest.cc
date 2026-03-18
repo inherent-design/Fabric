@@ -4,6 +4,7 @@
 #include <array>
 #include <chrono>
 #include <gtest/gtest.h>
+#include <limits>
 #include <set>
 
 using namespace recurse::simulation;
@@ -24,6 +25,27 @@ class MinecraftNoiseGenTest : public ::testing::Test {
             }
         }
         return minY - 1; // No solid found
+    }
+
+    int maxVisibleYInChunkFootprint(MinecraftNoiseGenerator& gen, int cx, int cz, int minCy, int maxCy) {
+        int actual = std::numeric_limits<int>::min();
+        for (int cy = minCy; cy <= maxCy; ++cy) {
+            std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buffer{};
+            gen.generateToBuffer(buffer.data(), cx, cy, cz);
+
+            const int baseY = cy * K_CHUNK;
+            for (int lz = 0; lz < K_CHUNK; ++lz) {
+                for (int ly = 0; ly < K_CHUNK; ++ly) {
+                    for (int lx = 0; lx < K_CHUNK; ++lx) {
+                        const int idx = lx + ly * K_CHUNK + lz * K_CHUNK * K_CHUNK;
+                        if (buffer[idx].materialId == material_ids::AIR)
+                            continue;
+                        actual = std::max(actual, baseY + ly);
+                    }
+                }
+            }
+        }
+        return actual;
     }
 };
 
@@ -355,6 +377,61 @@ TEST_F(MinecraftNoiseGenTest, MaxSurfaceHeightDeterministic) {
             EXPECT_EQ(gen1.maxSurfaceHeight(cx, cz), gen2.maxSurfaceHeight(cx, cz));
         }
     }
+}
+
+TEST_F(MinecraftNoiseGenTest, MaxSurfaceHeightIsConservativeAcrossWholeFootprint) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator gen(config);
+
+    const std::pair<int, int> cases[] = {
+        {0, 0},
+        {1, -1},
+        {31, -17},
+        {-257, 193},
+    };
+
+    for (const auto& [cx, cz] : cases) {
+        const int bound = gen.maxSurfaceHeight(cx, cz);
+        const int actual = maxVisibleYInChunkFootprint(gen, cx, cz, -2, 6);
+        ASSERT_NE(actual, std::numeric_limits<int>::min());
+        EXPECT_GE(bound, actual) << "chunk=(" << cx << "," << cz << ")";
+        EXPECT_LE(bound, actual + 1) << "chunk=(" << cx << "," << cz << ")";
+    }
+}
+
+TEST_F(MinecraftNoiseGenTest, MaxSurfaceHeightRemainsAlignedAtFarCoordinates) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator gen(config);
+
+    const std::pair<int, int> farCases[] = {
+        {4096, -4096},
+        {600000, -600000},
+        {-600001, 600001},
+    };
+
+    for (const auto& [cx, cz] : farCases) {
+        const int bound = gen.maxSurfaceHeight(cx, cz);
+        const int actual = maxVisibleYInChunkFootprint(gen, cx, cz, -2, 6);
+        ASSERT_NE(actual, std::numeric_limits<int>::min());
+        EXPECT_GE(bound, actual) << "chunk=(" << cx << "," << cz << ")";
+        EXPECT_LE(bound, actual + 1) << "chunk=(" << cx << "," << cz << ")";
+    }
+}
+
+TEST_F(MinecraftNoiseGenTest, WorldgenFingerprintTracksNoiseRuleChanges) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator baseline(config);
+    MinecraftNoiseGenerator same(config);
+
+    NoiseGenConfig changed = config;
+    changed.peaksFreq *= 1.5f;
+    MinecraftNoiseGenerator changedRules(changed);
+
+    EXPECT_EQ(baseline.worldgenFingerprint(), same.worldgenFingerprint());
+    EXPECT_NE(baseline.worldgenFingerprint(), changedRules.worldgenFingerprint());
 }
 
 // 12. PerformanceSingleChunk
