@@ -5,6 +5,7 @@
 #include "fabric/ui/HotkeyPanel.hh"
 #include "recurse/ai/BTDebugPanel.hh"
 #include "recurse/render/DebugDraw.hh"
+#include "recurse/ui/AutosavePanel.hh"
 #include "recurse/ui/ChunkDebugPanel.hh"
 #include "recurse/ui/ContentBrowser.hh"
 #include "recurse/ui/DebugHUD.hh"
@@ -57,6 +58,7 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
   private:
     recurse::DebugDraw debugDraw_;
     recurse::DebugHUD debugHUD_;
+    recurse::AutosavePanel autosavePanel_;
     recurse::ChunkDebugPanel chunkDebugPanel_;
     recurse::LODStatsPanel lodStatsPanel_;
     fabric::ConcurrencyPanel concurrencyPanel_;
@@ -68,6 +70,9 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
 
     flecs::entity btDebugSelectedNpc_;
     int frameCounter_ = 0;
+    uint64_t lastAutosaveSuccessSerial_ = 0;
+    int autosaveSavedFramesRemaining_ = 0;
+    bool autosaveHadWork_ = false;
 
     CameraGameSystem* camera_ = nullptr;
     ChunkPipelineSystem* chunks_ = nullptr;

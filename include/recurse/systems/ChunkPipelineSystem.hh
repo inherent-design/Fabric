@@ -58,9 +58,10 @@ class ChunkPipelineSystem : public fabric::System<ChunkPipelineSystem> {
     const std::unordered_map<ChunkCoord, flecs::entity, ChunkCoordHash>& chunkEntities() const;
     ChunkStreamingManager& streaming() { return *streaming_; }
     ChunkPipelineDebugInfo debugInfo() const;
+    const recurse::WorldSession* session() const { return session_.get(); }
 
     /// Wire persistence for a world directory. Creates a WorldSession with owned store and services.
-    void loadWorld(const std::string& worldDir, fabric::JobScheduler& scheduler);
+    bool loadWorld(const std::string& worldDir, fabric::JobScheduler& scheduler);
 
     /// Tear down persistence. Safe to call when no world is loaded.
     void unloadWorld();

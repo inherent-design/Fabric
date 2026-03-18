@@ -93,6 +93,7 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
                            systems::VoxelMeshingSystem* meshingSystem, systems::LODSystem* lodSystem,
                            systems::PhysicsGameSystem* physicsSystem, systems::TerrainSystem* terrainSystem)
     : store_(std::move(store)),
+      worldDir_(worldDir),
       dispatcher_(dispatcher),
       scheduler_(scheduler),
       ecsWorld_(ecsWorld),
@@ -172,7 +173,7 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
 
     streamSourceQuery_ = ecsWorld.query_builder<const fabric::Position, const StreamSource>().build();
 
-    FABRIC_LOG_INFO("WorldSession opened for {}", worldDir);
+    FABRIC_LOG_INFO("WorldSession: opened dir='{}'", worldDir_);
 }
 
 // ---------------------------------------------------------------------------
@@ -180,6 +181,13 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
 // ---------------------------------------------------------------------------
 
 WorldSession::~WorldSession() {
+    auto status = runtimeStatusSnapshot();
+    const char* errorText = status.saveActivity.hasError ? status.saveActivity.lastError.c_str() : "none";
+    FABRIC_LOG_INFO("WorldSession: teardown start dir='{}' pendingLoads={} dirty={} saving={} prepared={} lastSave={} "
+                    "error={}",
+                    worldDir_, status.pendingLoads, status.saveActivity.dirtyChunks, status.saveActivity.savingChunks,
+                    status.saveActivity.preparedChunks, status.saveActivity.lastSuccessfulSerial, errorText);
+
     // Step 0: Unsubscribe event listener to prevent callbacks during teardown
     dispatcher_.removeEventListener(K_VOXEL_CHANGED_EVENT, listenerHandlerId_);
 
@@ -232,7 +240,7 @@ WorldSession::~WorldSession() {
 
     // Step 11: SqliteChunkStore destroyed by unique_ptr (declaration order; last owned resource)
 
-    FABRIC_LOG_INFO("WorldSession closed");
+    FABRIC_LOG_INFO("WorldSession: teardown complete dir='{}'", worldDir_);
 }
 
 // ---------------------------------------------------------------------------
@@ -622,6 +630,14 @@ persistence::ReplayExecutor* WorldSession::replayExecutor() const {
     return replayExecutor_.get();
 }
 
+WorldSession::RuntimeStatusSnapshot WorldSession::runtimeStatusSnapshot() const {
+    RuntimeStatusSnapshot snapshot;
+    snapshot.pendingLoads = pendingLoads_.size();
+    if (saveService_)
+        snapshot.saveActivity = saveService_->activitySnapshot();
+    return snapshot;
+}
+
 // ---------------------------------------------------------------------------
 // Async mutation submit (Phase III: ops-as-values)
 // ---------------------------------------------------------------------------
@@ -675,13 +691,20 @@ void WorldSession::submit(ops::Tick op) {
     }
 
     if (++stats_.ticks >= K_STATS_INTERVAL) {
+        auto status = runtimeStatusSnapshot();
         bool any = stats_.encodes > 0 || stats_.loadsDispatched > 0 || stats_.loadsDbMiss > 0 || stats_.loadsOk > 0 ||
-                   stats_.loadsFail > 0;
+                   stats_.loadsFail > 0 || status.saveActivity.dirtyChunks > 0 ||
+                   status.saveActivity.savingChunks > 0 || status.saveActivity.preparedChunks > 0 ||
+                   status.saveActivity.hasError;
         if (any) {
-            FABRIC_LOG_INFO(
-                "persistence: encodes={} ({}B, {}zeroDiff) loads={} ({}ok {}fail {}miss {}cancel) pending={}",
-                stats_.encodes, stats_.encodeBytes, stats_.zeroDiffEncodes, stats_.loadsDispatched, stats_.loadsOk,
-                stats_.loadsFail, stats_.loadsDbMiss, stats_.loadsCancel, pendingLoads_.size());
+            const char* errorText = status.saveActivity.hasError ? status.saveActivity.lastError.c_str() : "none";
+            FABRIC_LOG_INFO("persistence: dir='{}' encodes={} ({}B, {}zeroDiff) loads={} ({}ok {}fail {}miss {}cancel) "
+                            "pendingLoads={} save(dirty={} saving={} prepared={} lastOk={} error={})",
+                            worldDir_, stats_.encodes, stats_.encodeBytes, stats_.zeroDiffEncodes,
+                            stats_.loadsDispatched, stats_.loadsOk, stats_.loadsFail, stats_.loadsDbMiss,
+                            stats_.loadsCancel, status.pendingLoads, status.saveActivity.dirtyChunks,
+                            status.saveActivity.savingChunks, status.saveActivity.preparedChunks,
+                            status.saveActivity.lastSuccessfulSerial, errorText);
         }
         stats_ = {};
     }

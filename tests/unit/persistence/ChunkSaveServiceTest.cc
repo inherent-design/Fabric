@@ -4,7 +4,9 @@
 #include "recurse/persistence/FchkCodec.hh"
 #include "recurse/persistence/SqliteChunkStore.hh"
 #include <filesystem>
+#include <future>
 #include <gtest/gtest.h>
+#include <stdexcept>
 
 namespace fs = std::filesystem;
 
@@ -112,4 +114,66 @@ TEST_F(ChunkSaveServiceTest, EmptyBlobSkipsSave) {
     svc.markDirty(0, 0, 0);
     svc.flush();
     EXPECT_FALSE(store_->hasChunk(0, 0, 0));
+}
+
+TEST_F(ChunkSaveServiceTest, ActivitySnapshotTracksDirtySavingAndSuccess) {
+    std::promise<void> unblockSave;
+    auto gate = unblockSave.get_future().share();
+
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) {
+        gate.wait();
+        return makeFakeBlob();
+    });
+    svc.debounceSeconds = 0.0f;
+    svc.maxDelaySeconds = 0.0f;
+
+    svc.markDirty(0, 0, 0);
+    auto snapshot = svc.activitySnapshot();
+    EXPECT_EQ(snapshot.dirtyChunks, 1u);
+    EXPECT_EQ(snapshot.savingChunks, 0u);
+    EXPECT_EQ(snapshot.lastStartedSerial, 0u);
+
+    svc.update(0.0f);
+    snapshot = svc.activitySnapshot();
+    EXPECT_EQ(snapshot.dirtyChunks, 1u);
+    EXPECT_EQ(snapshot.savingChunks, 1u);
+    EXPECT_EQ(snapshot.lastStartedSerial, 1u);
+    EXPECT_EQ(snapshot.lastSuccessfulSerial, 0u);
+
+    unblockSave.set_value();
+    writerQueue_.drain();
+
+    snapshot = svc.activitySnapshot();
+    EXPECT_EQ(snapshot.dirtyChunks, 0u);
+    EXPECT_EQ(snapshot.savingChunks, 0u);
+    EXPECT_EQ(snapshot.lastCompletedSerial, 1u);
+    EXPECT_EQ(snapshot.lastSuccessfulSerial, 1u);
+    EXPECT_FALSE(snapshot.hasError);
+    EXPECT_TRUE(store_->hasChunk(0, 0, 0));
+}
+
+TEST_F(ChunkSaveServiceTest, ActivitySnapshotRetainsFailureAndRequeuesPreparedBlobs) {
+    recurse::ChunkSaveService svc(
+        *store_, writerQueue_, [&](int, int, int) -> recurse::ChunkBlob { throw std::runtime_error("save failed"); });
+    svc.debounceSeconds = 0.0f;
+    svc.maxDelaySeconds = 0.0f;
+
+    svc.markDirty(0, 0, 0);
+    svc.enqueuePrepared(1, 2, 3, makeFakeBlob(0x33));
+
+    auto snapshot = svc.activitySnapshot();
+    EXPECT_EQ(snapshot.preparedChunks, 1u);
+
+    svc.update(0.0f);
+    writerQueue_.drain();
+
+    snapshot = svc.activitySnapshot();
+    EXPECT_EQ(snapshot.dirtyChunks, 1u);
+    EXPECT_EQ(snapshot.savingChunks, 0u);
+    EXPECT_EQ(snapshot.preparedChunks, 1u);
+    EXPECT_EQ(snapshot.lastCompletedSerial, 1u);
+    EXPECT_EQ(snapshot.lastSuccessfulSerial, 0u);
+    EXPECT_TRUE(snapshot.hasError);
+    EXPECT_EQ(snapshot.lastError, "save failed");
+    EXPECT_FALSE(store_->hasChunk(1, 2, 3));
 }

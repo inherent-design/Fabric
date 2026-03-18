@@ -3,6 +3,7 @@
 #include "fabric/log/Log.hh"
 #include "fabric/platform/WriterQueue.hh"
 #include <algorithm>
+#include <exception>
 #include <vector>
 
 namespace recurse {
@@ -75,9 +76,13 @@ void ChunkSaveService::flush() {
 
     std::vector<std::tuple<int, int, int>> toSave;
     std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> prepared;
+    uint64_t batchSerial = 0;
 
     {
         std::lock_guard lock(mutex_);
+        batchSerial = ++nextBatchSerial_;
+        lastStartedSerial_ = batchSerial;
+        lastError_.clear();
         for (auto& [key, entry] : dirty_) {
             int cz = static_cast<int>(key & 0x1FFFFF);
             if (cz & 0x100000)
@@ -96,28 +101,71 @@ void ChunkSaveService::flush() {
 
     std::sort(toSave.begin(), toSave.end());
 
-    std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> entries;
-    entries.reserve(toSave.size() + prepared.size());
-    for (auto& [cx, cy, cz] : toSave) {
-        auto blob = provider_(cx, cy, cz);
-        if (!blob.empty()) {
-            entries.push_back({fabric::ChunkCoord{cx, cy, cz}, std::move(blob)});
+    try {
+        FABRIC_LOG_INFO("ChunkSaveService: flush start serial={} dirty={} prepared={}", batchSerial, toSave.size(),
+                        prepared.size());
+
+        std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> entries;
+        entries.reserve(toSave.size() + prepared.size());
+        for (auto& [cx, cy, cz] : toSave) {
+            auto blob = provider_(cx, cy, cz);
+            if (!blob.empty()) {
+                entries.push_back({fabric::ChunkCoord{cx, cy, cz}, std::move(blob)});
+            }
         }
-    }
-    for (auto& entry : prepared)
-        entries.push_back(std::move(entry));
+        for (const auto& entry : prepared)
+            entries.push_back(entry);
 
-    if (!entries.empty()) {
-        store_.saveBatch(entries);
-    }
+        if (!entries.empty()) {
+            store_.saveBatch(entries);
+        }
 
-    std::lock_guard lock(mutex_);
-    dirty_.clear();
+        std::lock_guard lock(mutex_);
+        dirty_.clear();
+        lastCompletedSerial_ = batchSerial;
+        lastSuccessfulSerial_ = batchSerial;
+        lastError_.clear();
+        FABRIC_LOG_INFO("ChunkSaveService: flush complete serial={} entries={}", batchSerial, entries.size());
+    } catch (const std::exception& ex) {
+        std::lock_guard lock(mutex_);
+        lastCompletedSerial_ = batchSerial;
+        lastError_ = ex.what();
+        for (auto& entry : prepared)
+            preparedBlobs_.push_back(entry);
+        FABRIC_LOG_ERROR("ChunkSaveService: flush failed serial={}: {}", batchSerial, ex.what());
+    } catch (...) {
+        std::lock_guard lock(mutex_);
+        lastCompletedSerial_ = batchSerial;
+        lastError_ = "unknown error";
+        for (auto& entry : prepared)
+            preparedBlobs_.push_back(entry);
+        FABRIC_LOG_ERROR("ChunkSaveService: flush failed serial={} with unknown error", batchSerial);
+    }
 }
 
 size_t ChunkSaveService::pendingCount() const {
     std::lock_guard lock(mutex_);
     return dirty_.size();
+}
+
+ChunkSaveService::ActivitySnapshot ChunkSaveService::activitySnapshot() const {
+    std::lock_guard lock(mutex_);
+
+    ActivitySnapshot snapshot;
+    snapshot.dirtyChunks = dirty_.size();
+    snapshot.preparedChunks = preparedBlobs_.size();
+    snapshot.lastStartedSerial = lastStartedSerial_;
+    snapshot.lastCompletedSerial = lastCompletedSerial_;
+    snapshot.lastSuccessfulSerial = lastSuccessfulSerial_;
+    snapshot.hasError = !lastError_.empty();
+    snapshot.lastError = lastError_;
+
+    for (const auto& [_, entry] : dirty_) {
+        if (entry.saving)
+            ++snapshot.savingChunks;
+    }
+
+    return snapshot;
 }
 
 ChunkSaveService::ChunkKey ChunkSaveService::makeKey(int cx, int cy, int cz) {
@@ -130,34 +178,71 @@ ChunkSaveService::ChunkKey ChunkSaveService::makeKey(int cx, int cy, int cz) {
 
 void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chunks) {
     std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> prepared;
+    uint64_t batchSerial = 0;
     {
         std::lock_guard lock(mutex_);
         prepared = std::move(preparedBlobs_);
+        batchSerial = ++nextBatchSerial_;
+        lastStartedSerial_ = batchSerial;
+        lastError_.clear();
     }
 
-    writerQueue_.submit([this, batch = std::move(chunks), prepared = std::move(prepared)]() mutable {
-        std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> entries;
-        entries.reserve(batch.size() + prepared.size());
+    FABRIC_LOG_INFO("ChunkSaveService: dispatch batch serial={} dirty={} prepared={}", batchSerial, chunks.size(),
+                    prepared.size());
 
-        for (auto& [cx, cy, cz] : batch) {
-            auto blob = provider_(cx, cy, cz);
-            if (!blob.empty() && blob.size() < 40)
-                continue; // F20: zero-diff blob; chunk matches worldgen reference
-            if (!blob.empty()) {
-                entries.push_back({fabric::ChunkCoord{cx, cy, cz}, std::move(blob)});
+    writerQueue_.submit([this, batch = std::move(chunks), prepared = std::move(prepared), batchSerial]() mutable {
+        try {
+            std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> entries;
+            entries.reserve(batch.size() + prepared.size());
+
+            for (auto& [cx, cy, cz] : batch) {
+                auto blob = provider_(cx, cy, cz);
+                if (!blob.empty() && blob.size() < 40)
+                    continue; // F20: zero-diff blob; chunk matches worldgen reference
+                if (!blob.empty()) {
+                    entries.push_back({fabric::ChunkCoord{cx, cy, cz}, std::move(blob)});
+                }
             }
-        }
 
-        for (auto& entry : prepared)
-            entries.push_back(std::move(entry));
+            for (const auto& entry : prepared)
+                entries.push_back(entry);
 
-        if (!entries.empty()) {
-            store_.saveBatch(entries);
-        }
+            if (!entries.empty()) {
+                store_.saveBatch(entries);
+            }
 
-        std::lock_guard lock(mutex_);
-        for (auto& [cx, cy, cz] : batch) {
-            dirty_.erase(makeKey(cx, cy, cz));
+            std::lock_guard lock(mutex_);
+            for (auto& [cx, cy, cz] : batch) {
+                dirty_.erase(makeKey(cx, cy, cz));
+            }
+            lastCompletedSerial_ = batchSerial;
+            lastSuccessfulSerial_ = batchSerial;
+            lastError_.clear();
+            FABRIC_LOG_INFO("ChunkSaveService: batch complete serial={} entries={}", batchSerial, entries.size());
+        } catch (const std::exception& ex) {
+            std::lock_guard lock(mutex_);
+            lastCompletedSerial_ = batchSerial;
+            lastError_ = ex.what();
+            for (auto& [cx, cy, cz] : batch) {
+                auto it = dirty_.find(makeKey(cx, cy, cz));
+                if (it != dirty_.end())
+                    it->second.saving = false;
+            }
+            for (auto& entry : prepared)
+                preparedBlobs_.push_back(std::move(entry));
+            FABRIC_LOG_ERROR("ChunkSaveService: batch failed serial={}: {}", batchSerial, ex.what());
+        } catch (...) {
+            std::lock_guard lock(mutex_);
+            lastCompletedSerial_ = batchSerial;
+            lastError_ = "unknown error";
+            for (auto& [cx, cy, cz] : batch) {
+                auto it = dirty_.find(makeKey(cx, cy, cz));
+                if (it != dirty_.end())
+                    it->second.saving = false;
+            }
+            for (auto& entry : prepared)
+                preparedBlobs_.push_back(std::move(entry));
+            FABRIC_LOG_ERROR("ChunkSaveService: batch failed serial={} with unknown error", batchSerial);
         }
     });
 }

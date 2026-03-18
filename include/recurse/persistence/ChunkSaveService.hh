@@ -2,8 +2,10 @@
 
 #include "recurse/persistence/ChunkStore.hh"
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <mutex>
+#include <string>
 #include <unordered_map>
 
 namespace fabric::platform {
@@ -19,6 +21,17 @@ namespace recurse {
 /// (force save if editing continuously).
 class ChunkSaveService {
   public:
+    struct ActivitySnapshot {
+        size_t dirtyChunks = 0;
+        size_t savingChunks = 0;
+        size_t preparedChunks = 0;
+        uint64_t lastStartedSerial = 0;
+        uint64_t lastCompletedSerial = 0;
+        uint64_t lastSuccessfulSerial = 0;
+        bool hasError = false;
+        std::string lastError;
+    };
+
     /// Callback to retrieve current chunk data as FCHK-encoded blob.
     using DataProvider = std::function<ChunkBlob(int cx, int cy, int cz)>;
 
@@ -40,6 +53,9 @@ class ChunkSaveService {
 
     /// Number of chunks currently awaiting save.
     size_t pendingCount() const;
+
+    /// Read-only snapshot for UI and diagnostic save status.
+    ActivitySnapshot activitySnapshot() const;
 
     /// Debounce timing configuration.
     float debounceSeconds = 1.3f;
@@ -64,6 +80,11 @@ class ChunkSaveService {
     mutable std::mutex mutex_;
     std::unordered_map<ChunkKey, DirtyEntry> dirty_;
     std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> preparedBlobs_;
+    uint64_t nextBatchSerial_ = 0;
+    uint64_t lastStartedSerial_ = 0;
+    uint64_t lastCompletedSerial_ = 0;
+    uint64_t lastSuccessfulSerial_ = 0;
+    std::string lastError_;
 };
 
 } // namespace recurse

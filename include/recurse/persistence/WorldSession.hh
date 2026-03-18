@@ -6,6 +6,7 @@
 #include "fabric/platform/ScopedTaskGroup.hh"
 #include "fabric/platform/WriterQueue.hh"
 #include "fabric/world/ChunkCoord.hh"
+#include "recurse/persistence/ChunkSaveService.hh"
 #include "recurse/persistence/ChunkStore.hh"
 #include "recurse/persistence/SqliteChunkStore.hh"
 #include "recurse/persistence/WorldTransactionStore.hh"
@@ -35,7 +36,6 @@ namespace recurse {
 class ChunkSnapshotProvider;
 class SqliteChunkStore;
 class SqliteTransactionStore;
-class ChunkSaveService;
 class SnapshotScheduler;
 class PruningScheduler;
 class WorldGenerator;
@@ -83,6 +83,11 @@ class WorldSession {
         simulation::ChunkRef<simulation::Generating> generating;
     };
 
+    struct RuntimeStatusSnapshot {
+        size_t pendingLoads = 0;
+        ChunkSaveService::ActivitySnapshot saveActivity;
+    };
+
     // --- Methods migrated from ChunkPipelineSystem ---
 
     ChunkBlob encodeChunkBlob(int cx, int cy, int cz);
@@ -108,6 +113,8 @@ class WorldSession {
     WorldTransactionStore* transactionStore() const;
     ChunkSnapshotProvider* chunkSnapshotProvider() const;
     persistence::ReplayExecutor* replayExecutor() const;
+    RuntimeStatusSnapshot runtimeStatusSnapshot() const;
+    const std::string& worldDir() const { return worldDir_; }
 
     auto& chunkEntities() { return chunkEntities_; }
     const auto& chunkEntities() const { return chunkEntities_; }
@@ -212,6 +219,7 @@ class WorldSession {
     int maxLoadCompletions_ = 16;
     int lodHysteresis_ = 2;
     float checkpointElapsed_{0.0f};
+    std::string worldDir_;
 
     // Non-owning references (outlive session)
     fabric::EventDispatcher& dispatcher_;

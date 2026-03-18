@@ -16,6 +16,7 @@
 #include "fabric/utils/Profiler.hh"
 #include "recurse/ai/BehaviorAI.hh"
 #include "recurse/character/MovementFSM.hh"
+#include "recurse/persistence/WorldSession.hh"
 #include "recurse/physics/PhysicsWorld.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/ChunkRegistry.hh"
@@ -47,6 +48,12 @@
 
 namespace recurse::systems {
 
+namespace {
+
+constexpr int K_AUTOSAVE_SAVED_FRAMES = 120;
+
+}
+
 void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
     if (auto* wl = ctx.worldLifecycle) {
         wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
@@ -65,6 +72,7 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
 
     debugDraw_.init();
     debugHUD_.init(ctx.rmlContext);
+    autosavePanel_.init(ctx.rmlContext);
     chunkDebugPanel_.init(ctx.rmlContext);
     lodStatsPanel_.init(ctx.rmlContext);
     concurrencyPanel_.init(ctx.rmlContext);
@@ -370,6 +378,61 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
 
         debugHUD_.update(debugData);
 
+        recurse::AutosaveIndicatorData autosaveData;
+        if (chunks_ && chunks_->session()) {
+            auto saveStatus = chunks_->session()->runtimeStatusSnapshot().saveActivity;
+            size_t pendingDirty = saveStatus.dirtyChunks >= saveStatus.savingChunks
+                                      ? (saveStatus.dirtyChunks - saveStatus.savingChunks)
+                                      : 0;
+            bool hasSaving = saveStatus.savingChunks > 0;
+            bool hasPending = pendingDirty > 0 || saveStatus.preparedChunks > 0;
+            bool hasWork = saveStatus.dirtyChunks > 0 || saveStatus.savingChunks > 0 || saveStatus.preparedChunks > 0;
+
+            if (saveStatus.hasError) {
+                autosaveData.visible = true;
+                autosaveData.statusText = "Autosave issue";
+                autosaveData.detailText =
+                    saveStatus.lastError.empty() ? "Save failed. Retry pending." : saveStatus.lastError;
+                autosaveSavedFramesRemaining_ = 0;
+            } else if (hasSaving) {
+                autosaveData.visible = true;
+                autosaveData.statusText = "Saving...";
+                autosaveData.detailText = std::to_string(saveStatus.savingChunks) + " chunk(s) writing";
+                autosaveHadWork_ = true;
+                autosaveSavedFramesRemaining_ = 0;
+            } else if (hasPending) {
+                autosaveData.visible = true;
+                autosaveData.statusText = "Autosave pending";
+                autosaveData.detailText =
+                    std::to_string(pendingDirty) + " dirty, " + std::to_string(saveStatus.preparedChunks) + " queued";
+                autosaveHadWork_ = true;
+                autosaveSavedFramesRemaining_ = 0;
+            } else {
+                if (saveStatus.lastSuccessfulSerial != 0 &&
+                    saveStatus.lastSuccessfulSerial != lastAutosaveSuccessSerial_) {
+                    lastAutosaveSuccessSerial_ = saveStatus.lastSuccessfulSerial;
+                    if (autosaveHadWork_)
+                        autosaveSavedFramesRemaining_ = K_AUTOSAVE_SAVED_FRAMES;
+                    autosaveHadWork_ = false;
+                }
+
+                if (autosaveSavedFramesRemaining_ > 0) {
+                    autosaveData.visible = true;
+                    autosaveData.statusText = "Saved";
+                    autosaveData.detailText = "All recent world changes are on disk";
+                    --autosaveSavedFramesRemaining_;
+                }
+            }
+
+            if (!hasWork && !saveStatus.hasError)
+                autosaveHadWork_ = autosaveHadWork_ && autosaveSavedFramesRemaining_ > 0;
+        } else {
+            lastAutosaveSuccessSerial_ = 0;
+            autosaveSavedFramesRemaining_ = 0;
+            autosaveHadWork_ = false;
+        }
+        autosavePanel_.update(autosaveData);
+
         // Periodic performance log (every 1000 frames)
         if (frameCounter_ % 1000 == 0) {
             FABRIC_LOG_INFO("perf: frame={} fps={:.1f} dt={:.1f}ms gpu={:.1f}ms draws={} tris={} chunks={}/{} "
@@ -471,6 +534,7 @@ void DebugOverlaySystem::doShutdown() {
     concurrencyPanel_.shutdown();
     lodStatsPanel_.shutdown();
     chunkDebugPanel_.shutdown();
+    autosavePanel_.shutdown();
     hotkeyPanel_.shutdown();
     wailaPanel_.shutdown();
     debugHUD_.shutdown();

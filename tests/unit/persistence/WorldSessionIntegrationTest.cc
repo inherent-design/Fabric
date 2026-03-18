@@ -240,6 +240,23 @@ TEST_F(WorldSessionIntegrationTest, EventListenerMarksDirty) {
     EXPECT_EQ(saveService->pendingCount(), 1u);
 }
 
+TEST_F(WorldSessionIntegrationTest, RuntimeStatusSnapshotIncludesSaveActivity) {
+    openSession();
+    ASSERT_NE(session_, nullptr);
+
+    fabric::Event e(recurse::K_VOXEL_CHANGED_EVENT, "test");
+    e.setData("cx", 10);
+    e.setData("cy", 20);
+    e.setData("cz", 30);
+    dispatcher_.dispatchEvent(e);
+
+    auto snapshot = session_->runtimeStatusSnapshot();
+    EXPECT_EQ(snapshot.pendingLoads, 0u);
+    EXPECT_EQ(snapshot.saveActivity.dirtyChunks, 1u);
+    EXPECT_EQ(snapshot.saveActivity.savingChunks, 0u);
+    EXPECT_FALSE(snapshot.saveActivity.hasError);
+}
+
 TEST_F(WorldSessionIntegrationTest, EventListenerBuffersDetailedChanges) {
     openSession();
     ASSERT_NE(session_, nullptr);

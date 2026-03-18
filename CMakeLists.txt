@@ -262,6 +262,7 @@ set(RECURSE_GAME_SOURCE_FILES
     # ui/
     src/recurse/ui/ContentBrowser.cc
     src/recurse/ui/DevConsole.cc
+    src/recurse/ui/AutosavePanel.cc
     src/recurse/ui/ChunkDebugPanel.cc
     src/recurse/ui/DebugHUD.cc
     src/recurse/ui/LODStatsPanel.cc

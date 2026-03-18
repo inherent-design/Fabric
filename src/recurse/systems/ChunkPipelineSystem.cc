@@ -321,7 +321,8 @@ const std::unordered_map<ChunkCoord, flecs::entity, ChunkCoordHash>& ChunkPipeli
     return session_ ? session_->chunkEntities() : empty;
 }
 
-void ChunkPipelineSystem::loadWorld(const std::string& worldDir, fabric::JobScheduler& scheduler) {
+bool ChunkPipelineSystem::loadWorld(const std::string& worldDir, fabric::JobScheduler& scheduler) {
+    FABRIC_LOG_INFO("ChunkPipeline: load request dir='{}'", worldDir);
     unloadWorld();
 
     auto result = recurse::WorldSession::open(worldDir, *dispatcher_, scheduler, *ecsWorld_, simSystem_, meshingSystem_,
@@ -332,19 +333,32 @@ void ChunkPipelineSystem::loadWorld(const std::string& worldDir, fabric::JobSche
         ctx_.emplace(*session_);
         session_->setMaxLoadCompletions(maxLoadCompletions_);
         session_->setLodHysteresis(lodHysteresis_);
-        FABRIC_LOG_INFO("ChunkPipeline: world loaded");
+        FABRIC_LOG_INFO("ChunkPipeline: world loaded dir='{}'", worldDir);
+        return true;
     } else {
         auto& err = result.error<fabric::fx::IOError>();
         FABRIC_LOG_ERROR("ChunkPipeline: failed to load world {}: {}", worldDir, err.ctx.message);
+        return false;
     }
 }
 
 void ChunkPipelineSystem::unloadWorld() {
+    if (session_) {
+        auto status = session_->runtimeStatusSnapshot();
+        const char* errorText = status.saveActivity.hasError ? status.saveActivity.lastError.c_str() : "none";
+        FABRIC_LOG_INFO(
+            "ChunkPipeline: unload request dir='{}' pendingLoads={} dirty={} saving={} prepared={} error={}",
+            session_->worldDir(), status.pendingLoads, status.saveActivity.dirtyChunks,
+            status.saveActivity.savingChunks, status.saveActivity.preparedChunks, errorText);
+    }
+
     ctx_.reset();
     session_.reset();
 
     if (streaming_)
         streaming_->clear();
+
+    FABRIC_LOG_INFO("ChunkPipeline: unload complete");
 }
 
 } // namespace recurse::systems

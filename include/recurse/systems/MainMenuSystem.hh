@@ -2,10 +2,13 @@
 
 #include "fabric/core/SystemBase.hh"
 #include "fabric/render/Geometry.hh"
+#include "fabric/world/ChunkCoord.hh"
 #include "recurse/world/WorldType.hh"
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/DataModelHandle.h>
 #include <string>
@@ -50,7 +53,9 @@ enum class MenuState {
     WorldList,   // Saved worlds list (load, delete, rename)
     Settings,    // Settings panel (unwired for now)
     Pause,       // In-game pause menu (Resume, Quit to Title, Exit)
-    Hidden       // Game is running, menu not visible
+    WorldLoading,
+    WorldExiting,
+    Hidden // Game is running, menu not visible
 };
 
 /// Main menu system with splash screen support.
@@ -99,7 +104,18 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     void showWorldList();
     void showSettings();
     void showPause();
+    void showWorldTransition();
     void hideMenu();
+
+    void requestWorldStart(recurse::WorldType type, int64_t seed, std::string uuid, bool isNew,
+                           std::string displayName);
+    void executePendingWorldStart();
+    bool isPendingWorldReady() const;
+    void updateWorldLoadingScreen();
+    void requestWorldExit(bool exitToDesktop);
+    void executePendingWorldExit();
+    void setTransitionText(std::string title, std::string stage, std::string detail);
+    fabric::ChunkCoord playerChunkCoord() const;
 
     // Button handlers (called from RmlUi)
     void onStartClicked();
@@ -126,6 +142,14 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     void setWorldSystemsEnabled(bool enabled);
 
     // Members
+    struct PendingWorldStart {
+        recurse::WorldType type = recurse::WorldType::Flat;
+        int64_t seed = 0;
+        std::string uuid;
+        bool isNew = false;
+        std::string displayName;
+    };
+
     Rml::Context* rmlContext_ = nullptr;
     Rml::ElementDocument* currentDocument_ = nullptr;
     Rml::DataModelHandle dataModelHandle_;
@@ -153,6 +177,9 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     // Data model bindings
     std::string titleText_ = "RECURSE";
     std::string versionText_ = "v0.1.0";
+    std::string transitionTitle_;
+    std::string transitionStage_;
+    std::string transitionDetail_;
 
     // New World screen bindings
     std::string newWorldName_ = "New World";
@@ -163,6 +190,15 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     std::string selectedWorldUUID_;
     std::string renamingWorldUUID_;
     std::string deletingWorldUUID_;
+
+    std::optional<PendingWorldStart> pendingWorldStart_;
+    std::optional<PendingWorldStart> activeWorldStart_;
+    bool pendingExitToDesktop_ = false;
+    bool exitRequested_ = false;
+    bool enterInProgress_ = false;
+    bool enterStartSucceeded_ = false;
+    int enterReadyFramesRemaining_ = 0;
+    fabric::ChunkCoord enterSpawnChunk_{};
 };
 
 } // namespace recurse::systems

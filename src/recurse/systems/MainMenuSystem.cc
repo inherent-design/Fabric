@@ -2,6 +2,9 @@
 #include "recurse/character/GameConstants.hh"
 #include "recurse/persistence/WorldMetadata.hh"
 #include "recurse/persistence/WorldRegistry.hh"
+#include "recurse/persistence/WorldSession.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/AppModeManager.hh"
@@ -36,6 +39,7 @@
 #include <RmlUi/Core/EventListener.h>
 
 #include <chrono>
+#include <cmath>
 #include <SDL3/SDL.h>
 
 namespace recurse::systems {
@@ -90,6 +94,8 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
 
     // Set up start game callback
     startGameCallback_ = [this](WorldType type, int64_t seed, const std::string& uuid, bool isNew) {
+        enterStartSucceeded_ = false;
+
         if (!terrain_) {
             FABRIC_LOG_ERROR("MainMenuSystem: Cannot start game - no TerrainSystem");
             return;
@@ -113,7 +119,11 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
 
         // Wire persistence before generation so streaming can save/load chunks
         if (chunkPipeline_ && worldRegistry_ && !uuid.empty()) {
-            chunkPipeline_->loadWorld(worldRegistry_->worldPath(uuid).string(), voxelSim_->scheduler());
+            if (!chunkPipeline_->loadWorld(worldRegistry_->worldPath(uuid).string(), voxelSim_->scheduler())) {
+                FABRIC_LOG_ERROR("MainMenu: Failed to open world session for '{}'", uuid);
+                activeWorldUUID_.clear();
+                return;
+            }
         }
 
         if (worldLifecycle_)
@@ -138,13 +148,16 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
                 FABRIC_LOG_INFO("MainMenu: Player position set to spawn ({}, {}, {})", K_DEFAULT_SPAWN_X, spawnY,
                                 K_DEFAULT_SPAWN_Z);
             }
+
+            enterSpawnChunk_ = playerChunkCoord();
         }
 
         setWorldSystemsEnabled(true);
+        enterReadyFramesRemaining_ = isNew ? 1 : 0;
+        enterStartSucceeded_ = true;
 
-        if (appModeManager_) {
-            appModeManager_->transition(fabric::AppMode::Game);
-        }
+        FABRIC_LOG_INFO("MainMenu: world enter prepared uuid='{}' new={} spawnChunk=({}, {}, {})", uuid, isNew,
+                        enterSpawnChunk_.x, enterSpawnChunk_.y, enterSpawnChunk_.z);
     };
 
     // AppMode observer: show/hide pause menu based on mode transitions
@@ -192,6 +205,9 @@ void MainMenuSystem::initRmlDataModel() {
 
     constructor.Bind("title_text", &titleText_);
     constructor.Bind("version_text", &versionText_);
+    constructor.Bind("transition_title", &transitionTitle_);
+    constructor.Bind("transition_stage", &transitionStage_);
+    constructor.Bind("transition_detail", &transitionDetail_);
 
     dataModelHandle_ = constructor.GetModelHandle();
 }
@@ -219,6 +235,34 @@ void MainMenuSystem::doShutdown() {
 void MainMenuSystem::update(fabric::AppContext& /*ctx*/, float dt) {
     if (menuState_ == MenuState::Splash) {
         advanceSplash(dt);
+        return;
+    }
+
+    if (menuState_ == MenuState::WorldLoading) {
+        if (pendingWorldStart_) {
+            executePendingWorldStart();
+        } else if (enterInProgress_) {
+            updateWorldLoadingScreen();
+            if (isPendingWorldReady()) {
+                if (enterReadyFramesRemaining_ > 0) {
+                    --enterReadyFramesRemaining_;
+                    return;
+                }
+
+                FABRIC_LOG_INFO("MainMenu: world enter complete '{}', switching to gameplay",
+                                activeWorldStart_ ? activeWorldStart_->displayName : std::string("world"));
+                enterInProgress_ = false;
+                activeWorldStart_.reset();
+                transitionTo(MenuState::Hidden);
+                if (appModeManager_)
+                    appModeManager_->transition(fabric::AppMode::Game);
+            }
+        }
+        return;
+    }
+
+    if (menuState_ == MenuState::WorldExiting && exitRequested_) {
+        executePendingWorldExit();
     }
 }
 
@@ -280,6 +324,10 @@ void MainMenuSystem::transitionTo(MenuState newState) {
             break;
         case MenuState::Pause:
             showPause();
+            break;
+        case MenuState::WorldLoading:
+        case MenuState::WorldExiting:
+            showWorldTransition();
             break;
         case MenuState::Hidden:
             hideMenu();
@@ -635,6 +683,143 @@ void MainMenuSystem::showPause() {
     }
 }
 
+void MainMenuSystem::showWorldTransition() {
+    showDocument("assets/ui/world_transition.rml");
+}
+
+void MainMenuSystem::setTransitionText(std::string title, std::string stage, std::string detail) {
+    transitionTitle_ = std::move(title);
+    transitionStage_ = std::move(stage);
+    transitionDetail_ = std::move(detail);
+    if (dataModelHandle_)
+        dataModelHandle_.DirtyAllVariables();
+}
+
+void MainMenuSystem::requestWorldStart(recurse::WorldType type, int64_t seed, std::string uuid, bool isNew,
+                                       std::string displayName) {
+    pendingWorldStart_ = PendingWorldStart{type, seed, std::move(uuid), isNew, std::move(displayName)};
+    activeWorldStart_.reset();
+    enterInProgress_ = false;
+    enterStartSucceeded_ = false;
+    exitRequested_ = false;
+    pendingExitToDesktop_ = false;
+
+    FABRIC_LOG_INFO("MainMenu: queued world enter '{}' uuid='{}' new={} seed={}", pendingWorldStart_->displayName,
+                    pendingWorldStart_->uuid, pendingWorldStart_->isNew, pendingWorldStart_->seed);
+    setTransitionText("Loading world", "Preparing session", pendingWorldStart_->displayName);
+    transitionTo(MenuState::WorldLoading);
+}
+
+void MainMenuSystem::executePendingWorldStart() {
+    if (!pendingWorldStart_)
+        return;
+
+    activeWorldStart_ = std::move(pendingWorldStart_);
+    pendingWorldStart_.reset();
+    const auto& request = *activeWorldStart_;
+    setTransitionText("Loading world", "Opening world", request.displayName);
+
+    FABRIC_LOG_INFO("MainMenu: begin world enter '{}' uuid='{}' new={} seed={}", request.displayName, request.uuid,
+                    request.isNew, request.seed);
+
+    if (startGameCallback_) {
+        startGameCallback_(request.type, request.seed, request.uuid, request.isNew);
+    }
+
+    if (!enterStartSucceeded_) {
+        FABRIC_LOG_ERROR("MainMenu: world enter failed '{}'", request.displayName);
+        activeWorldStart_.reset();
+        enterInProgress_ = false;
+        setWorldSystemsEnabled(false);
+        transitionTo(MenuState::TitleScreen);
+        return;
+    }
+
+    enterInProgress_ = true;
+    updateWorldLoadingScreen();
+}
+
+void MainMenuSystem::updateWorldLoadingScreen() {
+    if (!activeWorldStart_)
+        return;
+
+    std::string detail = activeWorldStart_->displayName + " | spawn chunk (" + std::to_string(enterSpawnChunk_.x) +
+                         ", " + std::to_string(enterSpawnChunk_.y) + ", " + std::to_string(enterSpawnChunk_.z) + ")";
+
+    if (chunkPipeline_ && chunkPipeline_->session()) {
+        auto status = chunkPipeline_->session()->runtimeStatusSnapshot();
+        detail += " | pending loads " + std::to_string(status.pendingLoads);
+    }
+
+    setTransitionText("Loading world", isPendingWorldReady() ? "Entering world" : "Loading spawn area", detail);
+}
+
+bool MainMenuSystem::isPendingWorldReady() const {
+    if (!enterInProgress_ || !activeWorldStart_)
+        return false;
+
+    if (!voxelSim_)
+        return true;
+
+    const auto& registry = voxelSim_->simulationGrid().registry();
+    const int radius = activeWorldStart_->isNew ? 0 : 1;
+    for (int dz = -radius; dz <= radius; ++dz) {
+        for (int dx = -radius; dx <= radius; ++dx) {
+            const auto* slot = registry.find(enterSpawnChunk_.x + dx, enterSpawnChunk_.y, enterSpawnChunk_.z + dz);
+            if (!slot || slot->state != simulation::ChunkSlotState::Active)
+                return false;
+        }
+    }
+
+    return true;
+}
+
+void MainMenuSystem::requestWorldExit(bool exitToDesktop) {
+    pendingExitToDesktop_ = exitToDesktop;
+    exitRequested_ = true;
+    pendingWorldStart_.reset();
+    activeWorldStart_.reset();
+    enterInProgress_ = false;
+
+    FABRIC_LOG_INFO("MainMenu: queued world exit target={}", exitToDesktop ? "desktop" : "title");
+    setTransitionText("Saving world", exitToDesktop ? "Exiting to desktop" : "Returning to title",
+                      "Please wait while the current session is saved and torn down.");
+    transitionTo(MenuState::WorldExiting);
+}
+
+void MainMenuSystem::executePendingWorldExit() {
+    if (!exitRequested_)
+        return;
+
+    exitRequested_ = false;
+    FABRIC_LOG_INFO("MainMenu: begin world exit target={}", pendingExitToDesktop_ ? "desktop" : "title");
+    resetWorldState();
+
+    if (pendingExitToDesktop_) {
+        pendingExitToDesktop_ = false;
+        SDL_Event quitEvent;
+        quitEvent.type = SDL_EVENT_QUIT;
+        SDL_PushEvent(&quitEvent);
+        return;
+    }
+
+    transitionTo(MenuState::TitleScreen);
+    if (appModeManager_)
+        appModeManager_->transition(fabric::AppMode::Menu);
+}
+
+fabric::ChunkCoord MainMenuSystem::playerChunkCoord() const {
+    fabric::Vec3f position{K_DEFAULT_SPAWN_X, K_DEFAULT_SPAWN_Y, K_DEFAULT_SPAWN_Z};
+    if (characterMovement_)
+        position = characterMovement_->playerPosition();
+
+    auto toChunk = [](float value) {
+        return static_cast<int>(std::floor(value / recurse::simulation::K_CHUNK_SIZE));
+    };
+
+    return fabric::ChunkCoord{toChunk(position.x), toChunk(position.y), toChunk(position.z)};
+}
+
 void MainMenuSystem::hideMenu() {
     hideCurrentDocument();
 }
@@ -696,30 +881,28 @@ void MainMenuSystem::onQuitClicked() {
 
 void MainMenuSystem::onFlatWorldClicked() {
     FABRIC_LOG_INFO("MainMenu: Flat world selected");
-    if (startGameCallback_) {
-        auto seed = static_cast<int64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
-        std::string uuid;
-        if (worldRegistry_) {
-            auto meta = worldRegistry_->createWorld("Quick Play (Flat)", WorldType::Flat, seed);
-            uuid = meta.uuid;
-        }
-        startGameCallback_(WorldType::Flat, seed, uuid, true);
+    auto seed = static_cast<int64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+    std::string uuid;
+    std::string displayName = "Quick Play (Flat)";
+    if (worldRegistry_) {
+        auto meta = worldRegistry_->createWorld(displayName, WorldType::Flat, seed);
+        uuid = meta.uuid;
+        displayName = meta.name;
     }
-    transitionTo(MenuState::Hidden);
+    requestWorldStart(WorldType::Flat, seed, std::move(uuid), true, std::move(displayName));
 }
 
 void MainMenuSystem::onMinecraftWorldClicked() {
     FABRIC_LOG_INFO("MainMenu: Minecraft world selected");
-    if (startGameCallback_) {
-        auto seed = static_cast<int64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
-        std::string uuid;
-        if (worldRegistry_) {
-            auto meta = worldRegistry_->createWorld("Quick Play (Natural)", WorldType::Natural, seed);
-            uuid = meta.uuid;
-        }
-        startGameCallback_(WorldType::Natural, seed, uuid, true);
+    auto seed = static_cast<int64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+    std::string uuid;
+    std::string displayName = "Quick Play (Natural)";
+    if (worldRegistry_) {
+        auto meta = worldRegistry_->createWorld(displayName, WorldType::Natural, seed);
+        uuid = meta.uuid;
+        displayName = meta.name;
     }
-    transitionTo(MenuState::Hidden);
+    requestWorldStart(WorldType::Natural, seed, std::move(uuid), true, std::move(displayName));
 }
 
 void MainMenuSystem::onBackClicked() {
@@ -769,10 +952,7 @@ void MainMenuSystem::onCreateWorldClicked() {
     FABRIC_LOG_INFO("MainMenu: Created world '{}' (uuid={}, type={}, seed={})", meta.name, meta.uuid,
                     static_cast<int>(meta.type), meta.seed);
 
-    if (startGameCallback_) {
-        startGameCallback_(type, meta.seed, meta.uuid, true);
-    }
-    transitionTo(MenuState::Hidden);
+    requestWorldStart(type, meta.seed, meta.uuid, true, meta.name);
 }
 
 void MainMenuSystem::onDeleteWorldClicked(const std::string& uuid) {
@@ -827,10 +1007,7 @@ void MainMenuSystem::onWorldSelected(const std::string& uuid) {
     FABRIC_LOG_INFO("MainMenu: Loading world '{}' (type={}, seed={})", meta->name, static_cast<int>(meta->type),
                     meta->seed);
 
-    if (startGameCallback_) {
-        startGameCallback_(meta->type, meta->seed, uuid, false);
-    }
-    transitionTo(MenuState::Hidden);
+    requestWorldStart(meta->type, meta->seed, uuid, false, meta->name);
 }
 
 void MainMenuSystem::onResumeClicked() {
@@ -844,19 +1021,17 @@ void MainMenuSystem::onResumeClicked() {
 
 void MainMenuSystem::onQuitToTitleClicked() {
     FABRIC_LOG_INFO("MainMenu: Quit to Title clicked");
-    resetWorldState();
-    transitionTo(MenuState::TitleScreen);
-    if (appModeManager_) {
-        appModeManager_->transition(fabric::AppMode::Menu);
-    }
+    requestWorldExit(false);
 }
 
 void MainMenuSystem::resetWorldState() {
-    if (activeWorldUUID_.empty())
+    if (activeWorldUUID_.empty() && (!chunkPipeline_ || !chunkPipeline_->session()) && !enterInProgress_)
         return;
 
+    FABRIC_LOG_INFO("MainMenu: reset world state begin uuid='{}'", activeWorldUUID_);
+
     // Save player position to world.toml before tearing down
-    if (worldRegistry_) {
+    if (worldRegistry_ && !activeWorldUUID_.empty()) {
         auto meta = worldRegistry_->getWorld(activeWorldUUID_);
         if (meta && characterMovement_) {
             auto pos = characterMovement_->playerPosition();
@@ -867,8 +1042,8 @@ void MainMenuSystem::resetWorldState() {
             meta->toTOML((worldRegistry_->worldPath(activeWorldUUID_) / "world.toml").string());
             FABRIC_LOG_INFO("MainMenu: Saved player position ({}, {}, {})", pos.x, pos.y, pos.z);
         }
-        activeWorldUUID_.clear();
     }
+    activeWorldUUID_.clear();
 
     // Flush persistence BEFORE clearing world data. The DataProvider reads from
     // the simulation grid; grid.clear() would produce empty blobs.
@@ -879,14 +1054,16 @@ void MainMenuSystem::resetWorldState() {
         worldLifecycle_->endWorld();
 
     setWorldSystemsEnabled(false);
+    enterInProgress_ = false;
+    enterStartSucceeded_ = false;
+    activeWorldStart_.reset();
+    pendingWorldStart_.reset();
+    FABRIC_LOG_INFO("MainMenu: reset world state complete");
 }
 
 void MainMenuSystem::onExitToDesktopClicked() {
     FABRIC_LOG_INFO("MainMenu: Exit to Desktop clicked");
-    resetWorldState();
-    SDL_Event quitEvent;
-    quitEvent.type = SDL_EVENT_QUIT;
-    SDL_PushEvent(&quitEvent);
+    requestWorldExit(true);
 }
 
 void MainMenuSystem::setWorldSystemsEnabled(bool enabled) {
