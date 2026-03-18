@@ -164,3 +164,22 @@ TEST_F(PollPendingLoadsTest, CancelledLoadExcluded) {
     EXPECT_TRUE(completions.empty());
     EXPECT_TRUE(session_->pendingLoads().empty());
 }
+
+TEST_F(PollPendingLoadsTest, LoadWithoutPaletteRebuildsAndReplacesStalePalette) {
+    saveChunkToStore(8, 0, 8);
+
+    ASSERT_TRUE(session_->dispatchAsyncLoad(8, 0, 8));
+    auto* stalePalette = voxelSim_->simulationGrid().chunkPalette(8, 0, 8);
+    ASSERT_NE(stalePalette, nullptr);
+    stalePalette->addEntryRaw({0.9f, 0.1f, 0.2f, 0.3f});
+    ASSERT_EQ(stalePalette->paletteSize(), 1u);
+
+    auto completions = session_->pollPendingLoads();
+    ASSERT_EQ(completions.size(), 1u);
+    ASSERT_TRUE(completions[0].success);
+
+    auto* loadedPalette = voxelSim_->simulationGrid().chunkPalette(8, 0, 8);
+    ASSERT_NE(loadedPalette, nullptr);
+    EXPECT_GT(loadedPalette->paletteSize(), 1u);
+    EXPECT_EQ(voxelSim_->activityTracker().getState({8, 0, 8}), recurse::simulation::ChunkState::Active);
+}

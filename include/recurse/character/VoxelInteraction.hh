@@ -65,14 +65,15 @@ using recurse::simulation::SimulationGrid;
 using recurse::simulation::VoxelCell;
 
 struct InteractionResult {
-    bool success;
-    int x, y, z;
-    int cx, cy, cz;
+    bool success = false;
+    int x = 0, y = 0, z = 0;
+    int cx = 0, cy = 0, cz = 0;
+    VoxelChangeDetail detail{};
 };
 
 class VoxelInteraction {
   public:
-    VoxelInteraction(SimulationGrid& grid, EventDispatcher& dispatcher);
+    explicit VoxelInteraction(SimulationGrid& grid);
 
     // Place voxel adjacent to hit face
     InteractionResult createMatter(const VoxelHit& hit,
@@ -95,7 +96,6 @@ class VoxelInteraction {
 
   private:
     SimulationGrid& grid_;
-    EventDispatcher& dispatcher_;
 };
 
 } // namespace recurse

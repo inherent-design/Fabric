@@ -313,6 +313,7 @@ set(FABRIC_SIMULATION_SOURCE_FILES
     src/recurse/simulation/MaterialRegistry.cc
     src/recurse/simulation/SimulationGrid.cc
     src/recurse/simulation/ChunkActivityTracker.cc
+    src/recurse/simulation/ChunkFinalization.cc
     src/recurse/simulation/GhostCells.cc
     src/recurse/simulation/FallingSandSystem.cc
     src/recurse/simulation/VoxelSimulationSystem.cc

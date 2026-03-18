@@ -4,6 +4,7 @@
 #include "recurse/persistence/WorldTransactionStore.hh"
 #include "recurse/simulation/BoundaryWriteQueue.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/ChunkFinalization.hh"
 #include "recurse/simulation/EssenceAssigner.hh"
 #include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
@@ -91,13 +92,16 @@ ReplayResult ReplayExecutor::runLoop(const SnapshotSet& snapshot, std::span<cons
                         std::min(decoded.cells.size(), static_cast<size_t>(K_CHUNK_VOLUME) * sizeof(VoxelCell)));
         }
 
-        grid_.syncChunkBuffers(cs.coord.x, cs.coord.y, cs.coord.z);
+        ChunkBufferFinalizationOptions bufferOptions;
+        bufferOptions.materials = materials_;
+        bufferOptions.paletteData = std::span<const float>(decoded.paletteData.data(), decoded.paletteData.size());
+        bufferOptions.restorePalette = true;
+        finalizeChunkBuffers(grid_, cs.coord.x, cs.coord.y, cs.coord.z, bufferOptions);
 
-        tracker_.setState(cs.coord, ChunkState::Active);
-        for (int lz = 0; lz < K_CHUNK_SIZE; lz += K_PHYS_TILE_SIZE)
-            for (int ly = 0; ly < K_CHUNK_SIZE; ly += K_PHYS_TILE_SIZE)
-                for (int lx = 0; lx < K_CHUNK_SIZE; lx += K_PHYS_TILE_SIZE)
-                    tracker_.markSubRegionActive(cs.coord, lx, ly, lz);
+        ChunkActivationOptions activation;
+        activation.targetState = ChunkState::Active;
+        activation.activateAllSubRegions = true;
+        finalizeChunkActivation(tracker_, grid_, cs.coord.x, cs.coord.y, cs.coord.z, activation);
     }
 
     // Pre-sort user edits by tick index (ascending).
@@ -137,11 +141,10 @@ ReplayResult ReplayExecutor::runLoop(const SnapshotSet& snapshot, std::span<cons
 
             fabric::ChunkCoord editChunk{edit.addr.cx, edit.addr.cy, edit.addr.cz};
             if (tracker_.getState(editChunk) == ChunkState::Sleeping) {
-                tracker_.setState(editChunk, ChunkState::Active);
-                for (int lz = 0; lz < K_CHUNK_SIZE; lz += K_PHYS_TILE_SIZE)
-                    for (int ly = 0; ly < K_CHUNK_SIZE; ly += K_PHYS_TILE_SIZE)
-                        for (int lx = 0; lx < K_CHUNK_SIZE; lx += K_PHYS_TILE_SIZE)
-                            tracker_.markSubRegionActive(editChunk, lx, ly, lz);
+                ChunkActivationOptions activation;
+                activation.targetState = ChunkState::Active;
+                activation.activateAllSubRegions = true;
+                finalizeChunkActivation(tracker_, grid_, edit.addr.cx, edit.addr.cy, edit.addr.cz, activation);
             }
             affectedSet.insert(editChunk);
             ++editCursor;

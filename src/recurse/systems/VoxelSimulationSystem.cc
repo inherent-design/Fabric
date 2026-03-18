@@ -9,6 +9,7 @@
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/character/VoxelInteraction.hh"
+#include "recurse/simulation/ChunkFinalization.hh"
 #include "recurse/simulation/ChunkRegistry.hh"
 #include "recurse/simulation/ChunkState.hh"
 #include "recurse/simulation/EssenceAssigner.hh"
@@ -20,7 +21,18 @@
 
 namespace recurse::systems {
 
-using fabric::K_FACE_DIAGONAL_NEIGHBORS;
+namespace {
+
+void dispatchGenerationEvent(fabric::EventDispatcher& dispatcher, int cx, int cy, int cz) {
+    fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelSimulationSystem");
+    e.setData("cx", cx);
+    e.setData("cy", cy);
+    e.setData("cz", cz);
+    e.setData("source", static_cast<int>(ChangeSource::Generation));
+    dispatcher.dispatchEvent(e);
+}
+
+} // namespace
 
 VoxelSimulationSystem::VoxelSimulationSystem() = default;
 VoxelSimulationSystem::~VoxelSimulationSystem() = default;
@@ -211,37 +223,33 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
         if (buf && pal)
             recurse::simulation::assignEssence(buf->data(), cx, cy, cz, fabSim_->materials(), *pal, 42);
     }
-    grid.syncChunkBuffers(cx, cy, cz);
+    recurse::simulation::finalizeChunkBuffers(grid, cx, cy, cz);
     recurse::simulation::transition<recurse::simulation::Generating, recurse::simulation::Active>(generating, registry);
-    fabSim_->activityTracker().setState(recurse::simulation::ChunkCoord{cx, cy, cz},
-                                        recurse::simulation::ChunkState::Active);
+    recurse::simulation::ChunkActivationOptions activation;
+    activation.targetState = recurse::simulation::ChunkState::Active;
+    activation.neighborInvalidation = recurse::simulation::NeighborInvalidation::FaceAndDiagonalXZ;
+    recurse::simulation::finalizeChunkActivation(fabSim_->activityTracker(), fabSim_->grid(), cx, cy, cz, activation);
 
     // Initialize Jolt physics collision for this chunk (always dispatch, even for sentinels)
-    if (dispatcher_) {
-        fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelSimulationSystem");
-        e.setData("cx", cx);
-        e.setData("cy", cy);
-        e.setData("cz", cz);
-        e.setData("source", static_cast<int>(ChangeSource::Generation));
-        dispatcher_->dispatchEvent(e);
+    if (dispatcher_)
+        dispatchGenerationEvent(*dispatcher_, cx, cy, cz);
+}
+
+void VoxelSimulationSystem::finalizeExternalEdit(const recurse::InteractionResult& edit) {
+    if (!edit.success || !fabSim_ || !dispatcher_)
+        return;
+
+    recurse::simulation::ChunkActivationOptions activation;
+    activation.neighborInvalidation = recurse::simulation::NeighborInvalidation::Face;
+    if (edit.detail.source == ChangeSource::Place) {
+        activation.targetState = recurse::simulation::ChunkState::Active;
+    } else {
+        activation.notifyTargetBoundaryChange = true;
     }
 
-    // Notify all face-adjacent AND diagonal (in X/Z plane) existing chunks so they re-mesh boundaries.
-    // Corner vertices sample across diagonal chunks, so diagonal neighbors must also remesh.
-    int notifiedCount = 0;
-    for (int d = 0; d < 10; ++d) {
-        recurse::simulation::ChunkCoord neighbor{cx + K_FACE_DIAGONAL_NEIGHBORS[d][0],
-                                                 cy + K_FACE_DIAGONAL_NEIGHBORS[d][1],
-                                                 cz + K_FACE_DIAGONAL_NEIGHBORS[d][2]};
-        if (fabSim_->grid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
-            fabSim_->activityTracker().notifyBoundaryChange(neighbor);
-            ++notifiedCount;
-        }
-    }
-    if (notifiedCount > 0) {
-        FABRIC_LOG_TRACE("Notified {} existing neighbors (face+diagonal) after loading chunk ({},{},{})", notifiedCount,
-                         cx, cy, cz);
-    }
+    recurse::simulation::finalizeChunkActivation(fabSim_->activityTracker(), fabSim_->grid(), edit.cx, edit.cy, edit.cz,
+                                                 activation);
+    emitVoxelChanged(*dispatcher_, edit.cx, edit.cy, edit.cz, edit.detail);
 }
 
 void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int, int, int>>& chunks) {
@@ -292,37 +300,17 @@ void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int
 
     // Phase 2: Sequential finalization (state transitions, events, neighbor notifications).
     for (const auto& [cx, cy, cz] : chunks) {
-        grid.syncChunkBuffers(cx, cy, cz);
+        recurse::simulation::finalizeChunkBuffers(grid, cx, cy, cz);
         if (auto gen = recurse::simulation::findAs<recurse::simulation::Generating>(grid.registry(), cx, cy, cz))
             recurse::simulation::transition<recurse::simulation::Generating, recurse::simulation::Active>(
                 *gen, grid.registry());
-        tracker.setState(recurse::simulation::ChunkCoord{cx, cy, cz}, recurse::simulation::ChunkState::Active);
+        recurse::simulation::ChunkActivationOptions activation;
+        activation.targetState = recurse::simulation::ChunkState::Active;
+        activation.neighborInvalidation = recurse::simulation::NeighborInvalidation::FaceAndDiagonalXZ;
+        recurse::simulation::finalizeChunkActivation(tracker, grid, cx, cy, cz, activation);
 
-        if (dispatcher_) {
-            fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelSimulationSystem");
-            e.setData("cx", cx);
-            e.setData("cy", cy);
-            e.setData("cz", cz);
-            e.setData("source", static_cast<int>(ChangeSource::Generation));
-            dispatcher_->dispatchEvent(e);
-        }
-    }
-
-    for (const auto& [cx, cy, cz] : chunks) {
-        int notifiedCount = 0;
-        for (int d = 0; d < 10; ++d) {
-            recurse::simulation::ChunkCoord neighbor{cx + K_FACE_DIAGONAL_NEIGHBORS[d][0],
-                                                     cy + K_FACE_DIAGONAL_NEIGHBORS[d][1],
-                                                     cz + K_FACE_DIAGONAL_NEIGHBORS[d][2]};
-            if (fabSim_->grid().hasChunk(neighbor.x, neighbor.y, neighbor.z)) {
-                fabSim_->activityTracker().notifyBoundaryChange(neighbor);
-                ++notifiedCount;
-            }
-        }
-        if (notifiedCount > 0) {
-            FABRIC_LOG_TRACE("Notified {} existing neighbors (face+diagonal) after batch-loading chunk ({},{},{})",
-                             notifiedCount, cx, cy, cz);
-        }
+        if (dispatcher_)
+            dispatchGenerationEvent(*dispatcher_, cx, cy, cz);
     }
 
     genStats_.chunksGenerated += static_cast<int>(chunks.size());

@@ -11,6 +11,7 @@
 #include "recurse/persistence/SqliteChunkStore.hh"
 #include "recurse/persistence/SqliteTransactionStore.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/ChunkFinalization.hh"
 #include "recurse/simulation/ChunkState.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/systems/LODSystem.hh"
@@ -385,21 +386,18 @@ std::vector<ops::CompletedLoad> WorldSession::pollPendingLoads() {
             ++stats_.loadsOk;
             auto& grid = simSystem_->simulationGrid();
             auto& registry = grid.registry();
-            grid.syncChunkBuffersFrom(cx, cy, cz, meta.bufferIndex);
+            simulation::ChunkBufferFinalizationOptions bufferOptions;
+            bufferOptions.sourceBufferIndex = meta.bufferIndex;
+            bufferOptions.materials = &simSystem_->materials();
+            bufferOptions.paletteData =
+                std::span<const float>(entry.result.paletteData.data(), entry.result.paletteData.size());
+            bufferOptions.restorePalette = true;
+            simulation::finalizeChunkBuffers(grid, cx, cy, cz, bufferOptions);
             simulation::transition<simulation::Generating, simulation::Active>(meta.generating, registry);
-            simSystem_->activityTracker().setState(entry.key, recurse::simulation::ChunkState::Active);
-
-            if (entry.result.paletteEntryCount > 0) {
-                auto* palette = grid.chunkPalette(cx, cy, cz);
-                if (palette) {
-                    palette->clear();
-                    for (uint16_t i = 0; i < entry.result.paletteEntryCount; ++i) {
-                        size_t base = static_cast<size_t>(i) * 4;
-                        palette->addEntryRaw({entry.result.paletteData[base], entry.result.paletteData[base + 1],
-                                              entry.result.paletteData[base + 2], entry.result.paletteData[base + 3]});
-                    }
-                }
-            }
+            simulation::ChunkActivationOptions activation;
+            activation.targetState = recurse::simulation::ChunkState::Active;
+            activation.neighborInvalidation = recurse::simulation::NeighborInvalidation::FaceAndDiagonalXZ;
+            simulation::finalizeChunkActivation(simSystem_->activityTracker(), grid, cx, cy, cz, activation);
 
             // F42: Snapshot the chunk's initial state so replay has an anchor.
             if (snapshotScheduler_)

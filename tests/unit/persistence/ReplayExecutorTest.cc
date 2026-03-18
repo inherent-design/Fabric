@@ -78,7 +78,9 @@ class ReplayExecutorTest : public ::testing::Test {
         return c;
     }
 
-    ReplayExecutor makeExecutor() { return ReplayExecutor(txStore, grid, sandSystem, ghosts, tracker, worldSeed); }
+    ReplayExecutor makeExecutor() {
+        return ReplayExecutor(txStore, grid, sandSystem, ghosts, tracker, worldSeed, &registry);
+    }
 
     void runProductionTicks(uint64_t ticks) {
         for (uint64_t t = 0; t < ticks; ++t) {
@@ -299,4 +301,30 @@ TEST_F(ReplayExecutorTest, BoundaryDrainDeterministic) {
         EXPECT_EQ((*buf0)[i].materialId, state0[i].materialId) << "Non-determinism in chunk (0,0,0) at cell " << i;
         EXPECT_EQ((*buf1)[i].materialId, state1[i].materialId) << "Non-determinism in chunk (1,0,0) at cell " << i;
     }
+}
+
+TEST_F(ReplayExecutorTest, SnapshotRestoreRebuildsPaletteFromCellsWhenBlobHasNoPalette) {
+    grid.writeCell(6, 6, 6, makeMaterial(material_ids::STONE));
+    grid.advanceEpoch();
+    auto snapshot = makeSnapshot(grid, {ChunkCoord{0, 0, 0}}, 0);
+
+    grid.clear();
+    tracker.clear();
+    ghosts.clear();
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.materializeChunk(0, 0, 0);
+    auto* stalePalette = grid.chunkPalette(0, 0, 0);
+    ASSERT_NE(stalePalette, nullptr);
+    stalePalette->addEntryRaw({0.9f, 0.1f, 0.2f, 0.3f});
+    ASSERT_EQ(stalePalette->paletteSize(), 1u);
+
+    auto executor = makeExecutor();
+    auto result = executor.replayDelta(snapshot, {}, 0);
+
+    ASSERT_EQ(result.status, ReplayStatus::Ok);
+    auto* restoredPalette = grid.chunkPalette(0, 0, 0);
+    ASSERT_NE(restoredPalette, nullptr);
+    EXPECT_GT(restoredPalette->paletteSize(), 1u);
+    EXPECT_EQ(tracker.getState({0, 0, 0}), ChunkState::Active);
+    EXPECT_NE(tracker.getSubRegionMask({0, 0, 0}), 0u);
 }

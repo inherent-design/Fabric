@@ -7,8 +7,7 @@ using recurse::simulation::K_CHUNK_SHIFT;
 
 namespace recurse {
 
-VoxelInteraction::VoxelInteraction(SimulationGrid& grid, EventDispatcher& dispatcher)
-    : grid_(grid), dispatcher_(dispatcher) {}
+VoxelInteraction::VoxelInteraction(SimulationGrid& grid) : grid_(grid) {}
 
 InteractionResult VoxelInteraction::createMatter(const VoxelHit& hit, MaterialId materialId) {
     int x = hit.x + hit.nx;
@@ -37,8 +36,7 @@ InteractionResult VoxelInteraction::createMatter(const VoxelHit& hit, MaterialId
     detail.playerId = 0;
     detail.source = ChangeSource::Place;
 
-    emitVoxelChanged(dispatcher_, cx, cy, cz, detail);
-    return {true, x, y, z, cx, cy, cz};
+    return {true, x, y, z, cx, cy, cz, detail};
 }
 
 InteractionResult VoxelInteraction::destroyMatter(const VoxelHit& hit) {
@@ -68,15 +66,14 @@ InteractionResult VoxelInteraction::destroyMatter(const VoxelHit& hit) {
     detail.playerId = 0;
     detail.source = ChangeSource::Destroy;
 
-    emitVoxelChanged(dispatcher_, cx, cy, cz, detail);
-    return {true, x, y, z, cx, cy, cz};
+    return {true, x, y, z, cx, cy, cz, detail};
 }
 
 InteractionResult VoxelInteraction::createMatterAt(float ox, float oy, float oz, float dx, float dy, float dz,
                                                    MaterialId materialId, float maxDistance) {
     auto hit = castRay(grid_, ox, oy, oz, dx, dy, dz, maxDistance);
     if (!hit.has_value())
-        return {false, 0, 0, 0, 0, 0, 0};
+        return {};
     return createMatter(*hit, materialId);
 }
 
@@ -84,7 +81,7 @@ InteractionResult VoxelInteraction::destroyMatterAt(float ox, float oy, float oz
                                                     float maxDistance) {
     auto hit = castRay(grid_, ox, oy, oz, dx, dy, dz, maxDistance);
     if (!hit.has_value())
-        return {false, 0, 0, 0, 0, 0, 0};
+        return {};
     return destroyMatter(*hit);
 }
 
