@@ -128,11 +128,17 @@ struct CPUMeshResult {
     bool deferred = false; ///< True if neighbor check deferred meshing
 };
 
-/// Bridges simulation activity flags to mesh updates via SnapMC meshing.
-/// Runs in PreRender phase. Collects active chunks from ChunkActivityTracker,
-/// sorts by priority, and meshes up to a per-frame chunk budget.
+/// Bridges simulation activity flags to mesh updates via the selected near
+/// chunk meshing path. Runs in PreRender phase. Collects active chunks from
+/// ChunkActivityTracker, sorts by priority, and meshes up to a per-frame chunk
+/// budget.
 class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
   public:
+    enum class NearChunkMesher : uint8_t {
+        SnapMC,
+        Greedy,
+    };
+
     VoxelMeshingSystem();
     ~VoxelMeshingSystem() override;
 
@@ -151,6 +157,15 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     void setActivityTracker(recurse::simulation::ChunkActivityTracker* tracker);
     void setMeshBudget(int budget) { meshBudget_ = budget; }
     int meshBudget() const { return meshBudget_; }
+
+    /// Checkpoint 0 seam lock: SnapMC remains the default and effective
+    /// mesher. Greedy is a reserved selection that currently falls back to
+    /// SnapMC until the dedicated greedy CPU path lands.
+    void setNearChunkMesher(NearChunkMesher mesher) {
+        nearChunkMesher_ = mesher;
+        greedyFallbackLogged_ = false;
+    }
+    NearChunkMesher nearChunkMesher() const { return nearChunkMesher_; }
 
     /// When true, requires all 6 face-adjacent neighbors to exist before meshing.
     /// This prevents geometry gaps at chunk boundaries but requires notification
@@ -186,7 +201,8 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     recurse::simulation::ChunkActivityTracker* activityTracker_ = nullptr;
     const recurse::simulation::MaterialRegistry* materials_ = nullptr;
     fabric::JobScheduler* scheduler_ = nullptr;
-    std::unique_ptr<recurse::SnapMCMesher> mesher_;
+    std::unique_ptr<recurse::SnapMCMesher> snapMcMesher_;
+    NearChunkMesher nearChunkMesher_ = NearChunkMesher::SnapMC;
 
     std::unordered_map<fabric::ChunkCoord, ChunkGPUMesh, fabric::ChunkCoordHash> gpuMeshes_;
     std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> emptyChunks_;
@@ -196,6 +212,7 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     int meshBudget_ = 50; // Increased from 3 to handle initial load in one frame
     bool gpuUploadEnabled_ = false;
     bool requireNeighborsForMeshing_ = true;
+    mutable bool greedyFallbackLogged_ = false;
 
     int meshedThisFrame_ = 0;
     int emptySkippedThisFrame_ = 0;

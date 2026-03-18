@@ -5,6 +5,7 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/core/WorldLifecycle.hh"
 #include "fabric/log/Log.hh"
+#include "fabric/platform/ConfigManager.hh"
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkedGrid.hh"
@@ -20,7 +21,10 @@
 #include "recurse/world/SnapMCMesher.hh"
 
 #include <bgfx/bgfx.h>
+#include <optional>
 #include <set>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -32,13 +36,33 @@ using recurse::simulation::K_CHUNK_SIZE;
 
 namespace {
 
+constexpr std::string_view K_NEAR_CHUNK_MESHER_CONFIG_KEY = "voxel_meshing.near_chunk_mesher";
+
 uint16_t unpackMaterialId(uint32_t packedMaterial) {
     return static_cast<uint16_t>(packedMaterial & 0xFFFFu);
 }
 
+const char* nearChunkMesherName(VoxelMeshingSystem::NearChunkMesher mesher) {
+    switch (mesher) {
+        case VoxelMeshingSystem::NearChunkMesher::SnapMC:
+            return "SnapMC";
+        case VoxelMeshingSystem::NearChunkMesher::Greedy:
+            return "Greedy";
+    }
+    return "Unknown";
+}
+
+std::optional<VoxelMeshingSystem::NearChunkMesher> parseNearChunkMesher(std::string_view value) {
+    if (value == "snapmc" || value == "snap_mc")
+        return VoxelMeshingSystem::NearChunkMesher::SnapMC;
+    if (value == "greedy")
+        return VoxelMeshingSystem::NearChunkMesher::Greedy;
+    return std::nullopt;
+}
+
 } // namespace
 
-VoxelMeshingSystem::VoxelMeshingSystem() : mesher_(std::make_unique<SnapMCMesher>()) {}
+VoxelMeshingSystem::VoxelMeshingSystem() : snapMcMesher_(std::make_unique<SnapMCMesher>()) {}
 
 VoxelMeshingSystem::~VoxelMeshingSystem() {
     for (auto& [_, gpuMesh] : gpuMeshes_)
@@ -57,24 +81,37 @@ void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
         scheduler_ = &simSystem_->scheduler();
     }
 
-    if (!mesher_)
-        mesher_ = std::make_unique<SnapMCMesher>();
+    if (!snapMcMesher_)
+        snapMcMesher_ = std::make_unique<SnapMCMesher>();
+
+    const auto configuredNearChunkMesher =
+        ctx.configManager.get<std::string>(K_NEAR_CHUNK_MESHER_CONFIG_KEY, std::string{"snapmc"});
+    if (const auto parsed = parseNearChunkMesher(configuredNearChunkMesher)) {
+        setNearChunkMesher(*parsed);
+    } else {
+        setNearChunkMesher(NearChunkMesher::SnapMC);
+        FABRIC_LOG_WARN("VoxelMeshingSystem: unknown {}='{}'; falling back to {}", K_NEAR_CHUNK_MESHER_CONFIG_KEY,
+                        configuredNearChunkMesher, nearChunkMesherName(nearChunkMesher_));
+    }
 
     gpuUploadEnabled_ = (ctx.renderCaps != nullptr);
 
-    FABRIC_LOG_INFO("VoxelMeshingSystem initialized (budget={}, simBound={}, trackerBound={}, gpuUpload={})",
-                    meshBudget_, simGrid_ != nullptr, activityTracker_ != nullptr, gpuUploadEnabled_);
+    FABRIC_LOG_INFO(
+        "VoxelMeshingSystem initialized (budget={}, simBound={}, trackerBound={}, nearMesher={}, gpuUpload={})",
+        meshBudget_, simGrid_ != nullptr, activityTracker_ != nullptr, nearChunkMesherName(nearChunkMesher_),
+        gpuUploadEnabled_);
 }
 
 void VoxelMeshingSystem::doShutdown() {
     clearAllMeshes();
-    mesher_.reset();
+    snapMcMesher_.reset();
     simSystem_ = nullptr;
     simGrid_ = nullptr;
     activityTracker_ = nullptr;
     materials_ = nullptr;
     scheduler_ = nullptr;
     gpuUploadEnabled_ = false;
+    greedyFallbackLogged_ = false;
 
     FABRIC_LOG_INFO("VoxelMeshingSystem shutdown");
 }
@@ -132,7 +169,7 @@ void VoxelMeshingSystem::processFrame() {
         activityTracker_ = &simSystem_->activityTracker();
     }
 
-    if (!activityTracker_ || !simGrid_ || !mesher_) {
+    if (!activityTracker_ || !simGrid_ || !snapMcMesher_) {
         pendingMeshCount_ = 0;
         return;
     }
@@ -280,7 +317,21 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
     densityCache.build(coord.x, coord.y, coord.z, densityGrid);
     materialCache.build(coord.x, coord.y, coord.z, materialGrid);
 
-    auto meshData = mesher_->meshChunk(densityCache, materialCache, 0.5f, 0);
+    recurse::SmoothChunkMeshData meshData;
+    switch (nearChunkMesher_) {
+        case NearChunkMesher::Greedy:
+            if (!greedyFallbackLogged_) {
+                FABRIC_LOG_WARN("VoxelMeshingSystem: near mesher set to {} but Checkpoint 0 keeps SnapMC active; "
+                                "falling back until greedy CPU extraction lands",
+                                nearChunkMesherName(nearChunkMesher_));
+                greedyFallbackLogged_ = true;
+            }
+            [[fallthrough]];
+        case NearChunkMesher::SnapMC:
+            meshData = snapMcMesher_->meshChunk(densityCache, materialCache, 0.5f, 0);
+            break;
+    }
+
     if (meshData.empty() || meshData.indices.empty())
         return result;
 
