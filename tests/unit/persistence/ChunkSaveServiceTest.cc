@@ -206,6 +206,50 @@ TEST_F(ChunkSaveServiceTest, ActivitySnapshotTracksNextAutosaveCountdown) {
     EXPECT_FLOAT_EQ(snapshot.secondsUntilNextSave, 2.0f);
 }
 
+TEST_F(ChunkSaveServiceTest, ActivitySnapshotResetsCountdownForNewDirtyChunk) {
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
+    svc.debounceSeconds = 2.0f;
+    svc.maxDelaySeconds = 5.0f;
+
+    svc.markDirty(0, 0, 0);
+    svc.update(1.25f);
+
+    auto snapshot = svc.activitySnapshot();
+    EXPECT_NEAR(snapshot.secondsUntilNextSave, 0.75f, 0.001f);
+
+    svc.markDirty(1, 0, 0);
+    snapshot = svc.activitySnapshot();
+    EXPECT_FLOAT_EQ(snapshot.secondsUntilNextSave, 2.0f);
+}
+
+TEST_F(ChunkSaveServiceTest, DebounceCoalescesDirtyChunksIntoOneBatchCadence) {
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
+    svc.debounceSeconds = 1.0f;
+    svc.maxDelaySeconds = 5.0f;
+
+    svc.markDirty(0, 0, 0);
+    svc.update(0.75f);
+    svc.markDirty(1, 0, 0);
+
+    svc.update(0.3f);
+    writerQueue_.drain();
+    EXPECT_FALSE(store_->hasChunk(0, 0, 0));
+    EXPECT_FALSE(store_->hasChunk(1, 0, 0));
+
+    auto snapshot = svc.activitySnapshot();
+    EXPECT_EQ(snapshot.lastStartedSerial, 0u);
+    EXPECT_NEAR(snapshot.secondsUntilNextSave, 0.7f, 0.001f);
+
+    svc.update(0.7f);
+    writerQueue_.drain();
+
+    EXPECT_TRUE(store_->hasChunk(0, 0, 0));
+    EXPECT_TRUE(store_->hasChunk(1, 0, 0));
+
+    snapshot = svc.activitySnapshot();
+    EXPECT_EQ(snapshot.lastSuccessfulSerial, 1u);
+}
+
 TEST_F(ChunkSaveServiceTest, ActivitySnapshotRetainsFailureAndRequeuesPreparedBlobs) {
     recurse::ChunkSaveService svc(
         *store_, writerQueue_, [&](int, int, int) -> recurse::ChunkBlob { throw std::runtime_error("save failed"); });

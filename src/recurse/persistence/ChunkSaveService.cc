@@ -19,12 +19,15 @@ ChunkSaveService::~ChunkSaveService() {
 void ChunkSaveService::markDirty(int cx, int cy, int cz) {
     std::lock_guard lock(mutex_);
     auto key = makeKey(cx, cy, cz);
-    auto it = dirty_.find(key);
-    if (it == dirty_.end()) {
-        dirty_[key] = DirtyEntry{0.0f, 0.0f, false};
-    } else {
-        it->second.lastDirtyAge = 0.0f; // reset debounce
+    auto [it, inserted] = dirty_.try_emplace(key, DirtyEntry{});
+    if (!inserted && it->second.saving)
+        it->second.resaveRequested = true;
+
+    if (!dirtyCadenceActive_) {
+        dirtyCadenceActive_ = true;
+        firstDirtyAge_ = 0.0f;
     }
+    lastDirtyAge_ = 0.0f;
 }
 
 void ChunkSaveService::update(float dt) {
@@ -33,17 +36,18 @@ void ChunkSaveService::update(float dt) {
 
     {
         std::lock_guard lock(mutex_);
-        for (auto& [key, entry] : dirty_) {
-            if (entry.saving)
-                continue;
+        if (dirtyCadenceActive_) {
+            firstDirtyAge_ += dt;
+            lastDirtyAge_ += dt;
+        }
 
-            entry.firstDirtyAge += dt;
-            entry.lastDirtyAge += dt;
+        bool debounceExpired = dirtyCadenceActive_ && lastDirtyAge_ >= debounceSeconds;
+        bool maxDelayExpired = dirtyCadenceActive_ && firstDirtyAge_ >= maxDelaySeconds;
+        if (debounceExpired || maxDelayExpired) {
+            for (auto& [key, entry] : dirty_) {
+                if (entry.saving)
+                    continue;
 
-            bool debounceExpired = entry.lastDirtyAge >= debounceSeconds;
-            bool maxDelayExpired = entry.firstDirtyAge >= maxDelaySeconds;
-
-            if (debounceExpired || maxDelayExpired) {
                 // Decode key back to coordinates
                 int cz = static_cast<int>(key & 0x1FFFFF);
                 if (cz & 0x100000)
@@ -90,6 +94,8 @@ void ChunkSaveService::enqueuePrepared(int cx, int cy, int cz, ChunkBlob blob) {
         it->second.resaveRequested = true;
     }
     dirty_.erase(key);
+    if (dirty_.empty())
+        resetDirtyCadenceLocked();
 }
 
 bool ChunkSaveService::hasPersistPending(int cx, int cy, int cz) const {
@@ -159,6 +165,7 @@ void ChunkSaveService::flush() {
         std::lock_guard lock(mutex_);
         dirty_.clear();
         prepared_.clear();
+        resetDirtyCadenceLocked();
         lastCompletedSerial_ = batchSerial;
         lastSuccessfulSerial_ = batchSerial;
         lastError_.clear();
@@ -197,11 +204,14 @@ ChunkSaveService::ActivitySnapshot ChunkSaveService::activitySnapshot() const {
     for (const auto& [_, entry] : dirty_) {
         if (entry.saving) {
             ++snapshot.savingChunks;
-            continue;
+            if (!entry.resaveRequested)
+                continue;
         }
+    }
 
-        float debounceRemaining = std::max(0.0f, debounceSeconds - entry.lastDirtyAge);
-        float maxDelayRemaining = std::max(0.0f, maxDelaySeconds - entry.firstDirtyAge);
+    if (dirtyCadenceActive_) {
+        float debounceRemaining = std::max(0.0f, debounceSeconds - lastDirtyAge_);
+        float maxDelayRemaining = std::max(0.0f, maxDelaySeconds - firstDirtyAge_);
         nextSaveSeconds = std::min(nextSaveSeconds, std::min(debounceRemaining, maxDelayRemaining));
     }
 
@@ -271,7 +281,15 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
 
             std::lock_guard lock(mutex_);
             for (auto& [cx, cy, cz] : batch) {
-                dirty_.erase(makeKey(cx, cy, cz));
+                auto it = dirty_.find(makeKey(cx, cy, cz));
+                if (it == dirty_.end())
+                    continue;
+                if (it->second.resaveRequested) {
+                    it->second.saving = false;
+                    it->second.resaveRequested = false;
+                } else {
+                    dirty_.erase(it);
+                }
             }
             for (ChunkKey key : preparedKeys) {
                 auto it = prepared_.find(key);
@@ -284,6 +302,8 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
                     prepared_.erase(it);
                 }
             }
+            if (dirty_.empty())
+                resetDirtyCadenceLocked();
             lastCompletedSerial_ = batchSerial;
             lastSuccessfulSerial_ = batchSerial;
             lastError_.clear();
@@ -320,6 +340,12 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
             FABRIC_LOG_ERROR("ChunkSaveService: batch failed serial={} with unknown error", batchSerial);
         }
     });
+}
+
+void ChunkSaveService::resetDirtyCadenceLocked() {
+    dirtyCadenceActive_ = false;
+    firstDirtyAge_ = 0.0f;
+    lastDirtyAge_ = 0.0f;
 }
 
 } // namespace recurse

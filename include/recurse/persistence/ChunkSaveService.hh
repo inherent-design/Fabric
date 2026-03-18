@@ -71,9 +71,8 @@ class ChunkSaveService {
 
   private:
     struct DirtyEntry {
-        float firstDirtyAge{0.0f}; // seconds since first modification
-        float lastDirtyAge{0.0f};  // seconds since last modification
-        bool saving{false};        // currently being written by background job
+        bool saving{false};
+        bool resaveRequested{false};
     };
 
     struct PreparedEntry {
@@ -87,6 +86,7 @@ class ChunkSaveService {
     static ChunkKey makeKey(int cx, int cy, int cz);
 
     void dispatchBatch(std::vector<std::tuple<int, int, int>> chunks);
+    void resetDirtyCadenceLocked();
 
     ChunkStore& store_;
     fabric::platform::WriterQueue& writerQueue_;
@@ -100,6 +100,9 @@ class ChunkSaveService {
     uint64_t lastCompletedSerial_ = 0;
     uint64_t lastSuccessfulSerial_ = 0;
     std::string lastError_;
+    float firstDirtyAge_ = 0.0f;
+    float lastDirtyAge_ = 0.0f;
+    bool dirtyCadenceActive_ = false;
 };
 
 } // namespace recurse
