@@ -111,16 +111,16 @@ void HotkeyPanel::rebuildHotkeys() {
             addHotkey("Debug", "F1", "Chunk States");
             addHotkey("Debug", "F2", "LOD Stats");
             addHotkey("Debug", "F3", "Debug HUD");
-            addHotkey("Debug", "F4", "Wireframe");
+            addHotkey("Debug", "F4", "Voxel Wireframe");
             addHotkey("Debug", "F5", "Concurrency");
             addHotkey("Debug", "F6", "BVH Overlay");
             addHotkey("Debug", "F10", "Collision Debug");
-            addHotkey("Debug", "F12", "Chunk Debug");
+            addHotkey("Debug", "F12", "Chunk Debug Panel");
             addHotkey("Panels", "`", "Console");
             addHotkey("Panels", "Esc", "Pause Menu");
             addHotkey("Panels", "F7", "Content Browser");
             addHotkey("Panels", "F8", "Cycle BT NPC");
-            addHotkey("Panels", "F11", "BT Debug");
+            addHotkey("Panels", "F11", "BT Debug Panel");
             break;
 
         case AppMode::Paused:

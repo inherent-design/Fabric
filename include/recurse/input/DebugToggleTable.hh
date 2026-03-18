@@ -23,7 +23,7 @@ inline constexpr std::array K_DEBUG_TOGGLES = {
     DebugToggleEntry{K_ACTION_TOGGLE_CHUNK_STATES, SDLK_F1, "Debug", "Chunk States"},
     DebugToggleEntry{K_ACTION_TOGGLE_LOD_STATS, SDLK_F2, "Debug", "LOD Stats"},
     DebugToggleEntry{K_ACTION_TOGGLE_DEBUG, SDLK_F3, "Debug", "Debug HUD"},
-    DebugToggleEntry{K_ACTION_TOGGLE_WIREFRAME, SDLK_F4, "Debug", "Wireframe"},
+    DebugToggleEntry{K_ACTION_TOGGLE_WIREFRAME, SDLK_F4, "Debug", "Voxel Wireframe"},
     DebugToggleEntry{K_ACTION_TOGGLE_CONCURRENCY, SDLK_F5, "Debug", "Concurrency"},
     DebugToggleEntry{K_ACTION_TOGGLE_BVH_DEBUG, SDLK_F6, "Debug", "BVH Overlay"},
     DebugToggleEntry{K_ACTION_TOGGLE_COLLISION_DEBUG, SDLK_F10, "Debug", "Collision Debug"},

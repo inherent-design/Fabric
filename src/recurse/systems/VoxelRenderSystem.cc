@@ -15,6 +15,8 @@
 
 #include <SDL3/SDL.h>
 
+#include <bgfx/bgfx.h>
+
 #include <algorithm>
 #include <array>
 #include <vector>
@@ -108,9 +110,16 @@ void VoxelRenderSystem::render(fabric::AppContext& ctx) {
             [](const recurse::ChunkRenderInfo& a, const recurse::ChunkRenderInfo& b) { return a.sortKey < b.sortKey; });
 
         if (!renderBatch.empty()) {
+            const bool wireframeEnabled = voxelRenderer_.isWireframeEnabled();
             renderedChunkCount_ = static_cast<int>(renderBatch.size());
+            if (wireframeEnabled) {
+                bgfx::setDebug(BGFX_DEBUG_WIREFRAME);
+            }
             voxelRenderer_.renderBatch(sceneView->geometryViewId(), renderBatch.data(),
                                        static_cast<uint32_t>(renderBatch.size()));
+            if (wireframeEnabled) {
+                bgfx::setDebug(BGFX_DEBUG_NONE);
+            }
         }
     }
 

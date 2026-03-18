@@ -171,11 +171,7 @@ bool VoxelRenderer::mdiSupported() const {
 uint64_t VoxelRenderer::renderState() const {
     uint64_t state =
         BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_MSAA;
-    if (wireframeEnabled_) {
-        state |= BGFX_STATE_PT_LINES;
-    } else {
-        state |= BGFX_STATE_CULL_CCW;
-    }
+    state |= BGFX_STATE_CULL_CCW;
     return state;
 }
 

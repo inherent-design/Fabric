@@ -125,7 +125,10 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
         // WAILA and HotkeyPanel are always visible now
     });
 
-    dispatcher.addEventListener(K_ACTION_TOGGLE_CHUNK_DEBUG, [this](fabric::Event&) { chunkDebugPanel_.toggle(); });
+    dispatcher.addEventListener(K_ACTION_TOGGLE_CHUNK_DEBUG, [this](fabric::Event&) {
+        chunkDebugPanel_.toggle();
+        FABRIC_LOG_INFO("Chunk Debug (F12): {}", chunkDebugPanel_.isVisible() ? "on" : "off");
+    });
     dispatcher.addEventListener(K_ACTION_TOGGLE_LOD_STATS, [this](fabric::Event&) { lodStatsPanel_.toggle(); });
     dispatcher.addEventListener(K_ACTION_TOGGLE_CONCURRENCY, [this](fabric::Event&) { concurrencyPanel_.toggle(); });
 
@@ -135,7 +138,7 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
         if (voxelRender_) {
             voxelRender_->voxelRenderer().setWireframeEnabled(enabled);
         }
-        FABRIC_LOG_INFO("Wireframe: {}", enabled ? "on" : "off");
+        FABRIC_LOG_INFO("Voxel Wireframe (F4): {}", enabled ? "on" : "off");
     });
 
     dispatcher.addEventListener(K_ACTION_TOGGLE_COLLISION_DEBUG, [this](fabric::Event&) {
@@ -165,15 +168,9 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
         FABRIC_LOG_INFO("Content Browser: {}", contentBrowser_.isVisible() ? "on" : "off");
     });
 
-    dispatcher.addEventListener(K_ACTION_TOGGLE_BT_DEBUG, [this, appMode](fabric::Event&) {
-        auto mode = appMode->current();
-        if (mode == fabric::AppMode::Menu) {
-            appMode->transition(fabric::AppMode::Game);
-        } else if (mode == fabric::AppMode::Game) {
-            appMode->transition(fabric::AppMode::Menu);
-        }
+    dispatcher.addEventListener(K_ACTION_TOGGLE_BT_DEBUG, [this](fabric::Event&) {
         btDebugPanel_.toggle();
-        FABRIC_LOG_INFO("BT Debug: {}", btDebugPanel_.isVisible() ? "on" : "off");
+        FABRIC_LOG_INFO("BT Debug (F11): {}", btDebugPanel_.isVisible() ? "on" : "off");
     });
 
     dispatcher.addEventListener(K_ACTION_CYCLE_BT_NPC, [this, &ctx](fabric::Event&) {
@@ -198,9 +195,6 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
     ++frameCounter_;
 
     auto* sceneView = ctx.sceneView;
-
-    // Apply wireframe toggle before debug line drawing
-    debugDraw_.applyDebugFlags();
 
     // Debug draw overlay (lines, shapes) on geometry view
     debugDraw_.begin(sceneView->geometryViewId());
