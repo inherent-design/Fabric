@@ -6,10 +6,14 @@
 namespace recurse {
 
 struct ChunkDebugData {
+    size_t trackedChunks = 0;
     size_t activeChunks = 0;
     int chunksRendered = 0;
     size_t gpuMeshCount = 0;
-    size_t dirtyChunksPending = 0;
+    size_t meshCandidateChunks = 0;
+    size_t lodVisibleSections = 0;
+    size_t lodGpuSectionCount = 0;
+    size_t lodPendingSections = 0;
     size_t vertexCount = 0;
     size_t indexCount = 0;
     float vertexBufferMB = 0.0f;
@@ -29,10 +33,14 @@ class ChunkDebugPanel : public fabric::RmlPanel {
     void update(const ChunkDebugData& data);
 
   private:
+    int trackedChunks_ = 0;
     int activeChunks_ = 0;
     int chunksRendered_ = 0;
     int gpuMeshCount_ = 0;
-    int dirtyChunksPending_ = 0;
+    int meshCandidateChunks_ = 0;
+    int lodVisibleSections_ = 0;
+    int lodGpuSectionCount_ = 0;
+    int lodPendingSections_ = 0;
     int vertexCount_ = 0;
     int indexCount_ = 0;
     float vertexBufferMB_ = 0.0f;
