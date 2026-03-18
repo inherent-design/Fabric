@@ -28,8 +28,9 @@ class WorldGenerator {
 
     /// Return the material ID at a single world coordinate.
     /// Used by LOD direct generation (E-3) to fill LOD sections without
-    /// allocating full chunk data. Subclasses should override for efficiency;
-    /// the default generates an entire chunk and reads the target cell.
+    /// allocating full chunk data. Subclasses should override for efficiency.
+    /// Implementations must match the material that generateToBuffer() would
+    /// write for the same world coordinate in the containing full-res chunk.
     virtual uint16_t sampleMaterial(int wx, int wy, int wz) const;
 
     /// Conservative upper bound on the maximum Y coordinate where visible

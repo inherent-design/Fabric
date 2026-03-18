@@ -1,6 +1,7 @@
 #include "recurse/world/MinecraftNoiseGenerator.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include <array>
 #include <chrono>
 #include <gtest/gtest.h>
 #include <set>
@@ -271,6 +272,46 @@ TEST_F(MinecraftNoiseGenTest, SampleMaterialDeterministic) {
         for (int y = 0; y < 64; y += 8) {
             EXPECT_EQ(gen1.sampleMaterial(x, y, 0), gen2.sampleMaterial(x, y, 0))
                 << "Non-deterministic at (" << x << "," << y << ",0)";
+        }
+    }
+}
+
+TEST_F(MinecraftNoiseGenTest, SampleMaterialMatchesGenerateToBufferAtChunkWorldCoords) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator gen(config);
+
+    struct ChunkCase {
+        int cx;
+        int cy;
+        int cz;
+    };
+
+    const ChunkCase cases[] = {
+        {0, 0, 0},      {0, 1, 0},      {1, 1, 0},        {-1, 1, 1},           {31, 1, -17},
+        {257, 1, -193}, {-257, 1, 193}, {4096, 1, -4096}, {600000, 1, -600000}, {-600001, 1, 600001},
+    };
+
+    for (const auto& c : cases) {
+        std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buffer{};
+        gen.generateToBuffer(buffer.data(), c.cx, c.cy, c.cz);
+
+        int baseX = c.cx * K_CHUNK;
+        int baseY = c.cy * K_CHUNK;
+        int baseZ = c.cz * K_CHUNK;
+        SCOPED_TRACE(::testing::Message() << "chunk=(" << c.cx << "," << c.cy << "," << c.cz << ")");
+
+        for (int lz = 0; lz < K_CHUNK; ++lz) {
+            for (int ly = 0; ly < K_CHUNK; ++ly) {
+                for (int lx = 0; lx < K_CHUNK; ++lx) {
+                    int wx = baseX + lx;
+                    int wy = baseY + ly;
+                    int wz = baseZ + lz;
+                    int idx = lx + ly * K_CHUNK + lz * K_CHUNK * K_CHUNK;
+                    ASSERT_EQ(gen.sampleMaterial(wx, wy, wz), buffer[idx].materialId)
+                        << "world=(" << wx << "," << wy << "," << wz << ")";
+                }
+            }
         }
     }
 }

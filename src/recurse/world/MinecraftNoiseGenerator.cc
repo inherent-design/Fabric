@@ -10,6 +10,29 @@ using simulation::MaterialId;
 namespace material_ids = simulation::material_ids;
 using simulation::VoxelCell;
 
+namespace {
+
+int floorChunkCoord(int worldCoord) {
+    int chunk = worldCoord / simulation::K_CHUNK_SIZE;
+    if (worldCoord < 0 && (worldCoord % simulation::K_CHUNK_SIZE) != 0)
+        --chunk;
+    return chunk;
+}
+
+float chunkAlignedSampleCoord(int worldCoord, float freq) {
+    int chunk = floorChunkCoord(worldCoord);
+    int base = chunk * simulation::K_CHUNK_SIZE;
+    int local = worldCoord - base;
+    return std::fma(static_cast<float>(local), freq, static_cast<float>(base) * freq);
+}
+
+float sampleChunkAlignedNoise2D(const FastNoise::SmartNode<FastNoise::Simplex>& node, int wx, int wz, float freq,
+                                int seed) {
+    return node->GenSingle2D(chunkAlignedSampleCoord(wx, freq), chunkAlignedSampleCoord(wz, freq), seed);
+}
+
+} // namespace
+
 MinecraftNoiseGenerator::MinecraftNoiseGenerator(const NoiseGenConfig& config)
     : config_(config),
       continentalNode_(FastNoise::New<FastNoise::Simplex>()),
@@ -27,7 +50,7 @@ float MinecraftNoiseGenerator::computeBaseHeight(float continental, float erosio
     return config_.seaLevel + (continental * 0.6f + peaks * 0.3f - erosion * 0.2f) * config_.terrainHeight;
 }
 
-MaterialId MinecraftNoiseGenerator::selectSurfaceMaterial(float temp, float humid, float wy) const {
+MaterialId MinecraftNoiseGenerator::selectSurfaceMaterial(float /*temp*/, float /*humid*/, float wy) const {
     // TODO(human): Implement biome-aware surface material selection.
     if (std::abs(wy - config_.seaLevel) <= 3.0f) {
         return material_ids::SAND;
@@ -119,12 +142,11 @@ int MinecraftNoiseGenerator::maxSurfaceHeight(int cx, int cz) const {
 }
 
 uint16_t MinecraftNoiseGenerator::sampleMaterial(int wx, int wy, int wz) const {
-    float fx = static_cast<float>(wx);
-    float fz = static_cast<float>(wz);
-
-    float c = continentalNode_->GenSingle2D(fx * config_.continentalFreq, fz * config_.continentalFreq, config_.seed);
-    float e = erosionNode_->GenSingle2D(fx * config_.erosionFreq, fz * config_.erosionFreq, config_.seed + 1);
-    float p = peaksNode_->GenSingle2D(fx * config_.peaksFreq, fz * config_.peaksFreq, config_.seed + 2);
+    float c = sampleChunkAlignedNoise2D(continentalNode_, wx, wz, config_.continentalFreq, config_.seed);
+    float e = sampleChunkAlignedNoise2D(erosionNode_, wx, wz, config_.erosionFreq, config_.seed + 1);
+    float p = sampleChunkAlignedNoise2D(peaksNode_, wx, wz, config_.peaksFreq, config_.seed + 2);
+    float temp = sampleChunkAlignedNoise2D(temperatureNode_, wx, wz, config_.temperatureFreq, config_.seed + 3);
+    float humid = sampleChunkAlignedNoise2D(humidityNode_, wx, wz, config_.humidityFreq, config_.seed + 4);
 
     float bh = computeBaseHeight(c, e, p);
     float density = bh - static_cast<float>(wy);
@@ -132,7 +154,7 @@ uint16_t MinecraftNoiseGenerator::sampleMaterial(int wx, int wy, int wz) const {
     if (density > 3.0f)
         return material_ids::STONE;
     if (density > 0.0f)
-        return selectSurfaceMaterial(0.0f, 0.0f, static_cast<float>(wy));
+        return selectSurfaceMaterial(temp, humid, static_cast<float>(wy));
     if (static_cast<float>(wy) < config_.seaLevel)
         return material_ids::WATER;
     return material_ids::AIR;
