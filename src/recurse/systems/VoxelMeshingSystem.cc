@@ -20,7 +20,9 @@
 #include "recurse/world/SmoothVoxelVertex.hh"
 #include "recurse/world/SnapMCMesher.hh"
 
+#include <algorithm>
 #include <bgfx/bgfx.h>
+#include <cmath>
 #include <optional>
 #include <set>
 #include <string>
@@ -38,8 +40,29 @@ namespace {
 
 constexpr std::string_view K_NEAR_CHUNK_MESHER_CONFIG_KEY = "voxel_meshing.near_chunk_mesher";
 
+constexpr int K_FACE_AXIS_COUNT = 3;
+
+bool isSolidVoxel(const recurse::simulation::VoxelCell& cell) {
+    return cell.materialId != recurse::simulation::material_ids::AIR;
+}
+
 uint16_t unpackMaterialId(uint32_t packedMaterial) {
     return static_cast<uint16_t>(packedMaterial & 0xFFFFu);
+}
+
+uint8_t unpackAO(uint32_t packedMaterial) {
+    return static_cast<uint8_t>((packedMaterial >> 16) & 0xFFu);
+}
+
+uint8_t unpackFlags(uint32_t packedMaterial) {
+    return static_cast<uint8_t>((packedMaterial >> 24) & 0xFFu);
+}
+
+uint8_t normalizeShaderAO(uint32_t packedMaterial) {
+    const uint8_t ao = unpackAO(packedMaterial);
+    if (ao <= 15)
+        return ao;
+    return recurse::SmoothVoxelVertex::K_SHADER_DEFAULT_AO;
 }
 
 const char* nearChunkMesherName(VoxelMeshingSystem::NearChunkMesher mesher) {
@@ -58,6 +81,184 @@ std::optional<VoxelMeshingSystem::NearChunkMesher> parseNearChunkMesher(std::str
     if (value == "greedy")
         return VoxelMeshingSystem::NearChunkMesher::Greedy;
     return std::nullopt;
+}
+
+recurse::simulation::VoxelCell readGreedyCell(const MeshingChunkContext& ctx, int axis, int slice, int row, int col,
+                                              int normalOffset, const recurse::simulation::SimulationGrid* fallback) {
+    switch (axis) {
+        case 0:
+            return ctx.readLocal(slice + normalOffset, row, col, fallback);
+        case 1:
+            return ctx.readLocal(row, slice + normalOffset, col, fallback);
+        default:
+            return ctx.readLocal(row, col, slice + normalOffset, fallback);
+    }
+}
+
+void appendGreedyVertex(recurse::SmoothChunkMeshData& output, float px, float py, float pz, float nx, float ny,
+                        float nz, uint16_t materialId) {
+    recurse::SmoothVoxelVertex vertex{};
+    vertex.px = px;
+    vertex.py = py;
+    vertex.pz = pz;
+    vertex.nx = nx;
+    vertex.ny = ny;
+    vertex.nz = nz;
+    vertex.material =
+        recurse::SmoothVoxelVertex::packMaterial(materialId, recurse::SmoothVoxelVertex::K_SHADER_DEFAULT_AO);
+    vertex.padding = 0;
+    output.vertices.push_back(vertex);
+}
+
+void emitGreedyQuad(recurse::SmoothChunkMeshData& output, int axis, bool positive, int slice, int row, int col,
+                    int width, int height, uint16_t materialId) {
+    const float plane = static_cast<float>(positive ? slice + 1 : slice);
+    const float u0 = static_cast<float>(row);
+    const float u1 = static_cast<float>(row + height);
+    const float v0 = static_cast<float>(col);
+    const float v1 = static_cast<float>(col + width);
+
+    float nx = 0.0f;
+    float ny = 0.0f;
+    float nz = 0.0f;
+    if (axis == 0) {
+        nx = positive ? 1.0f : -1.0f;
+        if (positive) {
+            appendGreedyVertex(output, plane, u0, v0, nx, ny, nz, materialId);
+            appendGreedyVertex(output, plane, u1, v0, nx, ny, nz, materialId);
+            appendGreedyVertex(output, plane, u1, v1, nx, ny, nz, materialId);
+            appendGreedyVertex(output, plane, u0, v1, nx, ny, nz, materialId);
+        } else {
+            appendGreedyVertex(output, plane, u0, v0, nx, ny, nz, materialId);
+            appendGreedyVertex(output, plane, u0, v1, nx, ny, nz, materialId);
+            appendGreedyVertex(output, plane, u1, v1, nx, ny, nz, materialId);
+            appendGreedyVertex(output, plane, u1, v0, nx, ny, nz, materialId);
+        }
+    } else if (axis == 1) {
+        ny = positive ? 1.0f : -1.0f;
+        if (positive) {
+            appendGreedyVertex(output, u0, plane, v0, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u0, plane, v1, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u1, plane, v1, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u1, plane, v0, nx, ny, nz, materialId);
+        } else {
+            appendGreedyVertex(output, u0, plane, v0, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u1, plane, v0, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u1, plane, v1, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u0, plane, v1, nx, ny, nz, materialId);
+        }
+    } else {
+        nz = positive ? 1.0f : -1.0f;
+        if (positive) {
+            appendGreedyVertex(output, u0, v0, plane, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u1, v0, plane, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u1, v1, plane, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u0, v1, plane, nx, ny, nz, materialId);
+        } else {
+            appendGreedyVertex(output, u0, v0, plane, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u0, v1, plane, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u1, v1, plane, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u1, v0, plane, nx, ny, nz, materialId);
+        }
+    }
+
+    const uint32_t base = static_cast<uint32_t>(output.vertices.size() - 4);
+    output.indices.insert(output.indices.end(), {base, base + 1, base + 2, base, base + 2, base + 3});
+}
+
+recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
+                                             const recurse::simulation::SimulationGrid* fallback) {
+    recurse::SmoothChunkMeshData output;
+    output.vertices.reserve(1024);
+    output.indices.reserve(1536);
+
+    std::array<uint16_t, K_CHUNK_SIZE * K_CHUNK_SIZE> mask{};
+    std::array<bool, K_CHUNK_SIZE * K_CHUNK_SIZE> consumed{};
+
+    for (int axis = 0; axis < K_FACE_AXIS_COUNT; ++axis) {
+        for (bool positive : {false, true}) {
+            for (int slice = 0; slice < K_CHUNK_SIZE; ++slice) {
+                mask.fill(recurse::simulation::material_ids::AIR);
+                consumed.fill(false);
+
+                for (int row = 0; row < K_CHUNK_SIZE; ++row) {
+                    for (int col = 0; col < K_CHUNK_SIZE; ++col) {
+                        const auto cell = readGreedyCell(ctx, axis, slice, row, col, 0, fallback);
+                        if (!isSolidVoxel(cell))
+                            continue;
+
+                        const auto neighbor = readGreedyCell(ctx, axis, slice, row, col, positive ? 1 : -1, fallback);
+                        if (isSolidVoxel(neighbor))
+                            continue;
+
+                        mask[static_cast<size_t>(row * K_CHUNK_SIZE + col)] = cell.materialId;
+                    }
+                }
+
+                for (int row = 0; row < K_CHUNK_SIZE; ++row) {
+                    for (int col = 0; col < K_CHUNK_SIZE; ++col) {
+                        const size_t startIdx = static_cast<size_t>(row * K_CHUNK_SIZE + col);
+                        const uint16_t materialId = mask[startIdx];
+                        if (materialId == recurse::simulation::material_ids::AIR || consumed[startIdx])
+                            continue;
+
+                        int width = 1;
+                        while (col + width < K_CHUNK_SIZE) {
+                            const size_t idx = static_cast<size_t>(row * K_CHUNK_SIZE + col + width);
+                            if (mask[idx] != materialId || consumed[idx])
+                                break;
+                            ++width;
+                        }
+
+                        int height = 1;
+                        bool canGrow = true;
+                        while (row + height < K_CHUNK_SIZE && canGrow) {
+                            for (int offset = 0; offset < width; ++offset) {
+                                const size_t idx = static_cast<size_t>((row + height) * K_CHUNK_SIZE + col + offset);
+                                if (mask[idx] != materialId || consumed[idx]) {
+                                    canGrow = false;
+                                    break;
+                                }
+                            }
+                            if (canGrow)
+                                ++height;
+                        }
+
+                        for (int dy = 0; dy < height; ++dy) {
+                            for (int dx = 0; dx < width; ++dx) {
+                                consumed[static_cast<size_t>((row + dy) * K_CHUNK_SIZE + col + dx)] = true;
+                            }
+                        }
+
+                        emitGreedyQuad(output, axis, positive, slice, row, col, width, height, materialId);
+                    }
+                }
+            }
+        }
+    }
+
+    return output;
+}
+
+uint8_t greedyNormalIndex(const recurse::SmoothVoxelVertex& vertex) {
+    const float absX = std::fabs(vertex.nx);
+    const float absY = std::fabs(vertex.ny);
+    const float absZ = std::fabs(vertex.nz);
+    if (absX >= absY && absX >= absZ)
+        return vertex.nx >= 0.0f ? 0u : 1u;
+    if (absY >= absX && absY >= absZ)
+        return vertex.ny >= 0.0f ? 2u : 3u;
+    return vertex.nz >= 0.0f ? 4u : 5u;
+}
+
+recurse::VoxelVertex packGreedyVoxelVertex(const recurse::SmoothVoxelVertex& vertex) {
+    const auto quantize = [](float value) {
+        return static_cast<uint8_t>(std::clamp(static_cast<int>(std::lround(value)), 0, K_CHUNK_SIZE));
+    };
+
+    const uint8_t ao = std::min<uint8_t>(vertex.getAO(), 3u);
+    return recurse::VoxelVertex::pack(quantize(vertex.px), quantize(vertex.py), quantize(vertex.pz),
+                                      greedyNormalIndex(vertex), ao, vertex.getMaterialId());
 }
 
 } // namespace
@@ -85,11 +286,11 @@ void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
         snapMcMesher_ = std::make_unique<SnapMCMesher>();
 
     const auto configuredNearChunkMesher =
-        ctx.configManager.get<std::string>(K_NEAR_CHUNK_MESHER_CONFIG_KEY, std::string{"snapmc"});
+        ctx.configManager.get<std::string>(K_NEAR_CHUNK_MESHER_CONFIG_KEY, std::string{"greedy"});
     if (const auto parsed = parseNearChunkMesher(configuredNearChunkMesher)) {
         setNearChunkMesher(*parsed);
     } else {
-        setNearChunkMesher(NearChunkMesher::SnapMC);
+        setNearChunkMesher(NearChunkMesher::Greedy);
         FABRIC_LOG_WARN("VoxelMeshingSystem: unknown {}='{}'; falling back to {}", K_NEAR_CHUNK_MESHER_CONFIG_KEY,
                         configuredNearChunkMesher, nearChunkMesherName(nearChunkMesher_));
     }
@@ -111,7 +312,6 @@ void VoxelMeshingSystem::doShutdown() {
     materials_ = nullptr;
     scheduler_ = nullptr;
     gpuUploadEnabled_ = false;
-    greedyFallbackLogged_ = false;
 
     FABRIC_LOG_INFO("VoxelMeshingSystem shutdown");
 }
@@ -125,6 +325,8 @@ void VoxelMeshingSystem::clearAllMeshes() {
     pendingMeshCount_ = 0;
     vertexBufferSize_ = 0;
     indexBufferSize_ = 0;
+    vertexBufferBytes_ = 0;
+    indexBufferBytes_ = 0;
     FABRIC_LOG_INFO("VoxelMeshingSystem: cleared {} GPU meshes", count);
 }
 
@@ -293,43 +495,39 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
 
     auto meshCtx = buildMeshingContext(coord);
 
-    ChunkedGrid<float> densityGrid;
-    ChunkedGrid<uint16_t> materialGrid;
-
-    const int baseX = coord.x * K_CHUNK_SIZE;
-    const int baseY = coord.y * K_CHUNK_SIZE;
-    const int baseZ = coord.z * K_CHUNK_SIZE;
-
-    constexpr int K_SAMPLE_MARGIN = 1;
-    for (int lz = -K_SAMPLE_MARGIN; lz <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++lz) {
-        for (int ly = -K_SAMPLE_MARGIN; ly <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++ly) {
-            for (int lx = -K_SAMPLE_MARGIN; lx <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++lx) {
-                const auto cell = meshCtx.readLocal(lx, ly, lz, simGrid_);
-                const float density = (cell.materialId == recurse::simulation::material_ids::AIR) ? 0.0f : 1.0f;
-                densityGrid.set(baseX + lx, baseY + ly, baseZ + lz, density);
-                materialGrid.set(baseX + lx, baseY + ly, baseZ + lz, cell.materialId);
-            }
-        }
-    }
-
-    ChunkDensityCache densityCache;
-    ChunkMaterialCache materialCache;
-    densityCache.build(coord.x, coord.y, coord.z, densityGrid);
-    materialCache.build(coord.x, coord.y, coord.z, materialGrid);
-
     recurse::SmoothChunkMeshData meshData;
     switch (nearChunkMesher_) {
         case NearChunkMesher::Greedy:
-            if (!greedyFallbackLogged_) {
-                FABRIC_LOG_WARN("VoxelMeshingSystem: near mesher set to {} but Checkpoint 0 keeps SnapMC active; "
-                                "falling back until greedy CPU extraction lands",
-                                nearChunkMesherName(nearChunkMesher_));
-                greedyFallbackLogged_ = true;
+            meshData = buildGreedyMesh(meshCtx, simGrid_);
+            break;
+        case NearChunkMesher::SnapMC: {
+            ChunkedGrid<float> densityGrid;
+            ChunkedGrid<uint16_t> materialGrid;
+
+            const int baseX = coord.x * K_CHUNK_SIZE;
+            const int baseY = coord.y * K_CHUNK_SIZE;
+            const int baseZ = coord.z * K_CHUNK_SIZE;
+
+            constexpr int K_SAMPLE_MARGIN = 1;
+            for (int lz = -K_SAMPLE_MARGIN; lz <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++lz) {
+                for (int ly = -K_SAMPLE_MARGIN; ly <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++ly) {
+                    for (int lx = -K_SAMPLE_MARGIN; lx <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++lx) {
+                        const auto cell = meshCtx.readLocal(lx, ly, lz, simGrid_);
+                        const float density = (cell.materialId == recurse::simulation::material_ids::AIR) ? 0.0f : 1.0f;
+                        densityGrid.set(baseX + lx, baseY + ly, baseZ + lz, density);
+                        materialGrid.set(baseX + lx, baseY + ly, baseZ + lz, cell.materialId);
+                    }
+                }
             }
-            [[fallthrough]];
-        case NearChunkMesher::SnapMC:
+
+            ChunkDensityCache densityCache;
+            ChunkMaterialCache materialCache;
+            densityCache.build(coord.x, coord.y, coord.z, densityGrid);
+            materialCache.build(coord.x, coord.y, coord.z, materialGrid);
+
             meshData = snapMcMesher_->meshChunk(densityCache, materialCache, 0.5f, 0);
             break;
+        }
     }
 
     if (meshData.empty() || meshData.indices.empty())
@@ -357,12 +555,21 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
     result.vertices.reserve(meshData.vertices.size());
     for (const auto& v : meshData.vertices) {
         recurse::SmoothVoxelVertex vertex = v;
-        vertex.material = recurse::SmoothVoxelVertex::packShaderMaterial(paletteLookup[unpackMaterialId(v.material)]);
+        vertex.material = recurse::SmoothVoxelVertex::packShaderMaterial(
+            paletteLookup[unpackMaterialId(v.material)], normalizeShaderAO(v.material), unpackFlags(v.material));
         result.vertices.push_back(vertex);
     }
 
+    if (nearChunkMesher_ == NearChunkMesher::Greedy) {
+        result.meshFormat = recurse::ChunkMesh::VertexFormat::Voxel;
+        result.voxelVertices.reserve(result.vertices.size());
+        for (const auto& vertex : result.vertices)
+            result.voxelVertices.push_back(packGreedyVoxelVertex(vertex));
+    }
+
     result.indices = std::move(meshData.indices);
-    result.valid = !result.vertices.empty() && !result.indices.empty();
+    result.valid = !result.vertices.empty() && !result.indices.empty() &&
+                   (result.meshFormat != recurse::ChunkMesh::VertexFormat::Voxel || !result.voxelVertices.empty());
     return result;
 }
 
@@ -393,18 +600,25 @@ void VoxelMeshingSystem::uploadMeshResult(const fabric::ChunkCoord& coord, CPUMe
     }
 
     ChunkGPUMesh gpuMesh;
-    gpuMesh.vertexCount = static_cast<uint32_t>(result.vertices.size());
+    const bool voxelFormat = result.meshFormat == recurse::ChunkMesh::VertexFormat::Voxel;
+    gpuMesh.vertexCount = static_cast<uint32_t>(voxelFormat ? result.voxelVertices.size() : result.vertices.size());
     gpuMesh.indexCount = static_cast<uint32_t>(result.indices.size());
     gpuMesh.mesh.indexCount = gpuMesh.indexCount;
     gpuMesh.mesh.palette = std::move(result.palette);
+    gpuMesh.mesh.vertexFormat = result.meshFormat;
+    gpuMesh.mesh.vertexStrideBytes = recurse::ChunkMesh::vertexStrideForFormat(result.meshFormat);
     gpuMesh.mesh.valid = true;
+    gpuMesh.vertexBytes = static_cast<size_t>(gpuMesh.vertexCount) * gpuMesh.mesh.vertexStrideBytes;
+    gpuMesh.indexBytes = static_cast<size_t>(gpuMesh.indexCount) * sizeof(uint32_t);
     gpuMesh.valid = true;
 
     if (gpuUploadEnabled_) {
-        gpuMesh.mesh.vbh.reset(bgfx::createVertexBuffer(
-            bgfx::copy(result.vertices.data(),
-                       static_cast<uint32_t>(result.vertices.size() * sizeof(recurse::SmoothVoxelVertex))),
-            recurse::SmoothVoxelVertex::getVertexLayout()));
+        const void* vertexData = voxelFormat ? static_cast<const void*>(result.voxelVertices.data())
+                                             : static_cast<const void*>(result.vertices.data());
+        const bgfx::VertexLayout& layout =
+            voxelFormat ? recurse::VoxelVertex::getVertexLayout() : recurse::SmoothVoxelVertex::getVertexLayout();
+        gpuMesh.mesh.vbh.reset(
+            bgfx::createVertexBuffer(bgfx::copy(vertexData, static_cast<uint32_t>(gpuMesh.vertexBytes)), layout));
         if (!gpuMesh.mesh.vbh.isValid()) {
             gpuMesh.valid = false;
             gpuMesh.mesh.valid = false;
@@ -433,6 +647,8 @@ void VoxelMeshingSystem::uploadMeshResult(const fabric::ChunkCoord& coord, CPUMe
     }
     vertexBufferSize_ += static_cast<size_t>(gpuMesh.vertexCount);
     indexBufferSize_ += static_cast<size_t>(gpuMesh.indexCount);
+    vertexBufferBytes_ += gpuMesh.vertexBytes;
+    indexBufferBytes_ += gpuMesh.indexBytes;
     ++meshedThisFrame_;
 }
 
@@ -440,15 +656,22 @@ void VoxelMeshingSystem::destroyChunkMesh(ChunkGPUMesh& gpuMesh) {
     if (gpuMesh.valid) {
         vertexBufferSize_ -= static_cast<size_t>(gpuMesh.vertexCount);
         indexBufferSize_ -= static_cast<size_t>(gpuMesh.indexCount);
+        vertexBufferBytes_ -= gpuMesh.vertexBytes;
+        indexBufferBytes_ -= gpuMesh.indexBytes;
     }
     gpuMesh.mesh.vbh.reset();
     gpuMesh.mesh.ibh.reset();
     gpuMesh.mesh.indexCount = 0;
     gpuMesh.mesh.palette.clear();
+    gpuMesh.mesh.vertexFormat = recurse::ChunkMesh::VertexFormat::Smooth;
+    gpuMesh.mesh.vertexStrideBytes =
+        recurse::ChunkMesh::vertexStrideForFormat(recurse::ChunkMesh::VertexFormat::Smooth);
     gpuMesh.mesh.valid = false;
 
     gpuMesh.vertexCount = 0;
     gpuMesh.indexCount = 0;
+    gpuMesh.vertexBytes = 0;
+    gpuMesh.indexBytes = 0;
     gpuMesh.valid = false;
 }
 
@@ -462,6 +685,14 @@ size_t VoxelMeshingSystem::vertexBufferSize() const {
 
 size_t VoxelMeshingSystem::indexBufferSize() const {
     return indexBufferSize_;
+}
+
+size_t VoxelMeshingSystem::vertexBufferBytes() const {
+    return vertexBufferBytes_;
+}
+
+size_t VoxelMeshingSystem::indexBufferBytes() const {
+    return indexBufferBytes_;
 }
 
 MeshingDebugInfo VoxelMeshingSystem::debugInfo() const {

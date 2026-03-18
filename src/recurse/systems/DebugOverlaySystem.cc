@@ -21,8 +21,8 @@
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/ChunkRegistry.hh"
 #include "recurse/simulation/ChunkState.hh"
-#include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelSemanticView.hh"
 #include "recurse/systems/AIGameSystem.hh"
 #include "recurse/systems/AudioGameSystem.hh"
 #include "recurse/systems/CameraGameSystem.hh"
@@ -448,14 +448,17 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             waila.normalZ = hit->nz;
             waila.distance = hit->t;
             auto cell = voxelSim_->simulationGrid().readCell(hit->x, hit->y, hit->z);
-            waila.density = (cell.materialId != recurse::simulation::material_ids::AIR) ? 1.0f : 0.0f;
             const auto* pal = voxelSim_->simulationGrid().chunkPalette(waila.chunkX, waila.chunkY, waila.chunkZ);
-            if (pal && cell.essenceIdx < pal->paletteSize()) {
-                auto e = pal->lookup(cell.essenceIdx);
-                waila.essenceO = e.x;
-                waila.essenceC = e.y;
-                waila.essenceL = e.z;
-                waila.essenceD = e.w;
+            const recurse::simulation::MaterialSemanticRegistry semanticRegistry(voxelSim_->materials());
+            const auto semantics = semanticRegistry.resolve(cell, pal);
+            waila.displayText = semantics.material.displayName;
+            waila.density = semantics.material.occupancy.density;
+            if (semantics.sampledEssence.value.has_value()) {
+                const auto& essence = *semantics.sampledEssence.value;
+                waila.essenceO = essence.order;
+                waila.essenceC = essence.chaos;
+                waila.essenceL = essence.life;
+                waila.essenceD = essence.decay;
             }
         }
         wailaPanel_.update(waila);
@@ -484,12 +487,10 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             chunkData.lodPendingSections = static_cast<size_t>(lodInfo.pendingSections);
         }
 
-        // Calculate buffer sizes in MB (vertex: 36 bytes, index: 4 bytes)
-        constexpr float K_VERTEX_SIZE = sizeof(recurse::SmoothVoxelVertex);
-        constexpr float K_INDEX_SIZE = sizeof(uint32_t);
+        // Calculate buffer sizes from the actual mixed-format GPU allocation totals.
         constexpr float K_MB = 1024.0f * 1024.0f;
-        chunkData.vertexBufferMB = static_cast<float>(chunkData.vertexCount) * K_VERTEX_SIZE / K_MB;
-        chunkData.indexBufferMB = static_cast<float>(chunkData.indexCount) * K_INDEX_SIZE / K_MB;
+        chunkData.vertexBufferMB = static_cast<float>(meshSystem_->vertexBufferBytes()) / K_MB;
+        chunkData.indexBufferMB = static_cast<float>(meshSystem_->indexBufferBytes()) / K_MB;
 
         auto meshingInfo = meshSystem_->debugInfo();
         chunkData.meshedThisFrame = meshingInfo.chunksMeshedThisFrame;

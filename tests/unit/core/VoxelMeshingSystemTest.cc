@@ -49,6 +49,159 @@ TEST_F(VoxelMeshingSystemTest, SystemLifecycle_InitRenderShutdown) {
     system.shutdown();
 }
 
+TEST_F(VoxelMeshingSystemTest, NearChunkMesherDefaultsToGreedy) {
+    EXPECT_EQ(system.nearChunkMesher(), VoxelMeshingSystem::NearChunkMesher::Greedy);
+}
+
+TEST_F(VoxelMeshingSystemTest, GreedySelectionLeavesAirChunkEmpty) {
+    ChunkCoord coord{0, 0, 0};
+    system.setNearChunkMesher(VoxelMeshingSystem::NearChunkMesher::Greedy);
+    simGrid.fillChunk(coord.x, coord.y, coord.z, VoxelCell{});
+
+    const auto result = system.generateMeshCPU(coord);
+
+    EXPECT_FALSE(result.valid);
+    EXPECT_TRUE(result.vertices.empty());
+    EXPECT_TRUE(result.indices.empty());
+}
+
+TEST_F(VoxelMeshingSystemTest, GreedySelectionMergesSolidChunkIntoSixQuads) {
+    ChunkCoord coord{0, 0, 0};
+    fillChunkSolid(coord);
+    system.setNearChunkMesher(VoxelMeshingSystem::NearChunkMesher::Greedy);
+
+    const auto result = system.generateMeshCPU(coord);
+
+    ASSERT_TRUE(result.valid);
+    EXPECT_EQ(result.vertices.size(), 24u);
+    EXPECT_EQ(result.voxelVertices.size(), 24u);
+    EXPECT_EQ(result.indices.size(), 36u);
+    ASSERT_EQ(result.palette.size(), 1u);
+    EXPECT_EQ(result.meshFormat, recurse::ChunkMesh::VertexFormat::Voxel);
+}
+
+TEST_F(VoxelMeshingSystemTest, GreedySelectionSuppressesCrossChunkBoundaryFaces) {
+    ChunkCoord coord{0, 0, 0};
+    fillChunkSolid(coord);
+    fillChunkSolid({1, 0, 0});
+    system.setNearChunkMesher(VoxelMeshingSystem::NearChunkMesher::Greedy);
+
+    const auto result = system.generateMeshCPU(coord);
+
+    ASSERT_TRUE(result.valid);
+    EXPECT_EQ(result.vertices.size(), 20u);
+    EXPECT_EQ(result.indices.size(), 30u);
+}
+
+TEST_F(VoxelMeshingSystemTest, GreedySelectionLeavesSingleExposedFaceAsOneQuad) {
+    ChunkCoord coord{0, 0, 0};
+    fillChunkSolid(coord);
+    fillChunkSolid({1, 0, 0});
+    fillChunkSolid({-1, 0, 0});
+    fillChunkSolid({0, 1, 0});
+    fillChunkSolid({0, -1, 0});
+    fillChunkSolid({0, 0, 1});
+    system.setNearChunkMesher(VoxelMeshingSystem::NearChunkMesher::Greedy);
+
+    const auto result = system.generateMeshCPU(coord);
+
+    ASSERT_TRUE(result.valid);
+    ASSERT_EQ(result.vertices.size(), 4u);
+    EXPECT_EQ(result.indices.size(), 6u);
+    for (const auto& vertex : result.vertices) {
+        EXPECT_FLOAT_EQ(vertex.nx, 0.0f);
+        EXPECT_FLOAT_EQ(vertex.ny, 0.0f);
+        EXPECT_FLOAT_EQ(vertex.nz, -1.0f);
+    }
+}
+
+TEST_F(VoxelMeshingSystemTest, GreedySelectionPreservesPaletteContractAndShaderAOPacking) {
+    ChunkCoord coord{0, 0, 0};
+    VoxelCell sand;
+    sand.materialId = MaterialIds::SAND;
+    sand.essenceIdx = 0;
+    simGrid.fillChunk(coord.x, coord.y, coord.z, sand);
+
+    auto* palette = simGrid.chunkPalette(coord.x, coord.y, coord.z);
+    ASSERT_NE(palette, nullptr);
+    palette->addEntryRaw({0.0f, 0.0f, 1.0f, 0.0f});
+
+    system.setNearChunkMesher(VoxelMeshingSystem::NearChunkMesher::Greedy);
+
+    const auto result = system.generateMeshCPU(coord);
+
+    ASSERT_TRUE(result.valid);
+    ASSERT_EQ(result.palette.size(), 1u);
+
+    const auto expected = materials.terrainAppearanceColor(MaterialIds::SAND);
+    EXPECT_FLOAT_EQ(result.palette[0][0], expected[0]);
+    EXPECT_FLOAT_EQ(result.palette[0][1], expected[1]);
+    EXPECT_FLOAT_EQ(result.palette[0][2], expected[2]);
+    EXPECT_FLOAT_EQ(result.palette[0][3], expected[3]);
+
+    for (const auto& vertex : result.vertices) {
+        EXPECT_EQ(vertex.getMaterialId(), 0u);
+        EXPECT_EQ(vertex.getAO(), recurse::SmoothVoxelVertex::K_SHADER_DEFAULT_AO);
+    }
+
+    for (const auto& vertex : result.voxelVertices) {
+        EXPECT_EQ(vertex.paletteIndex(), 0u);
+        EXPECT_EQ(vertex.aoLevel(), 3u);
+    }
+}
+
+TEST_F(VoxelMeshingSystemTest, GreedyDefaultStillMeshesThroughProcessFrame) {
+    ChunkCoord coord{0, 0, 0};
+    fillChunkSolid(coord);
+
+    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::BoundaryDirty);
+    system.processFrame();
+
+    const auto& greedyMesh = system.gpuMeshes().at(coord);
+    EXPECT_EQ(system.nearChunkMesher(), VoxelMeshingSystem::NearChunkMesher::Greedy);
+    EXPECT_TRUE(greedyMesh.valid);
+    EXPECT_EQ(greedyMesh.vertexCount, 24u);
+    EXPECT_EQ(greedyMesh.indexCount, 36u);
+    EXPECT_EQ(greedyMesh.mesh.vertexFormat, recurse::ChunkMesh::VertexFormat::Voxel);
+    EXPECT_EQ(greedyMesh.mesh.vertexStrideBytes, sizeof(recurse::VoxelVertex));
+}
+
+TEST_F(VoxelMeshingSystemTest, SnapMCSelectionRemainsAvailableForRollback) {
+    ChunkCoord coord{0, 0, 0};
+    fillChunkSolid(coord);
+    system.setNearChunkMesher(VoxelMeshingSystem::NearChunkMesher::SnapMC);
+
+    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::BoundaryDirty);
+    system.processFrame();
+
+    const auto& snapMcMesh = system.gpuMeshes().at(coord);
+    EXPECT_EQ(system.nearChunkMesher(), VoxelMeshingSystem::NearChunkMesher::SnapMC);
+    EXPECT_TRUE(snapMcMesh.valid);
+    EXPECT_GT(snapMcMesh.vertexCount, 0u);
+    EXPECT_GT(snapMcMesh.indexCount, 0u);
+    EXPECT_EQ(snapMcMesh.mesh.vertexFormat, recurse::ChunkMesh::VertexFormat::Smooth);
+    EXPECT_EQ(snapMcMesh.mesh.vertexStrideBytes, sizeof(recurse::SmoothVoxelVertex));
+}
+
+TEST_F(VoxelMeshingSystemTest, GreedyDefaultUsesNoMoreGeometryThanSnapMCRollbackForSolidChunk) {
+    ChunkCoord coord{0, 0, 0};
+    fillChunkSolid(coord);
+
+    const auto greedy = system.generateMeshCPU(coord);
+    ASSERT_TRUE(greedy.valid);
+
+    system.setNearChunkMesher(VoxelMeshingSystem::NearChunkMesher::SnapMC);
+    const auto snapMc = system.generateMeshCPU(coord);
+
+    ASSERT_TRUE(snapMc.valid);
+    RecordProperty("greedy_vertices", static_cast<int>(greedy.vertices.size()));
+    RecordProperty("greedy_indices", static_cast<int>(greedy.indices.size()));
+    RecordProperty("snapmc_vertices", static_cast<int>(snapMc.vertices.size()));
+    RecordProperty("snapmc_indices", static_cast<int>(snapMc.indices.size()));
+    EXPECT_LE(greedy.vertices.size(), snapMc.vertices.size());
+    EXPECT_LE(greedy.indices.size(), snapMc.indices.size());
+}
+
 TEST_F(VoxelMeshingSystemTest, DirtyChunkConsumed) {
     ChunkCoord coord{0, 0, 0};
     fillChunkSolid(coord);
@@ -166,10 +319,14 @@ TEST_F(VoxelMeshingSystemTest, DebugCountersTrackMeshLifecycleWithoutRescans) {
     EXPECT_EQ(system.pendingMeshCount(), 0u);
     EXPECT_EQ(system.vertexBufferSize(), static_cast<size_t>(mesh.vertexCount));
     EXPECT_EQ(system.indexBufferSize(), static_cast<size_t>(mesh.indexCount));
+    EXPECT_EQ(system.vertexBufferBytes(), static_cast<size_t>(mesh.vertexCount) * sizeof(recurse::VoxelVertex));
+    EXPECT_EQ(system.indexBufferBytes(), static_cast<size_t>(mesh.indexCount) * sizeof(uint32_t));
 
     system.removeChunkMesh(coord);
     EXPECT_EQ(system.vertexBufferSize(), 0u);
     EXPECT_EQ(system.indexBufferSize(), 0u);
+    EXPECT_EQ(system.vertexBufferBytes(), 0u);
+    EXPECT_EQ(system.indexBufferBytes(), 0u);
 }
 
 TEST_F(VoxelMeshingSystemTest, FullResPaletteUsesMaterialAppearanceContractNotChunkEssence) {

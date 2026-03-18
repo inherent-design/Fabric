@@ -14,9 +14,10 @@
 // Compiled SPIR-V shader bytecode generated at build time from .sc sources.
 #include "spv/fs_smooth.sc.bin.h"
 #include "spv/vs_smooth.sc.bin.h"
+#include "spv/vs_voxel.sc.bin.h"
 
-static const bgfx::EmbeddedShader s_voxelShaders[] = {BGFX_EMBEDDED_SHADER(vs_smooth), BGFX_EMBEDDED_SHADER(fs_smooth),
-                                                      BGFX_EMBEDDED_SHADER_END()};
+static const bgfx::EmbeddedShader s_voxelShaders[] = {BGFX_EMBEDDED_SHADER(vs_smooth), BGFX_EMBEDDED_SHADER(vs_voxel),
+                                                      BGFX_EMBEDDED_SHADER(fs_smooth), BGFX_EMBEDDED_SHADER_END()};
 
 using namespace fabric;
 
@@ -37,13 +38,15 @@ void VoxelRenderer::shutdown() {
     uniformViewPos_.reset();
     uniformLightDir_.reset();
     uniformPalette_.reset();
-    program_.reset();
+    voxelProgram_.reset();
+    smoothProgram_.reset();
     initialized_ = false;
     mdiSupported_ = false;
 }
 
-void VoxelRenderer::initProgram() {
-    program_.reset(fabric::render::createProgramFromEmbedded(s_voxelShaders, "vs_smooth", "fs_smooth"));
+void VoxelRenderer::initPrograms() {
+    smoothProgram_.reset(fabric::render::createProgramFromEmbedded(s_voxelShaders, "vs_smooth", "fs_smooth"));
+    voxelProgram_.reset(fabric::render::createProgramFromEmbedded(s_voxelShaders, "vs_voxel", "fs_smooth"));
 
     uniformPalette_.reset(bgfx::createUniform("u_palette", bgfx::UniformType::Vec4, 128));
     uniformLightDir_.reset(bgfx::createUniform("u_lightDir", bgfx::UniformType::Vec4));
@@ -53,9 +56,9 @@ void VoxelRenderer::initProgram() {
     uniformRimParams_.reset(bgfx::createUniform("u_rimParams", bgfx::UniformType::Vec4));
     uniformOceanParams_.reset(bgfx::createUniform("u_oceanParams", bgfx::UniformType::Vec4));
 
-    if (!program_.isValid() || !uniformPalette_.isValid() || !uniformLightDir_.isValid() ||
-        !uniformViewPos_.isValid() || !uniformLitColor_.isValid() || !uniformShadowColor_.isValid() ||
-        !uniformRimParams_.isValid() || !uniformOceanParams_.isValid()) {
+    if (!smoothProgram_.isValid() || !voxelProgram_.isValid() || !uniformPalette_.isValid() ||
+        !uniformLightDir_.isValid() || !uniformViewPos_.isValid() || !uniformLitColor_.isValid() ||
+        !uniformShadowColor_.isValid() || !uniformRimParams_.isValid() || !uniformOceanParams_.isValid()) {
         FABRIC_LOG_RENDER_ERROR("VoxelRenderer shader/uniform init failed for renderer {}",
                                 bgfx::getRendererName(bgfx::getRendererType()));
         shutdown();
@@ -103,10 +106,11 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, float offse
     }
 
     if (!initialized_) {
-        initProgram();
+        initPrograms();
     }
 
-    if (!isValid() || !mesh.vbh.isValid() || !mesh.ibh.isValid()) {
+    const bgfx::ProgramHandle program = programForFormat(mesh.vertexFormat);
+    if (!bgfx::isValid(program) || !mesh.vbh.isValid() || !mesh.ibh.isValid()) {
         return;
     }
 
@@ -135,7 +139,7 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, float offse
     bgfx::setUniform(uniformShadowColor_.get(), shadowColor_);
     bgfx::setUniform(uniformRimParams_.get(), rimParams_);
     bgfx::setUniform(uniformOceanParams_.get(), oceanParams_);
-    bgfx::submit(view, program_.get());
+    bgfx::submit(view, program);
 }
 
 void VoxelRenderer::setLightDirection(const Vector3<float, Space::World>& dir) {
@@ -161,7 +165,7 @@ bool VoxelRenderer::isWireframeEnabled() const {
 }
 
 bool VoxelRenderer::isValid() const {
-    return program_.isValid();
+    return smoothProgram_.isValid() && voxelProgram_.isValid();
 }
 
 bool VoxelRenderer::mdiSupported() const {
@@ -175,6 +179,16 @@ uint64_t VoxelRenderer::renderState() const {
     return state;
 }
 
+bgfx::ProgramHandle VoxelRenderer::programForFormat(ChunkMesh::VertexFormat format) const {
+    switch (format) {
+        case ChunkMesh::VertexFormat::Smooth:
+            return smoothProgram_.get();
+        case ChunkMesh::VertexFormat::Voxel:
+            return voxelProgram_.get();
+    }
+    return smoothProgram_.get();
+}
+
 void VoxelRenderer::renderBatch(bgfx::ViewId view, const ChunkRenderInfo* chunks, uint32_t count) {
     FABRIC_ZONE_SCOPED;
 
@@ -183,7 +197,7 @@ void VoxelRenderer::renderBatch(bgfx::ViewId view, const ChunkRenderInfo* chunks
     }
 
     if (!initialized_) {
-        initProgram();
+        initPrograms();
     }
 
     if (!isValid()) {
@@ -209,6 +223,7 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
     // True single-submit MDI requires VertexPool (shared mega-buffer).
 
     struct PaletteGroup {
+        ChunkMesh::VertexFormat format;
         const std::vector<std::array<float, 4>>* palette;
         std::vector<uint32_t> indices;
     };
@@ -227,14 +242,14 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
 
         bool matched = false;
         for (auto& g : groups) {
-            if (*g.palette == ci.mesh->palette) {
+            if (g.format == ci.mesh->vertexFormat && *g.palette == ci.mesh->palette) {
                 g.indices.push_back(i);
                 matched = true;
                 break;
             }
         }
         if (!matched) {
-            groups.push_back({&ci.mesh->palette, {i}});
+            groups.push_back({ci.mesh->vertexFormat, &ci.mesh->palette, {i}});
         }
     }
 
@@ -257,6 +272,10 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
         bgfx::setUniform(uniformOceanParams_.get(), oceanParams_);
         bgfx::setState(state);
 
+        const bgfx::ProgramHandle program = programForFormat(group.format);
+        if (!bgfx::isValid(program))
+            continue;
+
         for (size_t j = 0; j < group.indices.size(); ++j) {
             const auto& ci = chunks[group.indices[j]];
 
@@ -271,7 +290,7 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
             bgfx::setIndexBuffer(ci.mesh->ibh.get());
 
             bool last = (j + 1 == group.indices.size());
-            bgfx::submit(view, program_.get(), 0, last ? BGFX_DISCARD_ALL : K_GROUP_DISCARD);
+            bgfx::submit(view, program, 0, last ? BGFX_DISCARD_ALL : K_GROUP_DISCARD);
         }
     }
 }

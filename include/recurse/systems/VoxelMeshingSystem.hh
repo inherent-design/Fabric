@@ -116,14 +116,18 @@ struct ChunkGPUMesh {
     recurse::ChunkMesh mesh;
     uint32_t vertexCount = 0;
     uint32_t indexCount = 0;
+    size_t vertexBytes = 0;
+    size_t indexBytes = 0;
     bool valid = false;
 };
 
 /// CPU-side mesh output from parallel generation. Consumed by sequential GPU upload.
 struct CPUMeshResult {
     std::vector<recurse::SmoothVoxelVertex> vertices;
+    std::vector<recurse::VoxelVertex> voxelVertices;
     std::vector<uint32_t> indices;
     std::vector<std::array<float, 4>> palette;
+    recurse::ChunkMesh::VertexFormat meshFormat = recurse::ChunkMesh::VertexFormat::Smooth;
     bool valid = false;
     bool deferred = false; ///< True if neighbor check deferred meshing
 };
@@ -184,6 +188,8 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     size_t pendingMeshCount() const;
     size_t vertexBufferSize() const;
     size_t indexBufferSize() const;
+    size_t vertexBufferBytes() const;
+    size_t indexBufferBytes() const;
     MeshingDebugInfo debugInfo() const;
 
   private:
@@ -205,6 +211,8 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     size_t pendingMeshCount_ = 0;
     size_t vertexBufferSize_ = 0;
     size_t indexBufferSize_ = 0;
+    size_t vertexBufferBytes_ = 0;
+    size_t indexBufferBytes_ = 0;
     int meshBudget_ = 50; // Increased from 3 to handle initial load in one frame
     bool gpuUploadEnabled_ = false;
     bool requireNeighborsForMeshing_ = true;

@@ -5,6 +5,7 @@
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/world/SmoothVoxelVertex.hh"
+#include "recurse/world/VoxelVertex.hh"
 #include <array>
 #include <bgfx/bgfx.h>
 #include <cstdint>
@@ -21,10 +22,27 @@ using fabric::Vector3;
 /// GPU-side chunk mesh (vertex/index buffer handles + palette).
 /// Move-only; BgfxHandle RAII destroys GPU buffers automatically.
 struct ChunkMesh {
+    enum class VertexFormat : uint8_t {
+        Smooth,
+        Voxel,
+    };
+
+    static constexpr uint32_t vertexStrideForFormat(VertexFormat format) {
+        switch (format) {
+            case VertexFormat::Smooth:
+                return sizeof(SmoothVoxelVertex);
+            case VertexFormat::Voxel:
+                return sizeof(VoxelVertex);
+        }
+        return sizeof(SmoothVoxelVertex);
+    }
+
     fabric::BgfxHandle<bgfx::VertexBufferHandle> vbh;
     fabric::BgfxHandle<bgfx::IndexBufferHandle> ibh;
     uint32_t indexCount = 0;
     std::vector<std::array<float, 4>> palette;
+    VertexFormat vertexFormat = VertexFormat::Smooth;
+    uint32_t vertexStrideBytes = vertexStrideForFormat(VertexFormat::Smooth);
     bool valid = false;
 
     ChunkMesh() = default;
@@ -86,11 +104,13 @@ class VoxelRenderer {
     bool mdiSupported() const;
 
   private:
-    void initProgram();
+    void initPrograms();
     void renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chunks, uint32_t count);
     uint64_t renderState() const;
+    bgfx::ProgramHandle programForFormat(ChunkMesh::VertexFormat format) const;
 
-    fabric::BgfxHandle<bgfx::ProgramHandle> program_;
+    fabric::BgfxHandle<bgfx::ProgramHandle> smoothProgram_;
+    fabric::BgfxHandle<bgfx::ProgramHandle> voxelProgram_;
     fabric::BgfxHandle<bgfx::UniformHandle> uniformPalette_;
     fabric::BgfxHandle<bgfx::UniformHandle> uniformLightDir_;
     fabric::BgfxHandle<bgfx::UniformHandle> uniformViewPos_;
