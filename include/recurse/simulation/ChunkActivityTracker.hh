@@ -1,5 +1,7 @@
 #pragma once
 #include "fabric/world/ChunkCoord.hh"
+
+#include <cstddef>
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
@@ -35,6 +37,7 @@ class ChunkActivityTracker {
     void clearSubRegionMask(ChunkCoord pos);
     void notifyBoundaryChange(ChunkCoord neighborPos);
     void setReferencePoint(int wx, int wy, int wz);
+    size_t activeChunkCount() const;
     std::vector<ActiveChunkEntry> collectActiveChunks(int budgetCap = 0) const;
     void putToSleep(ChunkCoord pos);
     void resolveBoundaryDirty(ChunkCoord pos, bool needsSimulation);
@@ -48,6 +51,7 @@ class ChunkActivityTracker {
     };
 
     std::unordered_map<ChunkCoord, ChunkInfo, ChunkCoordHash> chunks_;
+    size_t activeChunkCount_ = 0;
     int refX_ = 0, refY_ = 0, refZ_ = 0;
 
     SimPriority computePriority(ChunkCoord pos) const;

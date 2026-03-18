@@ -75,6 +75,10 @@ class VoxelRenderer {
     // Set the camera world position used by smooth shading view-dependent terms.
     void setViewPosition(double x, double y, double z);
 
+    // Toggle explicit chunk wireframe rendering for the voxel path.
+    void setWireframeEnabled(bool enabled);
+    bool isWireframeEnabled() const;
+
     // Check if the shader program handle is valid
     bool isValid() const;
 
@@ -84,6 +88,7 @@ class VoxelRenderer {
   private:
     void initProgram();
     void renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chunks, uint32_t count);
+    uint64_t renderState() const;
 
     fabric::BgfxHandle<bgfx::ProgramHandle> program_;
     fabric::BgfxHandle<bgfx::UniformHandle> uniformPalette_;
@@ -96,6 +101,7 @@ class VoxelRenderer {
     fabric::BgfxHandle<bgfx::IndirectBufferHandle> indirectBuffer_;
     bool initialized_ = false;
     bool mdiSupported_ = false;
+    bool wireframeEnabled_ = false;
     float lightDir_[4] = {0.0f, -1.0f, 0.0f, 0.0f};
     float viewPos_[4] = {0.0f, 0.0f, 0.0f, 1.0f};
     float litColor_[4] = {0.95f, 0.85f, 0.55f, 1.0f};
