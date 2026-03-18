@@ -43,6 +43,7 @@ struct ChunkMesh {
     std::vector<std::array<float, 4>> palette;
     VertexFormat vertexFormat = VertexFormat::Smooth;
     uint32_t vertexStrideBytes = vertexStrideForFormat(VertexFormat::Smooth);
+    float modelScale = 1.0f;
     bool valid = false;
 
     ChunkMesh() = default;
