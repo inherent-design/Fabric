@@ -139,53 +139,31 @@ TEST_F(StreamingMultiPositionTest, SourceRemovalTriggersUnload) {
     EXPECT_EQ(unloadedFromB, 27) << "All 3x3x3 chunks exclusive to removed source should unload";
 }
 
-TEST_F(StreamingMultiPositionTest, BudgetEvictionMultiSource) {
+TEST_F(StreamingMultiPositionTest, BudgetEvictionMultiSourceOnlyRemovesChunksOutsideDesiredUnion) {
     StreamingConfig cfg = {
         .baseRadius = 2,
         .maxLoadsPerTick = 10000,
-        .maxUnloadsPerTick = 10000,
-        .maxTrackedChunks = 30,
+        .maxUnloadsPerTick = 5,
+        .maxTrackedChunks = 100,
     };
     ChunkStreamingManager mgr(cfg);
 
-    // Two sources, each radius=2 -> 125 desired per source. Union could be up to 250.
-    // Cap at 30; farthest from any source evicted.
-    auto result = mgr.update({
+    mgr.update({
         {0.0f, 0.0f, 0.0f, 2},
-        {3.0f * 32.0f, 0.0f, 0.0f, 2},
+        {20.0f * 32.0f, 0.0f, 0.0f, 2},
     });
 
-    EXPECT_LE(static_cast<int>(mgr.trackedChunkCount()), 30);
+    auto result = mgr.update({
+        {0.0f, 0.0f, 0.0f, 2},
+    });
 
-    // Evicted chunks should be farther from both sources than any kept chunk
-    if (!result.toUnload.empty()) {
-        auto minDistSq = [](const ChunkCoord& c, int sx1, int sx2) {
-            int d1 = c.x - sx1;
-            int d1sq = d1 * d1 + c.y * c.y + c.z * c.z;
-            int d2 = c.x - sx2;
-            int d2sq = d2 * d2 + c.y * c.y + c.z * c.z;
-            return std::min(d1sq, d2sq);
-        };
+    EXPECT_EQ(static_cast<int>(result.toUnload.size()), 125);
+    EXPECT_EQ(static_cast<int>(mgr.trackedChunkCount()), 125);
+    EXPECT_GT(static_cast<int>(mgr.trackedChunkCount()), cfg.maxTrackedChunks);
 
-        int maxKeptDist = 0;
-        for (const auto& c : result.toLoad) {
-            bool wasEvicted = false;
-            for (const auto& u : result.toUnload) {
-                if (u == c) {
-                    wasEvicted = true;
-                    break;
-                }
-            }
-            if (!wasEvicted) {
-                int d = minDistSq(c, 0, 3);
-                if (d > maxKeptDist)
-                    maxKeptDist = d;
-            }
-        }
-
-        for (const auto& c : result.toUnload) {
-            EXPECT_GE(minDistSq(c, 0, 3), maxKeptDist)
-                << "Evicted chunk at (" << c.x << "," << c.y << "," << c.z << ") should be farther than any kept chunk";
-        }
+    for (const auto& c : result.toUnload) {
+        EXPECT_FALSE(std::abs(c.x) <= 2 && std::abs(c.y) <= 2 && std::abs(c.z) <= 2)
+            << "Unloaded chunk at (" << c.x << "," << c.y << "," << c.z
+            << ") should be outside the remaining desired union";
     }
 }

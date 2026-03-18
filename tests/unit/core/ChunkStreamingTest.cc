@@ -7,6 +7,16 @@ using namespace recurse;
 class ChunkStreamingTest : public ::testing::Test {
   protected:
     StreamingConfig smallConfig() { return {.baseRadius = 2, .maxLoadsPerTick = 1000, .maxUnloadsPerTick = 1000}; }
+
+    int cubeChunkCount(int radius) {
+        int side = 2 * radius + 1;
+        return side * side * side;
+    }
+
+    bool inDesiredCube(const ChunkCoord& c, int centerCX, int centerCY, int centerCZ, int radius) {
+        return std::abs(c.x - centerCX) <= radius && std::abs(c.y - centerCY) <= radius &&
+               std::abs(c.z - centerCZ) <= radius;
+    }
 };
 
 TEST_F(ChunkStreamingTest, InitialUpdateLoadsChunksAroundOrigin) {
@@ -82,6 +92,30 @@ TEST_F(ChunkStreamingTest, StationaryNoUpdates) {
     EXPECT_TRUE(result.toUnload.empty());
 }
 
+TEST_F(ChunkStreamingTest, StationaryRadiusEightDoesNotChurnWhenDesiredExceedsTrackedCap) {
+    StreamingConfig cfg = {
+        .baseRadius = 8,
+        .maxLoadsPerTick = 4,
+        .maxUnloadsPerTick = 4,
+        .maxTrackedChunks = 4096,
+    };
+    ChunkStreamingManager mgr(cfg);
+
+    int desiredCount = cubeChunkCount(cfg.baseRadius);
+    int maxTicks = (desiredCount + cfg.maxLoadsPerTick - 1) / cfg.maxLoadsPerTick;
+    for (int tick = 0; tick < maxTicks; ++tick) {
+        auto result = mgr.update(0.0f, 0.0f, 0.0f);
+        EXPECT_TRUE(result.toUnload.empty()) << "Stationary update should not churn at tick " << tick;
+        EXPECT_LE(static_cast<int>(result.toLoad.size()), cfg.maxLoadsPerTick);
+    }
+
+    EXPECT_EQ(static_cast<int>(mgr.trackedChunkCount()), desiredCount);
+
+    auto settled = mgr.update(0.0f, 0.0f, 0.0f);
+    EXPECT_TRUE(settled.toLoad.empty());
+    EXPECT_TRUE(settled.toUnload.empty());
+}
+
 TEST_F(ChunkStreamingTest, NegativeCoordinates) {
     StreamingConfig cfg = smallConfig();
     cfg.maxLoadsPerTick = 10000;
@@ -94,7 +128,7 @@ TEST_F(ChunkStreamingTest, NegativeCoordinates) {
     }
 }
 
-TEST_F(ChunkStreamingTest, MaxTrackedChunksEvictsFarthest) {
+TEST_F(ChunkStreamingTest, MaxTrackedChunksDoesNotEvictDesiredChunks) {
     StreamingConfig cfg = smallConfig();
     cfg.baseRadius = 2;
     cfg.maxLoadsPerTick = 10000;
@@ -102,17 +136,10 @@ TEST_F(ChunkStreamingTest, MaxTrackedChunksEvictsFarthest) {
     cfg.maxTrackedChunks = 10;
     ChunkStreamingManager mgr(cfg);
 
-    // Load all chunks at origin (5^3 = 125 desired, but cap at 10)
     auto result = mgr.update(0.0f, 0.0f, 0.0f);
 
-    // After the first update, tracked count should not exceed the cap
-    EXPECT_LE(static_cast<int>(mgr.trackedChunkCount()), cfg.maxTrackedChunks);
-
-    // The excess chunks should appear in toUnload
-    // 125 loaded initially, then evicted down to 10
-    int totalLoaded = static_cast<int>(result.toLoad.size());
-    int totalUnloaded = static_cast<int>(result.toUnload.size());
-    EXPECT_EQ(static_cast<int>(mgr.trackedChunkCount()), totalLoaded - totalUnloaded);
+    EXPECT_EQ(static_cast<int>(mgr.trackedChunkCount()), cubeChunkCount(cfg.baseRadius));
+    EXPECT_TRUE(result.toUnload.empty());
 }
 
 TEST_F(ChunkStreamingTest, MaxTrackedChunksZeroMeansUnlimited) {
@@ -129,38 +156,23 @@ TEST_F(ChunkStreamingTest, MaxTrackedChunksZeroMeansUnlimited) {
     EXPECT_TRUE(result.toUnload.empty());
 }
 
-TEST_F(ChunkStreamingTest, MaxTrackedChunksKeepsNearestChunks) {
+TEST_F(ChunkStreamingTest, MaxTrackedChunksEvictsOnlyNonDesiredChunks) {
     StreamingConfig cfg = smallConfig();
     cfg.baseRadius = 2;
     cfg.maxLoadsPerTick = 10000;
-    cfg.maxUnloadsPerTick = 10000;
-    cfg.maxTrackedChunks = 27; // 3^3
+    cfg.maxUnloadsPerTick = 5;
+    cfg.maxTrackedChunks = 110;
     ChunkStreamingManager mgr(cfg);
 
-    auto result = mgr.update(0.0f, 0.0f, 0.0f);
+    mgr.update(0.0f, 0.0f, 0.0f);
+    auto result = mgr.update(32.0f, 0.0f, 0.0f);
 
-    // The chunks that survived eviction should all be within radius 1 of center
-    // (3^3 = 27 nearest chunks)
-    EXPECT_EQ(static_cast<int>(mgr.trackedChunkCount()), 27);
+    EXPECT_EQ(static_cast<int>(result.toLoad.size()), 25);
+    EXPECT_EQ(static_cast<int>(result.toUnload.size()), 25);
+    EXPECT_EQ(static_cast<int>(mgr.trackedChunkCount()), cubeChunkCount(cfg.baseRadius));
+    EXPECT_GT(static_cast<int>(mgr.trackedChunkCount()), cfg.maxTrackedChunks);
 
-    // Evicted chunks should be farther than kept chunks
-    // Verify no evicted chunk is closer than any kept chunk
-    if (!result.toUnload.empty()) {
-        auto distSq = [](const ChunkCoord& c) {
-            return c.x * c.x + c.y * c.y + c.z * c.z;
-        };
-        int minUnloadDist = distSq(result.toUnload.back()); // farthest-first sorted
-        for (const auto& loaded : result.toLoad) {
-            bool wasUnloaded = false;
-            for (const auto& u : result.toUnload) {
-                if (u == loaded) {
-                    wasUnloaded = true;
-                    break;
-                }
-            }
-            if (!wasUnloaded) {
-                EXPECT_LE(distSq(loaded), minUnloadDist);
-            }
-        }
+    for (const auto& c : result.toUnload) {
+        EXPECT_FALSE(inDesiredCube(c, 1, 0, 0, cfg.baseRadius));
     }
 }
