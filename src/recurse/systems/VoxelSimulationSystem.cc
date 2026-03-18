@@ -56,6 +56,11 @@ recurse::VoxelChangeDetail makeExternalEditDetail(const recurse::InteractionResu
     return detail;
 }
 
+recurse::simulation::ChunkFinalizationCause externalEditCause(const recurse::InteractionResult& edit) {
+    return edit.source == ChangeSource::Place ? recurse::simulation::ChunkFinalizationCause::LivePlaceEdit
+                                              : recurse::simulation::ChunkFinalizationCause::LiveDestroyEdit;
+}
+
 } // namespace
 
 VoxelSimulationSystem::VoxelSimulationSystem() = default;
@@ -160,10 +165,16 @@ void VoxelSimulationSystem::generateInitialWorld() {
                     if (buf && pal)
                         recurse::simulation::assignEssence(buf->data(), cx, cy, cz, fabSim_->materials(), *pal, 42);
                 }
-                grid.syncChunkBuffers(cx, cy, cz);
+                recurse::simulation::finalizeChunkBuffers(
+                    grid, cx, cy, cz,
+                    recurse::simulation::chunkBufferFinalizationOptionsForCause(
+                        recurse::simulation::ChunkFinalizationCause::InitialWorldGenerationReady));
                 recurse::simulation::transition<recurse::simulation::Generating, recurse::simulation::Active>(
                     generating, registry);
-                tracker.setState(recurse::simulation::ChunkCoord{cx, cy, cz}, recurse::simulation::ChunkState::Active);
+                recurse::simulation::finalizeChunkActivation(
+                    tracker, grid, cx, cy, cz,
+                    recurse::simulation::chunkActivationOptionsForCause(
+                        recurse::simulation::ChunkFinalizationCause::InitialWorldGenerationReady));
                 generatedChunks.emplace_back(cx, cy, cz);
             }
         }
@@ -247,12 +258,15 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
         if (buf && pal)
             recurse::simulation::assignEssence(buf->data(), cx, cy, cz, fabSim_->materials(), *pal, 42);
     }
-    recurse::simulation::finalizeChunkBuffers(grid, cx, cy, cz);
+    recurse::simulation::finalizeChunkBuffers(
+        grid, cx, cy, cz,
+        recurse::simulation::chunkBufferFinalizationOptionsForCause(
+            recurse::simulation::ChunkFinalizationCause::StreamingGenerationReady));
     recurse::simulation::transition<recurse::simulation::Generating, recurse::simulation::Active>(generating, registry);
-    recurse::simulation::ChunkActivationOptions activation;
-    activation.targetState = recurse::simulation::ChunkState::Active;
-    activation.neighborInvalidation = recurse::simulation::NeighborInvalidation::FaceAndDiagonalXZ;
-    recurse::simulation::finalizeChunkActivation(fabSim_->activityTracker(), fabSim_->grid(), cx, cy, cz, activation);
+    recurse::simulation::finalizeChunkActivation(
+        fabSim_->activityTracker(), fabSim_->grid(), cx, cy, cz,
+        recurse::simulation::chunkActivationOptionsForCause(
+            recurse::simulation::ChunkFinalizationCause::StreamingGenerationReady));
 
     // Initialize Jolt physics collision for this chunk (always dispatch, even for sentinels)
     if (dispatcher_)
@@ -268,17 +282,10 @@ void VoxelSimulationSystem::applyExternalEdit(const recurse::InteractionResult& 
     grid.writeCellImmediate(edit.x, edit.y, edit.z, edit.newCell);
 
     const auto detail = makeExternalEditDetail(edit, oldCell);
-
-    recurse::simulation::ChunkActivationOptions activation;
-    activation.neighborInvalidation = recurse::simulation::NeighborInvalidation::Face;
-    if (edit.source == ChangeSource::Place) {
-        activation.targetState = recurse::simulation::ChunkState::Active;
-    } else {
-        activation.notifyTargetBoundaryChange = true;
-    }
+    const auto cause = externalEditCause(edit);
 
     recurse::simulation::finalizeChunkActivation(fabSim_->activityTracker(), grid, edit.cx, edit.cy, edit.cz,
-                                                 activation);
+                                                 recurse::simulation::chunkActivationOptionsForCause(cause));
     if (dispatcher_)
         emitVoxelChanged(*dispatcher_, edit.cx, edit.cy, edit.cz, detail);
 }
@@ -331,14 +338,17 @@ void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int
 
     // Phase 2: Sequential finalization (state transitions, events, neighbor notifications).
     for (const auto& [cx, cy, cz] : chunks) {
-        recurse::simulation::finalizeChunkBuffers(grid, cx, cy, cz);
+        recurse::simulation::finalizeChunkBuffers(
+            grid, cx, cy, cz,
+            recurse::simulation::chunkBufferFinalizationOptionsForCause(
+                recurse::simulation::ChunkFinalizationCause::StreamingGenerationReady));
         if (auto gen = recurse::simulation::findAs<recurse::simulation::Generating>(grid.registry(), cx, cy, cz))
             recurse::simulation::transition<recurse::simulation::Generating, recurse::simulation::Active>(
                 *gen, grid.registry());
-        recurse::simulation::ChunkActivationOptions activation;
-        activation.targetState = recurse::simulation::ChunkState::Active;
-        activation.neighborInvalidation = recurse::simulation::NeighborInvalidation::FaceAndDiagonalXZ;
-        recurse::simulation::finalizeChunkActivation(tracker, grid, cx, cy, cz, activation);
+        recurse::simulation::finalizeChunkActivation(
+            tracker, grid, cx, cy, cz,
+            recurse::simulation::chunkActivationOptionsForCause(
+                recurse::simulation::ChunkFinalizationCause::StreamingGenerationReady));
 
         if (dispatcher_)
             dispatchGenerationEvent(*dispatcher_, cx, cy, cz);

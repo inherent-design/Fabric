@@ -386,18 +386,18 @@ std::vector<ops::CompletedLoad> WorldSession::pollPendingLoads() {
             ++stats_.loadsOk;
             auto& grid = simSystem_->simulationGrid();
             auto& registry = grid.registry();
-            simulation::ChunkBufferFinalizationOptions bufferOptions;
-            bufferOptions.sourceBufferIndex = meta.bufferIndex;
-            bufferOptions.materials = &simSystem_->materials();
-            bufferOptions.paletteData =
+            simulation::ChunkBufferPolicyInputs bufferInputs;
+            bufferInputs.sourceBufferIndex = meta.bufferIndex;
+            bufferInputs.materials = &simSystem_->materials();
+            bufferInputs.paletteData =
                 std::span<const float>(entry.result.paletteData.data(), entry.result.paletteData.size());
-            bufferOptions.restorePalette = true;
-            simulation::finalizeChunkBuffers(grid, cx, cy, cz, bufferOptions);
+            simulation::finalizeChunkBuffers(grid, cx, cy, cz,
+                                             simulation::chunkBufferFinalizationOptionsForCause(
+                                                 simulation::ChunkFinalizationCause::AsyncLoadReady, bufferInputs));
             simulation::transition<simulation::Generating, simulation::Active>(meta.generating, registry);
-            simulation::ChunkActivationOptions activation;
-            activation.targetState = recurse::simulation::ChunkState::Active;
-            activation.neighborInvalidation = recurse::simulation::NeighborInvalidation::FaceAndDiagonalXZ;
-            simulation::finalizeChunkActivation(simSystem_->activityTracker(), grid, cx, cy, cz, activation);
+            simulation::finalizeChunkActivation(
+                simSystem_->activityTracker(), grid, cx, cy, cz,
+                simulation::chunkActivationOptionsForCause(simulation::ChunkFinalizationCause::AsyncLoadReady));
 
             // F42: Snapshot the chunk's initial state so replay has an anchor.
             if (snapshotScheduler_)

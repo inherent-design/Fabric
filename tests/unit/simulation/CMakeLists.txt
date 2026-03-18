@@ -5,6 +5,7 @@ target_sources(UnitTests
   MaterialRegistryTest.cc
   SimulationGridTest.cc
   ChunkActivityTrackerTest.cc
+  ChunkFinalizationPolicyTest.cc
   GhostCellsTest.cc
   FallingSandGravityTest.cc
   FallingSandLiquidTest.cc

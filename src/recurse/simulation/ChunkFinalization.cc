@@ -79,4 +79,59 @@ void finalizeChunkActivation(ChunkActivityTracker& tracker, const SimulationGrid
     notifyNeighbors(tracker, grid, cx, cy, cz, options.neighborInvalidation);
 }
 
+ChunkBufferFinalizationOptions chunkBufferFinalizationOptionsForCause(ChunkFinalizationCause cause,
+                                                                      const ChunkBufferPolicyInputs& inputs) {
+    ChunkBufferFinalizationOptions options;
+    options.sourceBufferIndex = inputs.sourceBufferIndex;
+
+    switch (cause) {
+        case ChunkFinalizationCause::InitialWorldGenerationReady:
+        case ChunkFinalizationCause::StreamingGenerationReady:
+        case ChunkFinalizationCause::LivePlaceEdit:
+        case ChunkFinalizationCause::LiveDestroyEdit:
+        case ChunkFinalizationCause::ReplayPlaceEdit:
+        case ChunkFinalizationCause::ReplayDestroyEdit:
+            return options;
+        case ChunkFinalizationCause::AsyncLoadReady:
+        case ChunkFinalizationCause::ReplayRestoreReady:
+            options.materials = inputs.materials;
+            options.paletteData = inputs.paletteData;
+            options.restorePalette = true;
+            return options;
+    }
+
+    return options;
+}
+
+ChunkActivationOptions chunkActivationOptionsForCause(ChunkFinalizationCause cause) {
+    ChunkActivationOptions options;
+
+    switch (cause) {
+        case ChunkFinalizationCause::InitialWorldGenerationReady:
+            options.targetState = ChunkState::Active;
+            return options;
+        case ChunkFinalizationCause::StreamingGenerationReady:
+        case ChunkFinalizationCause::AsyncLoadReady:
+            options.targetState = ChunkState::Active;
+            options.neighborInvalidation = NeighborInvalidation::FaceAndDiagonalXZ;
+            return options;
+        case ChunkFinalizationCause::ReplayRestoreReady:
+        case ChunkFinalizationCause::ReplayPlaceEdit:
+        case ChunkFinalizationCause::ReplayDestroyEdit:
+            options.targetState = ChunkState::Active;
+            options.activateAllSubRegions = true;
+            return options;
+        case ChunkFinalizationCause::LivePlaceEdit:
+            options.targetState = ChunkState::Active;
+            options.neighborInvalidation = NeighborInvalidation::Face;
+            return options;
+        case ChunkFinalizationCause::LiveDestroyEdit:
+            options.notifyTargetBoundaryChange = true;
+            options.neighborInvalidation = NeighborInvalidation::Face;
+            return options;
+    }
+
+    return options;
+}
+
 } // namespace recurse::simulation
