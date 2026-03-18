@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstdint>
 #include <cstring>
 
@@ -52,5 +53,20 @@ struct MaterialDef {
     uint16_t boilPoint{0};
     uint8_t thermalConductivity{0};
 };
+
+inline std::array<float, 4> unpackARGBColor(uint32_t color) {
+    float a = static_cast<float>((color >> 24) & 0xFF) / 255.0f;
+    float r = static_cast<float>((color >> 16) & 0xFF) / 255.0f;
+    float g = static_cast<float>((color >> 8) & 0xFF) / 255.0f;
+    float b = static_cast<float>(color & 0xFF) / 255.0f;
+    return {r, g, b, a};
+}
+
+/// Terrain render contract for the current smooth terrain path.
+/// Full-res chunk meshes and distant LOD sections both derive visible color from
+/// MaterialDef::baseColor. Chunk-local essence remains simulation/debug data.
+inline std::array<float, 4> terrainAppearanceColor(const MaterialDef& def) {
+    return unpackARGBColor(def.baseColor);
+}
 
 } // namespace recurse::simulation

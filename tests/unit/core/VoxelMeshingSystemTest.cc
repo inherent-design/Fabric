@@ -1,10 +1,15 @@
+#define private public
 #include "recurse/systems/VoxelMeshingSystem.hh"
+#undef private
 
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
+#include "recurse/simulation/EssenceColor.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 
+#include <cmath>
 #include <gtest/gtest.h>
 
 using fabric::ChunkCoord;
@@ -21,10 +26,12 @@ class VoxelMeshingSystemTest : public ::testing::Test {
     SimulationGrid simGrid;
     ChunkActivityTracker tracker;
     VoxelMeshingSystem system;
+    recurse::simulation::MaterialRegistry materials;
 
     void SetUp() override {
         system.setSimulationGrid(&simGrid);
         system.setActivityTracker(&tracker);
+        system.materials_ = &materials;
         tracker.setReferencePoint(0, 0, 0);
         // Unit tests don't set up neighbors; bypass the neighbor check.
         system.setRequireNeighborsForMeshing(false);
@@ -163,4 +170,34 @@ TEST_F(VoxelMeshingSystemTest, DebugCountersTrackMeshLifecycleWithoutRescans) {
     system.removeChunkMesh(coord);
     EXPECT_EQ(system.vertexBufferSize(), 0u);
     EXPECT_EQ(system.indexBufferSize(), 0u);
+}
+
+TEST_F(VoxelMeshingSystemTest, FullResPaletteUsesMaterialAppearanceContractNotChunkEssence) {
+    ChunkCoord coord{0, 0, 0};
+    VoxelCell sand;
+    sand.materialId = MaterialIds::SAND;
+    sand.essenceIdx = 0;
+    simGrid.fillChunk(coord.x, coord.y, coord.z, sand);
+
+    auto* palette = simGrid.chunkPalette(coord.x, coord.y, coord.z);
+    ASSERT_NE(palette, nullptr);
+    palette->addEntryRaw({0.0f, 0.0f, 1.0f, 0.0f});
+
+    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::BoundaryDirty);
+    system.processFrame();
+
+    const auto& gpuMesh = system.gpuMeshes().at(coord);
+    ASSERT_TRUE(gpuMesh.valid);
+    ASSERT_EQ(gpuMesh.mesh.palette.size(), 1u);
+
+    const auto expected = materials.terrainAppearanceColor(MaterialIds::SAND);
+    const fabric::Vector4<float, fabric::Space::World> forcedEssence(0.0f, 0.0f, 1.0f, 0.0f);
+    const auto essenceColor = recurse::simulation::essenceToColor(forcedEssence);
+
+    EXPECT_FLOAT_EQ(gpuMesh.mesh.palette[0][0], expected[0]);
+    EXPECT_FLOAT_EQ(gpuMesh.mesh.palette[0][1], expected[1]);
+    EXPECT_FLOAT_EQ(gpuMesh.mesh.palette[0][2], expected[2]);
+    EXPECT_FLOAT_EQ(gpuMesh.mesh.palette[0][3], expected[3]);
+    EXPECT_GT(std::fabs(gpuMesh.mesh.palette[0][0] - essenceColor[0]), 0.2f);
+    EXPECT_GT(std::fabs(gpuMesh.mesh.palette[0][2] - essenceColor[2]), 0.25f);
 }
