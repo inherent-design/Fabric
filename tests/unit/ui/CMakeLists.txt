@@ -8,4 +8,5 @@ target_sources(UnitTests
     DebugHUDTest.cc
     DebugHUDPerfTest.cc
     ToastManagerTest.cc
+    WorldTransitionAssetTest.cc
 )

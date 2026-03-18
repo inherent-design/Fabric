@@ -19,18 +19,19 @@ body {
     padding: 28dp 32dp;
     background-color: #0c1018;
     border: 1dp rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 10dp;
 }
 
 .transition-title {
     color: #f5f7fa;
     font-size: 28dp;
-    margin-bottom: 10dp;
 }
 
 .transition-stage {
     color: #8fd4ff;
     font-size: 16dp;
-    margin-bottom: 10dp;
 }
 
 .transition-detail {
