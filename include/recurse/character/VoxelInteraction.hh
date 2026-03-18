@@ -7,7 +7,6 @@
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
-#include <cstring>
 #include <vector>
 
 namespace recurse {
@@ -68,7 +67,9 @@ struct InteractionResult {
     bool success = false;
     int x = 0, y = 0, z = 0;
     int cx = 0, cy = 0, cz = 0;
-    VoxelChangeDetail detail{};
+    VoxelCell newCell{};
+    ChangeSource source = ChangeSource::Place;
+    int32_t playerId = 0;
 };
 
 class VoxelInteraction {
