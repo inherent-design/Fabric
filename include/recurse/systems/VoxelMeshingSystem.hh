@@ -158,8 +158,8 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     void setMeshBudget(int budget) { meshBudget_ = budget; }
     int meshBudget() const { return meshBudget_; }
 
-    /// SnapMC remains the default for rollback posture, while Greedy routes the
-    /// near chunk path through the direct voxel extraction flow.
+    /// Greedy is the default near chunk path, while SnapMC remains selectable as
+    /// the rollback path during migration.
     void setNearChunkMesher(NearChunkMesher mesher) { nearChunkMesher_ = mesher; }
     NearChunkMesher nearChunkMesher() const { return nearChunkMesher_; }
 
@@ -198,7 +198,7 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     const recurse::simulation::MaterialRegistry* materials_ = nullptr;
     fabric::JobScheduler* scheduler_ = nullptr;
     std::unique_ptr<recurse::SnapMCMesher> snapMcMesher_;
-    NearChunkMesher nearChunkMesher_ = NearChunkMesher::SnapMC;
+    NearChunkMesher nearChunkMesher_ = NearChunkMesher::Greedy;
 
     std::unordered_map<fabric::ChunkCoord, ChunkGPUMesh, fabric::ChunkCoordHash> gpuMeshes_;
     std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> emptyChunks_;
