@@ -1,5 +1,5 @@
 // Recurse.cc -- Main entry point for the Recurse game.
-// Registers 17 application systems via FabricAppDesc and delegates to
+// Registers 18 application systems via FabricAppDesc and delegates to
 // FabricApp::run(). All game logic lives in registered SystemBase subclasses.
 
 // Engine includes
@@ -67,6 +67,7 @@ fabric::FabricAppDesc buildRecurseDesc() {
     desc.registerSystem<recurse::systems::VoxelSimulationSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::PhysicsGameSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::CharacterMovementSystem>(SystemPhase::FixedUpdate);
+    desc.registerSystem<recurse::systems::BenchmarkAutomationSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::AIGameSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::ParticleGameSystem>(SystemPhase::FixedUpdate);
     desc.registerSystem<recurse::systems::ChunkPipelineSystem>(SystemPhase::FixedUpdate);

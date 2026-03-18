@@ -1,6 +1,7 @@
 #include "fabric/core/CompilerHints.hh"
 #include "fabric/fx/WorldContext.hh"
 #include "recurse/persistence/WorldSession.hh"
+#include "recurse/systems/MainMenuSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/ChunkOps.hh"
 
@@ -154,4 +155,26 @@ TEST_F(WorldContextBenchmark, ResolveZeroOverhead) {
     // Release builds with objdump verification should show identical assembly.
     double ratio = static_cast<double>(resolveNs) / static_cast<double>(directNs);
     EXPECT_LT(ratio, 1.10) << "resolve path >10% slower than direct";
+}
+
+TEST(ProfileBenchmarkRouteTest, SampleStartsAtPresetSpawn) {
+    const auto preset = makeProfileBenchmarkPreset(4242);
+    const auto sample = sampleProfileBenchmarkMotion(preset, 0, 1.0f / 60.0f);
+
+    EXPECT_FLOAT_EQ(sample.position.x, preset.spawnPosition.x);
+    EXPECT_FLOAT_EQ(sample.position.y, preset.spawnPosition.y);
+    EXPECT_FLOAT_EQ(sample.position.z, preset.spawnPosition.z);
+    EXPECT_FLOAT_EQ(sample.yawDegrees, 90.0f);
+    EXPECT_FLOAT_EQ(sample.pitchDegrees, preset.pitchDegrees);
+    EXPECT_FALSE(sample.complete);
+}
+
+TEST(ProfileBenchmarkRouteTest, SampleCompletesAtDeterministicEndpoint) {
+    const auto preset = makeProfileBenchmarkPreset(4242);
+    const auto sample = sampleProfileBenchmarkMotion(preset, totalProfileBenchmarkMotionTicks() + 240, 1.0f / 60.0f);
+
+    EXPECT_NEAR(sample.position.x, preset.spawnPosition.x + 144.0f, 0.001f);
+    EXPECT_NEAR(sample.position.z, preset.spawnPosition.z + 144.0f, 0.001f);
+    EXPECT_FLOAT_EQ(sample.position.y, preset.spawnPosition.y);
+    EXPECT_TRUE(sample.complete);
 }

@@ -11,6 +11,7 @@
 
                 <div class="button_group">
                     <button id="btn_start" class="menu_button"><span>Start</span></button>
+                    <button id="btn_profile_benchmark" class="menu_button"><span>Profile Benchmark</span></button>
                     <button id="btn_settings" class="menu_button"><span>Settings</span></button>
                     <button id="btn_quit" class="menu_button"><span>Quit</span></button>
                 </div>

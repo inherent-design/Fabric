@@ -12,6 +12,7 @@
 #include "fabric/core/SystemRegistry.hh"
 #include "fabric/core/WorldLifecycle.hh"
 #include "fabric/log/Log.hh"
+#include "fabric/platform/ConfigManager.hh"
 #include "fabric/utils/TextSanitize.hh"
 #include "recurse/systems/AIGameSystem.hh"
 #include "recurse/systems/AudioGameSystem.hh"
@@ -38,13 +39,33 @@
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Core/EventListener.h>
 
+#include <array>
 #include <chrono>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <SDL3/SDL.h>
 
 namespace recurse::systems {
 
 namespace {
+
+constexpr char K_PROFILE_BENCHMARK_MARKER_FILE[] = ".profile-benchmark";
+constexpr float K_PROFILE_BENCHMARK_ROUTE_SPEED = 12.0f;
+constexpr uint32_t K_PROFILE_BENCHMARK_SEGMENT_TICKS = 360;
+
+struct BenchmarkRouteSegment {
+    float velocityX;
+    float velocityZ;
+    float yawDegrees;
+};
+
+constexpr std::array<BenchmarkRouteSegment, 4> K_PROFILE_BENCHMARK_ROUTE{{
+    {K_PROFILE_BENCHMARK_ROUTE_SPEED, 0.0f, 90.0f},
+    {0.0f, K_PROFILE_BENCHMARK_ROUTE_SPEED, 0.0f},
+    {K_PROFILE_BENCHMARK_ROUTE_SPEED, 0.0f, 90.0f},
+    {0.0f, K_PROFILE_BENCHMARK_ROUTE_SPEED, 0.0f},
+}};
 
 /// RmlUi event listener for button clicks
 class MenuButtonListener : public Rml::EventListener {
@@ -66,6 +87,137 @@ class MenuButtonListener : public Rml::EventListener {
 
 } // namespace
 
+ProfileBenchmarkPreset makeProfileBenchmarkPreset(std::optional<int64_t> seedOverride) {
+    ProfileBenchmarkPreset preset;
+    if (seedOverride.has_value())
+        preset.seed = *seedOverride;
+    return preset;
+}
+
+ProfileBenchmarkSample sampleProfileBenchmarkMotion(const ProfileBenchmarkPreset& preset, uint32_t motionTick,
+                                                    float fixedDt) {
+    ProfileBenchmarkSample sample;
+    sample.position = preset.spawnPosition;
+    sample.yawDegrees = preset.yawDegrees;
+    sample.pitchDegrees = preset.pitchDegrees;
+
+    uint32_t remaining = motionTick;
+    for (const auto& segment : K_PROFILE_BENCHMARK_ROUTE) {
+        const uint32_t stepTicks = std::min(remaining, K_PROFILE_BENCHMARK_SEGMENT_TICKS);
+        sample.position.x += segment.velocityX * fixedDt * static_cast<float>(stepTicks);
+        sample.position.z += segment.velocityZ * fixedDt * static_cast<float>(stepTicks);
+        sample.yawDegrees = segment.yawDegrees;
+        if (remaining < K_PROFILE_BENCHMARK_SEGMENT_TICKS)
+            return sample;
+        remaining -= K_PROFILE_BENCHMARK_SEGMENT_TICKS;
+    }
+
+    sample.complete = true;
+    return sample;
+}
+
+uint32_t totalProfileBenchmarkMotionTicks() {
+    return static_cast<uint32_t>(K_PROFILE_BENCHMARK_ROUTE.size()) * K_PROFILE_BENCHMARK_SEGMENT_TICKS;
+}
+
+void BenchmarkAutomationSystem::doInit(fabric::AppContext& ctx) {
+    if (auto* wl = ctx.worldLifecycle) {
+        wl->registerParticipant([this]() { onWorldBegin(); }, [this]() { onWorldEnd(); });
+    }
+
+    characterMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
+    cameraSystem_ = ctx.systemRegistry.get<CameraGameSystem>();
+    appModeManager_ = ctx.appModeManager;
+}
+
+void BenchmarkAutomationSystem::doShutdown() {
+    disarm();
+    characterMovement_ = nullptr;
+    cameraSystem_ = nullptr;
+    appModeManager_ = nullptr;
+}
+
+void BenchmarkAutomationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float fixedDt) {
+    if (!armed_ || !preset_.has_value() || !worldActive_ || !characterMovement_ || !cameraSystem_)
+        return;
+    if (appModeManager_ && appModeManager_->current() != fabric::AppMode::Game)
+        return;
+
+    ensureNoclip();
+
+    if (!routeStarted_) {
+        routeStarted_ = true;
+        FABRIC_LOG_INFO("BenchmarkAutomation: start seed={} spawn=({}, {}, {})", preset_->seed,
+                        preset_->spawnPosition.x, preset_->spawnPosition.y, preset_->spawnPosition.z);
+    }
+
+    const uint32_t motionTick = (worldTicks_ >= preset_->settleTicks) ? (worldTicks_ - preset_->settleTicks) : 0u;
+    const auto sample = sampleProfileBenchmarkMotion(*preset_, motionTick, fixedDt);
+    characterMovement_->setPlayerPosition(sample.position);
+    auto& cameraController = cameraSystem_->cameraController();
+    cameraController.setYaw(sample.yawDegrees);
+    cameraController.setPitch(sample.pitchDegrees);
+
+    if (sample.complete && !routeCompleteLogged_) {
+        routeCompleteLogged_ = true;
+        FABRIC_LOG_INFO("BenchmarkAutomation: route complete after {} motion ticks",
+                        totalProfileBenchmarkMotionTicks());
+    }
+
+    ++worldTicks_;
+}
+
+void BenchmarkAutomationSystem::configureDependencies() {
+    after<CharacterMovementSystem>();
+    // CharacterMovement must run first so automation can override the player
+    // pose deterministically for benchmark playback. Chunk streaming then sees
+    // the updated StreamSource on the next fixed tick, which avoids the
+    // ChunkPipeline -> VoxelSimulation -> CharacterMovement cycle.
+    after<ChunkPipelineSystem>();
+}
+
+void BenchmarkAutomationSystem::onWorldBegin() {
+    worldActive_ = true;
+    routeStarted_ = false;
+    routeCompleteLogged_ = false;
+    worldTicks_ = 0;
+}
+
+void BenchmarkAutomationSystem::onWorldEnd() {
+    worldActive_ = false;
+    routeStarted_ = false;
+    routeCompleteLogged_ = false;
+    worldTicks_ = 0;
+}
+
+void BenchmarkAutomationSystem::armForLaunch(ProfileBenchmarkPreset preset) {
+    preset_ = std::move(preset);
+    armed_ = true;
+    worldActive_ = false;
+    routeStarted_ = false;
+    routeCompleteLogged_ = false;
+    worldTicks_ = 0;
+}
+
+void BenchmarkAutomationSystem::disarm() {
+    preset_.reset();
+    armed_ = false;
+    worldActive_ = false;
+    routeStarted_ = false;
+    routeCompleteLogged_ = false;
+    worldTicks_ = 0;
+}
+
+void BenchmarkAutomationSystem::ensureNoclip() {
+    auto& movementFSM = characterMovement_->movementFSM();
+    if (movementFSM.isNoclip())
+        return;
+    if (!movementFSM.tryTransition(CharacterState::Noclip) && !movementFSM.isFlying()) {
+        movementFSM.tryTransition(CharacterState::Flying);
+        movementFSM.tryTransition(CharacterState::Noclip);
+    }
+}
+
 MainMenuSystem::MainMenuSystem() = default;
 MainMenuSystem::~MainMenuSystem() = default;
 
@@ -76,12 +228,17 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
     voxelMesh_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
     characterMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
+    benchmarkAutomation_ = ctx.systemRegistry.get<BenchmarkAutomationSystem>();
     physics_ = ctx.systemRegistry.get<PhysicsGameSystem>();
     chunkPipeline_ = ctx.systemRegistry.get<ChunkPipelineSystem>();
     appModeManager_ = ctx.appModeManager;
     registry_ = &ctx.systemRegistry;
     worldLifecycle_ = ctx.worldLifecycle;
     rmlContext_ = ctx.rmlContext;
+    benchmarkSeedOverride_ = ctx.configManager.get<int64_t>("profile_automation.seed");
+    startupBenchmarkAutostart_ = ctx.configManager.get<bool>("profile_automation.autostart", false);
+    startupBenchmarkSkipSplash_ =
+        ctx.configManager.get<bool>("profile_automation.skip_splash", startupBenchmarkAutostart_);
 
     FABRIC_LOG_INFO("MainMenuSystem: rmlContext={}, appModeManager={}", (void*)rmlContext_, (void*)appModeManager_);
 
@@ -135,10 +292,16 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
             voxelSim_->generateInitialWorld();
         }
 
+        const auto* request = activeWorldStart_ ? &*activeWorldStart_ : nullptr;
+
         // Restore player position from world.toml, or use default spawn
         if (characterMovement_) {
             auto meta = worldRegistry_ ? worldRegistry_->getWorld(uuid) : std::nullopt;
-            if (!isNew && meta && meta->hasPlayerPosition()) {
+            if (request && request->spawnOverride.has_value()) {
+                characterMovement_->setPlayerPosition(*request->spawnOverride);
+                FABRIC_LOG_INFO("MainMenu: Player position overridden to benchmark spawn ({}, {}, {})",
+                                request->spawnOverride->x, request->spawnOverride->y, request->spawnOverride->z);
+            } else if (!isNew && meta && meta->hasPlayerPosition()) {
                 characterMovement_->setPlayerPosition(fabric::Vec3f(meta->playerX, meta->playerY, meta->playerZ));
                 FABRIC_LOG_INFO("MainMenu: Restored player position ({}, {}, {})", meta->playerX, meta->playerY,
                                 meta->playerZ);
@@ -155,6 +318,8 @@ void MainMenuSystem::doInit(fabric::AppContext& ctx) {
         setWorldSystemsEnabled(true);
         enterReadyFramesRemaining_ = isNew ? 1 : 0;
         enterStartSucceeded_ = true;
+        activeBenchmarkWorld_ = request && request->benchmarkProfile;
+        deleteActiveWorldOnReset_ = request && request->deleteOnExit;
 
         FABRIC_LOG_INFO("MainMenu: world enter prepared uuid='{}' new={} spawnChunk=({}, {}, {})", uuid, isNew,
                         enterSpawnChunk_.x, enterSpawnChunk_.y, enterSpawnChunk_.z);
@@ -224,6 +389,7 @@ void MainMenuSystem::doShutdown() {
     voxelSim_ = nullptr;
     voxelMesh_ = nullptr;
     characterMovement_ = nullptr;
+    benchmarkAutomation_ = nullptr;
     physics_ = nullptr;
     chunkPipeline_ = nullptr;
     appModeManager_ = nullptr;
@@ -233,6 +399,18 @@ void MainMenuSystem::doShutdown() {
 }
 
 void MainMenuSystem::update(fabric::AppContext& /*ctx*/, float dt) {
+    if (startupBenchmarkAutostart_ && !startupBenchmarkQueued_ &&
+        (menuState_ == MenuState::Splash || menuState_ == MenuState::TitleScreen)) {
+        if (menuState_ == MenuState::Splash && !startupBenchmarkSkipSplash_) {
+            advanceSplash(dt);
+            return;
+        }
+
+        startupBenchmarkQueued_ = true;
+        requestProfileBenchmarkStart();
+        return;
+    }
+
     if (menuState_ == MenuState::Splash) {
         advanceSplash(dt);
         return;
@@ -372,6 +550,13 @@ void MainMenuSystem::showTitleScreen() {
             FABRIC_LOG_INFO("MainMenuSystem: Found btn_settings, wiring click handler");
             settingsBtn->AddEventListener(Rml::EventId::Click,
                                           new MenuButtonListener([this]() { onSettingsClicked(); }), true);
+        }
+
+        auto* benchmarkBtn = currentDocument_->GetElementById("btn_profile_benchmark");
+        if (benchmarkBtn) {
+            FABRIC_LOG_INFO("MainMenuSystem: Found btn_profile_benchmark, wiring click handler");
+            benchmarkBtn->AddEventListener(Rml::EventId::Click,
+                                           new MenuButtonListener([this]() { onProfileBenchmarkClicked(); }), true);
         }
 
         auto* quitBtn = currentDocument_->GetElementById("btn_quit");
@@ -696,13 +881,22 @@ void MainMenuSystem::setTransitionText(std::string title, std::string stage, std
 }
 
 void MainMenuSystem::requestWorldStart(recurse::WorldType type, int64_t seed, std::string uuid, bool isNew,
-                                       std::string displayName) {
-    pendingWorldStart_ = PendingWorldStart{type, seed, std::move(uuid), isNew, std::move(displayName)};
+                                       std::string displayName, std::optional<fabric::Vec3f> spawnOverride,
+                                       bool benchmarkProfile, bool deleteOnExit) {
+    pendingWorldStart_ = PendingWorldStart{
+        type,        seed, std::move(uuid), isNew, std::move(displayName), std::move(spawnOverride), benchmarkProfile,
+        deleteOnExit};
     activeWorldStart_.reset();
     enterInProgress_ = false;
     enterStartSucceeded_ = false;
     exitRequested_ = false;
     pendingExitToDesktop_ = false;
+    activeBenchmarkWorld_ = false;
+    deleteActiveWorldOnReset_ = false;
+
+    if (benchmarkAutomation_ && !benchmarkProfile) {
+        benchmarkAutomation_->disarm();
+    }
 
     FABRIC_LOG_INFO("MainMenu: queued world enter '{}' uuid='{}' new={} seed={}", pendingWorldStart_->displayName,
                     pendingWorldStart_->uuid, pendingWorldStart_->isNew, pendingWorldStart_->seed);
@@ -727,10 +921,19 @@ void MainMenuSystem::executePendingWorldStart() {
     }
 
     if (!enterStartSucceeded_) {
+        const bool deleteOnFailure = request.deleteOnExit;
+        const std::string failedUuid = request.uuid;
         FABRIC_LOG_ERROR("MainMenu: world enter failed '{}'", request.displayName);
         activeWorldStart_.reset();
         enterInProgress_ = false;
         setWorldSystemsEnabled(false);
+        activeBenchmarkWorld_ = false;
+        deleteActiveWorldOnReset_ = false;
+        if (benchmarkAutomation_)
+            benchmarkAutomation_->disarm();
+        if (deleteOnFailure && worldRegistry_ && !failedUuid.empty()) {
+            worldRegistry_->deleteWorld(failedUuid);
+        }
         transitionTo(MenuState::TitleScreen);
         return;
     }
@@ -855,6 +1058,7 @@ void MainMenuSystem::onStartClicked() {
     FABRIC_LOG_INFO("MainMenu: Start clicked");
     // If WorldRegistry is available, show world list; otherwise fall back to quick select
     if (worldRegistry_) {
+        purgeDisposableBenchmarkWorlds();
         auto worlds = worldRegistry_->listWorlds();
         if (worlds.empty()) {
             transitionTo(MenuState::WorldCreate);
@@ -869,6 +1073,11 @@ void MainMenuSystem::onStartClicked() {
 void MainMenuSystem::onSettingsClicked() {
     FABRIC_LOG_INFO("MainMenu: Settings clicked");
     transitionTo(MenuState::Settings);
+}
+
+void MainMenuSystem::onProfileBenchmarkClicked() {
+    FABRIC_LOG_INFO("MainMenu: Profile Benchmark clicked");
+    requestProfileBenchmarkStart();
 }
 
 void MainMenuSystem::onQuitClicked() {
@@ -1024,26 +1233,80 @@ void MainMenuSystem::onQuitToTitleClicked() {
     requestWorldExit(false);
 }
 
+void MainMenuSystem::requestProfileBenchmarkStart() {
+    const auto preset = makeProfileBenchmarkPreset(benchmarkSeedOverride_);
+    purgeDisposableBenchmarkWorlds();
+
+    std::string uuid;
+    bool deleteOnExit = false;
+    if (worldRegistry_) {
+        auto meta = worldRegistry_->createWorld(preset.worldName, preset.type, preset.seed);
+        uuid = meta.uuid;
+        deleteOnExit = true;
+
+        std::ofstream marker(worldRegistry_->worldPath(uuid) / K_PROFILE_BENCHMARK_MARKER_FILE);
+        if (marker.is_open()) {
+            marker << "profile_benchmark\n";
+        } else {
+            FABRIC_LOG_WARN("MainMenu: failed to write benchmark marker for uuid='{}'", uuid);
+        }
+    }
+
+    if (benchmarkAutomation_) {
+        benchmarkAutomation_->armForLaunch(preset);
+    } else {
+        FABRIC_LOG_WARN("MainMenu: benchmark automation system unavailable, launching manual benchmark world only");
+    }
+
+    requestWorldStart(preset.type, preset.seed, std::move(uuid), true, preset.displayName, preset.spawnPosition, true,
+                      deleteOnExit);
+}
+
+void MainMenuSystem::purgeDisposableBenchmarkWorlds() {
+    if (!worldRegistry_)
+        return;
+
+    for (const auto& world : worldRegistry_->listWorlds()) {
+        if (!isDisposableBenchmarkWorld(world.uuid))
+            continue;
+        const bool deleted = worldRegistry_->deleteWorld(world.uuid);
+        FABRIC_LOG_INFO("MainMenu: purged disposable benchmark world '{}' uuid='{}' -> {}", world.name, world.uuid,
+                        deleted ? "success" : "failed");
+    }
+}
+
+bool MainMenuSystem::isDisposableBenchmarkWorld(const std::string& uuid) const {
+    if (!worldRegistry_ || uuid.empty())
+        return false;
+    return std::filesystem::exists(worldRegistry_->worldPath(uuid) / K_PROFILE_BENCHMARK_MARKER_FILE);
+}
+
 void MainMenuSystem::resetWorldState() {
     if (activeWorldUUID_.empty() && (!chunkPipeline_ || !chunkPipeline_->session()) && !enterInProgress_)
         return;
 
-    FABRIC_LOG_INFO("MainMenu: reset world state begin uuid='{}'", activeWorldUUID_);
+    const std::string worldUuid = activeWorldUUID_;
+    const bool activeBenchmarkWorld = activeBenchmarkWorld_;
+    const bool deleteOnExit = deleteActiveWorldOnReset_;
+
+    FABRIC_LOG_INFO("MainMenu: reset world state begin uuid='{}'", worldUuid);
 
     // Save player position to world.toml before tearing down
-    if (worldRegistry_ && !activeWorldUUID_.empty()) {
-        auto meta = worldRegistry_->getWorld(activeWorldUUID_);
+    if (worldRegistry_ && !worldUuid.empty() && !activeBenchmarkWorld) {
+        auto meta = worldRegistry_->getWorld(worldUuid);
         if (meta && characterMovement_) {
             auto pos = characterMovement_->playerPosition();
             meta->playerX = pos.x;
             meta->playerY = pos.y;
             meta->playerZ = pos.z;
             meta->lastPlayed = WorldMetadata::nowISO8601();
-            meta->toTOML((worldRegistry_->worldPath(activeWorldUUID_) / "world.toml").string());
+            meta->toTOML((worldRegistry_->worldPath(worldUuid) / "world.toml").string());
             FABRIC_LOG_INFO("MainMenu: Saved player position ({}, {}, {})", pos.x, pos.y, pos.z);
         }
     }
     activeWorldUUID_.clear();
+    activeBenchmarkWorld_ = false;
+    deleteActiveWorldOnReset_ = false;
 
     // Flush persistence BEFORE clearing world data. The DataProvider reads from
     // the simulation grid; grid.clear() would produce empty blobs.
@@ -1058,6 +1321,15 @@ void MainMenuSystem::resetWorldState() {
     enterStartSucceeded_ = false;
     activeWorldStart_.reset();
     pendingWorldStart_.reset();
+    if (benchmarkAutomation_)
+        benchmarkAutomation_->disarm();
+
+    if (deleteOnExit && worldRegistry_ && !worldUuid.empty()) {
+        const bool deleted = worldRegistry_->deleteWorld(worldUuid);
+        FABRIC_LOG_INFO("MainMenu: deleted disposable benchmark world uuid='{}' -> {}", worldUuid,
+                        deleted ? "success" : "failed");
+    }
+
     FABRIC_LOG_INFO("MainMenu: reset world state complete");
 }
 
@@ -1075,6 +1347,7 @@ void MainMenuSystem::setWorldSystemsEnabled(bool enabled) {
     registry_->setEnabled<VoxelSimulationSystem>(enabled);
     registry_->setEnabled<PhysicsGameSystem>(enabled);
     registry_->setEnabled<CharacterMovementSystem>(enabled);
+    registry_->setEnabled<BenchmarkAutomationSystem>(enabled);
     registry_->setEnabled<AIGameSystem>(enabled);
     registry_->setEnabled<ParticleGameSystem>(enabled);
     registry_->setEnabled<ChunkPipelineSystem>(enabled);

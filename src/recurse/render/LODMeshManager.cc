@@ -136,16 +136,14 @@ LODMeshManager::MeshResult LODMeshManager::meshSection(const LODSection& section
     // For now, use the SnapMC mesher with a custom approach
     // We'll manually invoke the meshing logic
 
-    // Build color palette for this section.
-    // TODO(EF-1c): When MaterialDef::baseEssence is available, replace
-    // materialColor() with essenceToColor(materials_.get(matId).baseEssence)
-    // so LOD sections share the same color basis as essence-colored chunks.
+    // Terrain appearance contract: distant LOD uses the same
+    // MaterialDef::baseColor truth as full-res chunk meshes.
     for (size_t i = 0; i < section.palette.size(); ++i) {
         uint16_t matId = section.palette[i];
         if (matId == 0) {
             result.palette.push_back({0.0f, 0.0f, 0.0f, 0.0f}); // Air
         } else {
-            result.palette.push_back(materialColor(matId));
+            result.palette.push_back(materials_.terrainAppearanceColor(matId));
         }
     }
 
@@ -351,22 +349,6 @@ size_t LODMeshManager::pendingCount() const {
         }
     });
     return count;
-}
-
-std::array<float, 4> LODMeshManager::materialColor(uint16_t materialId) const {
-    if (materialId == 0) {
-        return {0.0f, 0.0f, 0.0f, 0.0f}; // Air
-    }
-
-    const auto& def = materials_.get(materialId);
-    uint32_t c = def.baseColor;
-
-    float a = static_cast<float>((c >> 24) & 0xFF) / 255.0f;
-    float r = static_cast<float>((c >> 16) & 0xFF) / 255.0f;
-    float g = static_cast<float>((c >> 8) & 0xFF) / 255.0f;
-    float b = static_cast<float>(c & 0xFF) / 255.0f;
-
-    return {r, g, b, a};
 }
 
 } // namespace recurse

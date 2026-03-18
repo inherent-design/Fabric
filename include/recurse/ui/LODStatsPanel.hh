@@ -9,6 +9,11 @@ struct LODStatsData {
     int pendingSections = 0;
     int gpuResidentSections = 0;
     int visibleSections = 0;
+    int fullResRejectedSections = 0;
+    int fullResCenterCX = 0;
+    int fullResCenterCY = 0;
+    int fullResCenterCZ = 0;
+    int fullResRadius = 0;
     float estimatedGpuMB = 0.0f;
 };
 
@@ -24,6 +29,11 @@ class LODStatsPanel : public fabric::RmlPanel {
     int pendingSections_ = 0;
     int gpuResidentSections_ = 0;
     int visibleSections_ = 0;
+    int fullResRejectedSections_ = 0;
+    int fullResCenterCX_ = 0;
+    int fullResCenterCY_ = 0;
+    int fullResCenterCZ_ = 0;
+    int fullResRadius_ = 0;
     float estimatedGpuMB_ = 0.0f;
 };
 

@@ -4,6 +4,13 @@
 #include "fabric/resource/AssetRegistry.hh"
 #include "fabric/resource/ResourceHub.hh"
 #include "fabric/utils/ErrorHandling.hh"
+#include "recurse/character/FlightController.hh"
+#include "recurse/systems/CharacterMovementSystem.hh"
+#include "recurse/systems/ChunkPipelineSystem.hh"
+#include "recurse/systems/MainMenuSystem.hh"
+#include "recurse/systems/PhysicsGameSystem.hh"
+#include "recurse/systems/TerrainSystem.hh"
+#include "recurse/systems/VoxelSimulationSystem.hh"
 #include <gtest/gtest.h>
 
 using namespace fabric;
@@ -303,6 +310,18 @@ TEST_F(SystemRegistryTest, CrossPhaseDependency) {
     ASSERT_GE(callLog.size(), 2u);
     EXPECT_EQ(callLog[0], "A::init");
     EXPECT_EQ(callLog[1], "B::init");
+}
+
+TEST_F(SystemRegistryTest, RecurseBenchmarkAutomationGraphResolves) {
+    SystemRegistry reg;
+    reg.registerSystem<recurse::systems::TerrainSystem>(SystemPhase::FixedUpdate);
+    reg.registerSystem<recurse::systems::VoxelSimulationSystem>(SystemPhase::FixedUpdate);
+    reg.registerSystem<recurse::systems::PhysicsGameSystem>(SystemPhase::FixedUpdate);
+    reg.registerSystem<recurse::systems::CharacterMovementSystem>(SystemPhase::FixedUpdate);
+    reg.registerSystem<recurse::systems::BenchmarkAutomationSystem>(SystemPhase::FixedUpdate);
+    reg.registerSystem<recurse::systems::ChunkPipelineSystem>(SystemPhase::FixedUpdate);
+
+    EXPECT_TRUE(reg.resolve());
 }
 
 TEST_F(SystemRegistryTest, ListSystemsReturnsAll) {

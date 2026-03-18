@@ -180,7 +180,6 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     MeshingChunkContext buildMeshingContext(const fabric::ChunkCoord& coord) const;
     void uploadMeshResult(const fabric::ChunkCoord& coord, CPUMeshResult&& result);
     void destroyChunkMesh(ChunkGPUMesh& gpuMesh);
-    std::array<float, 4> materialColor(uint16_t materialId) const;
 
     VoxelSimulationSystem* simSystem_ = nullptr;
     recurse::simulation::SimulationGrid* simGrid_ = nullptr;

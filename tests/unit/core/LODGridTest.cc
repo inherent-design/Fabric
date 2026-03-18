@@ -391,7 +391,7 @@ TEST(LODGrid, DirectWorldGenFill_MatchesAuthoritativeChunkMaterialSemantics) {
     }
 }
 
-TEST(LODMeshManager, MeshSection_UsesSmoothShaderPaletteContract) {
+TEST(LODMeshManager, MeshSection_UsesTerrainAppearanceContract) {
     recurse::simulation::MaterialRegistry materials;
     LODGrid grid;
     LODMeshManager meshManager(grid, materials);
@@ -410,10 +410,11 @@ TEST(LODMeshManager, MeshSection_UsesSmoothShaderPaletteContract) {
         EXPECT_EQ(vertex.getAO(), recurse::SmoothVoxelVertex::K_SHADER_DEFAULT_AO);
     }
 
-    EXPECT_FLOAT_EQ(mesh.palette[1][0], 64.0f / 255.0f);
-    EXPECT_FLOAT_EQ(mesh.palette[1][1], 64.0f / 255.0f);
-    EXPECT_FLOAT_EQ(mesh.palette[1][2], 192.0f / 255.0f);
-    EXPECT_FLOAT_EQ(mesh.palette[1][3], 1.0f);
+    const auto expected = materials.terrainAppearanceColor(material_ids::WATER);
+    EXPECT_FLOAT_EQ(mesh.palette[1][0], expected[0]);
+    EXPECT_FLOAT_EQ(mesh.palette[1][1], expected[1]);
+    EXPECT_FLOAT_EQ(mesh.palette[1][2], expected[2]);
+    EXPECT_FLOAT_EQ(mesh.palette[1][3], expected[3]);
 }
 
 TEST(LODGrid, SectionChunkCoverage_UsesLevelScaledChunkSpan) {

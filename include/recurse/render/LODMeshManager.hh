@@ -47,9 +47,6 @@ class LODMeshManager {
     /// Build density and material caches from a LODSection for meshing.
     void buildCaches(const LODSection& section, ChunkDensityCache& density, ChunkMaterialCache& material);
 
-    /// Convert materialId to RGBA color from the MaterialRegistry.
-    std::array<float, 4> materialColor(uint16_t materialId) const;
-
     LODGrid& grid_;
     const recurse::simulation::MaterialRegistry& materials_;
     std::unique_ptr<SnapMCMesher> mesher_;

@@ -9,7 +9,6 @@
 #include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
-#include "recurse/simulation/EssenceColor.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
@@ -21,7 +20,6 @@
 #include "recurse/world/SnapMCMesher.hh"
 
 #include <bgfx/bgfx.h>
-#include <cmath>
 #include <set>
 #include <unordered_map>
 #include <vector>
@@ -36,10 +34,6 @@ namespace {
 
 uint16_t unpackMaterialId(uint32_t packedMaterial) {
     return static_cast<uint16_t>(packedMaterial & 0xFFFFu);
-}
-
-uint32_t packSmoothMaterialForShader(uint16_t paletteIndex, uint8_t aoLevel = 3) {
-    return recurse::SmoothVoxelVertex::packMaterial(paletteIndex, aoLevel, 0);
 }
 
 } // namespace
@@ -290,61 +284,30 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
     if (meshData.empty() || meshData.indices.empty())
         return result;
 
-    const bool hasEssence = meshCtx.palette && meshCtx.palette->paletteSize() > 0;
+    // Terrain appearance contract: full-res chunk meshes use the same
+    // MaterialDef::baseColor truth as distant LOD sections. Chunk-local essence
+    // remains available for simulation and debug inspection, but does not drive
+    // this terrain palette.
+    std::set<uint16_t> uniqueMaterials;
+    for (const auto& v : meshData.vertices)
+        uniqueMaterials.insert(unpackMaterialId(v.material));
 
-    std::vector<uint8_t> vertEssenceIdx(meshData.vertices.size(), 0);
-    if (hasEssence) {
-        for (size_t i = 0; i < meshData.vertices.size(); ++i) {
-            const auto& v = meshData.vertices[i];
-            int vlx = static_cast<int>(std::round(v.px));
-            int vly = static_cast<int>(std::round(v.py));
-            int vlz = static_cast<int>(std::round(v.pz));
-            vertEssenceIdx[i] = meshCtx.readLocal(vlx, vly, vlz, simGrid_).essenceIdx;
+    std::unordered_map<uint16_t, uint16_t> paletteLookup;
+    result.palette.reserve(uniqueMaterials.size());
+    for (uint16_t matId : uniqueMaterials) {
+        paletteLookup[matId] = static_cast<uint16_t>(result.palette.size());
+        if (materials_) {
+            result.palette.push_back(materials_->terrainAppearanceColor(matId));
+        } else {
+            result.palette.push_back({0.0f, 0.0f, 0.0f, 0.0f});
         }
     }
 
-    // Build GPU palette from essence indices (or fall back to materialId colors)
-    if (hasEssence) {
-        std::set<uint8_t> uniqueEssence;
-        for (uint8_t eidx : vertEssenceIdx)
-            uniqueEssence.insert(eidx);
-
-        std::unordered_map<uint8_t, uint16_t> essenceLookup;
-        result.palette.reserve(uniqueEssence.size());
-        for (uint8_t eidx : uniqueEssence) {
-            essenceLookup[eidx] = static_cast<uint16_t>(result.palette.size());
-            if (eidx < meshCtx.palette->paletteSize()) {
-                result.palette.push_back(recurse::simulation::essenceToColor(meshCtx.palette->lookup(eidx)));
-            } else {
-                result.palette.push_back({0.5f, 0.5f, 0.5f, 1.0f});
-            }
-        }
-
-        result.vertices.reserve(meshData.vertices.size());
-        for (size_t i = 0; i < meshData.vertices.size(); ++i) {
-            recurse::SmoothVoxelVertex vertex = meshData.vertices[i];
-            vertex.material = packSmoothMaterialForShader(essenceLookup[vertEssenceIdx[i]], 3);
-            result.vertices.push_back(vertex);
-        }
-    } else {
-        // Fallback: no essence palette populated yet; use materialId colors
-        std::set<uint16_t> uniqueMaterials;
-        for (const auto& v : meshData.vertices)
-            uniqueMaterials.insert(unpackMaterialId(v.material));
-
-        std::unordered_map<uint16_t, uint16_t> paletteLookup;
-        result.palette.reserve(uniqueMaterials.size());
-        for (uint16_t matId : uniqueMaterials) {
-            paletteLookup[matId] = static_cast<uint16_t>(result.palette.size());
-            result.palette.push_back(materialColor(matId));
-        }
-
-        result.vertices.reserve(meshData.vertices.size());
-        for (const auto& v : meshData.vertices) {
-            recurse::SmoothVoxelVertex vertex = v;
-            vertex.material = packSmoothMaterialForShader(paletteLookup[unpackMaterialId(v.material)], 3);
-            result.vertices.push_back(vertex);
-        }
+    result.vertices.reserve(meshData.vertices.size());
+    for (const auto& v : meshData.vertices) {
+        recurse::SmoothVoxelVertex vertex = v;
+        vertex.material = recurse::SmoothVoxelVertex::packShaderMaterial(paletteLookup[unpackMaterialId(v.material)]);
+        result.vertices.push_back(vertex);
     }
 
     result.indices = std::move(meshData.indices);
@@ -436,18 +399,6 @@ void VoxelMeshingSystem::destroyChunkMesh(ChunkGPUMesh& gpuMesh) {
     gpuMesh.vertexCount = 0;
     gpuMesh.indexCount = 0;
     gpuMesh.valid = false;
-}
-
-std::array<float, 4> VoxelMeshingSystem::materialColor(uint16_t materialId) const {
-    if (materials_) {
-        uint32_t c = materials_->get(materialId).baseColor;
-        float a = static_cast<float>((c >> 24) & 0xFF) / 255.0f;
-        float r = static_cast<float>((c >> 16) & 0xFF) / 255.0f;
-        float g = static_cast<float>((c >> 8) & 0xFF) / 255.0f;
-        float b = static_cast<float>(c & 0xFF) / 255.0f;
-        return {r, g, b, a};
-    }
-    return {0.0f, 0.0f, 0.0f, 0.0f};
 }
 
 size_t VoxelMeshingSystem::pendingMeshCount() const {

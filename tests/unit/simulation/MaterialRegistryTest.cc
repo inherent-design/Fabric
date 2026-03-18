@@ -1,5 +1,8 @@
 #include "recurse/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/EssenceColor.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+
+#include <cmath>
 #include <gtest/gtest.h>
 
 using namespace recurse::simulation;
@@ -69,4 +72,21 @@ TEST_F(MaterialRegistryTest, DensityOrdering) {
     EXPECT_GT(registry.get(material_ids::DIRT).density, registry.get(material_ids::SAND).density);
     EXPECT_GT(registry.get(material_ids::SAND).density, registry.get(material_ids::WATER).density);
     EXPECT_GT(registry.get(material_ids::WATER).density, registry.get(material_ids::AIR).density);
+}
+
+TEST_F(MaterialRegistryTest, TerrainAppearanceColorUsesBaseColorContract) {
+    const auto& sand = registry.get(material_ids::SAND);
+    const auto terrainColor = registry.terrainAppearanceColor(material_ids::SAND);
+
+    EXPECT_FLOAT_EQ(terrainColor[0], 194.0f / 255.0f);
+    EXPECT_FLOAT_EQ(terrainColor[1], 178.0f / 255.0f);
+    EXPECT_FLOAT_EQ(terrainColor[2], 128.0f / 255.0f);
+    EXPECT_FLOAT_EQ(terrainColor[3], 1.0f);
+
+    const fabric::Vector4<float, fabric::Space::World> baseEssence(sand.baseEssence[0], sand.baseEssence[1],
+                                                                   sand.baseEssence[2], sand.baseEssence[3]);
+    const auto essenceColor = essenceToColor(baseEssence);
+
+    EXPECT_GT(std::fabs(terrainColor[0] - essenceColor[0]), 0.2f);
+    EXPECT_GT(std::fabs(terrainColor[1] - essenceColor[1]), 0.1f);
 }

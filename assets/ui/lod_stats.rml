@@ -9,6 +9,9 @@
         <div class="row"><span class="label">Pending: </span><span class="value">{{ pending_sections }}</span></div>
         <div class="row"><span class="label">GPU Resident: </span><span class="value">{{ gpu_resident_sections }}</span></div>
         <div class="row"><span class="label">Visible: </span><span class="value">{{ visible_sections }}</span></div>
+        <div class="row"><span class="label">Full-res rejected: </span><span class="value">{{ full_res_rejected_sections }}</span></div>
+        <div class="row"><span class="label">Full-res center: </span><span class="value">{{ full_res_center_cx }}, {{ full_res_center_cy }}, {{ full_res_center_cz }}</span></div>
+        <div class="row"><span class="label">Full-res radius: </span><span class="value">{{ full_res_radius }}</span></div>
         <div class="row"><span class="label">Est. GPU: </span><span class="value">{{ estimated_gpu_mb }}</span><span class="label"> MB</span></div>
     </div>
 </div>

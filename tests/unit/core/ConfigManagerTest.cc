@@ -161,6 +161,20 @@ TEST_F(ConfigManagerTest, CLIStringValues) {
     EXPECT_EQ(config.get<std::string>("logging.level"), "trace");
 }
 
+TEST_F(ConfigManagerTest, CLIOverridesSupportProfileAutomationKeys) {
+    ConfigManager config;
+    char arg0[] = "test";
+    char arg1[] = "--profile_automation.autostart=true";
+    char arg2[] = "--profile_automation.skip_splash=false";
+    char arg3[] = "--profile_automation.seed=20260318";
+    char* args[] = {arg0, arg1, arg2, arg3};
+    config.applyCLIOverrides(4, args);
+
+    EXPECT_EQ(config.get<bool>("profile_automation.autostart"), true);
+    EXPECT_EQ(config.get<bool>("profile_automation.skip_splash"), false);
+    EXPECT_EQ(config.get<int64_t>("profile_automation.seed"), 20260318);
+}
+
 // -- Full precedence chain --
 
 TEST_F(ConfigManagerTest, FullPrecedenceChain) {

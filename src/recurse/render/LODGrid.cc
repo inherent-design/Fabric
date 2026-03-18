@@ -1,6 +1,7 @@
 #include "recurse/render/LODGrid.hh"
 
 #include "fabric/log/Log.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
 #include <algorithm>
 #include <array>
 
@@ -25,10 +26,10 @@ LODSection* LODGrid::getOrCreate(int level, int sx, int sy, int sz) {
 
     auto section = std::make_unique<LODSection>();
     section->level = level;
-    section->origin = Vec3i(sx * K_SECTION_WORLD_SIZE, sy * K_SECTION_WORLD_SIZE, sz * K_SECTION_WORLD_SIZE);
+    section->origin = sectionOrigin(level, sx, sy, sz);
     section->blockIndices.assign(LODSection::K_VOLUME, 0);
     section->palette.clear();
-    section->palette.push_back(1); // Index 0 = air (materialId 1)
+    section->palette.push_back(simulation::material_ids::AIR); // Index 0 = air
     section->dirty = true;
 
     auto* ptr = section.get();
@@ -78,7 +79,8 @@ void LODGrid::tryBuildParent(int childLevel, int cx, int cy, int cz) {
 
 void LODGrid::downsample(LODSection& parent, const std::array<LODSection*, 8>& children) {
     parent.palette.clear();
-    parent.palette.push_back(1); // Index 0 = air (materialId 1)
+    parent.palette.push_back(simulation::material_ids::AIR); // Index 0 = air
+    parent.blockIndices.assign(LODSection::K_VOLUME, 0);
 
     // Map from materialId to palette index
     auto getOrCreatePalIdx = [&parent](uint16_t matId) -> uint16_t {
@@ -94,11 +96,11 @@ void LODGrid::downsample(LODSection& parent, const std::array<LODSection*, 8>& c
         return static_cast<uint16_t>(parent.palette.size() - 1);
     };
 
-    // For each voxel in the parent (16^3 at half resolution),
-    // sample from 2x2x2 group in children
-    for (int lz = 0; lz < LODSection::K_SIZE / 2; ++lz) {
-        for (int ly = 0; ly < LODSection::K_SIZE / 2; ++ly) {
-            for (int lx = 0; lx < LODSection::K_SIZE / 2; ++lx) {
+    // For each voxel in the parent, sample from the corresponding 2x2x2 group
+    // in the matching child section.
+    for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
+        for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
+            for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
                 // Which child section? (based on high bit of local coord)
                 int childIdx = ((lx >> 4) & 1) | (((ly >> 4) & 1) << 1) | (((lz >> 4) & 1) << 2);
                 auto* child = children[childIdx];
@@ -121,7 +123,7 @@ void LODGrid::downsample(LODSection& parent, const std::array<LODSection*, 8>& c
                         for (int dx = 0; dx <= 1; ++dx) {
                             uint16_t palIdx = child->get(clx + dx, cly + dy, clz + dz);
                             uint16_t matId = child->materialOf(palIdx);
-                            if (matId == 1) {
+                            if (matId == simulation::material_ids::AIR) {
                                 ++airCount;
                             } else {
                                 ++materialCounts[matId % 256];
@@ -137,7 +139,7 @@ void LODGrid::downsample(LODSection& parent, const std::array<LODSection*, 8>& c
                 }
 
                 // Most-common non-air material wins
-                uint16_t bestMat = 1;
+                uint16_t bestMat = simulation::material_ids::AIR;
                 int bestCount = 0;
                 for (int m = 1; m < 256; ++m) {
                     if (materialCounts[m] > bestCount) {

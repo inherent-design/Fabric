@@ -15,6 +15,10 @@ class MaterialRegistry {
         return materials_[id];
     }
 
+    std::array<float, 4> terrainAppearanceColor(MaterialId id) const {
+        return simulation::terrainAppearanceColor(get(id));
+    }
+
     MaterialId count() const { return material_ids::COUNT; }
 
   private:

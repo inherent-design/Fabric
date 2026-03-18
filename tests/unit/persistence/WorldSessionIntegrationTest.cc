@@ -290,6 +290,31 @@ TEST_F(WorldSessionIntegrationTest, EventListenerBuffersDetailedChanges) {
     SUCCEED();
 }
 
+TEST_F(WorldSessionIntegrationTest, DetailLessPhysicsEventMarksDirtyWithoutTransactionDiffs) {
+    openSession();
+    ASSERT_NE(session_, nullptr);
+
+    auto* saveService = session_->saveService();
+    auto* txStore = session_->transactionStore();
+    ASSERT_NE(saveService, nullptr);
+    ASSERT_NE(txStore, nullptr);
+
+    recurse::ChangeQuery query;
+    query.chunkRange = std::make_pair(fabric::ChunkCoord{8, 0, 9}, fabric::ChunkCoord{8, 0, 9});
+
+    fabric::Event e(recurse::K_VOXEL_CHANGED_EVENT, "test");
+    e.setData("cx", 8);
+    e.setData("cy", 0);
+    e.setData("cz", 9);
+    e.setData("source", static_cast<int>(recurse::ChangeSource::Physics));
+    dispatcher_.dispatchEvent(e);
+
+    EXPECT_EQ(saveService->pendingCount(), 1u);
+
+    session_->flushPendingChanges();
+    EXPECT_EQ(txStore->countChanges(query), 0);
+}
+
 // ---------------------------------------------------------------------------
 // Test 4: Factory error handling
 // ---------------------------------------------------------------------------
@@ -428,6 +453,49 @@ TEST_F(WorldSessionResidentChunkPersistenceTest, CloseReopenPersistsResidentGene
     auto blob = store->loadChunk(K_CX, K_CY, K_CZ);
     ASSERT_TRUE(blob.has_value());
     EXPECT_FALSE(blob->empty());
+}
+
+TEST_F(WorldSessionResidentChunkPersistenceTest, CloseReopenPersistsSettledPhysicsDirtyChunk) {
+    constexpr int K_CX = 6;
+    constexpr int K_CY = 0;
+    constexpr int K_CZ = 2;
+
+    materializeActiveChunk(K_CX, K_CY, K_CZ);
+    voxelSim_->activityTracker().putToSleep(fabric::ChunkCoord{K_CX, K_CY, K_CZ});
+
+    auto* saveService = session_->saveService();
+    auto* txStore = session_->transactionStore();
+    ASSERT_NE(saveService, nullptr);
+    ASSERT_NE(txStore, nullptr);
+    EXPECT_FALSE(session_->chunkStore()->hasChunk(K_CX, K_CY, K_CZ));
+
+    recurse::ChangeQuery query;
+    query.chunkRange = std::make_pair(fabric::ChunkCoord{K_CX, K_CY, K_CZ}, fabric::ChunkCoord{K_CX, K_CY, K_CZ});
+
+    fabric::Event event(recurse::K_VOXEL_CHANGED_EVENT, "test");
+    event.setData("cx", K_CX);
+    event.setData("cy", K_CY);
+    event.setData("cz", K_CZ);
+    event.setData("source", static_cast<int>(recurse::ChangeSource::Physics));
+    dispatcher_.dispatchEvent(event);
+
+    EXPECT_EQ(saveService->pendingCount(), 1u);
+
+    session_->flushPendingChanges();
+    EXPECT_EQ(txStore->countChanges(query), 0);
+
+    saveService->flush();
+    auto savedBeforeClose = session_->chunkStore()->loadChunk(K_CX, K_CY, K_CZ);
+    ASSERT_TRUE(savedBeforeClose.has_value());
+    EXPECT_FALSE(savedBeforeClose->empty());
+
+    session_.reset();
+    voxelSim_->resetWorld();
+    openSession();
+
+    auto reloaded = session_->chunkStore()->loadChunk(K_CX, K_CY, K_CZ);
+    ASSERT_TRUE(reloaded.has_value());
+    EXPECT_EQ(reloaded->data, savedBeforeClose->data);
 }
 
 class WorldSessionPersistedDeltaReopenTest : public ::testing::Test {

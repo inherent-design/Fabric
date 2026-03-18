@@ -33,6 +33,7 @@ void ChunkSaveService::markDirty(int cx, int cy, int cz) {
 void ChunkSaveService::update(float dt) {
     std::vector<std::tuple<int, int, int>> toSave;
     bool shouldDispatchPrepared = false;
+    SaveTrigger dispatchTrigger = SaveTrigger::DebouncedChange;
 
     {
         std::lock_guard lock(mutex_);
@@ -44,6 +45,8 @@ void ChunkSaveService::update(float dt) {
         bool debounceExpired = dirtyCadenceActive_ && lastDirtyAge_ >= debounceSeconds;
         bool maxDelayExpired = dirtyCadenceActive_ && firstDirtyAge_ >= maxDelaySeconds;
         if (debounceExpired || maxDelayExpired) {
+            dispatchTrigger =
+                maxDelayExpired && !debounceExpired ? SaveTrigger::TimerAutosave : SaveTrigger::DebouncedChange;
             for (auto& [key, entry] : dirty_) {
                 if (entry.saving)
                     continue;
@@ -77,7 +80,7 @@ void ChunkSaveService::update(float dt) {
     }
 
     if (!toSave.empty() || shouldDispatchPrepared) {
-        dispatchBatch(std::move(toSave));
+        dispatchBatch(std::move(toSave), dispatchTrigger);
     }
 }
 
@@ -197,9 +200,13 @@ ChunkSaveService::ActivitySnapshot ChunkSaveService::activitySnapshot() const {
     snapshot.lastStartedSerial = lastStartedSerial_;
     snapshot.lastCompletedSerial = lastCompletedSerial_;
     snapshot.lastSuccessfulSerial = lastSuccessfulSerial_;
+    snapshot.lastTimerStartedSerial = lastTimerStartedSerial_;
+    snapshot.lastTimerSuccessfulSerial = lastTimerSuccessfulSerial_;
+    snapshot.timerSaveInProgress = timerBatchesInFlight_ > 0;
     snapshot.hasError = !lastError_.empty();
     snapshot.lastError = lastError_;
 
+    bool hasPendingDirty = false;
     float nextSaveSeconds = std::numeric_limits<float>::infinity();
     for (const auto& [_, entry] : dirty_) {
         if (entry.saving) {
@@ -207,12 +214,20 @@ ChunkSaveService::ActivitySnapshot ChunkSaveService::activitySnapshot() const {
             if (!entry.resaveRequested)
                 continue;
         }
+
+        hasPendingDirty = true;
     }
 
     if (dirtyCadenceActive_) {
         float debounceRemaining = std::max(0.0f, debounceSeconds - lastDirtyAge_);
         float maxDelayRemaining = std::max(0.0f, maxDelaySeconds - firstDirtyAge_);
         nextSaveSeconds = std::min(nextSaveSeconds, std::min(debounceRemaining, maxDelayRemaining));
+
+        bool sustainedEditCadence = firstDirtyAge_ >= debounceSeconds && lastDirtyAge_ < debounceSeconds;
+        if (hasPendingDirty && sustainedEditCadence) {
+            snapshot.timerAutosavePending = true;
+            snapshot.secondsUntilTimerAutosave = maxDelayRemaining;
+        }
     }
 
     for (const auto& [_, entry] : prepared_) {
@@ -234,7 +249,7 @@ ChunkSaveService::ChunkKey ChunkSaveService::makeKey(int cx, int cy, int cz) {
     return (pack(cx) << 42) | (pack(cy) << 21) | pack(cz);
 }
 
-void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chunks) {
+void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chunks, SaveTrigger trigger) {
     std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> prepared;
     std::vector<ChunkKey> preparedKeys;
     uint64_t batchSerial = 0;
@@ -251,6 +266,10 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
         }
         batchSerial = ++nextBatchSerial_;
         lastStartedSerial_ = batchSerial;
+        if (trigger == SaveTrigger::TimerAutosave) {
+            lastTimerStartedSerial_ = batchSerial;
+            ++timerBatchesInFlight_;
+        }
         lastError_.clear();
     }
 
@@ -258,7 +277,7 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
                     prepared.size());
 
     writerQueue_.submit([this, batch = std::move(chunks), prepared = std::move(prepared),
-                         preparedKeys = std::move(preparedKeys), batchSerial]() mutable {
+                         preparedKeys = std::move(preparedKeys), batchSerial, trigger]() mutable {
         try {
             std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> entries;
             entries.reserve(batch.size() + prepared.size());
@@ -306,12 +325,19 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
                 resetDirtyCadenceLocked();
             lastCompletedSerial_ = batchSerial;
             lastSuccessfulSerial_ = batchSerial;
+            if (trigger == SaveTrigger::TimerAutosave) {
+                if (timerBatchesInFlight_ > 0)
+                    --timerBatchesInFlight_;
+                lastTimerSuccessfulSerial_ = batchSerial;
+            }
             lastError_.clear();
             FABRIC_LOG_INFO("ChunkSaveService: batch complete serial={} entries={}", batchSerial, entries.size());
         } catch (const std::exception& ex) {
             std::lock_guard lock(mutex_);
             lastCompletedSerial_ = batchSerial;
             lastError_ = ex.what();
+            if (trigger == SaveTrigger::TimerAutosave && timerBatchesInFlight_ > 0)
+                --timerBatchesInFlight_;
             for (auto& [cx, cy, cz] : batch) {
                 auto it = dirty_.find(makeKey(cx, cy, cz));
                 if (it != dirty_.end())
@@ -327,6 +353,8 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
             std::lock_guard lock(mutex_);
             lastCompletedSerial_ = batchSerial;
             lastError_ = "unknown error";
+            if (trigger == SaveTrigger::TimerAutosave && timerBatchesInFlight_ > 0)
+                --timerBatchesInFlight_;
             for (auto& [cx, cy, cz] : batch) {
                 auto it = dirty_.find(makeKey(cx, cy, cz));
                 if (it != dirty_.end())

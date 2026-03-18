@@ -21,6 +21,11 @@ void LODStatsPanel::init(Rml::Context* context) {
     constructor.Bind("pending_sections", &pendingSections_);
     constructor.Bind("gpu_resident_sections", &gpuResidentSections_);
     constructor.Bind("visible_sections", &visibleSections_);
+    constructor.Bind("full_res_rejected_sections", &fullResRejectedSections_);
+    constructor.Bind("full_res_center_cx", &fullResCenterCX_);
+    constructor.Bind("full_res_center_cy", &fullResCenterCY_);
+    constructor.Bind("full_res_center_cz", &fullResCenterCZ_);
+    constructor.Bind("full_res_radius", &fullResRadius_);
     constructor.Bind("estimated_gpu_mb", &estimatedGpuMB_);
 
     modelHandle_ = constructor.GetModelHandle();
@@ -36,6 +41,11 @@ void LODStatsPanel::update(const LODStatsData& data) {
     pendingSections_ = data.pendingSections;
     gpuResidentSections_ = data.gpuResidentSections;
     visibleSections_ = data.visibleSections;
+    fullResRejectedSections_ = data.fullResRejectedSections;
+    fullResCenterCX_ = data.fullResCenterCX;
+    fullResCenterCY_ = data.fullResCenterCY;
+    fullResCenterCZ_ = data.fullResCenterCZ;
+    fullResRadius_ = data.fullResRadius;
     estimatedGpuMB_ = data.estimatedGpuMB;
 
     if (modelHandle_) {
