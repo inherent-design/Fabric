@@ -25,6 +25,7 @@
 #include "fabric/ecs/ECS.hh"
 #include "fabric/log/Log.hh"
 #include "fabric/platform/JobScheduler.hh"
+#include "fabric/utils/Profiler.hh"
 
 #include "recurse/simulation/EssenceAssigner.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
@@ -43,22 +44,6 @@ inline constexpr float K_CHECKPOINT_INTERVAL_SECONDS = 5.0f;
 
 namespace recurse {
 
-namespace {
-uint32_t computeWorldgenVersion(const std::string& genName, int64_t worldSeed) {
-    uint32_t h = 2166136261u;
-    for (char c : genName) {
-        h ^= static_cast<uint32_t>(static_cast<uint8_t>(c));
-        h *= 16777619u;
-    }
-    auto seed = static_cast<uint64_t>(worldSeed);
-    for (int i = 0; i < 8; ++i) {
-        h ^= static_cast<uint32_t>((seed >> (i * 8)) & 0xFF);
-        h *= 16777619u;
-    }
-    return h;
-}
-} // namespace
-
 // ---------------------------------------------------------------------------
 // Static factory
 // ---------------------------------------------------------------------------
@@ -68,6 +53,8 @@ WorldSession::open(const std::string& worldDir, fabric::EventDispatcher& dispatc
                    flecs::world& ecsWorld, systems::VoxelSimulationSystem* simSystem,
                    systems::VoxelMeshingSystem* meshingSystem, systems::LODSystem* lodSystem,
                    systems::PhysicsGameSystem* physicsSystem, systems::TerrainSystem* terrainSystem) {
+    FABRIC_ZONE_SCOPED_N("WorldSession::open");
+
     std::unique_ptr<SqliteChunkStore> store;
     try {
         store = std::make_unique<SqliteChunkStore>(worldDir);
@@ -102,12 +89,13 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
       lodSystem_(lodSystem),
       physicsSystem_(physicsSystem),
       terrainSystem_(terrainSystem) {
+    FABRIC_ZONE_SCOPED_N("WorldSession::WorldSession");
 
     txStore_ = std::make_unique<SqliteTransactionStore>(store_->writerDb(), store_->readerDb());
 
     if (terrainSystem_) {
         worldGen_ = &terrainSystem_->worldGenerator();
-        worldgenVersion_ = computeWorldgenVersion(worldGen_->name(), simSystem_ ? simSystem_->worldSeed() : 0);
+        worldgenVersion_ = worldGen_->worldgenFingerprint();
     }
 
     if (worldgenVersion_ != 0)
@@ -182,6 +170,9 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
 
 WorldSession::~WorldSession() {
     auto status = runtimeStatusSnapshot();
+    FABRIC_ZONE_SCOPED_N("WorldSession::~WorldSession");
+    FABRIC_ZONE_VALUE(static_cast<int64_t>(status.pendingLoads));
+
     const char* errorText = status.saveActivity.hasError ? status.saveActivity.lastError.c_str() : "none";
     FABRIC_LOG_INFO("WorldSession: teardown start dir='{}' pendingLoads={} dirty={} saving={} prepared={} lastSave={} "
                     "error={}",
@@ -192,15 +183,22 @@ WorldSession::~WorldSession() {
     dispatcher_.removeEventListener(K_VOXEL_CHANGED_EVENT, listenerHandlerId_);
 
     // Step 1: Cancel pending async loads (ScopedTaskGroup destructor drains futures)
-    pendingLoads_.cancelAll();
+    {
+        FABRIC_ZONE_SCOPED_N("WorldSession::shutdownCancelPendingLoads");
+        pendingLoads_.cancelAll();
+    }
 
     // Step 2: Flush snapshot scheduler
-    if (snapshotScheduler_)
+    if (snapshotScheduler_) {
+        FABRIC_ZONE_SCOPED_N("WorldSession::shutdownFlushSnapshot");
         snapshotScheduler_->flush();
+    }
 
     // Step 2b: Final prune pass before shutdown
-    if (pruningScheduler_)
+    if (pruningScheduler_) {
+        FABRIC_ZONE_SCOPED_N("WorldSession::shutdownPruneNow");
         pruningScheduler_->pruneNow();
+    }
 
     // Step 2c: Persist any resident active chunks that were never streamed out
     // or otherwise enqueued. This closes the close/reopen bootstrap gap without
@@ -208,27 +206,40 @@ WorldSession::~WorldSession() {
     enqueueResidentChunksForShutdown();
 
     // Step 3: Flush save service
-    if (saveService_)
+    if (saveService_) {
+        FABRIC_ZONE_SCOPED_N("WorldSession::shutdownFlushSaveService");
         saveService_->flush();
+    }
 
     // Step 4: Flush transaction store (currently no-op)
-    if (txStore_)
+    if (txStore_) {
+        FABRIC_ZONE_SCOPED_N("WorldSession::shutdownFlushTransactionStore");
         txStore_->flush();
+    }
 
     // Step 5: Drain WriterQueue so all writer I/O completes before service destruction
-    writerQueue_.drain();
+    {
+        FABRIC_ZONE_SCOPED_N("WorldSession::shutdownDrainWriterQueue");
+        writerQueue_.drain();
+    }
 
     // Steps 6-8: unique_ptrs destroy in reverse declaration order
-    pruningScheduler_.reset();
-    chunkSnapshotProvider_.reset();
-    replayExecutor_.reset();
-    snapshotScheduler_.reset();
-    saveService_.reset();
-    txStore_.reset();
+    {
+        FABRIC_ZONE_SCOPED_N("WorldSession::shutdownReleaseServices");
+        pruningScheduler_.reset();
+        chunkSnapshotProvider_.reset();
+        replayExecutor_.reset();
+        snapshotScheduler_.reset();
+        saveService_.reset();
+        txStore_.reset();
+    }
 
     // Step 9: Clear per-world ECS state
-    for (auto& [_, entity] : chunkEntities_)
-        entity.destruct();
+    {
+        FABRIC_ZONE_SCOPED_N("WorldSession::shutdownClearChunkEntities");
+        for (auto& [_, entity] : chunkEntities_)
+            entity.destruct();
+    }
     chunkEntities_.clear();
     streamSourceQuery_.reset();
 
@@ -468,6 +479,8 @@ bool WorldSession::hasPendingLoad(int cx, int cy, int cz) const {
 
 void WorldSession::updateLODRing(int centerCX, int centerCY, int centerCZ, int streamingRadius, int lodRadius,
                                  int lodGenBudget) {
+    FABRIC_ZONE_SCOPED_N("WorldSession::updateLODRing");
+
     int chunkRadius = streamingRadius;
     if (lodSystem_)
         lodSystem_->setFullResCoverage(centerCX, centerCY, centerCZ, chunkRadius);
@@ -545,6 +558,7 @@ void WorldSession::updateLODRing(int centerCX, int centerCY, int centerCZ, int s
               [&](const fabric::ChunkCoord& a, const fabric::ChunkCoord& b) { return distSq(a) < distSq(b); });
 
     int loadCount = std::min(static_cast<int>(toLoad.size()), lodGenBudget);
+    FABRIC_ZONE_VALUE(loadCount);
     for (int i = 0; i < loadCount; ++i) {
         const auto& c = toLoad[static_cast<size_t>(i)];
         if (lodSystem_)
@@ -591,6 +605,9 @@ void WorldSession::bufferVoxelChange(const VoxelChange& change) {
 }
 
 void WorldSession::flushPendingChanges() {
+    FABRIC_ZONE_SCOPED_N("WorldSession::flushPendingChanges");
+    FABRIC_ZONE_VALUE(static_cast<int64_t>(pendingChanges_.size()));
+
     if (pendingChanges_.empty() || !txStore_)
         return;
 
@@ -599,33 +616,46 @@ void WorldSession::flushPendingChanges() {
 }
 
 void WorldSession::enqueueResidentChunksForShutdown() {
+    FABRIC_ZONE_SCOPED_N("WorldSession::enqueueResidentChunksForShutdown");
+
     if (!simSystem_ || !saveService_)
         return;
 
     auto& grid = simSystem_->simulationGrid();
     auto& registry = grid.registry();
+    [[maybe_unused]] int enqueued = 0;
     for (const auto& [cx, cy, cz] : grid.allChunks()) {
         const auto* slot = registry.find(cx, cy, cz);
         if (!slot || slot->state != simulation::ChunkSlotState::Active || !slot->isMaterialized())
             continue;
 
         auto blob = encodeChunkBlob(cx, cy, cz);
-        if (!blob.empty())
+        if (!blob.empty()) {
             saveService_->enqueuePrepared(cx, cy, cz, std::move(blob));
+            ++enqueued;
+        }
     }
+
+    FABRIC_ZONE_VALUE(enqueued);
 }
 
 void WorldSession::updateSaveService(float dt) {
+    FABRIC_ZONE_SCOPED_N("WorldSession::updateSaveService");
+
     if (saveService_)
         saveService_->update(dt);
 }
 
 void WorldSession::updateSnapshotScheduler(float dt) {
+    FABRIC_ZONE_SCOPED_N("WorldSession::updateSnapshotScheduler");
+
     if (snapshotScheduler_)
         snapshotScheduler_->update(dt);
 }
 
 void WorldSession::updatePruningScheduler(float dt) {
+    FABRIC_ZONE_SCOPED_N("WorldSession::updatePruningScheduler");
+
     if (pruningScheduler_)
         pruningScheduler_->update(dt);
 }
@@ -703,6 +733,8 @@ void WorldSession::submit(ops::GenerateChunks op) {
 }
 
 void WorldSession::submit(ops::Tick op) {
+    FABRIC_ZONE_SCOPED_N("WorldSession::submit(Tick)");
+
     flushPendingChanges();
     updateSaveService(op.dt);
     updateSnapshotScheduler(op.dt);
@@ -714,8 +746,13 @@ void WorldSession::submit(ops::Tick op) {
         writerQueue_.submit([this]() { store_->maybeCheckpoint(); });
     }
 
+    auto status = runtimeStatusSnapshot();
+    FABRIC_PLOT("persistence/pending_loads", static_cast<int64_t>(status.pendingLoads));
+    FABRIC_PLOT("persistence/dirty_chunks", static_cast<int64_t>(status.saveActivity.dirtyChunks));
+    FABRIC_PLOT("persistence/saving_chunks", static_cast<int64_t>(status.saveActivity.savingChunks));
+    FABRIC_PLOT("persistence/prepared_chunks", static_cast<int64_t>(status.saveActivity.preparedChunks));
+
     if (++stats_.ticks >= K_STATS_INTERVAL) {
-        auto status = runtimeStatusSnapshot();
         bool any = stats_.encodes > 0 || stats_.loadsDispatched > 0 || stats_.loadsDbMiss > 0 || stats_.loadsOk > 0 ||
                    stats_.loadsFail > 0 || status.saveActivity.dirtyChunks > 0 ||
                    status.saveActivity.savingChunks > 0 || status.saveActivity.preparedChunks > 0 ||
@@ -735,6 +772,9 @@ void WorldSession::submit(ops::Tick op) {
 }
 
 void WorldSession::submit(ops::UpdateLODRing op) {
+    FABRIC_ZONE_SCOPED_N("WorldSession::submit(UpdateLODRing)");
+    FABRIC_ZONE_VALUE(op.genBudget);
+
     int cx = static_cast<int>(std::floor(op.px / recurse::simulation::K_CHUNK_SIZE));
     int cy = static_cast<int>(std::floor(op.py / recurse::simulation::K_CHUNK_SIZE));
     int cz = static_cast<int>(std::floor(op.pz / recurse::simulation::K_CHUNK_SIZE));
