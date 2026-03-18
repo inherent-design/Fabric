@@ -1,6 +1,8 @@
 # UI unit tests
 target_sources(UnitTests
   PRIVATE
+    AutosavePanelTest.cc
+    ChunkDebugPanelTest.cc
     WebViewTest.cc
     RmlUiBackendTest.cc
     DebugHUDTest.cc

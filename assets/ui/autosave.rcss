@@ -33,17 +33,21 @@ body {
 }
 
 .autosave-copy {
+    display: block;
     width: 238dp;
 }
 
 .autosave-status {
     color: #f0f0f0;
+    display: block;
     font-size: 12dp;
     font-weight: 700;
+    margin-bottom: 2dp;
 }
 
 .autosave-detail {
     color: #a8a8a8;
+    display: block;
     font-size: 10dp;
-    margin-top: 2dp;
+    white-space: pre-wrap;
 }

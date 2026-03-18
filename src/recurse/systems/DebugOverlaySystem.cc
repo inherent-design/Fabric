@@ -514,12 +514,20 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
     // Chunk debug panel
     if (chunkDebugPanel_.isVisible() && meshSystem_) {
         ChunkDebugData chunkData;
-        chunkData.activeChunks = voxelSim_ ? static_cast<size_t>(voxelSim_->simulationGrid().chunkCount()) : 0;
+        chunkData.trackedChunks = voxelSim_ ? voxelSim_->simulationGrid().chunkCount() : 0;
+        chunkData.activeChunks = voxelSim_ ? voxelSim_->activeChunkCount() : 0;
         chunkData.chunksRendered = voxelRender_ ? voxelRender_->renderedChunkCount() : 0;
         chunkData.gpuMeshCount = meshSystem_->gpuMeshCount();
-        chunkData.dirtyChunksPending = meshSystem_->pendingMeshCount();
+        chunkData.meshCandidateChunks = meshSystem_->pendingMeshCount();
         chunkData.vertexCount = meshSystem_->vertexBufferSize();
         chunkData.indexCount = meshSystem_->indexBufferSize();
+
+        if (lodSystem_) {
+            auto lodInfo = lodSystem_->debugInfo();
+            chunkData.lodVisibleSections = static_cast<size_t>(lodInfo.visibleSections);
+            chunkData.lodGpuSectionCount = static_cast<size_t>(lodInfo.gpuResidentSections);
+            chunkData.lodPendingSections = static_cast<size_t>(lodInfo.pendingSections);
+        }
 
         // Calculate buffer sizes in MB (vertex: 36 bytes, index: 4 bytes)
         constexpr float K_VERTEX_SIZE = sizeof(recurse::SmoothVoxelVertex);

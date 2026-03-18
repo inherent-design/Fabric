@@ -18,10 +18,14 @@ void ChunkDebugPanel::init(Rml::Context* context) {
         return;
     }
 
+    constructor.Bind("tracked_chunks", &trackedChunks_);
     constructor.Bind("active_chunks", &activeChunks_);
     constructor.Bind("chunks_rendered", &chunksRendered_);
     constructor.Bind("gpu_mesh_count", &gpuMeshCount_);
-    constructor.Bind("dirty_chunks_pending", &dirtyChunksPending_);
+    constructor.Bind("mesh_candidate_chunks", &meshCandidateChunks_);
+    constructor.Bind("lod_visible_sections", &lodVisibleSections_);
+    constructor.Bind("lod_gpu_section_count", &lodGpuSectionCount_);
+    constructor.Bind("lod_pending_sections", &lodPendingSections_);
     constructor.Bind("vertex_count", &vertexCount_);
     constructor.Bind("index_count", &indexCount_);
     constructor.Bind("vertex_buffer_mb", &vertexBufferMB_);
@@ -41,10 +45,14 @@ void ChunkDebugPanel::update(const ChunkDebugData& data) {
     if (!initialized_)
         return;
 
+    trackedChunks_ = static_cast<int>(data.trackedChunks);
     activeChunks_ = static_cast<int>(data.activeChunks);
     chunksRendered_ = data.chunksRendered;
     gpuMeshCount_ = static_cast<int>(data.gpuMeshCount);
-    dirtyChunksPending_ = static_cast<int>(data.dirtyChunksPending);
+    meshCandidateChunks_ = static_cast<int>(data.meshCandidateChunks);
+    lodVisibleSections_ = static_cast<int>(data.lodVisibleSections);
+    lodGpuSectionCount_ = static_cast<int>(data.lodGpuSectionCount);
+    lodPendingSections_ = static_cast<int>(data.lodPendingSections);
     vertexCount_ = static_cast<int>(data.vertexCount);
     indexCount_ = static_cast<int>(data.indexCount);
     vertexBufferMB_ = data.vertexBufferMB;

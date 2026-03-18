@@ -90,7 +90,12 @@ void VoxelSimulationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fix
     if (!fabSim_)
         return;
 
-    lastActiveCount_ = fabSim_->activityTracker().collectActiveChunks().size();
+    auto& tracker = fabSim_->activityTracker();
+    auto activeChunks = tracker.collectActiveChunks();
+    lastActiveCount_ =
+        static_cast<size_t>(std::count_if(activeChunks.begin(), activeChunks.end(), [&tracker](const auto& entry) {
+            return tracker.getState(entry.pos) == recurse::simulation::ChunkState::Active;
+        }));
     FABRIC_ZONE_VALUE(static_cast<int64_t>(lastActiveCount_));
     fabSim_->tick();
 

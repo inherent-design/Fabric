@@ -7,10 +7,18 @@
 <div id="chunk-debug-panel">
     <div class="section">
         <div class="section-title">Chunk Stats</div>
-        <div class="row"><span class="label">Active: </span><span class="value">{{ active_chunks }}</span></div>
-        <div class="row"><span class="label">Rendered: </span><span class="value">{{ chunks_rendered }}</span></div>
-        <div class="row"><span class="label">GPU: </span><span class="value">{{ gpu_mesh_count }}</span></div>
-        <div class="row"><span class="label">Pending: </span><span class="value">{{ dirty_chunks_pending }}</span></div>
+        <div class="row"><span class="label">Tracked: </span><span class="value">{{ tracked_chunks }}</span></div>
+        <div class="row"><span class="label">Sim active: </span><span class="value">{{ active_chunks }}</span></div>
+        <div class="row"><span class="label">Chunk rendered: </span><span class="value">{{ chunks_rendered }}</span></div>
+        <div class="row"><span class="label">Chunk GPU: </span><span class="value">{{ gpu_mesh_count }}</span></div>
+        <div class="row"><span class="label">Mesh active: </span><span class="value">{{ mesh_candidate_chunks }}</span></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">LOD</div>
+        <div class="row"><span class="label">Visible: </span><span class="value">{{ lod_visible_sections }}</span></div>
+        <div class="row"><span class="label">GPU: </span><span class="value">{{ lod_gpu_section_count }}</span></div>
+        <div class="row"><span class="label">Pending: </span><span class="value">{{ lod_pending_sections }}</span></div>
     </div>
 
     <div class="section">
