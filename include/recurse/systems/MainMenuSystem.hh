@@ -34,8 +34,33 @@ class TerrainSystem;
 class VoxelSimulationSystem;
 class VoxelMeshingSystem;
 class CharacterMovementSystem;
+class CameraGameSystem;
 class PhysicsGameSystem;
 class ChunkPipelineSystem;
+class BenchmarkAutomationSystem;
+
+struct ProfileBenchmarkPreset {
+    recurse::WorldType type = recurse::WorldType::Natural;
+    int64_t seed = 20260318;
+    std::string displayName = "Profile Benchmark";
+    std::string worldName = "Profile Benchmark";
+    fabric::Vec3f spawnPosition{16.0f, 96.0f, 16.0f};
+    float yawDegrees = 90.0f;
+    float pitchDegrees = -12.0f;
+    uint32_t settleTicks = 90;
+};
+
+struct ProfileBenchmarkSample {
+    fabric::Vec3f position{};
+    float yawDegrees = 0.0f;
+    float pitchDegrees = 0.0f;
+    bool complete = false;
+};
+
+ProfileBenchmarkPreset makeProfileBenchmarkPreset(std::optional<int64_t> seedOverride = std::nullopt);
+ProfileBenchmarkSample sampleProfileBenchmarkMotion(const ProfileBenchmarkPreset& preset, uint32_t motionTick,
+                                                    float fixedDt);
+uint32_t totalProfileBenchmarkMotionTicks();
 
 /// Splash screen media entry
 struct SplashEntry {
@@ -107,8 +132,9 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     void showWorldTransition();
     void hideMenu();
 
-    void requestWorldStart(recurse::WorldType type, int64_t seed, std::string uuid, bool isNew,
-                           std::string displayName);
+    void requestWorldStart(recurse::WorldType type, int64_t seed, std::string uuid, bool isNew, std::string displayName,
+                           std::optional<fabric::Vec3f> spawnOverride = std::nullopt, bool benchmarkProfile = false,
+                           bool deleteOnExit = false);
     void executePendingWorldStart();
     bool isPendingWorldReady() const;
     void updateWorldLoadingScreen();
@@ -121,6 +147,7 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     void onStartClicked();
     void onSettingsClicked();
     void onQuitClicked();
+    void onProfileBenchmarkClicked();
     void onFlatWorldClicked();
     void onMinecraftWorldClicked();
     void onBackClicked();
@@ -133,6 +160,9 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     void onRenameWorldClicked(const std::string& uuid, const std::string& newName);
     void onOpenFolderClicked(const std::string& uuid);
     void onWorldSelected(const std::string& uuid);
+    void requestProfileBenchmarkStart();
+    void purgeDisposableBenchmarkWorlds();
+    bool isDisposableBenchmarkWorld(const std::string& uuid) const;
 
     // Reset all world state (meshes, physics, simulation, terrain)
     void resetWorldState();
@@ -148,6 +178,9 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
         std::string uuid;
         bool isNew = false;
         std::string displayName;
+        std::optional<fabric::Vec3f> spawnOverride;
+        bool benchmarkProfile = false;
+        bool deleteOnExit = false;
     };
 
     Rml::Context* rmlContext_ = nullptr;
@@ -164,6 +197,7 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     VoxelSimulationSystem* voxelSim_ = nullptr;
     VoxelMeshingSystem* voxelMesh_ = nullptr;
     CharacterMovementSystem* characterMovement_ = nullptr;
+    BenchmarkAutomationSystem* benchmarkAutomation_ = nullptr;
     PhysicsGameSystem* physics_ = nullptr;
     ChunkPipelineSystem* chunkPipeline_ = nullptr;
     fabric::AppModeManager* appModeManager_ = nullptr;
@@ -199,6 +233,40 @@ class MainMenuSystem : public fabric::System<MainMenuSystem> {
     bool enterStartSucceeded_ = false;
     int enterReadyFramesRemaining_ = 0;
     fabric::ChunkCoord enterSpawnChunk_{};
+    std::optional<int64_t> benchmarkSeedOverride_;
+    bool startupBenchmarkAutostart_ = false;
+    bool startupBenchmarkSkipSplash_ = false;
+    bool startupBenchmarkQueued_ = false;
+    bool activeBenchmarkWorld_ = false;
+    bool deleteActiveWorldOnReset_ = false;
+};
+
+class BenchmarkAutomationSystem : public fabric::System<BenchmarkAutomationSystem> {
+  public:
+    void doInit(fabric::AppContext& ctx) override;
+    void doShutdown() override;
+    void fixedUpdate(fabric::AppContext& ctx, float fixedDt) override;
+    void configureDependencies() override;
+
+    void onWorldBegin();
+    void onWorldEnd();
+
+    void armForLaunch(ProfileBenchmarkPreset preset);
+    void disarm();
+    bool isArmed() const { return armed_; }
+
+  private:
+    void ensureNoclip();
+
+    CharacterMovementSystem* characterMovement_ = nullptr;
+    CameraGameSystem* cameraSystem_ = nullptr;
+    fabric::AppModeManager* appModeManager_ = nullptr;
+    std::optional<ProfileBenchmarkPreset> preset_;
+    bool armed_ = false;
+    bool worldActive_ = false;
+    bool routeStarted_ = false;
+    bool routeCompleteLogged_ = false;
+    uint32_t worldTicks_ = 0;
 };
 
 } // namespace recurse::systems
