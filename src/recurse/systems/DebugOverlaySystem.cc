@@ -44,17 +44,12 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <cstdio>
 
 namespace recurse::systems {
 
 namespace {
-
-constexpr float K_AUTOSAVE_COUNTDOWN_WINDOW_SECONDS = 10.0f;
-constexpr float K_AUTOSAVE_SAVED_SECONDS = 4.0f;
-constexpr float K_FALLBACK_FRAME_SECONDS = 1.0f / 60.0f;
 
 std::string formatAutosaveSeconds(float seconds) {
     char buffer[16];
@@ -348,14 +343,6 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             cpuMs = 1000.0f * static_cast<float>(static_cast<double>(stats->cpuTimeEnd - stats->cpuTimeBegin) /
                                                  static_cast<double>(stats->cpuTimerFreq));
         }
-        auto autosaveTickNow = std::chrono::steady_clock::now();
-        float autosaveFrameSeconds = K_FALLBACK_FRAME_SECONDS;
-        if (lastAutosaveDisplayTick_ != std::chrono::steady_clock::time_point{}) {
-            autosaveFrameSeconds =
-                std::max(0.0f, std::chrono::duration<float>(autosaveTickNow - lastAutosaveDisplayTick_).count());
-        }
-        lastAutosaveDisplayTick_ = autosaveTickNow;
-
         DebugData debugData;
         debugData.fps = (cpuMs > 0.0f) ? 1000.0f / cpuMs : 0.0f;
         debugData.frameTimeMs = cpuMs;
@@ -399,7 +386,6 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
                                       : 0;
             bool hasSaving = saveStatus.savingChunks > 0;
             bool hasPending = pendingDirty > 0 || saveStatus.preparedChunks > 0;
-            bool hasWork = saveStatus.dirtyChunks > 0 || saveStatus.savingChunks > 0 || saveStatus.preparedChunks > 0;
 
             debugData.autosaveDirtyChunks = static_cast<int>(pendingDirty);
             debugData.autosaveSavingChunks = static_cast<int>(saveStatus.savingChunks);
@@ -410,62 +396,23 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
                 debugData.autosaveNextSave = "queued";
             }
 
+            // ChunkSaveService's debounce and max-delay batches are both
+            // change-driven persistence. They stay active for data safety, but
+            // the user-facing autosave popup is reserved for failure reporting
+            // until there is a distinct wall-clock autosave path.
             if (saveStatus.hasError) {
                 autosaveData.visible = true;
                 autosaveData.statusText = "Autosave issue";
                 autosaveData.detailText =
                     saveStatus.lastError.empty() ? "Save failed. Retry pending." : saveStatus.lastError;
-                autosaveSavedSecondsRemaining_ = 0.0f;
                 debugData.autosaveState = "Issue";
             } else if (hasSaving) {
-                autosaveData.visible = true;
-                autosaveData.statusText = "Saving...";
-                autosaveData.detailText = "Writing recent world changes";
-                autosaveHadWork_ = true;
-                autosaveSavedSecondsRemaining_ = 0.0f;
                 debugData.autosaveState = "Saving";
-            } else if (pendingDirty > 0 && saveStatus.secondsUntilNextSave >= 0.0f &&
-                       saveStatus.secondsUntilNextSave <= K_AUTOSAVE_COUNTDOWN_WINDOW_SECONDS) {
-                autosaveData.visible = true;
-                autosaveData.statusText = "Autosave in " + formatAutosaveSeconds(saveStatus.secondsUntilNextSave);
-                autosaveData.detailText = "Recent world changes will be written soon";
-                autosaveHadWork_ = true;
-                autosaveSavedSecondsRemaining_ = 0.0f;
-                debugData.autosaveState = "Pending";
             } else if (hasPending) {
-                autosaveData.visible = true;
-                autosaveData.statusText = "Autosave queued";
-                autosaveData.detailText = "Recent world changes are waiting to write";
-                autosaveHadWork_ = true;
-                autosaveSavedSecondsRemaining_ = 0.0f;
                 debugData.autosaveState = "Pending";
             } else {
-                if (saveStatus.lastSuccessfulSerial != 0 &&
-                    saveStatus.lastSuccessfulSerial != lastAutosaveSuccessSerial_) {
-                    lastAutosaveSuccessSerial_ = saveStatus.lastSuccessfulSerial;
-                    if (autosaveHadWork_)
-                        autosaveSavedSecondsRemaining_ = K_AUTOSAVE_SAVED_SECONDS;
-                    autosaveHadWork_ = false;
-                }
-
-                if (autosaveSavedSecondsRemaining_ > 0.0f) {
-                    autosaveData.visible = true;
-                    autosaveData.statusText = "Saved";
-                    autosaveData.detailText = "All recent world changes are on disk";
-                    autosaveSavedSecondsRemaining_ =
-                        std::max(0.0f, autosaveSavedSecondsRemaining_ - autosaveFrameSeconds);
-                    debugData.autosaveState = "Saved";
-                } else {
-                    debugData.autosaveState = "Idle";
-                }
+                debugData.autosaveState = "Idle";
             }
-
-            if (!hasWork && !saveStatus.hasError && autosaveSavedSecondsRemaining_ <= 0.0f)
-                autosaveHadWork_ = false;
-        } else {
-            lastAutosaveSuccessSerial_ = 0;
-            autosaveSavedSecondsRemaining_ = 0.0f;
-            autosaveHadWork_ = false;
         }
         debugHUD_.update(debugData);
         autosavePanel_.update(autosaveData);
@@ -559,6 +506,11 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         lodData.pendingSections = lodInfo.pendingSections;
         lodData.gpuResidentSections = lodInfo.gpuResidentSections;
         lodData.visibleSections = lodInfo.visibleSections;
+        lodData.fullResRejectedSections = lodInfo.fullResRejectedSections;
+        lodData.fullResCenterCX = lodInfo.fullResCenterCX;
+        lodData.fullResCenterCY = lodInfo.fullResCenterCY;
+        lodData.fullResCenterCZ = lodInfo.fullResCenterCZ;
+        lodData.fullResRadius = lodInfo.fullResRadius;
         lodData.estimatedGpuMB = static_cast<float>(lodInfo.estimatedGpuBytes) / (1024.0f * 1024.0f);
         lodStatsPanel_.update(lodData);
     }
@@ -588,19 +540,10 @@ void DebugOverlaySystem::doShutdown() {
     FABRIC_LOG_INFO("DebugOverlaySystem shut down");
 }
 
-void DebugOverlaySystem::onWorldBegin() {
-    lastAutosaveSuccessSerial_ = 0;
-    autosaveSavedSecondsRemaining_ = 0.0f;
-    autosaveHadWork_ = false;
-    lastAutosaveDisplayTick_ = {};
-}
+void DebugOverlaySystem::onWorldBegin() {}
 
 void DebugOverlaySystem::onWorldEnd() {
     btDebugSelectedNpc_ = flecs::entity{};
-    lastAutosaveSuccessSerial_ = 0;
-    autosaveSavedSecondsRemaining_ = 0.0f;
-    autosaveHadWork_ = false;
-    lastAutosaveDisplayTick_ = {};
 }
 
 void DebugOverlaySystem::configureDependencies() {
