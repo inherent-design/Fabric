@@ -137,13 +137,13 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
         int cy = e.getData<int>("cy");
         int cz = e.getData<int>("cz");
 
-        // F22: Filter events that cannot produce meaningful persistence diffs.
+        // F22: Filter only events that should not enter persistence state.
+        // Detail-less physics events still mutate the chunk blob and must mark
+        // dirty/save state even though they cannot populate per-voxel tx diffs.
         if (e.hasData("source")) {
             auto src = static_cast<ChangeSource>(e.getData<int>("source"));
             if (src == ChangeSource::Generation)
                 return; // fresh worldgen matches reference; zero diff by definition
-            if (src == ChangeSource::Physics && !e.hasAnyData("detail"))
-                return; // settled-chunk event (collision-only, no cell changes)
         }
 
         if (saveService_)
@@ -468,10 +468,12 @@ bool WorldSession::hasPendingLoad(int cx, int cy, int cz) const {
 
 void WorldSession::updateLODRing(int centerCX, int centerCY, int centerCZ, int streamingRadius, int lodRadius,
                                  int lodGenBudget) {
+    int chunkRadius = streamingRadius;
+    if (lodSystem_)
+        lodSystem_->setFullResCoverage(centerCX, centerCY, centerCZ, chunkRadius);
+
     if (centerCX == lastLodCX_ && centerCY == lastLodCY_ && centerCZ == lastLodCZ_)
         return;
-
-    int chunkRadius = streamingRadius;
 
     int dx = centerCX - lastLodCX_;
     int dy = centerCY - lastLodCY_;
