@@ -92,16 +92,16 @@ ReplayResult ReplayExecutor::runLoop(const SnapshotSet& snapshot, std::span<cons
                         std::min(decoded.cells.size(), static_cast<size_t>(K_CHUNK_VOLUME) * sizeof(VoxelCell)));
         }
 
-        ChunkBufferFinalizationOptions bufferOptions;
-        bufferOptions.materials = materials_;
-        bufferOptions.paletteData = std::span<const float>(decoded.paletteData.data(), decoded.paletteData.size());
-        bufferOptions.restorePalette = true;
-        finalizeChunkBuffers(grid_, cs.coord.x, cs.coord.y, cs.coord.z, bufferOptions);
+        ChunkBufferPolicyInputs bufferInputs;
+        bufferInputs.materials = materials_;
+        bufferInputs.paletteData = std::span<const float>(decoded.paletteData.data(), decoded.paletteData.size());
 
-        ChunkActivationOptions activation;
-        activation.targetState = ChunkState::Active;
-        activation.activateAllSubRegions = true;
-        finalizeChunkActivation(tracker_, grid_, cs.coord.x, cs.coord.y, cs.coord.z, activation);
+        finalizeChunkBuffers(
+            grid_, cs.coord.x, cs.coord.y, cs.coord.z,
+            chunkBufferFinalizationOptionsForCause(ChunkFinalizationCause::ReplayRestoreReady, bufferInputs));
+
+        finalizeChunkActivation(tracker_, grid_, cs.coord.x, cs.coord.y, cs.coord.z,
+                                chunkActivationOptionsForCause(ChunkFinalizationCause::ReplayRestoreReady));
     }
 
     // Pre-sort user edits by tick index (ascending).
@@ -141,10 +141,10 @@ ReplayResult ReplayExecutor::runLoop(const SnapshotSet& snapshot, std::span<cons
 
             fabric::ChunkCoord editChunk{edit.addr.cx, edit.addr.cy, edit.addr.cz};
             if (tracker_.getState(editChunk) == ChunkState::Sleeping) {
-                ChunkActivationOptions activation;
-                activation.targetState = ChunkState::Active;
-                activation.activateAllSubRegions = true;
-                finalizeChunkActivation(tracker_, grid_, edit.addr.cx, edit.addr.cy, edit.addr.cz, activation);
+                const auto cause = edit.source == ChangeSource::Place ? ChunkFinalizationCause::ReplayPlaceEdit
+                                                                      : ChunkFinalizationCause::ReplayDestroyEdit;
+                finalizeChunkActivation(tracker_, grid_, edit.addr.cx, edit.addr.cy, edit.addr.cz,
+                                        chunkActivationOptionsForCause(cause));
             }
             affectedSet.insert(editChunk);
             ++editCursor;

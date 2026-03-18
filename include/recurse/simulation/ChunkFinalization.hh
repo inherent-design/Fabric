@@ -16,11 +16,28 @@ enum class NeighborInvalidation : uint8_t {
     FaceAndDiagonalXZ,
 };
 
+enum class ChunkFinalizationCause : uint8_t {
+    InitialWorldGenerationReady,
+    StreamingGenerationReady,
+    AsyncLoadReady,
+    ReplayRestoreReady,
+    LivePlaceEdit,
+    LiveDestroyEdit,
+    ReplayPlaceEdit,
+    ReplayDestroyEdit,
+};
+
 struct ChunkBufferFinalizationOptions {
     int sourceBufferIndex = -1;
     const MaterialRegistry* materials = nullptr;
     std::span<const float> paletteData{};
     bool restorePalette = false;
+};
+
+struct ChunkBufferPolicyInputs {
+    int sourceBufferIndex = -1;
+    const MaterialRegistry* materials = nullptr;
+    std::span<const float> paletteData{};
 };
 
 struct ChunkActivationOptions {
@@ -35,5 +52,10 @@ void finalizeChunkBuffers(SimulationGrid& grid, int cx, int cy, int cz,
 
 void finalizeChunkActivation(ChunkActivityTracker& tracker, const SimulationGrid& grid, int cx, int cy, int cz,
                              const ChunkActivationOptions& options = {});
+
+ChunkBufferFinalizationOptions chunkBufferFinalizationOptionsForCause(ChunkFinalizationCause cause,
+                                                                      const ChunkBufferPolicyInputs& inputs = {});
+
+ChunkActivationOptions chunkActivationOptionsForCause(ChunkFinalizationCause cause);
 
 } // namespace recurse::simulation
