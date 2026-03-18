@@ -1,5 +1,6 @@
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/character/VoxelInteraction.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
@@ -348,4 +349,82 @@ TEST(RecurseVoxelSimSystemTest, GhostCellCopyCorrectness) {
 
     auto cell = grid.readCell(31, 0, 0);
     EXPECT_EQ(cell.materialId, material_ids::STONE) << "Boundary voxel should be preserved after ghost sync";
+}
+
+TEST(RecurseVoxelSimSystemTest, PlaceExternalEditIntoSleepingChunkWakesAndSimulatesWithoutCallerRepair) {
+    fabric::World world;
+    fabric::Timeline timeline;
+    fabric::EventDispatcher dispatcher;
+    fabric::ResourceHub hub;
+    hub.disableWorkerThreadsForTesting();
+    fabric::AssetRegistry assetRegistry{hub};
+    fabric::SystemRegistry sysReg;
+    fabric::ConfigManager configManager;
+
+    sysReg.registerSystem<recurse::systems::TerrainSystem>(fabric::SystemPhase::FixedUpdate);
+    sysReg.registerSystem<recurse::systems::VoxelSimulationSystem>(fabric::SystemPhase::FixedUpdate);
+    ASSERT_TRUE(sysReg.resolve());
+
+    fabric::AppContext ctx{
+        .world = world,
+        .timeline = timeline,
+        .dispatcher = dispatcher,
+        .resourceHub = hub,
+        .assetRegistry = assetRegistry,
+        .systemRegistry = sysReg,
+        .configManager = configManager,
+    };
+    sysReg.initAll(ctx);
+
+    auto* sim = sysReg.get<recurse::systems::VoxelSimulationSystem>();
+    ASSERT_NE(sim, nullptr);
+    sim->scheduler().disableForTesting();
+
+    auto& grid = sim->simulationGrid();
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.materializeChunk(0, 0, 0);
+    for (int x = 0; x < K_CHUNK_SIZE; ++x)
+        for (int z = 0; z < K_CHUNK_SIZE; ++z)
+            grid.writeCellImmediate(x, 0, z, VoxelCell{material_ids::STONE});
+
+    sim->activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Sleeping);
+
+    VoxelCell sand{material_ids::SAND, 0, voxel_flags::NONE};
+    uint32_t oldCell = 0;
+    uint32_t newCell = 0;
+    std::memcpy(&newCell, &sand, sizeof(uint32_t));
+
+    int eventCount = 0;
+    std::vector<recurse::VoxelChangeDetail> details;
+    auto listenerId = dispatcher.addEventListener(recurse::K_VOXEL_CHANGED_EVENT, [&](fabric::Event& event) {
+        ++eventCount;
+        EXPECT_EQ(event.getData<int>("cx"), 0);
+        EXPECT_EQ(event.getData<int>("cy"), 0);
+        EXPECT_EQ(event.getData<int>("cz"), 0);
+        details = event.getAnyData<std::vector<recurse::VoxelChangeDetail>>("detail");
+    });
+
+    grid.writeCellImmediate(16, 10, 16, sand);
+    recurse::InteractionResult edit{
+        true, 16, 10, 16,
+        0,    0,  0,  recurse::VoxelChangeDetail{16, 10, 16, oldCell, newCell, 0, recurse::ChangeSource::Place}};
+    sim->finalizeExternalEdit(edit);
+
+    EXPECT_EQ(sim->activityTracker().getState(ChunkCoord{0, 0, 0}), ChunkState::Active);
+    EXPECT_EQ(grid.readCell(16, 10, 16).materialId, material_ids::SAND);
+    ASSERT_EQ(eventCount, 1);
+    ASSERT_EQ(details.size(), 1u);
+    EXPECT_EQ(details[0].vx, 16);
+    EXPECT_EQ(details[0].vy, 10);
+    EXPECT_EQ(details[0].vz, 16);
+    EXPECT_EQ(details[0].source, recurse::ChangeSource::Place);
+
+    dispatcher.removeEventListener(recurse::K_VOXEL_CHANGED_EVENT, listenerId);
+
+    sysReg.runFixedUpdate(ctx, 1.0f / 60.0f);
+
+    EXPECT_EQ(grid.readCell(16, 9, 16).materialId, material_ids::SAND);
+    EXPECT_EQ(grid.readCell(16, 10, 16).materialId, material_ids::AIR);
+
+    sysReg.shutdownAll();
 }
