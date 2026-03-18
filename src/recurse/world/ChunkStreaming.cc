@@ -88,24 +88,22 @@ StreamingUpdate ChunkStreamingManager::update(const std::vector<FocalPoint>& sou
     }
 
     if (config_.maxTrackedChunks > 0 && static_cast<int>(tracked_.size()) > config_.maxTrackedChunks) {
-        std::vector<ChunkCoord> allTracked(tracked_.begin(), tracked_.end());
-        std::sort(allTracked.begin(), allTracked.end(),
+        std::vector<ChunkCoord> evictionCandidates;
+        evictionCandidates.reserve(tracked_.size());
+        for (const auto& c : tracked_) {
+            if (!desired.contains(c))
+                evictionCandidates.push_back(c);
+        }
+
+        std::sort(evictionCandidates.begin(), evictionCandidates.end(),
                   [&](const ChunkCoord& a, const ChunkCoord& b) { return minDistSq(a) > minDistSq(b); });
 
         int excess = static_cast<int>(tracked_.size()) - config_.maxTrackedChunks;
-        for (int i = 0; i < excess; ++i) {
-            const auto& c = allTracked[static_cast<size_t>(i)];
-            bool alreadyQueued = false;
-            for (const auto& u : result.toUnload) {
-                if (u == c) {
-                    alreadyQueued = true;
-                    break;
-                }
-            }
-            if (!alreadyQueued) {
-                result.toUnload.push_back(c);
-                tracked_.erase(c);
-            }
+        int evictionCount = std::min(excess, static_cast<int>(evictionCandidates.size()));
+        for (int i = 0; i < evictionCount; ++i) {
+            const auto& c = evictionCandidates[static_cast<size_t>(i)];
+            result.toUnload.push_back(c);
+            tracked_.erase(c);
         }
     }
 
