@@ -13,10 +13,15 @@
 #include "recurse/persistence/FchkCodec.hh"
 #include "recurse/persistence/SqliteChunkStore.hh"
 #include "recurse/simulation/ChunkState.hh"
+#include "recurse/simulation/EssenceAssigner.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
+#include "recurse/world/EssencePalette.hh"
+#include "recurse/world/WorldGenerator.hh"
 
+#include <array>
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <utility>
@@ -423,4 +428,150 @@ TEST_F(WorldSessionResidentChunkPersistenceTest, CloseReopenPersistsResidentGene
     auto blob = store->loadChunk(K_CX, K_CY, K_CZ);
     ASSERT_TRUE(blob.has_value());
     EXPECT_FALSE(blob->empty());
+}
+
+class WorldSessionPersistedDeltaReopenTest : public ::testing::Test {
+  protected:
+    static constexpr int K_EDIT_OFFSET = 4;
+
+    void SetUp() override {
+        hub_.disableWorkerThreadsForTesting();
+        scheduler_.disableForTesting();
+
+        tmpDir_ =
+            fs::temp_directory_path() / ("fabric_world_session_delta_test_" +
+                                         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        fs::create_directories(tmpDir_);
+        worldDir_ = tmpDir_.string();
+
+        terrain_ = &systemRegistry_.registerSystem<recurse::systems::TerrainSystem>(fabric::SystemPhase::FixedUpdate);
+        voxelSim_ =
+            &systemRegistry_.registerSystem<recurse::systems::VoxelSimulationSystem>(fabric::SystemPhase::FixedUpdate);
+        ASSERT_TRUE(systemRegistry_.resolve());
+
+        auto ctx = makeCtx();
+        systemRegistry_.initAll(ctx);
+        voxelSim_->setWorldSeed(1337);
+
+        openSession();
+    }
+
+    void TearDown() override {
+        session_.reset();
+        systemRegistry_.shutdownAll();
+        fs::remove_all(tmpDir_);
+    }
+
+    fabric::AppContext makeCtx() {
+        return fabric::AppContext{
+            .world = world_,
+            .timeline = timeline_,
+            .dispatcher = dispatcher_,
+            .resourceHub = hub_,
+            .assetRegistry = assetRegistry_,
+            .systemRegistry = systemRegistry_,
+            .configManager = configManager_,
+        };
+    }
+
+    void openSession() {
+        auto result = recurse::WorldSession::open(worldDir_, dispatcher_, scheduler_, world_.get(), voxelSim_, nullptr,
+                                                  nullptr, nullptr, terrain_);
+        ASSERT_TRUE(result.isSuccess()) << "WorldSession::open failed: "
+                                        << result.error<fabric::fx::IOError>().ctx.message;
+        session_ = std::move(result).value();
+    }
+
+    void generateEditedChunk(int cx, int cy, int cz, uint16_t materialId) {
+        voxelSim_->generateChunk(cx, cy, cz);
+        auto& grid = voxelSim_->simulationGrid();
+        grid.writeCell(cx * 32 + K_EDIT_OFFSET, cy * 32 + K_EDIT_OFFSET, cz * 32 + K_EDIT_OFFSET,
+                       recurse::simulation::VoxelCell{materialId});
+        grid.syncChunkBuffers(cx, cy, cz);
+    }
+
+    recurse::ChunkBlob encodeDeltaBlobForCurrentChunk(int cx, int cy, int cz, uint32_t worldgenVersion) {
+        auto* current = voxelSim_->simulationGrid().readBuffer(cx, cy, cz);
+        EXPECT_NE(current, nullptr);
+        if (!current)
+            return {};
+
+        std::array<recurse::simulation::VoxelCell, recurse::simulation::K_CHUNK_VOLUME> reference{};
+        terrain_->worldGenerator().generateToBuffer(reference.data(), cx, cy, cz);
+        recurse::EssencePalette referencePalette;
+        recurse::simulation::assignEssence(reference.data(), cx, cy, cz, voxelSim_->materials(), referencePalette, 42);
+
+        return recurse::FchkCodec::encodeDelta(current->data(), reference.data(), sizeof(*current), worldgenVersion, 0);
+    }
+
+    void reloadChunkFromStore(int cx, int cy, int cz) {
+        ASSERT_TRUE(session_->dispatchAsyncLoad(cx, cy, cz));
+        auto completions = session_->pollPendingLoads();
+        ASSERT_EQ(completions.size(), 1u);
+        EXPECT_TRUE(completions[0].success);
+    }
+
+    uint16_t loadedMaterial(int cx, int cy, int cz) const {
+        return voxelSim_->simulationGrid()
+            .readCell(cx * 32 + K_EDIT_OFFSET, cy * 32 + K_EDIT_OFFSET, cz * 32 + K_EDIT_OFFSET)
+            .materialId;
+    }
+
+    fabric::World world_;
+    fabric::Timeline timeline_;
+    fabric::EventDispatcher dispatcher_;
+    fabric::ResourceHub hub_;
+    fabric::AssetRegistry assetRegistry_{hub_};
+    fabric::SystemRegistry systemRegistry_;
+    fabric::ConfigManager configManager_;
+    fabric::JobScheduler scheduler_;
+    recurse::systems::TerrainSystem* terrain_ = nullptr;
+    recurse::systems::VoxelSimulationSystem* voxelSim_ = nullptr;
+    std::unique_ptr<recurse::WorldSession> session_;
+    fs::path tmpDir_;
+    std::string worldDir_;
+};
+
+TEST_F(WorldSessionPersistedDeltaReopenTest, ReopenDistinguishesResidentPersistedAndFreshChunks) {
+    constexpr int K_NEAR_CX = 1;
+    constexpr int K_NEAR_CY = 0;
+    constexpr int K_NEAR_CZ = 1;
+    constexpr int K_MEDIUM_CX = 4;
+    constexpr int K_MEDIUM_CY = 0;
+    constexpr int K_MEDIUM_CZ = 4;
+    constexpr int K_FAR_CX = 9;
+    constexpr int K_FAR_CY = 0;
+    constexpr int K_FAR_CZ = 9;
+    constexpr uint32_t K_MISMATCHED_WORLDGEN_VERSION = 0;
+
+    generateEditedChunk(K_NEAR_CX, K_NEAR_CY, K_NEAR_CZ, recurse::simulation::material_ids::SAND);
+    EXPECT_FALSE(session_->chunkStore()->hasChunk(K_NEAR_CX, K_NEAR_CY, K_NEAR_CZ));
+
+    generateEditedChunk(K_MEDIUM_CX, K_MEDIUM_CY, K_MEDIUM_CZ, recurse::simulation::material_ids::SAND);
+    auto mismatchedBlob =
+        encodeDeltaBlobForCurrentChunk(K_MEDIUM_CX, K_MEDIUM_CY, K_MEDIUM_CZ, K_MISMATCHED_WORLDGEN_VERSION);
+    ASSERT_FALSE(mismatchedBlob.empty());
+    session_->chunkStore()->saveChunk(K_MEDIUM_CX, K_MEDIUM_CY, K_MEDIUM_CZ, mismatchedBlob);
+    voxelSim_->removeChunk(K_MEDIUM_CX, K_MEDIUM_CY, K_MEDIUM_CZ);
+
+    EXPECT_TRUE(session_->chunkStore()->hasChunk(K_MEDIUM_CX, K_MEDIUM_CY, K_MEDIUM_CZ));
+    EXPECT_FALSE(session_->chunkStore()->hasChunk(K_FAR_CX, K_FAR_CY, K_FAR_CZ));
+
+    session_.reset();
+    voxelSim_->resetWorld();
+    voxelSim_->setWorldSeed(1337);
+    openSession();
+
+    ASSERT_TRUE(session_->chunkStore()->hasChunk(K_NEAR_CX, K_NEAR_CY, K_NEAR_CZ));
+    ASSERT_TRUE(session_->chunkStore()->hasChunk(K_MEDIUM_CX, K_MEDIUM_CY, K_MEDIUM_CZ));
+    EXPECT_FALSE(session_->chunkStore()->hasChunk(K_FAR_CX, K_FAR_CY, K_FAR_CZ));
+
+    reloadChunkFromStore(K_NEAR_CX, K_NEAR_CY, K_NEAR_CZ);
+    EXPECT_EQ(loadedMaterial(K_NEAR_CX, K_NEAR_CY, K_NEAR_CZ), recurse::simulation::material_ids::SAND);
+
+    reloadChunkFromStore(K_MEDIUM_CX, K_MEDIUM_CY, K_MEDIUM_CZ);
+    EXPECT_EQ(loadedMaterial(K_MEDIUM_CX, K_MEDIUM_CY, K_MEDIUM_CZ), recurse::simulation::material_ids::STONE);
+
+    voxelSim_->generateChunk(K_FAR_CX, K_FAR_CY, K_FAR_CZ);
+    EXPECT_EQ(loadedMaterial(K_FAR_CX, K_FAR_CY, K_FAR_CZ), recurse::simulation::material_ids::STONE);
 }

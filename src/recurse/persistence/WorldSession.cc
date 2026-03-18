@@ -329,11 +329,13 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
     auto* storePtr = store_.get();
     auto* worldGen = worldGen_;
     const auto* materials = simSystem_ ? &simSystem_->materials() : nullptr;
+    const uint32_t currentWorldgenVersion = worldgenVersion_;
 
     auto future = scheduler_.submit([storePtr, blob = std::move(persistPendingBlob), cx, cy, cz, buf, worldGen,
-                                     materials]() mutable -> AsyncLoadResult {
+                                     materials, currentWorldgenVersion]() mutable -> AsyncLoadResult {
         AsyncLoadResult r;
         try {
+            const size_t expected = sizeof(*buf);
             if (!blob)
                 blob = storePtr->loadChunk(cx, cy, cz);
             if (!blob) {
@@ -350,12 +352,22 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
                     EssencePalette refPalette;
                     simulation::assignEssence(refBuf->data(), cx, cy, cz, *materials, refPalette, 42);
                 }
-                decoded = FchkCodec::decodeAny(*blob, refBuf->data());
+
+                auto delta = FchkCodec::decodeDelta(*blob);
+                if (currentWorldgenVersion != 0 && delta.worldgenVersion != currentWorldgenVersion) {
+                    FABRIC_LOG_WARN(
+                        "asyncLoad({},{},{}): delta worldgenVersion mismatch stored={} current={}; using fresh "
+                        "reference fallback",
+                        cx, cy, cz, delta.worldgenVersion, currentWorldgenVersion);
+                    decoded.cells.resize(expected);
+                    std::memcpy(decoded.cells.data(), refBuf->data(), expected);
+                } else {
+                    decoded = FchkCodec::decodeAny(*blob, refBuf->data());
+                }
             } else {
                 decoded = FchkCodec::decodeAny(*blob);
             }
 
-            const size_t expected = sizeof(*buf);
             if (decoded.cells.size() == expected) {
                 std::memcpy(buf->data(), decoded.cells.data(), expected);
                 r.paletteData = std::move(decoded.paletteData);
