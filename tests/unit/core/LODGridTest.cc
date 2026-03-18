@@ -1,11 +1,22 @@
 #include "recurse/render/LODGrid.hh"
+#include "fabric/core/AppContext.hh"
+#include "fabric/core/SystemRegistry.hh"
+#include "fabric/platform/ConfigManager.hh"
 #include "fabric/platform/JobScheduler.hh"
+#include "fabric/render/Camera.hh"
+#include "fabric/resource/AssetRegistry.hh"
+#include "fabric/resource/ResourceHub.hh"
+#include "fixtures/BgfxNoopFixture.hh"
 #include "recurse/render/LODMeshManager.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
+#define private public
+#include "recurse/systems/LODSystem.hh"
+#undef private
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/MinecraftNoiseGenerator.hh"
 #include "recurse/world/NaturalWorldGenerator.hh"
+#include "recurse/world/TestWorldGenerator.hh"
 #include <algorithm>
 #include <gtest/gtest.h>
 
@@ -88,6 +99,30 @@ void fillUniformSection(LODSection& section, uint16_t materialId) {
 uint16_t sectionMaterialAt(const LODSection& section, int lx, int ly, int lz) {
     return section.materialOf(section.get(lx, ly, lz));
 }
+
+struct LODSystemTestHarness {
+    fabric::World world;
+    fabric::Timeline timeline;
+    fabric::EventDispatcher dispatcher;
+    fabric::ResourceHub hub;
+    fabric::AssetRegistry assetRegistry{hub};
+    fabric::SystemRegistry systemRegistry;
+    fabric::ConfigManager configManager;
+
+    LODSystemTestHarness() { hub.disableWorkerThreadsForTesting(); }
+
+    fabric::AppContext makeCtx() {
+        return fabric::AppContext{
+            .world = world,
+            .timeline = timeline,
+            .dispatcher = dispatcher,
+            .resourceHub = hub,
+            .assetRegistry = assetRegistry,
+            .systemRegistry = systemRegistry,
+            .configManager = configManager,
+        };
+    }
+};
 
 } // namespace
 
@@ -332,4 +367,157 @@ TEST(LODMeshManager, MeshSection_ScalesVerticesByLevel) {
     }
 
     EXPECT_FLOAT_EQ(maxCoord, 4.0f);
+}
+
+TEST(LODGrid, DirectWorldGenFill_MatchesAuthoritativeChunkMaterialSemantics) {
+    LayeredWorldGenerator gen(28, 4);
+
+    SimulationGrid grid;
+    gen.generate(grid, 0, 0, 0);
+    grid.syncChunkBuffers(0, 0, 0);
+    grid.advanceEpoch();
+
+    LODSection directSection;
+    LODSection gridSection;
+    fillSectionFromWorldGen(directSection, gen, 0, 0, 0);
+    fillSectionFromGrid(gridSection, grid, 0, 0, 0);
+
+    ASSERT_EQ(directSection.palette[0], material_ids::AIR);
+    ASSERT_EQ(gridSection.palette[0], material_ids::AIR);
+    for (int i = 0; i < LODSection::K_VOLUME; ++i) {
+        EXPECT_EQ(directSection.materialOf(directSection.blockIndices[i]),
+                  gridSection.materialOf(gridSection.blockIndices[i]))
+            << "index=" << i;
+    }
+}
+
+TEST(LODMeshManager, MeshSection_UsesSmoothShaderPaletteContract) {
+    recurse::simulation::MaterialRegistry materials;
+    LODGrid grid;
+    LODMeshManager meshManager(grid, materials);
+
+    LODSection section;
+    section.palette = {material_ids::AIR, material_ids::WATER};
+    section.blockIndices.assign(LODSection::K_VOLUME, 0);
+    section.set(0, 0, 0, 1);
+
+    auto mesh = meshManager.meshSection(section);
+    ASSERT_FALSE(mesh.empty());
+    ASSERT_GE(mesh.palette.size(), 2u);
+
+    for (const auto& vertex : mesh.vertices) {
+        EXPECT_EQ(vertex.getMaterialId(), 1u);
+        EXPECT_EQ(vertex.getAO(), recurse::SmoothVoxelVertex::K_SHADER_DEFAULT_AO);
+    }
+
+    EXPECT_FLOAT_EQ(mesh.palette[1][0], 64.0f / 255.0f);
+    EXPECT_FLOAT_EQ(mesh.palette[1][1], 64.0f / 255.0f);
+    EXPECT_FLOAT_EQ(mesh.palette[1][2], 192.0f / 255.0f);
+    EXPECT_FLOAT_EQ(mesh.palette[1][3], 1.0f);
+}
+
+TEST(LODGrid, SectionChunkCoverage_UsesLevelScaledChunkSpan) {
+    auto coverage = LODGrid::sectionChunkCoverage(2, 3, -2, 1);
+
+    EXPECT_EQ(coverage.minCX, 12);
+    EXPECT_EQ(coverage.maxCX, 15);
+    EXPECT_EQ(coverage.minCY, -8);
+    EXPECT_EQ(coverage.maxCY, -5);
+    EXPECT_EQ(coverage.minCZ, 4);
+    EXPECT_EQ(coverage.maxCZ, 7);
+}
+
+TEST(LODSystem, InspectTerrainOwnership_NearSectionsStartAtLod0AndRespectFullResCoverage) {
+    recurse::systems::LODSystem lodSystem;
+    fabric::Camera camera;
+    lodSystem.setFullResCoverage(0, 0, 0, 1);
+
+    LODSection section;
+    section.level = 1;
+    section.origin = LODGrid::sectionOrigin(1, 0, 0, 0);
+
+    auto snapshot = lodSystem.inspectTerrainOwnership(section, camera);
+
+    EXPECT_EQ(snapshot.desiredLevel, 0);
+    EXPECT_TRUE(snapshot.hiddenByFullRes);
+    EXPECT_EQ(snapshot.sectionCoverage.minCX, 0);
+    EXPECT_EQ(snapshot.sectionCoverage.maxCX, 1);
+}
+
+TEST(LODSystem, InspectTerrainOwnership_OutsideFullResCoverageLeavesSectionOwnedByLod) {
+    recurse::systems::LODSystem lodSystem;
+    fabric::Camera camera;
+    lodSystem.setFullResCoverage(0, 0, 0, 1);
+
+    LODSection section;
+    section.level = 0;
+    section.origin = LODGrid::sectionOrigin(0, 2, 0, 0);
+
+    auto snapshot = lodSystem.inspectTerrainOwnership(section, camera);
+
+    EXPECT_EQ(snapshot.desiredLevel, 0);
+    EXPECT_FALSE(snapshot.hiddenByFullRes);
+    EXPECT_EQ(snapshot.sectionCoverage.minCX, 2);
+    EXPECT_EQ(snapshot.sectionCoverage.maxCX, 2);
+}
+
+TEST(LODSystem, DirtyResidentChildStillRebuildsParentAfterReloadStyleRefresh) {
+    recurse::systems::LODSystem lodSystem;
+    LODSystemTestHarness harness;
+
+    for (int cz = 0; cz <= 1; ++cz) {
+        for (int cy = 0; cy <= 1; ++cy) {
+            for (int cx = 0; cx <= 1; ++cx) {
+                auto* child = lodSystem.grid_->getOrCreate(0, cx, cy, cz);
+                ASSERT_NE(child, nullptr);
+                fillUniformSection(*child, material_ids::STONE);
+            }
+        }
+    }
+
+    lodSystem.grid_->tryBuildParent(0, 0, 0, 0);
+    auto* parent = lodSystem.grid_->get(LODSectionKey::make(1, 0, 0, 0));
+    ASSERT_NE(parent, nullptr);
+    parent->dirty = false;
+    EXPECT_EQ(sectionMaterialAt(*parent, 24, 24, 24), material_ids::STONE);
+
+    auto childKey = LODSectionKey::make(0, 1, 1, 1);
+    auto* changedChild = lodSystem.grid_->get(childKey);
+    ASSERT_NE(changedChild, nullptr);
+    fillUniformSection(*changedChild, material_ids::WATER);
+    lodSystem.gpuSections_[childKey.value].resident = true;
+
+    auto ctx = harness.makeCtx();
+    lodSystem.render(ctx);
+
+    EXPECT_EQ(sectionMaterialAt(*parent, 24, 24, 24), material_ids::WATER);
+}
+
+class LODSystemResidentRefreshTest : public fabric::test::BgfxNoopFixture {
+  protected:
+    LODSystemTestHarness harness;
+};
+
+TEST_F(LODSystemResidentRefreshTest, DirtyResidentParentDropsStaleGpuMeshWhenSectionBecomesEmpty) {
+    recurse::systems::LODSystem lodSystem;
+    recurse::simulation::MaterialRegistry materials;
+    lodSystem.setMaterialRegistry(&materials);
+
+    auto* parent = lodSystem.grid_->getOrCreate(1, 0, 0, 0);
+    ASSERT_NE(parent, nullptr);
+    fillUniformSection(*parent, material_ids::STONE);
+
+    auto ctx = harness.makeCtx();
+    lodSystem.render(ctx);
+
+    auto parentKey = LODSectionKey::make(1, 0, 0, 0);
+    auto gpuIt = lodSystem.gpuSections_.find(parentKey.value);
+    ASSERT_NE(gpuIt, lodSystem.gpuSections_.end());
+    ASSERT_TRUE(gpuIt->second.resident);
+    ASSERT_GT(gpuIt->second.vertexCount, 0u);
+
+    fillUniformSection(*parent, material_ids::AIR);
+    lodSystem.render(ctx);
+
+    EXPECT_EQ(lodSystem.gpuSections_.count(parentKey.value), 0u);
 }

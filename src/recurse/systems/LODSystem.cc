@@ -68,6 +68,7 @@ void LODSystem::doShutdown() {
     visibleSections_.clear();
     pendingChunks_.clear();
     pendingDirectChunks_.clear();
+    clearFullResCoverage();
     simGrid_ = nullptr;
     materials_ = nullptr;
     scheduler_ = nullptr;
@@ -168,6 +169,8 @@ void LODSystem::render(fabric::AppContext& ctx) {
             return; // Respect per-frame budget
         }
 
+        auto key = LODGrid::keyForSection(section);
+
         // Skip empty sections
         bool hasSolid = false;
         for (uint16_t idx : section.blockIndices) {
@@ -177,16 +180,12 @@ void LODSystem::render(fabric::AppContext& ctx) {
             }
         }
         if (!hasSolid) {
+            releaseGPUSection(key);
             section.dirty = false;
-            return;
-        }
-
-        auto key = LODGrid::keyForSection(section);
-
-        // Skip if already uploaded and resident
-        auto it = gpuSections_.find(key.value);
-        if (it != gpuSections_.end() && it->second.resident) {
-            section.dirty = false;
+            int sx = LODGrid::sectionCoordFromOrigin(section.level, section.origin.x);
+            int sy = LODGrid::sectionCoordFromOrigin(section.level, section.origin.y);
+            int sz = LODGrid::sectionCoordFromOrigin(section.level, section.origin.z);
+            grid_->tryBuildParent(section.level, sx, sy, sz);
             return;
         }
 
@@ -198,6 +197,8 @@ void LODSystem::render(fabric::AppContext& ctx) {
                 ++uploaded;
                 FABRIC_LOG_TRACE("LODSystem: Uploaded section level={} ({},{},{}) verts={}", section.level, key.x(),
                                  key.y(), key.z(), mesh.vertices.size());
+            } else {
+                releaseGPUSection(key);
             }
         }
 
@@ -214,7 +215,7 @@ void LODSystem::render(fabric::AppContext& ctx) {
     if (voxelRenderer_ && grid_) {
         auto* camera = ctx.camera;
         if (camera) {
-            selectVisibleSections(*camera, baseRadius_);
+            selectVisibleSections(*camera);
 
             if (!visibleSections_.empty()) {
                 std::vector<recurse::ChunkRenderInfo> lodBatch;
@@ -257,6 +258,7 @@ void LODSystem::onWorldEnd() {
     visibleSections_.clear();
     pendingChunks_.clear();
     pendingDirectChunks_.clear();
+    clearFullResCoverage();
     if (grid_)
         grid_->clear();
 }
@@ -312,13 +314,11 @@ void LODSystem::removeSectionFully(int cx, int cy, int cz) {
         grid_->remove(key);
 }
 
-void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRadius) {
+void LODSystem::selectVisibleSections(const fabric::Camera& camera) {
     visibleSections_.clear();
+    fullResRejectedSections_ = 0;
 
-    auto camPosRaw = camera.getPosition();
-    Vec3f camPos{camPosRaw.x, camPosRaw.y, camPosRaw.z};
-
-    grid_->forEach([this, &camPos, baseRadius](const LODSection& section) {
+    grid_->forEach([this, &camera](const LODSection& section) {
         // Compute world-space center of section
         int scale = 1 << section.level;
         float worldSize = static_cast<float>(LODSection::K_SIZE * scale);
@@ -326,22 +326,23 @@ void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRa
                      static_cast<float>(section.origin.y) + worldSize * 0.5f,
                      static_cast<float>(section.origin.z) + worldSize * 0.5f};
 
-        // Distance from camera
+        auto snapshot = inspectTerrainOwnership(section, camera);
+
+        auto camPosRaw = camera.getPosition();
+        Vec3f camPos{camPosRaw.x, camPosRaw.y, camPosRaw.z};
+
         float dx = center.x - camPos.x;
         float dy = center.y - camPos.y;
         float dz = center.z - camPos.z;
         float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
 
-        // LOD selection: level = floor(log2(distance / (baseRadius * LODSection::K_SIZE)))
-        int desiredLevel = 1;
-        float threshold = baseRadius * LODSection::K_SIZE;
-        while (distance > threshold && desiredLevel < maxLODLevel_) {
-            threshold *= 2.0f;
-            ++desiredLevel;
+        // Only include sections at the desired LOD level
+        if (section.level != snapshot.desiredLevel) {
+            return;
         }
 
-        // Only include sections at the desired LOD level
-        if (section.level != desiredLevel) {
+        if (snapshot.hiddenByFullRes) {
+            ++fullResRejectedSections_;
             return;
         }
 
@@ -393,11 +394,67 @@ void LODSystem::releaseGPUSection(LODSectionKey key) {
     gpuSections_.erase(key.value);
 }
 
+void LODSystem::setFullResCoverage(int centerCX, int centerCY, int centerCZ, int radius) {
+    fullResCoverage_ = ChunkCoverageBox{.minCX = centerCX - radius,
+                                        .minCY = centerCY - radius,
+                                        .minCZ = centerCZ - radius,
+                                        .maxCX = centerCX + radius,
+                                        .maxCY = centerCY + radius,
+                                        .maxCZ = centerCZ + radius};
+    hasFullResCoverage_ = true;
+}
+
+void LODSystem::clearFullResCoverage() {
+    fullResCoverage_ = {};
+    hasFullResCoverage_ = false;
+    fullResRejectedSections_ = 0;
+}
+
+TerrainOwnershipSnapshot LODSystem::inspectTerrainOwnership(const LODSection& section,
+                                                            const fabric::Camera& camera) const {
+    TerrainOwnershipSnapshot snapshot;
+    snapshot.sectionCoverage = LODGrid::sectionChunkCoverage(section);
+    if (hasFullResCoverage_) {
+        snapshot.fullResCoverage = fullResCoverage_;
+        snapshot.hiddenByFullRes = snapshot.sectionCoverage.intersects(fullResCoverage_);
+    }
+
+    auto camPosRaw = camera.getPosition();
+    Vec3f camPos{camPosRaw.x, camPosRaw.y, camPosRaw.z};
+
+    int scale = 1 << section.level;
+    float worldSize = static_cast<float>(LODSection::K_SIZE * scale);
+    Vec3f center{static_cast<float>(section.origin.x) + worldSize * 0.5f,
+                 static_cast<float>(section.origin.y) + worldSize * 0.5f,
+                 static_cast<float>(section.origin.z) + worldSize * 0.5f};
+
+    float dx = center.x - camPos.x;
+    float dy = center.y - camPos.y;
+    float dz = center.z - camPos.z;
+    float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+    int desiredLevel = 0;
+    float threshold = baseRadius_ * LODSection::K_SIZE;
+    while (distance > threshold && desiredLevel < maxLODLevel_) {
+        threshold *= 2.0f;
+        ++desiredLevel;
+    }
+    snapshot.desiredLevel = desiredLevel;
+    return snapshot;
+}
+
 LODDebugInfo LODSystem::debugInfo() const {
     LODDebugInfo info;
-    info.pendingSections = static_cast<int>(pendingChunks_.size());
+    info.pendingSections = static_cast<int>(pendingChunks_.size() + pendingDirectChunks_.size());
     info.gpuResidentSections = static_cast<int>(gpuSections_.size());
     info.visibleSections = static_cast<int>(visibleSections_.size());
+    info.fullResRejectedSections = fullResRejectedSections_;
+    if (hasFullResCoverage_) {
+        info.fullResCenterCX = (fullResCoverage_.minCX + fullResCoverage_.maxCX) / 2;
+        info.fullResCenterCY = (fullResCoverage_.minCY + fullResCoverage_.maxCY) / 2;
+        info.fullResCenterCZ = (fullResCoverage_.minCZ + fullResCoverage_.maxCZ) / 2;
+        info.fullResRadius = (fullResCoverage_.maxCX - fullResCoverage_.minCX) / 2;
+    }
 
     constexpr size_t K_VERTEX_BYTES = 32; // SmoothVoxelVertex
     constexpr size_t K_INDEX_BYTES = 4;   // uint32_t
