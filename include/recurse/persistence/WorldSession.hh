@@ -96,6 +96,7 @@ class WorldSession {
 
     void bufferVoxelChange(const VoxelChange& change);
     void flushPendingChanges();
+    void enqueueResidentChunksForShutdown();
     void updateSaveService(float dt);
     void updateSnapshotScheduler(float dt);
     void updatePruningScheduler(float dt);
