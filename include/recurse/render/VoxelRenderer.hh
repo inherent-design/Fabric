@@ -20,7 +20,9 @@ namespace Space = fabric::Space;
 using fabric::Vector3;
 
 /// GPU-side chunk mesh (vertex/index buffer handles + palette).
-/// Move-only; BgfxHandle RAII destroys GPU buffers automatically.
+/// Defaults to the voxel-first production format; smooth remains available for
+/// experimental fallback meshes. Move-only; BgfxHandle RAII destroys GPU
+/// buffers automatically.
 struct ChunkMesh {
     enum class VertexFormat : uint8_t {
         Smooth,
@@ -34,15 +36,15 @@ struct ChunkMesh {
             case VertexFormat::Voxel:
                 return sizeof(VoxelVertex);
         }
-        return sizeof(SmoothVoxelVertex);
+        return sizeof(VoxelVertex);
     }
 
     fabric::BgfxHandle<bgfx::VertexBufferHandle> vbh;
     fabric::BgfxHandle<bgfx::IndexBufferHandle> ibh;
     uint32_t indexCount = 0;
     std::vector<std::array<float, 4>> palette;
-    VertexFormat vertexFormat = VertexFormat::Smooth;
-    uint32_t vertexStrideBytes = vertexStrideForFormat(VertexFormat::Smooth);
+    VertexFormat vertexFormat = VertexFormat::Voxel;
+    uint32_t vertexStrideBytes = vertexStrideForFormat(VertexFormat::Voxel);
     float modelScale = 1.0f;
     bool valid = false;
 
@@ -63,8 +65,9 @@ struct ChunkRenderInfo {
     uint64_t sortKey = 0; // For deterministic ordering (packed chunk coords)
 };
 
-// Renders voxel chunks using the voxel shader program.
-// Manages the bgfx shader program, palette uniform, and light direction uniform.
+// Renders chunk meshes using the voxel-first default path, with optional smooth
+// fallback routing selected by ChunkMesh::vertexFormat. Manages the bgfx shader
+// programs, palette uniform, and light direction uniform.
 // Requires bgfx to be initialized before first render call; shader source is
 // embedded at compile time via the bgfx shader compiler (offline).
 //
