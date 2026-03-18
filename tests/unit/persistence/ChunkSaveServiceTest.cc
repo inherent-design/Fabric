@@ -116,6 +116,41 @@ TEST_F(ChunkSaveServiceTest, EmptyBlobSkipsSave) {
     EXPECT_FALSE(store_->hasChunk(0, 0, 0));
 }
 
+TEST_F(ChunkSaveServiceTest, PreparedOnlyUpdatePersistsQueuedBlob) {
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
+
+    svc.enqueuePrepared(4, 5, 6, makeFakeBlob(0x11));
+    EXPECT_EQ(svc.pendingCount(), 1u);
+    EXPECT_TRUE(svc.hasPersistPending(4, 5, 6));
+
+    svc.update(0.0f);
+    writerQueue_.drain();
+
+    auto snapshot = svc.activitySnapshot();
+    EXPECT_EQ(snapshot.preparedChunks, 0u);
+    EXPECT_EQ(svc.pendingCount(), 0u);
+    EXPECT_FALSE(svc.hasPersistPending(4, 5, 6));
+    EXPECT_TRUE(store_->hasChunk(4, 5, 6));
+}
+
+TEST_F(ChunkSaveServiceTest, EnqueuePreparedDedupesSameCoord) {
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
+
+    svc.enqueuePrepared(1, 2, 3, makeFakeBlob(0x11));
+    svc.enqueuePrepared(1, 2, 3, makeFakeBlob(0x22));
+
+    auto snapshot = svc.activitySnapshot();
+    EXPECT_EQ(snapshot.preparedChunks, 1u);
+    EXPECT_EQ(svc.pendingCount(), 1u);
+
+    svc.update(0.0f);
+    writerQueue_.drain();
+
+    auto loaded = store_->loadChunk(1, 2, 3);
+    ASSERT_TRUE(loaded.has_value());
+    EXPECT_EQ(loaded->data, makeFakeBlob(0x22).data);
+}
+
 TEST_F(ChunkSaveServiceTest, ActivitySnapshotTracksDirtySavingAndSuccess) {
     std::promise<void> unblockSave;
     auto gate = unblockSave.get_future().share();

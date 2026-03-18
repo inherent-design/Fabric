@@ -79,8 +79,7 @@ class PollPendingLoadsTest : public ::testing::Test {
         };
     }
 
-    void saveChunkToStore(int cx, int cy, int cz) {
-        // Materialize a chunk in the simulation grid, write a known cell, encode and save
+    void materializeActiveChunk(int cx, int cy, int cz) {
         using namespace recurse::simulation;
         auto& grid = voxelSim_->simulationGrid();
         auto& reg = grid.registry();
@@ -90,6 +89,11 @@ class PollPendingLoadsTest : public ::testing::Test {
         grid.writeCell(cx * 32 + 4, cy * 32 + 4, cz * 32 + 4, VoxelCell{STONE});
         grid.syncChunkBuffers(cx, cy, cz);
         transition<Generating, Active>(generating, reg);
+    }
+
+    void saveChunkToStore(int cx, int cy, int cz) {
+        // Materialize a chunk in the simulation grid, write a known cell, encode and save
+        materializeActiveChunk(cx, cy, cz);
 
         auto blob = session_->encodeChunkBlob(cx, cy, cz);
         session_->chunkStore()->saveChunk(cx, cy, cz, blob);
@@ -123,10 +127,42 @@ TEST_F(PollPendingLoadsTest, SuccessfulLoadReturnsCompletedLoad) {
 }
 
 TEST_F(PollPendingLoadsTest, LoadNonexistentChunkNotDispatched) {
-    // dispatchAsyncLoad checks store_.hasChunk before dispatching
+    // dispatchAsyncLoad checks both persist-pending memory and storage before dispatching
     bool dispatched = session_->dispatchAsyncLoad(99, 99, 99);
     EXPECT_FALSE(dispatched);
     EXPECT_TRUE(session_->pendingLoads().empty());
+}
+
+TEST_F(PollPendingLoadsTest, PersistPendingChunkReloadsBeforeDbCommit) {
+    constexpr int K_CX = 9;
+    constexpr int K_CY = 0;
+    constexpr int K_CZ = 9;
+
+    materializeActiveChunk(K_CX, K_CY, K_CZ);
+    ASSERT_FALSE(session_->chunkStore()->hasChunk(K_CX, K_CY, K_CZ));
+
+    session_->submit(recurse::ops::PersistChunk{K_CX, K_CY, K_CZ});
+    auto* saveService = session_->saveService();
+    ASSERT_NE(saveService, nullptr);
+    EXPECT_TRUE(saveService->hasPersistPending(K_CX, K_CY, K_CZ));
+
+    voxelSim_->removeChunk(K_CX, K_CY, K_CZ);
+
+    bool dispatched = session_->dispatchAsyncLoad(K_CX, K_CY, K_CZ);
+    ASSERT_TRUE(dispatched);
+    ASSERT_EQ(session_->pendingLoads().size(), 1u);
+
+    auto completions = session_->pollPendingLoads();
+    ASSERT_EQ(completions.size(), 1u);
+    EXPECT_TRUE(completions[0].success);
+    EXPECT_EQ(voxelSim_->simulationGrid().readCell(K_CX * 32 + 4, K_CY * 32 + 4, K_CZ * 32 + 4).materialId, STONE);
+
+    EXPECT_TRUE(saveService->hasPersistPending(K_CX, K_CY, K_CZ));
+
+    saveService->flush();
+
+    EXPECT_FALSE(saveService->hasPersistPending(K_CX, K_CY, K_CZ));
+    EXPECT_TRUE(session_->chunkStore()->hasChunk(K_CX, K_CY, K_CZ));
 }
 
 TEST_F(PollPendingLoadsTest, MaxCompletionsBudget) {

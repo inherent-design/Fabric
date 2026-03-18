@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -25,6 +26,7 @@ class ChunkSaveService {
         size_t dirtyChunks = 0;
         size_t savingChunks = 0;
         size_t preparedChunks = 0;
+        float secondsUntilNextSave = -1.0f;
         uint64_t lastStartedSerial = 0;
         uint64_t lastCompletedSerial = 0;
         uint64_t lastSuccessfulSerial = 0;
@@ -51,6 +53,12 @@ class ChunkSaveService {
     /// Used by the unload loop to avoid touching writerDb_ on the main thread.
     void enqueuePrepared(int cx, int cy, int cz, ChunkBlob blob);
 
+    /// Returns true if a chunk has unload-time persistence pending or in flight.
+    bool hasPersistPending(int cx, int cy, int cz) const;
+
+    /// Returns a copy of the pending unload-time blob, if present.
+    std::optional<ChunkBlob> copyPersistPendingBlob(int cx, int cy, int cz) const;
+
     /// Number of chunks currently awaiting save.
     size_t pendingCount() const;
 
@@ -68,6 +76,13 @@ class ChunkSaveService {
         bool saving{false};        // currently being written by background job
     };
 
+    struct PreparedEntry {
+        fabric::ChunkCoord coord;
+        ChunkBlob blob;
+        bool saving{false};
+        bool resaveRequested{false};
+    };
+
     using ChunkKey = int64_t;
     static ChunkKey makeKey(int cx, int cy, int cz);
 
@@ -79,7 +94,7 @@ class ChunkSaveService {
 
     mutable std::mutex mutex_;
     std::unordered_map<ChunkKey, DirtyEntry> dirty_;
-    std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> preparedBlobs_;
+    std::unordered_map<ChunkKey, PreparedEntry> prepared_;
     uint64_t nextBatchSerial_ = 0;
     uint64_t lastStartedSerial_ = 0;
     uint64_t lastCompletedSerial_ = 0;

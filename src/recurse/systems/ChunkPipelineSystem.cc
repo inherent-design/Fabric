@@ -186,7 +186,8 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
         if (ctx_->resolve(recurse::ops::HasPendingLoad{coord.x, coord.y, coord.z}))
             continue;
 
-        bool maybeInDb = ctx_->resolve(recurse::ops::IsInSavedRegion{coord.x, coord.y, coord.z});
+        bool persistPending = ctx_->resolve(recurse::ops::HasPersistPending{coord.x, coord.y, coord.z});
+        bool maybeInDb = persistPending || ctx_->resolve(recurse::ops::IsInSavedRegion{coord.x, coord.y, coord.z});
 
         if (maybeInDb && loadsDispatched < maxAsyncLoadsPerFrame_) {
             if (ctx_->submit(recurse::ops::LoadChunk{coord.x, coord.y, coord.z})) {
@@ -209,7 +210,6 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     }
 
     if (streaming_) {
-        size_t deferred = streamUpdate.toLoad.size() - triageEnd;
         for (size_t i = triageEnd; i < streamUpdate.toLoad.size(); ++i)
             streaming_->untrack(streamUpdate.toLoad[i]);
     }

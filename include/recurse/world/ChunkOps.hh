@@ -59,6 +59,15 @@ struct HasPendingLoad {
     using Errors = fabric::fx::TypeList<fabric::fx::Never>;
 };
 
+/// Check if a chunk has unload-time persistence pending or in flight.
+struct HasPersistPending {
+    int cx, cy, cz;
+
+    static constexpr bool K_IS_SYNC = true;
+    using Returns = bool;
+    using Errors = fabric::fx::TypeList<fabric::fx::Never>;
+};
+
 /// Query the chunk entity map. Returns true if the chunk has an ECS entity.
 struct QueryChunkEntities {
     fabric::ChunkCoord coord;
