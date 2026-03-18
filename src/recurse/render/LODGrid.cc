@@ -7,6 +7,99 @@
 
 namespace recurse {
 
+namespace {
+
+constexpr int K_TOP_LAYER_WEIGHT = 3;
+
+struct MaterialTally {
+    uint16_t materialId = simulation::material_ids::AIR;
+    int weightedScore = 0;
+    int sampleCount = 0;
+};
+
+int materialSemanticPriority(uint16_t materialId) {
+    switch (materialId) {
+        case simulation::material_ids::SAND:
+        case simulation::material_ids::GRAVEL:
+            return 4;
+        case simulation::material_ids::WATER:
+            return 3;
+        case simulation::material_ids::DIRT:
+            return 2;
+        case simulation::material_ids::STONE:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+void accumulateMaterialTally(std::array<MaterialTally, 8>& tallies, int& tallyCount, uint16_t materialId, int weight) {
+    for (int i = 0; i < tallyCount; ++i) {
+        if (tallies[static_cast<size_t>(i)].materialId == materialId) {
+            tallies[static_cast<size_t>(i)].weightedScore += weight;
+            ++tallies[static_cast<size_t>(i)].sampleCount;
+            return;
+        }
+    }
+
+    auto& tally = tallies[static_cast<size_t>(tallyCount++)];
+    tally.materialId = materialId;
+    tally.weightedScore = weight;
+    tally.sampleCount = 1;
+}
+
+uint16_t reduceMaterialGroup(const LODSection& child, int clx, int cly, int clz) {
+    std::array<MaterialTally, 8> tallies{};
+    int tallyCount = 0;
+    int airCount = 0;
+
+    for (int dz = 0; dz <= 1; ++dz) {
+        for (int dy = 0; dy <= 1; ++dy) {
+            for (int dx = 0; dx <= 1; ++dx) {
+                uint16_t palIdx = child.get(clx + dx, cly + dy, clz + dz);
+                uint16_t matId = child.materialOf(palIdx);
+                if (matId == simulation::material_ids::AIR) {
+                    ++airCount;
+                    continue;
+                }
+
+                const int weight = (dy == 1) ? K_TOP_LAYER_WEIGHT : 1;
+                accumulateMaterialTally(tallies, tallyCount, matId, weight);
+            }
+        }
+    }
+
+    if (airCount > 4) {
+        return simulation::material_ids::AIR;
+    }
+
+    uint16_t bestMat = simulation::material_ids::AIR;
+    int bestScore = -1;
+    int bestCount = -1;
+    int bestPriority = -1;
+    for (int i = 0; i < tallyCount; ++i) {
+        const auto& tally = tallies[static_cast<size_t>(i)];
+        const int priority = materialSemanticPriority(tally.materialId);
+        const bool isBetter =
+            tally.weightedScore > bestScore || (tally.weightedScore == bestScore && tally.sampleCount > bestCount) ||
+            (tally.weightedScore == bestScore && tally.sampleCount == bestCount && priority > bestPriority) ||
+            (tally.weightedScore == bestScore && tally.sampleCount == bestCount && priority == bestPriority &&
+             tally.materialId < bestMat);
+        if (!isBetter) {
+            continue;
+        }
+
+        bestMat = tally.materialId;
+        bestScore = tally.weightedScore;
+        bestCount = tally.sampleCount;
+        bestPriority = priority;
+    }
+
+    return bestMat;
+}
+
+} // namespace
+
 // --- LODGrid ---
 
 LODSection* LODGrid::get(LODSectionKey key) {
@@ -114,39 +207,7 @@ void LODGrid::downsample(LODSection& parent, const std::array<LODSection*, 8>& c
                 int cly = (ly & 0xF) * 2;
                 int clz = (lz & 0xF) * 2;
 
-                // Count materials in 2x2x2 group
-                uint16_t materialCounts[256] = {};
-                int airCount = 0;
-
-                for (int dz = 0; dz <= 1; ++dz) {
-                    for (int dy = 0; dy <= 1; ++dy) {
-                        for (int dx = 0; dx <= 1; ++dx) {
-                            uint16_t palIdx = child->get(clx + dx, cly + dy, clz + dz);
-                            uint16_t matId = child->materialOf(palIdx);
-                            if (matId == simulation::material_ids::AIR) {
-                                ++airCount;
-                            } else {
-                                ++materialCounts[matId % 256];
-                            }
-                        }
-                    }
-                }
-
-                // If >50% air, result is air (preserves silhouette)
-                if (airCount > 4) {
-                    parent.set(lx, ly, lz, 0);
-                    continue;
-                }
-
-                // Most-common non-air material wins
-                uint16_t bestMat = simulation::material_ids::AIR;
-                int bestCount = 0;
-                for (int m = 1; m < 256; ++m) {
-                    if (materialCounts[m] > bestCount) {
-                        bestCount = materialCounts[m];
-                        bestMat = static_cast<uint16_t>(m);
-                    }
-                }
+                const uint16_t bestMat = reduceMaterialGroup(*child, clx, cly, clz);
 
                 uint16_t palIdx = getOrCreatePalIdx(bestMat);
                 parent.set(lx, ly, lz, palIdx);
