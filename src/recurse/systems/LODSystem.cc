@@ -121,11 +121,9 @@ void LODSystem::render(fabric::AppContext& ctx) {
                 auto& task = tasks[idx];
                 auto* section = task.section;
 
-                section->origin =
-                    Vec3i(task.cx * LODGrid::K_SECTION_WORLD_SIZE, task.cy * LODGrid::K_SECTION_WORLD_SIZE,
-                          task.cz * LODGrid::K_SECTION_WORLD_SIZE);
+                section->origin = LODGrid::sectionOrigin(0, task.cx, task.cy, task.cz);
                 section->palette.clear();
-                section->palette.push_back(1);
+                section->palette.push_back(simulation::material_ids::AIR);
                 section->blockIndices.assign(LODSection::K_VOLUME, 0);
 
                 for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
@@ -183,9 +181,7 @@ void LODSystem::render(fabric::AppContext& ctx) {
             return;
         }
 
-        auto key = LODSectionKey::make(section.level, section.origin.x / LODGrid::K_SECTION_WORLD_SIZE,
-                                       section.origin.y / LODGrid::K_SECTION_WORLD_SIZE,
-                                       section.origin.z / LODGrid::K_SECTION_WORLD_SIZE);
+        auto key = LODGrid::keyForSection(section);
 
         // Skip if already uploaded and resident
         auto it = gpuSections_.find(key.value);
@@ -208,9 +204,9 @@ void LODSystem::render(fabric::AppContext& ctx) {
         section.dirty = false;
 
         // Try to build parent LOD section
-        int sx = section.origin.x / LODGrid::K_SECTION_WORLD_SIZE;
-        int sy = section.origin.y / LODGrid::K_SECTION_WORLD_SIZE;
-        int sz = section.origin.z / LODGrid::K_SECTION_WORLD_SIZE;
+        int sx = LODGrid::sectionCoordFromOrigin(section.level, section.origin.x);
+        int sy = LODGrid::sectionCoordFromOrigin(section.level, section.origin.y);
+        int sz = LODGrid::sectionCoordFromOrigin(section.level, section.origin.z);
         grid_->tryBuildParent(section.level, sx, sy, sz);
     });
 
@@ -350,9 +346,7 @@ void LODSystem::selectVisibleSections(const fabric::Camera& camera, float baseRa
         }
 
         // Check if section has GPU mesh
-        auto key = LODSectionKey::make(section.level, section.origin.x / LODGrid::K_SECTION_WORLD_SIZE,
-                                       section.origin.y / LODGrid::K_SECTION_WORLD_SIZE,
-                                       section.origin.z / LODGrid::K_SECTION_WORLD_SIZE);
+        auto key = LODGrid::keyForSection(section);
         auto it = gpuSections_.find(key.value);
         if (it == gpuSections_.end() || !it->second.resident) {
             return;

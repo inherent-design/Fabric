@@ -1,5 +1,7 @@
 #include "recurse/render/LODGrid.hh"
 #include "fabric/platform/JobScheduler.hh"
+#include "recurse/render/LODMeshManager.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/MinecraftNoiseGenerator.hh"
@@ -15,10 +17,9 @@ using recurse::simulation::K_CHUNK_VOLUME;
 namespace {
 
 void fillSectionFromWorldGen(LODSection& section, WorldGenerator& gen, int cx, int cy, int cz) {
-    section.origin = Vec3i(cx * LODGrid::K_SECTION_WORLD_SIZE, cy * LODGrid::K_SECTION_WORLD_SIZE,
-                           cz * LODGrid::K_SECTION_WORLD_SIZE);
+    section.origin = LODGrid::sectionOrigin(0, cx, cy, cz);
     section.palette.clear();
-    section.palette.push_back(1);
+    section.palette.push_back(material_ids::AIR);
     section.blockIndices.assign(LODSection::K_VOLUME, 0);
 
     for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
@@ -46,10 +47,9 @@ void fillSectionFromWorldGen(LODSection& section, WorldGenerator& gen, int cx, i
 }
 
 void fillSectionFromGrid(LODSection& section, const SimulationGrid& grid, int cx, int cy, int cz) {
-    section.origin = Vec3i(cx * LODGrid::K_SECTION_WORLD_SIZE, cy * LODGrid::K_SECTION_WORLD_SIZE,
-                           cz * LODGrid::K_SECTION_WORLD_SIZE);
+    section.origin = LODGrid::sectionOrigin(0, cx, cy, cz);
     section.palette.clear();
-    section.palette.push_back(1);
+    section.palette.push_back(material_ids::AIR);
     section.blockIndices.assign(LODSection::K_VOLUME, 0);
 
     for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
@@ -74,6 +74,19 @@ void fillSectionFromGrid(LODSection& section, const SimulationGrid& grid, int cx
     }
 
     section.dirty = true;
+}
+
+void fillUniformSection(LODSection& section, uint16_t materialId) {
+    section.palette = {material_ids::AIR};
+    if (materialId != material_ids::AIR) {
+        section.palette.push_back(materialId);
+    }
+    section.blockIndices.assign(LODSection::K_VOLUME, materialId == material_ids::AIR ? 0 : 1);
+    section.dirty = true;
+}
+
+uint16_t sectionMaterialAt(const LODSection& section, int lx, int ly, int lz) {
+    return section.materialOf(section.get(lx, ly, lz));
 }
 
 } // namespace
@@ -258,4 +271,65 @@ TEST(LODGrid, ParallelFill_EmptySectionsAboveTerrain) {
         }
         EXPECT_TRUE(allAir) << "Section at y=10 should be all air";
     }
+}
+
+TEST(LODGrid, Downsample_UsesAllEightChildrenAcrossParentExtent) {
+    LODGrid grid;
+    auto* parent = grid.getOrCreate(1, 0, 0, 0);
+    ASSERT_NE(parent, nullptr);
+
+    std::array<LODSection, 8> storage;
+    std::array<LODSection*, 8> children{};
+    for (int idx = 0; idx < 8; ++idx) {
+        fillUniformSection(storage[static_cast<size_t>(idx)], static_cast<uint16_t>(10 + idx));
+        children[static_cast<size_t>(idx)] = &storage[static_cast<size_t>(idx)];
+    }
+
+    grid.downsample(*parent, children);
+
+    EXPECT_EQ(sectionMaterialAt(*parent, 8, 8, 8), 10);
+    EXPECT_EQ(sectionMaterialAt(*parent, 24, 8, 8), 11);
+    EXPECT_EQ(sectionMaterialAt(*parent, 8, 24, 8), 12);
+    EXPECT_EQ(sectionMaterialAt(*parent, 24, 24, 8), 13);
+    EXPECT_EQ(sectionMaterialAt(*parent, 8, 8, 24), 14);
+    EXPECT_EQ(sectionMaterialAt(*parent, 24, 8, 24), 15);
+    EXPECT_EQ(sectionMaterialAt(*parent, 8, 24, 24), 16);
+    EXPECT_EQ(sectionMaterialAt(*parent, 24, 24, 24), 17);
+}
+
+TEST(LODGrid, GetOrCreate_UsesLevelScaledOriginAndAirDefaults) {
+    LODGrid grid;
+    auto* section = grid.getOrCreate(2, 3, -2, 1);
+    ASSERT_NE(section, nullptr);
+
+    constexpr int kLevel = 2;
+    constexpr int kScale = 1 << kLevel;
+    EXPECT_EQ(section->origin.x, 3 * LODGrid::K_SECTION_WORLD_SIZE * kScale);
+    EXPECT_EQ(section->origin.y, -2 * LODGrid::K_SECTION_WORLD_SIZE * kScale);
+    EXPECT_EQ(section->origin.z, 1 * LODGrid::K_SECTION_WORLD_SIZE * kScale);
+    ASSERT_EQ(section->palette.size(), 1u);
+    EXPECT_EQ(section->palette[0], material_ids::AIR);
+    EXPECT_EQ(sectionMaterialAt(*section, 0, 0, 0), material_ids::AIR);
+}
+
+TEST(LODMeshManager, MeshSection_ScalesVerticesByLevel) {
+    recurse::simulation::MaterialRegistry materials;
+    LODGrid grid;
+    LODMeshManager meshManager(grid, materials);
+
+    LODSection section;
+    section.level = 2;
+    section.palette = {material_ids::AIR, material_ids::STONE};
+    section.blockIndices.assign(LODSection::K_VOLUME, 0);
+    section.set(0, 0, 0, 1);
+
+    auto mesh = meshManager.meshSection(section);
+    ASSERT_FALSE(mesh.empty());
+
+    float maxCoord = 0.0f;
+    for (const auto& vertex : mesh.vertices) {
+        maxCoord = std::max({maxCoord, vertex.px, vertex.py, vertex.pz});
+    }
+
+    EXPECT_FLOAT_EQ(maxCoord, 4.0f);
 }

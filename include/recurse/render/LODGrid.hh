@@ -67,6 +67,21 @@ class LODGrid {
   public:
     static constexpr int K_SECTION_WORLD_SIZE = LODSection::K_SIZE;
 
+    static constexpr int sectionScale(int level) { return 1 << level; }
+    static constexpr int sectionWorldSize(int level) { return K_SECTION_WORLD_SIZE * sectionScale(level); }
+    static Vec3i sectionOrigin(int level, int sx, int sy, int sz) {
+        const int worldSize = sectionWorldSize(level);
+        return Vec3i(sx * worldSize, sy * worldSize, sz * worldSize);
+    }
+    static constexpr int sectionCoordFromOrigin(int level, int originComponent) {
+        return originComponent / sectionWorldSize(level);
+    }
+    static LODSectionKey keyForSection(const LODSection& section) {
+        return LODSectionKey::make(section.level, sectionCoordFromOrigin(section.level, section.origin.x),
+                                   sectionCoordFromOrigin(section.level, section.origin.y),
+                                   sectionCoordFromOrigin(section.level, section.origin.z));
+    }
+
     LODSection* get(LODSectionKey key);
     LODSection* getOrCreate(int level, int sx, int sy, int sz);
     void tryBuildParent(int childLevel, int cx, int cy, int cz);
