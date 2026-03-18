@@ -59,8 +59,8 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     /// Called by ChunkPipelineSystem during streaming load.
     void generateChunk(int cx, int cy, int cz);
 
-    /// Finalize a live player edit after the cell mutation has been applied.
-    void finalizeExternalEdit(const recurse::InteractionResult& edit);
+    /// Apply and finalize a live player edit resolved by VoxelInteraction.
+    void applyExternalEdit(const recurse::InteractionResult& edit);
 
     /// Parallel generation of multiple chunks via JobScheduler.
     /// Pre-materializes on calling thread, dispatches parallel gen, finalizes sequentially.

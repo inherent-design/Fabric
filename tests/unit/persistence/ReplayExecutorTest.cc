@@ -1,4 +1,5 @@
 #include "recurse/persistence/ReplayExecutor.hh"
+#include "recurse/character/VoxelInteraction.hh"
 #include "recurse/persistence/FchkCodec.hh"
 #include "recurse/persistence/WorldTransactionStore.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
@@ -7,6 +8,15 @@
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
+#include "recurse/systems/TerrainSystem.hh"
+#include "recurse/systems/VoxelSimulationSystem.hh"
+
+#include "fabric/core/AppContext.hh"
+#include "fabric/core/SystemRegistry.hh"
+#include "fabric/platform/ConfigManager.hh"
+#include "fabric/resource/AssetRegistry.hh"
+#include "fabric/resource/ResourceHub.hh"
+
 #include <cstring>
 #include <gtest/gtest.h>
 #include <random>
@@ -327,4 +337,79 @@ TEST_F(ReplayExecutorTest, SnapshotRestoreRebuildsPaletteFromCellsWhenBlobHasNoP
     EXPECT_GT(restoredPalette->paletteSize(), 1u);
     EXPECT_EQ(tracker.getState({0, 0, 0}), ChunkState::Active);
     EXPECT_NE(tracker.getSubRegionMask({0, 0, 0}), 0u);
+}
+
+TEST_F(ReplayExecutorTest, ReplayPlaceEditMatchesLiveExternalEditOutcomeAfterOneTick) {
+    VoxelCell stone = makeMaterial(material_ids::STONE);
+    uint32_t packedStone = 0;
+    std::memcpy(&packedStone, &stone, sizeof(uint32_t));
+
+    fabric::World world;
+    fabric::Timeline timeline;
+    fabric::EventDispatcher dispatcher;
+    fabric::ResourceHub hub;
+    hub.disableWorkerThreadsForTesting();
+    fabric::AssetRegistry assetRegistry{hub};
+    fabric::SystemRegistry sysReg;
+    fabric::ConfigManager configManager;
+
+    sysReg.registerSystem<recurse::systems::TerrainSystem>(fabric::SystemPhase::FixedUpdate);
+    sysReg.registerSystem<recurse::systems::VoxelSimulationSystem>(fabric::SystemPhase::FixedUpdate);
+    ASSERT_TRUE(sysReg.resolve());
+
+    fabric::AppContext ctx{
+        .world = world,
+        .timeline = timeline,
+        .dispatcher = dispatcher,
+        .resourceHub = hub,
+        .assetRegistry = assetRegistry,
+        .systemRegistry = sysReg,
+        .configManager = configManager,
+    };
+    sysReg.initAll(ctx);
+
+    auto* liveSim = sysReg.get<recurse::systems::VoxelSimulationSystem>();
+    ASSERT_NE(liveSim, nullptr);
+    liveSim->scheduler().disableForTesting();
+
+    auto& liveGrid = liveSim->simulationGrid();
+    liveGrid.fillChunk(0, 0, 0, VoxelCell{});
+    liveGrid.materializeChunk(0, 0, 0);
+    liveSim->activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Sleeping);
+    recurse::InteractionResult liveEdit{true, 12, 10, 12, 0, 0, 0, stone, recurse::ChangeSource::Place, 0};
+    liveSim->applyExternalEdit(liveEdit);
+    sysReg.runFixedUpdate(ctx, 1.0f / 60.0f);
+
+    VoxelCell liveCell = liveGrid.readCell(12, 10, 12);
+    ChunkState liveState = liveSim->activityTracker().getState({0, 0, 0});
+
+    sysReg.shutdownAll();
+
+    auto snapshot = makeSnapshot(grid, {ChunkCoord{0, 0, 0}}, 0);
+
+    grid.clear();
+    tracker.clear();
+    ghosts.clear();
+    grid.fillChunk(0, 0, 0, VoxelCell{});
+    grid.materializeChunk(0, 0, 0);
+
+    VoxelChange replayEdit{};
+    replayEdit.timestamp = 0;
+    replayEdit.addr = {0, 0, 0, 12, 10, 12};
+    replayEdit.oldCell = 0;
+    replayEdit.newCell = packedStone;
+    replayEdit.playerId = 0;
+    replayEdit.source = ChangeSource::Place;
+    std::vector<VoxelChange> edits{replayEdit};
+
+    auto executor = makeExecutor();
+    auto result = executor.replayDelta(snapshot, edits, 1);
+    ASSERT_EQ(result.status, ReplayStatus::Ok);
+
+    VoxelCell replayCell = grid.readCell(12, 10, 12);
+    ChunkState replayState = tracker.getState({0, 0, 0});
+
+    EXPECT_EQ(replayCell.materialId, liveCell.materialId);
+    EXPECT_EQ(replayCell.flags, liveCell.flags);
+    EXPECT_EQ(replayState, liveState);
 }

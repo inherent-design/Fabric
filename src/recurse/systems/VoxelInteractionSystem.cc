@@ -58,7 +58,7 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
             if (r.success) {
                 interactionCooldown_ = K_INTERACTION_RATE;
                 if (voxelSim_) {
-                    voxelSim_->finalizeExternalEdit(r);
+                    voxelSim_->applyExternalEdit(r);
                     FABRIC_LOG_DEBUG("VoxelInteraction: destroyed at ({},{},{}) chunk ({},{},{})", r.x, r.y, r.z, r.cx,
                                      r.cy, r.cz);
                 }
@@ -70,7 +70,7 @@ void VoxelInteractionSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt)
             if (r.success) {
                 interactionCooldown_ = K_INTERACTION_RATE;
                 if (voxelSim_) {
-                    voxelSim_->finalizeExternalEdit(r);
+                    voxelSim_->applyExternalEdit(r);
                     FABRIC_LOG_DEBUG("VoxelInteraction: placed Sand at ({},{},{}) chunk ({},{},{})", r.x, r.y, r.z,
                                      r.cx, r.cy, r.cz);
                 }

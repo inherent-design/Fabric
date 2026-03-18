@@ -13,11 +13,14 @@
 #include "recurse/simulation/ChunkRegistry.hh"
 #include "recurse/simulation/ChunkState.hh"
 #include "recurse/simulation/EssenceAssigner.hh"
+#include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "recurse/systems/ChunkPipelineSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/world/WorldGenerator.hh"
+
+#include <cstring>
 
 namespace recurse::systems {
 
@@ -30,6 +33,27 @@ void dispatchGenerationEvent(fabric::EventDispatcher& dispatcher, int cx, int cy
     e.setData("cz", cz);
     e.setData("source", static_cast<int>(ChangeSource::Generation));
     dispatcher.dispatchEvent(e);
+}
+
+uint32_t packVoxelCell(const recurse::simulation::VoxelCell& cell) {
+    static_assert(sizeof(recurse::simulation::VoxelCell) == sizeof(uint32_t));
+    uint32_t packed = 0;
+    std::memcpy(&packed, &cell, sizeof(uint32_t));
+    return packed;
+}
+
+recurse::VoxelChangeDetail makeExternalEditDetail(const recurse::InteractionResult& edit,
+                                                  const recurse::simulation::VoxelCell& oldCell) {
+    constexpr int K_LOCAL_MASK = recurse::simulation::K_CHUNK_SIZE - 1;
+    recurse::VoxelChangeDetail detail{};
+    detail.vx = edit.x & K_LOCAL_MASK;
+    detail.vy = edit.y & K_LOCAL_MASK;
+    detail.vz = edit.z & K_LOCAL_MASK;
+    detail.oldCell = packVoxelCell(oldCell);
+    detail.newCell = packVoxelCell(edit.newCell);
+    detail.playerId = edit.playerId;
+    detail.source = edit.source;
+    return detail;
 }
 
 } // namespace
@@ -235,21 +259,28 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
         dispatchGenerationEvent(*dispatcher_, cx, cy, cz);
 }
 
-void VoxelSimulationSystem::finalizeExternalEdit(const recurse::InteractionResult& edit) {
-    if (!edit.success || !fabSim_ || !dispatcher_)
+void VoxelSimulationSystem::applyExternalEdit(const recurse::InteractionResult& edit) {
+    if (!edit.success || !fabSim_)
         return;
+
+    auto& grid = fabSim_->grid();
+    auto oldCell = grid.readCell(edit.x, edit.y, edit.z);
+    grid.writeCellImmediate(edit.x, edit.y, edit.z, edit.newCell);
+
+    const auto detail = makeExternalEditDetail(edit, oldCell);
 
     recurse::simulation::ChunkActivationOptions activation;
     activation.neighborInvalidation = recurse::simulation::NeighborInvalidation::Face;
-    if (edit.detail.source == ChangeSource::Place) {
+    if (edit.source == ChangeSource::Place) {
         activation.targetState = recurse::simulation::ChunkState::Active;
     } else {
         activation.notifyTargetBoundaryChange = true;
     }
 
-    recurse::simulation::finalizeChunkActivation(fabSim_->activityTracker(), fabSim_->grid(), edit.cx, edit.cy, edit.cz,
+    recurse::simulation::finalizeChunkActivation(fabSim_->activityTracker(), grid, edit.cx, edit.cy, edit.cz,
                                                  activation);
-    emitVoxelChanged(*dispatcher_, edit.cx, edit.cy, edit.cz, edit.detail);
+    if (dispatcher_)
+        emitVoxelChanged(*dispatcher_, edit.cx, edit.cy, edit.cz, detail);
 }
 
 void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int, int, int>>& chunks) {

@@ -28,7 +28,9 @@ TEST_F(VoxelInteractionTest, CreateMatterPlacesAdjacentPosZ) {
     EXPECT_EQ(result.x, 5);
     EXPECT_EQ(result.y, 5);
     EXPECT_EQ(result.z, 6);
-    EXPECT_NE(grid.readCell(5, 5, 6).materialId, material_ids::AIR);
+    EXPECT_EQ(result.newCell.materialId, material_ids::SAND);
+    EXPECT_EQ(result.source, ChangeSource::Place);
+    EXPECT_EQ(grid.readCell(5, 5, 6).materialId, material_ids::AIR);
 }
 
 TEST_F(VoxelInteractionTest, CreateMatterPlacesAdjacentNegZ) {
@@ -37,7 +39,8 @@ TEST_F(VoxelInteractionTest, CreateMatterPlacesAdjacentNegZ) {
     auto result = vi.createMatter(hit);
     EXPECT_TRUE(result.success);
     EXPECT_EQ(result.z, 4);
-    EXPECT_NE(grid.readCell(5, 5, 4).materialId, material_ids::AIR);
+    EXPECT_EQ(result.newCell.materialId, material_ids::SAND);
+    EXPECT_EQ(grid.readCell(5, 5, 4).materialId, material_ids::AIR);
 }
 
 TEST_F(VoxelInteractionTest, CreateMatterPlacesAdjacentPosX) {
@@ -45,7 +48,8 @@ TEST_F(VoxelInteractionTest, CreateMatterPlacesAdjacentPosX) {
     VoxelHit hit{5, 5, 5, 1, 0, 0, 1.0f};
     auto result = vi.createMatter(hit);
     EXPECT_EQ(result.x, 6);
-    EXPECT_NE(grid.readCell(6, 5, 5).materialId, material_ids::AIR);
+    EXPECT_EQ(result.newCell.materialId, material_ids::SAND);
+    EXPECT_EQ(grid.readCell(6, 5, 5).materialId, material_ids::AIR);
 }
 
 TEST_F(VoxelInteractionTest, CreateMatterPlacesAdjacentNegX) {
@@ -76,30 +80,30 @@ TEST_F(VoxelInteractionTest, DestroyMatterSetsMaterialToAir) {
     auto result = vi.destroyMatter(hit);
     EXPECT_TRUE(result.success);
     EXPECT_EQ(result.x, 5);
-    EXPECT_EQ(grid.readCell(5, 5, 5).materialId, material_ids::AIR);
+    EXPECT_EQ(result.newCell.materialId, material_ids::AIR);
+    EXPECT_EQ(result.source, ChangeSource::Destroy);
+    EXPECT_EQ(grid.readCell(5, 5, 5).materialId, material_ids::STONE);
 }
 
-TEST_F(VoxelInteractionTest, CreateMatterReturnsChangeDetail) {
+TEST_F(VoxelInteractionTest, CreateMatterReturnsRequestedCellAndSource) {
     VoxelInteraction vi(grid);
     VoxelHit hit{5, 5, 5, 0, 0, 1, 1.0f};
     auto result = vi.createMatter(hit);
     ASSERT_TRUE(result.success);
-    EXPECT_EQ(result.detail.vx, 5);
-    EXPECT_EQ(result.detail.vy, 5);
-    EXPECT_EQ(result.detail.vz, 6);
-    EXPECT_EQ(result.detail.source, ChangeSource::Place);
+    EXPECT_EQ(result.newCell.materialId, material_ids::SAND);
+    EXPECT_EQ(result.newCell.flags, voxel_flags::UPDATED);
+    EXPECT_EQ(result.source, ChangeSource::Place);
 }
 
-TEST_F(VoxelInteractionTest, DestroyMatterReturnsChangeDetail) {
+TEST_F(VoxelInteractionTest, DestroyMatterReturnsRequestedCellAndSource) {
     VoxelInteraction vi(grid);
     grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 0, voxel_flags::NONE});
     VoxelHit hit{5, 5, 5, 0, 0, -1, 1.0f};
     auto result = vi.destroyMatter(hit);
     ASSERT_TRUE(result.success);
-    EXPECT_EQ(result.detail.vx, 5);
-    EXPECT_EQ(result.detail.vy, 5);
-    EXPECT_EQ(result.detail.vz, 5);
-    EXPECT_EQ(result.detail.source, ChangeSource::Destroy);
+    EXPECT_EQ(result.newCell.materialId, material_ids::AIR);
+    EXPECT_EQ(result.newCell.flags, voxel_flags::UPDATED);
+    EXPECT_EQ(result.source, ChangeSource::Destroy);
 }
 
 TEST_F(VoxelInteractionTest, CreateMatterAtWithRaycast) {
@@ -109,7 +113,8 @@ TEST_F(VoxelInteractionTest, CreateMatterAtWithRaycast) {
     EXPECT_TRUE(result.success);
     // Ray hits +Z face of voxel at (5,5,5), normal is (0,0,-1), so placement at (5,5,4)
     EXPECT_EQ(result.z, 4);
-    EXPECT_NE(grid.readCell(5, 5, 4).materialId, material_ids::AIR);
+    EXPECT_EQ(result.newCell.materialId, material_ids::SAND);
+    EXPECT_EQ(grid.readCell(5, 5, 4).materialId, material_ids::AIR);
 }
 
 TEST_F(VoxelInteractionTest, DestroyMatterAtWithRaycast) {
@@ -117,7 +122,8 @@ TEST_F(VoxelInteractionTest, DestroyMatterAtWithRaycast) {
     grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 0, voxel_flags::NONE});
     auto result = vi.destroyMatterAt(5.5f, 5.5f, 0.5f, 0.0f, 0.0f, 1.0f);
     EXPECT_TRUE(result.success);
-    EXPECT_EQ(grid.readCell(5, 5, 5).materialId, material_ids::AIR);
+    EXPECT_EQ(result.newCell.materialId, material_ids::AIR);
+    EXPECT_EQ(grid.readCell(5, 5, 5).materialId, material_ids::STONE);
 }
 
 TEST_F(VoxelInteractionTest, CreateMatterAtNoHitReturnsFail) {
@@ -150,7 +156,8 @@ TEST_F(VoxelInteractionTest, NegativeCoordinatesWork) {
     EXPECT_EQ(result.x, -5);
     EXPECT_EQ(result.y, -3);
     EXPECT_EQ(result.z, -8);
-    EXPECT_NE(grid.readCell(-5, -3, -8).materialId, material_ids::AIR);
+    EXPECT_EQ(result.newCell.materialId, material_ids::SAND);
+    EXPECT_EQ(grid.readCell(-5, -3, -8).materialId, material_ids::AIR);
 }
 
 TEST_F(VoxelInteractionTest, ChunkCoordsCalculatedCorrectly) {

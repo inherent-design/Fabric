@@ -351,7 +351,7 @@ TEST(RecurseVoxelSimSystemTest, GhostCellCopyCorrectness) {
     EXPECT_EQ(cell.materialId, material_ids::STONE) << "Boundary voxel should be preserved after ghost sync";
 }
 
-TEST(RecurseVoxelSimSystemTest, PlaceExternalEditIntoSleepingChunkWakesAndSimulatesWithoutCallerRepair) {
+TEST(RecurseVoxelSimSystemTest, ApplyExternalEditIntoSleepingChunkWritesAndSimulatesWithoutCallerRepair) {
     fabric::World world;
     fabric::Timeline timeline;
     fabric::EventDispatcher dispatcher;
@@ -389,9 +389,11 @@ TEST(RecurseVoxelSimSystemTest, PlaceExternalEditIntoSleepingChunkWakesAndSimula
 
     sim->activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Sleeping);
 
-    VoxelCell sand{material_ids::SAND, 0, voxel_flags::NONE};
+    VoxelCell air{};
+    VoxelCell sand{material_ids::SAND, 0, voxel_flags::UPDATED};
     uint32_t oldCell = 0;
     uint32_t newCell = 0;
+    std::memcpy(&oldCell, &air, sizeof(uint32_t));
     std::memcpy(&newCell, &sand, sizeof(uint32_t));
 
     int eventCount = 0;
@@ -404,11 +406,8 @@ TEST(RecurseVoxelSimSystemTest, PlaceExternalEditIntoSleepingChunkWakesAndSimula
         details = event.getAnyData<std::vector<recurse::VoxelChangeDetail>>("detail");
     });
 
-    grid.writeCellImmediate(16, 10, 16, sand);
-    recurse::InteractionResult edit{
-        true, 16, 10, 16,
-        0,    0,  0,  recurse::VoxelChangeDetail{16, 10, 16, oldCell, newCell, 0, recurse::ChangeSource::Place}};
-    sim->finalizeExternalEdit(edit);
+    recurse::InteractionResult edit{true, 16, 10, 16, 0, 0, 0, sand, recurse::ChangeSource::Place, 0};
+    sim->applyExternalEdit(edit);
 
     EXPECT_EQ(sim->activityTracker().getState(ChunkCoord{0, 0, 0}), ChunkState::Active);
     EXPECT_EQ(grid.readCell(16, 10, 16).materialId, material_ids::SAND);
@@ -417,6 +416,8 @@ TEST(RecurseVoxelSimSystemTest, PlaceExternalEditIntoSleepingChunkWakesAndSimula
     EXPECT_EQ(details[0].vx, 16);
     EXPECT_EQ(details[0].vy, 10);
     EXPECT_EQ(details[0].vz, 16);
+    EXPECT_EQ(details[0].oldCell, oldCell);
+    EXPECT_EQ(details[0].newCell, newCell);
     EXPECT_EQ(details[0].source, recurse::ChangeSource::Place);
 
     dispatcher.removeEventListener(recurse::K_VOXEL_CHANGED_EVENT, listenerId);
