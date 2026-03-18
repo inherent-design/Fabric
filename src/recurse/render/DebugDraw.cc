@@ -1,8 +1,6 @@
 #include "recurse/render/DebugDraw.hh"
 #include "fabric/log/Log.hh"
 
-#include <bgfx/bgfx.h>
-
 // bgfx debugdraw from examples/common (compiled into FabricLib via CMake)
 #include "debugdraw.h"
 
@@ -74,17 +72,7 @@ bool DebugDraw::isWireframeEnabled() const {
     return hasFlag(DebugDrawFlags::Wireframe);
 }
 
-void DebugDraw::applyDebugFlags() {
-    if (!initialized_) {
-        return;
-    }
-
-    uint32_t bgfxDebug = BGFX_DEBUG_NONE;
-    if (hasFlag(DebugDrawFlags::Wireframe)) {
-        bgfxDebug |= BGFX_DEBUG_WIREFRAME;
-    }
-    bgfx::setDebug(bgfxDebug);
-}
+void DebugDraw::applyDebugFlags() {}
 
 void DebugDraw::begin(uint16_t viewId) {
     if (!initialized_ || !encoder_) {

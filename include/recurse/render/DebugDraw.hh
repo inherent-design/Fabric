@@ -66,8 +66,8 @@ class DebugDraw {
     void toggleWireframe();
     bool isWireframeEnabled() const;
 
-    /// Apply current wireframe state to bgfx debug flags.
-    /// Call once per frame before rendering.
+    /// Legacy compatibility hook.
+    /// Voxel wireframe is now applied around chunk submits instead of globally.
     void applyDebugFlags();
 
     /// Begin a debug draw pass on the given view.
