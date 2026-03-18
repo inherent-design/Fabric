@@ -13,6 +13,7 @@
 #include "recurse/ui/LODStatsPanel.hh"
 #include "recurse/ui/WAILAPanel.hh"
 
+#include <chrono>
 #include <flecs.h>
 
 namespace recurse::systems {
@@ -73,6 +74,7 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
     uint64_t lastAutosaveSuccessSerial_ = 0;
     float autosaveSavedSecondsRemaining_ = 0.0f;
     bool autosaveHadWork_ = false;
+    std::chrono::steady_clock::time_point lastAutosaveDisplayTick_{};
 
     CameraGameSystem* camera_ = nullptr;
     ChunkPipelineSystem* chunks_ = nullptr;

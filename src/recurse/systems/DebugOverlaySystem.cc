@@ -44,6 +44,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 
@@ -347,7 +348,13 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             cpuMs = 1000.0f * static_cast<float>(static_cast<double>(stats->cpuTimeEnd - stats->cpuTimeBegin) /
                                                  static_cast<double>(stats->cpuTimerFreq));
         }
-        float frameSeconds = cpuMs > 0.0f ? (cpuMs / 1000.0f) : K_FALLBACK_FRAME_SECONDS;
+        auto autosaveTickNow = std::chrono::steady_clock::now();
+        float autosaveFrameSeconds = K_FALLBACK_FRAME_SECONDS;
+        if (lastAutosaveDisplayTick_ != std::chrono::steady_clock::time_point{}) {
+            autosaveFrameSeconds =
+                std::max(0.0f, std::chrono::duration<float>(autosaveTickNow - lastAutosaveDisplayTick_).count());
+        }
+        lastAutosaveDisplayTick_ = autosaveTickNow;
 
         DebugData debugData;
         debugData.fps = (cpuMs > 0.0f) ? 1000.0f / cpuMs : 0.0f;
@@ -445,7 +452,8 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
                     autosaveData.visible = true;
                     autosaveData.statusText = "Saved";
                     autosaveData.detailText = "All recent world changes are on disk";
-                    autosaveSavedSecondsRemaining_ = std::max(0.0f, autosaveSavedSecondsRemaining_ - frameSeconds);
+                    autosaveSavedSecondsRemaining_ =
+                        std::max(0.0f, autosaveSavedSecondsRemaining_ - autosaveFrameSeconds);
                     debugData.autosaveState = "Saved";
                 } else {
                     debugData.autosaveState = "Idle";
@@ -584,6 +592,7 @@ void DebugOverlaySystem::onWorldBegin() {
     lastAutosaveSuccessSerial_ = 0;
     autosaveSavedSecondsRemaining_ = 0.0f;
     autosaveHadWork_ = false;
+    lastAutosaveDisplayTick_ = {};
 }
 
 void DebugOverlaySystem::onWorldEnd() {
@@ -591,6 +600,7 @@ void DebugOverlaySystem::onWorldEnd() {
     lastAutosaveSuccessSerial_ = 0;
     autosaveSavedSecondsRemaining_ = 0.0f;
     autosaveHadWork_ = false;
+    lastAutosaveDisplayTick_ = {};
 }
 
 void DebugOverlaySystem::configureDependencies() {
