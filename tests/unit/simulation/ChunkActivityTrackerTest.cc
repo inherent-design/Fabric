@@ -131,3 +131,17 @@ TEST_F(ChunkActivityTrackerTest, CollectExcludesSleeping) {
     EXPECT_EQ(active.size(), 1u);
     EXPECT_EQ(active[0].pos.x, 1);
 }
+
+TEST_F(ChunkActivityTrackerTest, ActiveChunkCountTracksStateTransitions) {
+    EXPECT_EQ(tracker.activeChunkCount(), 0u);
+
+    tracker.setState({0, 0, 0}, ChunkState::Active);
+    tracker.notifyBoundaryChange({1, 0, 0});
+    EXPECT_EQ(tracker.activeChunkCount(), 2u);
+
+    tracker.resolveBoundaryDirty({1, 0, 0}, false);
+    EXPECT_EQ(tracker.activeChunkCount(), 1u);
+
+    tracker.putToSleep({0, 0, 0});
+    EXPECT_EQ(tracker.activeChunkCount(), 0u);
+}

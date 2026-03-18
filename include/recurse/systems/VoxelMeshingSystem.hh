@@ -191,6 +191,9 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
 
     std::unordered_map<fabric::ChunkCoord, ChunkGPUMesh, fabric::ChunkCoordHash> gpuMeshes_;
     std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> emptyChunks_;
+    size_t pendingMeshCount_ = 0;
+    size_t vertexBufferSize_ = 0;
+    size_t indexBufferSize_ = 0;
     int meshBudget_ = 50; // Increased from 3 to handle initial load in one frame
     bool gpuUploadEnabled_ = false;
     bool requireNeighborsForMeshing_ = true;

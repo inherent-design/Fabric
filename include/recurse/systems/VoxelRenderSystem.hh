@@ -20,9 +20,11 @@ class VoxelRenderSystem : public fabric::System<VoxelRenderSystem> {
     void configureDependencies() override;
 
     recurse::VoxelRenderer& voxelRenderer() { return voxelRenderer_; }
+    int renderedChunkCount() const { return renderedChunkCount_; }
 
   private:
     recurse::VoxelRenderer voxelRenderer_;
+    int renderedChunkCount_ = 0;
 
     ChunkPipelineSystem* chunks_ = nullptr;
     VoxelMeshingSystem* meshSystem_ = nullptr;

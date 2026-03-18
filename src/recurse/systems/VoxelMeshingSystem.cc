@@ -91,6 +91,9 @@ void VoxelMeshingSystem::clearAllMeshes() {
         destroyChunkMesh(gpuMesh);
     gpuMeshes_.clear();
     emptyChunks_.clear();
+    pendingMeshCount_ = 0;
+    vertexBufferSize_ = 0;
+    indexBufferSize_ = 0;
     FABRIC_LOG_INFO("VoxelMeshingSystem: cleared {} GPU meshes", count);
 }
 
@@ -135,8 +138,10 @@ void VoxelMeshingSystem::processFrame() {
         activityTracker_ = &simSystem_->activityTracker();
     }
 
-    if (!activityTracker_ || !simGrid_ || !mesher_)
+    if (!activityTracker_ || !simGrid_ || !mesher_) {
+        pendingMeshCount_ = 0;
         return;
+    }
 
     meshedThisFrame_ = 0;
     emptySkippedThisFrame_ = 0;
@@ -182,8 +187,10 @@ void VoxelMeshingSystem::processFrame() {
         }
     }
 
-    if (toMesh.empty())
+    if (toMesh.empty()) {
+        pendingMeshCount_ = activityTracker_->activeChunkCount();
         return;
+    }
 
     // Parallel CPU mesh generation
     std::vector<CPUMeshResult> results(toMesh.size());
@@ -211,6 +218,8 @@ void VoxelMeshingSystem::processFrame() {
         if (activityTracker_->getState(entry.pos) != recurse::simulation::ChunkState::Active)
             activityTracker_->putToSleep(entry.pos);
     }
+
+    pendingMeshCount_ = activityTracker_->activeChunkCount();
 }
 
 MeshingChunkContext VoxelMeshingSystem::buildMeshingContext(const fabric::ChunkCoord& coord) const {
@@ -408,10 +417,16 @@ void VoxelMeshingSystem::uploadMeshResult(const fabric::ChunkCoord& coord, CPUMe
     } else {
         gpuMeshes_.emplace(coord, std::move(gpuMesh));
     }
+    vertexBufferSize_ += static_cast<size_t>(gpuMesh.vertexCount);
+    indexBufferSize_ += static_cast<size_t>(gpuMesh.indexCount);
     ++meshedThisFrame_;
 }
 
 void VoxelMeshingSystem::destroyChunkMesh(ChunkGPUMesh& gpuMesh) {
+    if (gpuMesh.valid) {
+        vertexBufferSize_ -= static_cast<size_t>(gpuMesh.vertexCount);
+        indexBufferSize_ -= static_cast<size_t>(gpuMesh.indexCount);
+    }
     gpuMesh.mesh.vbh.reset();
     gpuMesh.mesh.ibh.reset();
     gpuMesh.mesh.indexCount = 0;
@@ -436,32 +451,21 @@ std::array<float, 4> VoxelMeshingSystem::materialColor(uint16_t materialId) cons
 }
 
 size_t VoxelMeshingSystem::pendingMeshCount() const {
-    if (!activityTracker_)
-        return 0;
-    // Get count of non-sleeping chunks that need meshing
-    return activityTracker_->collectActiveChunks().size();
+    return pendingMeshCount_;
 }
 
 size_t VoxelMeshingSystem::vertexBufferSize() const {
-    size_t total = 0;
-    for (const auto& [coord, gpuMesh] : gpuMeshes_) {
-        total += gpuMesh.vertexCount;
-    }
-    return total;
+    return vertexBufferSize_;
 }
 
 size_t VoxelMeshingSystem::indexBufferSize() const {
-    size_t total = 0;
-    for (const auto& [coord, gpuMesh] : gpuMeshes_) {
-        total += gpuMesh.indexCount;
-    }
-    return total;
+    return indexBufferSize_;
 }
 
 MeshingDebugInfo VoxelMeshingSystem::debugInfo() const {
     MeshingDebugInfo info;
     info.chunksMeshedThisFrame = meshedThisFrame_;
-    info.emptyChunksSkipped = static_cast<int>(emptyChunks_.size());
+    info.emptyChunksSkipped = emptySkippedThisFrame_;
     info.budgetRemaining = meshBudget_ - meshedThisFrame_;
     return info;
 }

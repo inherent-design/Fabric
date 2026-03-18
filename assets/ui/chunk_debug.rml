@@ -8,6 +8,7 @@
     <div class="section">
         <div class="section-title">Chunk Stats</div>
         <div class="row"><span class="label">Active: </span><span class="value">{{ active_chunks }}</span></div>
+        <div class="row"><span class="label">Rendered: </span><span class="value">{{ chunks_rendered }}</span></div>
         <div class="row"><span class="label">GPU: </span><span class="value">{{ gpu_mesh_count }}</span></div>
         <div class="row"><span class="label">Pending: </span><span class="value">{{ dirty_chunks_pending }}</span></div>
     </div>
@@ -16,6 +17,7 @@
         <div class="section-title">GPU Memory</div>
         <div class="row"><span class="label">Vertices: </span><span class="value">{{ vertex_count }}</span></div>
         <div class="row"><span class="label">Indices: </span><span class="value">{{ index_count }}</span></div>
+        <div class="row"><span class="label">Total MB: </span><span class="value">{{ total_buffer_mb }}</span></div>
     </div>
 
     <div class="section">

@@ -77,6 +77,7 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
     charMovement_ = ctx.systemRegistry.get<CharacterMovementSystem>();
     lodSystem_ = ctx.systemRegistry.get<LODSystem>();
     meshSystem_ = ctx.systemRegistry.get<VoxelMeshingSystem>();
+    voxelRender_ = ctx.systemRegistry.get<VoxelRenderSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
     debugDraw_.init();
@@ -130,7 +131,11 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
 
     dispatcher.addEventListener(K_ACTION_TOGGLE_WIREFRAME, [this](fabric::Event&) {
         debugDraw_.toggleWireframe();
-        FABRIC_LOG_INFO("Wireframe: {}", debugDraw_.isWireframeEnabled() ? "on" : "off");
+        const bool enabled = debugDraw_.isWireframeEnabled();
+        if (voxelRender_) {
+            voxelRender_->voxelRenderer().setWireframeEnabled(enabled);
+        }
+        FABRIC_LOG_INFO("Wireframe: {}", enabled ? "on" : "off");
     });
 
     dispatcher.addEventListener(K_ACTION_TOGGLE_COLLISION_DEBUG, [this](fabric::Event&) {
@@ -192,7 +197,6 @@ void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
 void DebugOverlaySystem::render(fabric::AppContext& ctx) {
     ++frameCounter_;
 
-    auto* camera = ctx.camera;
     auto* sceneView = ctx.sceneView;
 
     // Apply wireframe toggle before debug line drawing
@@ -516,7 +520,8 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
     // Chunk debug panel
     if (chunkDebugPanel_.isVisible() && meshSystem_) {
         ChunkDebugData chunkData;
-        chunkData.activeChunks = meshSystem_->gpuMeshCount();
+        chunkData.activeChunks = voxelSim_ ? static_cast<size_t>(voxelSim_->simulationGrid().chunkCount()) : 0;
+        chunkData.chunksRendered = voxelRender_ ? voxelRender_->renderedChunkCount() : 0;
         chunkData.gpuMeshCount = meshSystem_->gpuMeshCount();
         chunkData.dirtyChunksPending = meshSystem_->pendingMeshCount();
         chunkData.vertexCount = meshSystem_->vertexBufferSize();

@@ -20,7 +20,6 @@ void ChunkDebugPanel::init(Rml::Context* context) {
 
     constructor.Bind("active_chunks", &activeChunks_);
     constructor.Bind("chunks_rendered", &chunksRendered_);
-    constructor.Bind("chunks_meshed", &chunksMeshed_);
     constructor.Bind("gpu_mesh_count", &gpuMeshCount_);
     constructor.Bind("dirty_chunks_pending", &dirtyChunksPending_);
     constructor.Bind("vertex_count", &vertexCount_);
@@ -44,7 +43,6 @@ void ChunkDebugPanel::update(const ChunkDebugData& data) {
 
     activeChunks_ = static_cast<int>(data.activeChunks);
     chunksRendered_ = data.chunksRendered;
-    chunksMeshed_ = data.chunksMeshed;
     gpuMeshCount_ = static_cast<int>(data.gpuMeshCount);
     dirtyChunksPending_ = static_cast<int>(data.dirtyChunksPending);
     vertexCount_ = static_cast<int>(data.vertexCount);

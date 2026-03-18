@@ -83,6 +83,7 @@ class DebugOverlaySystem : public fabric::System<DebugOverlaySystem> {
     CharacterMovementSystem* charMovement_ = nullptr;
     LODSystem* lodSystem_ = nullptr;
     VoxelMeshingSystem* meshSystem_ = nullptr;
+    VoxelRenderSystem* voxelRender_ = nullptr;
     VoxelSimulationSystem* voxelSim_ = nullptr;
 };
 

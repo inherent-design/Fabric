@@ -37,6 +37,17 @@ TEST(VoxelRendererTest, SetLightDirectionDeferredStateRemainsInvalidWithoutInit)
     EXPECT_FALSE(renderer.isValid());
 }
 
+TEST(VoxelRendererTest, WireframeFlagRoundTripsWithoutInit) {
+    VoxelRenderer renderer;
+    EXPECT_FALSE(renderer.isWireframeEnabled());
+
+    renderer.setWireframeEnabled(true);
+    EXPECT_TRUE(renderer.isWireframeEnabled());
+
+    renderer.setWireframeEnabled(false);
+    EXPECT_FALSE(renderer.isWireframeEnabled());
+}
+
 TEST(VoxelRendererTest, RenderEmptyMeshReturnsWithoutInitialization) {
     VoxelRenderer renderer;
     ChunkMesh mesh;

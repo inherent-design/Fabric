@@ -147,3 +147,20 @@ TEST_F(VoxelMeshingSystemTest, KnownVoxelFieldMesh) {
     EXPECT_GT(mesh.vertexCount, 0u);
     EXPECT_GT(mesh.indexCount, 0u);
 }
+
+TEST_F(VoxelMeshingSystemTest, DebugCountersTrackMeshLifecycleWithoutRescans) {
+    ChunkCoord coord{0, 0, 0};
+    fillChunkSolid(coord);
+    tracker.setState({coord.x, coord.y, coord.z}, ChunkState::BoundaryDirty);
+
+    system.processFrame();
+
+    const auto& mesh = system.gpuMeshes().at(coord);
+    EXPECT_EQ(system.pendingMeshCount(), 0u);
+    EXPECT_EQ(system.vertexBufferSize(), static_cast<size_t>(mesh.vertexCount));
+    EXPECT_EQ(system.indexBufferSize(), static_cast<size_t>(mesh.indexCount));
+
+    system.removeChunkMesh(coord);
+    EXPECT_EQ(system.vertexBufferSize(), 0u);
+    EXPECT_EQ(system.indexBufferSize(), 0u);
+}

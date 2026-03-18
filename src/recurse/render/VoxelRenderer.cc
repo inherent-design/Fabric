@@ -128,9 +128,7 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, float offse
     bgfx::setVertexBuffer(0, mesh.vbh.get());
     bgfx::setIndexBuffer(mesh.ibh.get());
 
-    uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
-                     BGFX_STATE_MSAA | BGFX_STATE_CULL_CCW;
-    bgfx::setState(state);
+    bgfx::setState(renderState());
     bgfx::setUniform(uniformLightDir_.get(), lightDir_);
     bgfx::setUniform(uniformViewPos_.get(), viewPos_);
     bgfx::setUniform(uniformLitColor_.get(), litColor_);
@@ -154,12 +152,31 @@ void VoxelRenderer::setViewPosition(double x, double y, double z) {
     viewPos_[3] = 1.0f;
 }
 
+void VoxelRenderer::setWireframeEnabled(bool enabled) {
+    wireframeEnabled_ = enabled;
+}
+
+bool VoxelRenderer::isWireframeEnabled() const {
+    return wireframeEnabled_;
+}
+
 bool VoxelRenderer::isValid() const {
     return program_.isValid();
 }
 
 bool VoxelRenderer::mdiSupported() const {
     return mdiSupported_;
+}
+
+uint64_t VoxelRenderer::renderState() const {
+    uint64_t state =
+        BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_MSAA;
+    if (wireframeEnabled_) {
+        state |= BGFX_STATE_PT_LINES;
+    } else {
+        state |= BGFX_STATE_CULL_CCW;
+    }
+    return state;
 }
 
 void VoxelRenderer::renderBatch(bgfx::ViewId view, const ChunkRenderInfo* chunks, uint32_t count) {
@@ -225,8 +242,7 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
         }
     }
 
-    uint64_t state = BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
-                     BGFX_STATE_MSAA | BGFX_STATE_CULL_CCW;
+    const uint64_t state = renderState();
 
     // Discard per-chunk resources; preserve uniforms + render state
     constexpr uint8_t K_GROUP_DISCARD =

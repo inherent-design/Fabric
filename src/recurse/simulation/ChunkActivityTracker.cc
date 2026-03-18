@@ -5,8 +5,24 @@
 
 namespace recurse::simulation {
 
+namespace {
+
+bool isActiveState(ChunkState state) {
+    return state == ChunkState::Active || state == ChunkState::BoundaryDirty;
+}
+
+} // namespace
+
 void ChunkActivityTracker::setState(ChunkCoord pos, ChunkState state) {
-    chunks_[pos].state = state;
+    auto& info = chunks_[pos];
+    const bool wasActive = isActiveState(info.state);
+    const bool nowActive = isActiveState(state);
+    if (!wasActive && nowActive) {
+        ++activeChunkCount_;
+    } else if (wasActive && !nowActive) {
+        --activeChunkCount_;
+    }
+    info.state = state;
 }
 
 ChunkState ChunkActivityTracker::getState(ChunkCoord pos) const {
@@ -37,14 +53,22 @@ void ChunkActivityTracker::clearSubRegionMask(ChunkCoord pos) {
 void ChunkActivityTracker::notifyBoundaryChange(ChunkCoord neighborPos) {
     auto& info = chunks_[neighborPos];
     // Wake sleeping chunks OR mark active chunks for boundary re-mesh
-    if (info.state == ChunkState::Sleeping || info.state == ChunkState::Active)
+    if (info.state == ChunkState::Sleeping || info.state == ChunkState::Active) {
+        if (!isActiveState(info.state)) {
+            ++activeChunkCount_;
+        }
         info.state = ChunkState::BoundaryDirty;
+    }
 }
 
 void ChunkActivityTracker::setReferencePoint(int wx, int wy, int wz) {
     refX_ = wx;
     refY_ = wy;
     refZ_ = wz;
+}
+
+size_t ChunkActivityTracker::activeChunkCount() const {
+    return activeChunkCount_;
 }
 
 SimPriority ChunkActivityTracker::computePriority(ChunkCoord pos) const {
@@ -86,6 +110,9 @@ std::vector<ActiveChunkEntry> ChunkActivityTracker::collectActiveChunks(int budg
 void ChunkActivityTracker::putToSleep(ChunkCoord pos) {
     auto it = chunks_.find(pos);
     if (it != chunks_.end()) {
+        if (isActiveState(it->second.state)) {
+            --activeChunkCount_;
+        }
         it->second.state = ChunkState::Sleeping;
         it->second.subRegionMask = 0;
     }
@@ -94,16 +121,32 @@ void ChunkActivityTracker::putToSleep(ChunkCoord pos) {
 void ChunkActivityTracker::resolveBoundaryDirty(ChunkCoord pos, bool needsSimulation) {
     auto it = chunks_.find(pos);
     if (it != chunks_.end()) {
-        it->second.state = needsSimulation ? ChunkState::Active : ChunkState::Sleeping;
+        const ChunkState nextState = needsSimulation ? ChunkState::Active : ChunkState::Sleeping;
+        const bool wasActive = isActiveState(it->second.state);
+        const bool nowActive = isActiveState(nextState);
+        if (!wasActive && nowActive) {
+            ++activeChunkCount_;
+        } else if (wasActive && !nowActive) {
+            --activeChunkCount_;
+        }
+        it->second.state = nextState;
     }
 }
 
 void ChunkActivityTracker::remove(ChunkCoord pos) {
-    chunks_.erase(pos);
+    auto it = chunks_.find(pos);
+    if (it == chunks_.end()) {
+        return;
+    }
+    if (isActiveState(it->second.state)) {
+        --activeChunkCount_;
+    }
+    chunks_.erase(it);
 }
 
 void ChunkActivityTracker::clear() {
     chunks_.clear();
+    activeChunkCount_ = 0;
 }
 
 } // namespace recurse::simulation

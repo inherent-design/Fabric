@@ -32,6 +32,7 @@ void VoxelRenderSystem::doInit(fabric::AppContext& ctx) {
 
 void VoxelRenderSystem::render(fabric::AppContext& ctx) {
     FABRIC_ZONE_SCOPED_N("render_submit");
+    renderedChunkCount_ = 0;
 
     auto* camera = ctx.camera;
     auto* sceneView = ctx.sceneView;
@@ -107,6 +108,7 @@ void VoxelRenderSystem::render(fabric::AppContext& ctx) {
             [](const recurse::ChunkRenderInfo& a, const recurse::ChunkRenderInfo& b) { return a.sortKey < b.sortKey; });
 
         if (!renderBatch.empty()) {
+            renderedChunkCount_ = static_cast<int>(renderBatch.size());
             voxelRenderer_.renderBatch(sceneView->geometryViewId(), renderBatch.data(),
                                        static_cast<uint32_t>(renderBatch.size()));
         }
