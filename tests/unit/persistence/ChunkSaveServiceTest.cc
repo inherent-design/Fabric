@@ -222,6 +222,71 @@ TEST_F(ChunkSaveServiceTest, ActivitySnapshotResetsCountdownForNewDirtyChunk) {
     EXPECT_FLOAT_EQ(snapshot.secondsUntilNextSave, 2.0f);
 }
 
+TEST_F(ChunkSaveServiceTest, TimerAutosaveMetadataStaysHiddenForShortDebouncedEdits) {
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
+    svc.debounceSeconds = 2.0f;
+    svc.maxDelaySeconds = 5.0f;
+
+    svc.markDirty(0, 0, 0);
+
+    auto snapshot = svc.activitySnapshot();
+    EXPECT_FALSE(snapshot.timerAutosavePending);
+    EXPECT_FALSE(snapshot.timerSaveInProgress);
+    EXPECT_FLOAT_EQ(snapshot.secondsUntilTimerAutosave, -1.0f);
+
+    svc.update(1.0f);
+    snapshot = svc.activitySnapshot();
+    EXPECT_FALSE(snapshot.timerAutosavePending);
+    EXPECT_FALSE(snapshot.timerSaveInProgress);
+    EXPECT_FLOAT_EQ(snapshot.secondsUntilTimerAutosave, -1.0f);
+
+    svc.update(1.1f);
+    writerQueue_.drain();
+    snapshot = svc.activitySnapshot();
+    EXPECT_EQ(snapshot.lastTimerStartedSerial, 0u);
+    EXPECT_EQ(snapshot.lastTimerSuccessfulSerial, 0u);
+}
+
+TEST_F(ChunkSaveServiceTest, TimerAutosaveMetadataTracksForcedAutosaveSeparately) {
+    std::promise<void> unblockSave;
+    auto gate = unblockSave.get_future().share();
+
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) {
+        gate.wait();
+        return makeFakeBlob();
+    });
+    svc.debounceSeconds = 2.0f;
+    svc.maxDelaySeconds = 3.0f;
+
+    svc.markDirty(0, 0, 0);
+    svc.update(1.5f);
+    svc.markDirty(0, 0, 0);
+
+    auto snapshot = svc.activitySnapshot();
+    EXPECT_FALSE(snapshot.timerAutosavePending);
+
+    svc.update(0.6f);
+    snapshot = svc.activitySnapshot();
+    EXPECT_TRUE(snapshot.timerAutosavePending);
+    EXPECT_NEAR(snapshot.secondsUntilTimerAutosave, 0.9f, 0.001f);
+    EXPECT_FALSE(snapshot.timerSaveInProgress);
+
+    svc.markDirty(0, 0, 0);
+    svc.update(1.1f);
+    snapshot = svc.activitySnapshot();
+    EXPECT_EQ(snapshot.lastTimerStartedSerial, 1u);
+    EXPECT_TRUE(snapshot.timerSaveInProgress);
+
+    unblockSave.set_value();
+    writerQueue_.drain();
+
+    snapshot = svc.activitySnapshot();
+    EXPECT_FALSE(snapshot.timerAutosavePending);
+    EXPECT_FALSE(snapshot.timerSaveInProgress);
+    EXPECT_EQ(snapshot.lastTimerSuccessfulSerial, 1u);
+    EXPECT_TRUE(store_->hasChunk(0, 0, 0));
+}
+
 TEST_F(ChunkSaveServiceTest, DebounceCoalescesDirtyChunksIntoOneBatchCadence) {
     recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
     svc.debounceSeconds = 1.0f;

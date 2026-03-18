@@ -26,10 +26,15 @@ class ChunkSaveService {
         size_t dirtyChunks = 0;
         size_t savingChunks = 0;
         size_t preparedChunks = 0;
+        bool timerAutosavePending = false;
+        bool timerSaveInProgress = false;
         float secondsUntilNextSave = -1.0f;
+        float secondsUntilTimerAutosave = -1.0f;
         uint64_t lastStartedSerial = 0;
         uint64_t lastCompletedSerial = 0;
         uint64_t lastSuccessfulSerial = 0;
+        uint64_t lastTimerStartedSerial = 0;
+        uint64_t lastTimerSuccessfulSerial = 0;
         bool hasError = false;
         std::string lastError;
     };
@@ -70,6 +75,12 @@ class ChunkSaveService {
     float maxDelaySeconds = 5.0f;
 
   private:
+    enum class SaveTrigger {
+        DebouncedChange,
+        TimerAutosave,
+        ImmediateFlush,
+    };
+
     struct DirtyEntry {
         bool saving{false};
         bool resaveRequested{false};
@@ -85,7 +96,7 @@ class ChunkSaveService {
     using ChunkKey = int64_t;
     static ChunkKey makeKey(int cx, int cy, int cz);
 
-    void dispatchBatch(std::vector<std::tuple<int, int, int>> chunks);
+    void dispatchBatch(std::vector<std::tuple<int, int, int>> chunks, SaveTrigger trigger);
     void resetDirtyCadenceLocked();
 
     ChunkStore& store_;
@@ -99,10 +110,13 @@ class ChunkSaveService {
     uint64_t lastStartedSerial_ = 0;
     uint64_t lastCompletedSerial_ = 0;
     uint64_t lastSuccessfulSerial_ = 0;
+    uint64_t lastTimerStartedSerial_ = 0;
+    uint64_t lastTimerSuccessfulSerial_ = 0;
     std::string lastError_;
     float firstDirtyAge_ = 0.0f;
     float lastDirtyAge_ = 0.0f;
     bool dirtyCadenceActive_ = false;
+    size_t timerBatchesInFlight_ = 0;
 };
 
 } // namespace recurse
