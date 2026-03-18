@@ -1,12 +1,21 @@
 #include "recurse/persistence/WorldSession.hh"
 
+#include "fabric/core/AppContext.hh"
 #include "fabric/core/Event.hh"
+#include "fabric/core/SystemRegistry.hh"
+#include "fabric/platform/ConfigManager.hh"
 #include "fabric/platform/JobScheduler.hh"
+#include "fabric/resource/AssetRegistry.hh"
+#include "fabric/resource/ResourceHub.hh"
 #include "recurse/character/VoxelInteraction.hh"
 #include "recurse/persistence/ChangeSource.hh"
 #include "recurse/persistence/ChunkSaveService.hh"
 #include "recurse/persistence/FchkCodec.hh"
 #include "recurse/persistence/SqliteChunkStore.hh"
+#include "recurse/simulation/ChunkState.hh"
+#include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/systems/VoxelSimulationSystem.hh"
 
 #include <filesystem>
 #include <gtest/gtest.h>
@@ -288,4 +297,113 @@ TEST_F(WorldSessionIntegrationTest, OpenSucceedsOnNewWorld) {
     openSession();
 
     EXPECT_TRUE(fs::exists(worldDir_ + "/world.db"));
+}
+
+class WorldSessionResidentChunkPersistenceTest : public ::testing::Test {
+  protected:
+    void SetUp() override {
+        hub_.disableWorkerThreadsForTesting();
+        scheduler_.disableForTesting();
+
+        tmpDir_ =
+            fs::temp_directory_path() / ("fabric_world_session_resident_test_" +
+                                         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        fs::create_directories(tmpDir_);
+        worldDir_ = tmpDir_.string();
+
+        auto ctx = makeCtx();
+        auto& vs =
+            systemRegistry_.registerSystem<recurse::systems::VoxelSimulationSystem>(fabric::SystemPhase::FixedUpdate);
+        voxelSim_ = &vs;
+        systemRegistry_.resolve();
+        voxelSim_->init(ctx);
+
+        openSession();
+    }
+
+    void TearDown() override {
+        session_.reset();
+        if (voxelSim_)
+            voxelSim_->shutdown();
+        fs::remove_all(tmpDir_);
+    }
+
+    fabric::AppContext makeCtx() {
+        return fabric::AppContext{
+            .world = world_,
+            .timeline = timeline_,
+            .dispatcher = dispatcher_,
+            .resourceHub = hub_,
+            .assetRegistry = assetRegistry_,
+            .systemRegistry = systemRegistry_,
+            .configManager = configManager_,
+        };
+    }
+
+    void openSession() {
+        auto result = recurse::WorldSession::open(worldDir_, dispatcher_, scheduler_, world_.get(), voxelSim_, nullptr,
+                                                  nullptr, nullptr, nullptr);
+        ASSERT_TRUE(result.isSuccess()) << "WorldSession::open failed: "
+                                        << result.error<fabric::fx::IOError>().ctx.message;
+        session_ = std::move(result).value();
+    }
+
+    void materializeActiveChunk(int cx, int cy, int cz) {
+        using namespace recurse::simulation;
+        auto& grid = voxelSim_->simulationGrid();
+        auto& registry = grid.registry();
+        auto absent = addChunkRef(registry, cx, cy, cz);
+        auto generating = transition<Absent, Generating>(absent, registry);
+        grid.materializeChunk(cx, cy, cz);
+        grid.writeCell(cx * 32 + 1, cy * 32 + 1, cz * 32 + 1, VoxelCell{material_ids::STONE});
+        grid.syncChunkBuffers(cx, cy, cz);
+        transition<Generating, Active>(generating, registry);
+    }
+
+    fabric::World world_;
+    fabric::Timeline timeline_;
+    fabric::EventDispatcher dispatcher_;
+    fabric::ResourceHub hub_;
+    fabric::AssetRegistry assetRegistry_{hub_};
+    fabric::SystemRegistry systemRegistry_;
+    fabric::ConfigManager configManager_;
+    fabric::JobScheduler scheduler_;
+    recurse::systems::VoxelSimulationSystem* voxelSim_ = nullptr;
+    std::unique_ptr<recurse::WorldSession> session_;
+    fs::path tmpDir_;
+    std::string worldDir_;
+};
+
+TEST_F(WorldSessionResidentChunkPersistenceTest, CloseReopenPersistsResidentGenerationFilteredChunk) {
+    constexpr int K_CX = 3;
+    constexpr int K_CY = 0;
+    constexpr int K_CZ = 4;
+
+    materializeActiveChunk(K_CX, K_CY, K_CZ);
+
+    auto* saveService = session_->saveService();
+    ASSERT_NE(saveService, nullptr);
+    EXPECT_FALSE(session_->chunkStore()->hasChunk(K_CX, K_CY, K_CZ));
+
+    fabric::Event event(recurse::K_VOXEL_CHANGED_EVENT, "test");
+    event.setData("cx", K_CX);
+    event.setData("cy", K_CY);
+    event.setData("cz", K_CZ);
+    event.setData("source", static_cast<int>(recurse::ChangeSource::Generation));
+    dispatcher_.dispatchEvent(event);
+
+    EXPECT_EQ(saveService->pendingCount(), 0u);
+
+    session_.reset();
+    voxelSim_->resetWorld();
+    openSession();
+
+    auto* store = session_->chunkStore();
+    ASSERT_NE(store, nullptr);
+    EXPECT_TRUE(store->isInSavedRegion(K_CX, K_CY, K_CZ));
+    EXPECT_TRUE(store->hasChunk(K_CX, K_CY, K_CZ));
+
+    auto blob = store->loadChunk(K_CX, K_CY, K_CZ);
+    ASSERT_TRUE(blob.has_value());
+    EXPECT_FALSE(blob->empty());
 }

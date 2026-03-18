@@ -194,6 +194,11 @@ WorldSession::~WorldSession() {
     if (pruningScheduler_)
         pruningScheduler_->pruneNow();
 
+    // Step 2c: Persist any resident active chunks that were never streamed out
+    // or otherwise enqueued. This closes the close/reopen bootstrap gap without
+    // re-enabling eager generation dirty tracking.
+    enqueueResidentChunksForShutdown();
+
     // Step 3: Flush save service
     if (saveService_)
         saveService_->flush();
@@ -559,6 +564,23 @@ void WorldSession::flushPendingChanges() {
 
     writerQueue_.submit([this, changes = std::move(pendingChanges_)]() { txStore_->logChanges(changes); });
     pendingChanges_.clear();
+}
+
+void WorldSession::enqueueResidentChunksForShutdown() {
+    if (!simSystem_ || !saveService_)
+        return;
+
+    auto& grid = simSystem_->simulationGrid();
+    auto& registry = grid.registry();
+    for (const auto& [cx, cy, cz] : grid.allChunks()) {
+        const auto* slot = registry.find(cx, cy, cz);
+        if (!slot || slot->state != simulation::ChunkSlotState::Active || !slot->isMaterialized())
+            continue;
+
+        auto blob = encodeChunkBlob(cx, cy, cz);
+        if (!blob.empty())
+            saveService_->enqueuePrepared(cx, cy, cz, std::move(blob));
+    }
 }
 
 void WorldSession::updateSaveService(float dt) {
