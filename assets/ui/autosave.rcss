@@ -14,16 +14,32 @@ body {
 
 #autosave-panel {
     margin-left: auto;
-    width: 220dp;
-    padding: 6dp 10dp;
-    background-color: #000000aa;
+    width: 280dp;
+    padding: 8dp 10dp;
+    background-color: #101114dd;
     border: 1dp #ffffff22;
-    text-align: right;
+    border-left: 2dp #7aa2ff;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10dp;
+}
+
+.autosave-icon {
+    color: #9bb8ff;
+    font-size: 18dp;
+    width: 20dp;
+    text-align: center;
+}
+
+.autosave-copy {
+    width: 238dp;
 }
 
 .autosave-status {
     color: #f0f0f0;
     font-size: 12dp;
+    font-weight: 700;
 }
 
 .autosave-detail {

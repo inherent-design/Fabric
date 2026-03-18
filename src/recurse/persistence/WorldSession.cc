@@ -303,7 +303,11 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
     if (!store_ || !simSystem_)
         return false;
 
-    if (!store_->hasChunk(cx, cy, cz)) {
+    std::optional<ChunkBlob> persistPendingBlob;
+    if (saveService_)
+        persistPendingBlob = saveService_->copyPersistPendingBlob(cx, cy, cz);
+
+    if (!persistPendingBlob && !store_->hasChunk(cx, cy, cz)) {
         ++stats_.loadsDbMiss;
         return false;
     }
@@ -326,10 +330,12 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
     auto* worldGen = worldGen_;
     const auto* materials = simSystem_ ? &simSystem_->materials() : nullptr;
 
-    auto future = scheduler_.submit([storePtr, cx, cy, cz, buf, worldGen, materials]() -> AsyncLoadResult {
+    auto future = scheduler_.submit([storePtr, blob = std::move(persistPendingBlob), cx, cy, cz, buf, worldGen,
+                                     materials]() mutable -> AsyncLoadResult {
         AsyncLoadResult r;
         try {
-            auto blob = storePtr->loadChunk(cx, cy, cz);
+            if (!blob)
+                blob = storePtr->loadChunk(cx, cy, cz);
             if (!blob) {
                 FABRIC_LOG_WARN("asyncLoad({},{},{}): loadChunk returned nullopt", cx, cy, cz);
                 return r;
@@ -373,6 +379,10 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
         return false;
     }
     return true;
+}
+
+bool WorldSession::hasPersistPending(int cx, int cy, int cz) const {
+    return saveService_ ? saveService_->hasPersistPending(cx, cy, cz) : false;
 }
 
 std::vector<ops::CompletedLoad> WorldSession::pollPendingLoads() {

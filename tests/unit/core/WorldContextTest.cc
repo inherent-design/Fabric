@@ -133,6 +133,15 @@ TEST_F(WorldContextTest, ResolveHasPendingLoad_NoPending) {
     EXPECT_FALSE(ctx.resolve(recurse::ops::HasPendingLoad{0, 0, 0}));
 }
 
+TEST_F(WorldContextTest, ResolveHasPersistPending_TrueAfterPersistChunk) {
+    fabric::fx::WorldContext<recurse::WorldSession> ctx(*session_);
+    EXPECT_FALSE(ctx.resolve(recurse::ops::HasPersistPending{0, 0, 0}));
+
+    ctx.submit(recurse::ops::PersistChunk{0, 0, 0});
+
+    EXPECT_TRUE(ctx.resolve(recurse::ops::HasPersistPending{0, 0, 0}));
+}
+
 TEST_F(WorldContextTest, ResolveQueryChunkEntities_Empty) {
     fabric::fx::WorldContext<recurse::WorldSession> ctx(*session_);
     fabric::ChunkCoord coord{0, 0, 0};

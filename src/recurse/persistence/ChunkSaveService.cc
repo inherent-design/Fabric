@@ -4,6 +4,7 @@
 #include "fabric/platform/WriterQueue.hh"
 #include <algorithm>
 #include <exception>
+#include <limits>
 #include <vector>
 
 namespace recurse {
@@ -28,6 +29,7 @@ void ChunkSaveService::markDirty(int cx, int cy, int cz) {
 
 void ChunkSaveService::update(float dt) {
     std::vector<std::tuple<int, int, int>> toSave;
+    bool shouldDispatchPrepared = false;
 
     {
         std::lock_guard lock(mutex_);
@@ -57,18 +59,50 @@ void ChunkSaveService::update(float dt) {
                 toSave.emplace_back(cx, cy, cz);
             }
         }
+
+        for (const auto& [_, entry] : prepared_) {
+            if (!entry.saving) {
+                shouldDispatchPrepared = true;
+                break;
+            }
+        }
     }
 
     if (!toSave.empty()) {
         std::sort(toSave.begin(), toSave.end());
+    }
+
+    if (!toSave.empty() || shouldDispatchPrepared) {
         dispatchBatch(std::move(toSave));
     }
 }
 
 void ChunkSaveService::enqueuePrepared(int cx, int cy, int cz, ChunkBlob blob) {
     std::lock_guard lock(mutex_);
-    preparedBlobs_.push_back({fabric::ChunkCoord{cx, cy, cz}, std::move(blob)});
-    dirty_.erase(makeKey(cx, cy, cz));
+    auto key = makeKey(cx, cy, cz);
+    auto [it, inserted] = prepared_.try_emplace(key, PreparedEntry{fabric::ChunkCoord{cx, cy, cz}, {}, false, false});
+    it->second.coord = fabric::ChunkCoord{cx, cy, cz};
+    it->second.blob = std::move(blob);
+    if (inserted || !it->second.saving) {
+        it->second.saving = false;
+        it->second.resaveRequested = false;
+    } else {
+        it->second.resaveRequested = true;
+    }
+    dirty_.erase(key);
+}
+
+bool ChunkSaveService::hasPersistPending(int cx, int cy, int cz) const {
+    std::lock_guard lock(mutex_);
+    return prepared_.contains(makeKey(cx, cy, cz));
+}
+
+std::optional<ChunkBlob> ChunkSaveService::copyPersistPendingBlob(int cx, int cy, int cz) const {
+    std::lock_guard lock(mutex_);
+    auto it = prepared_.find(makeKey(cx, cy, cz));
+    if (it == prepared_.end())
+        return std::nullopt;
+    return it->second.blob;
 }
 
 void ChunkSaveService::flush() {
@@ -96,7 +130,9 @@ void ChunkSaveService::flush() {
 
             toSave.emplace_back(cx, cy, cz);
         }
-        prepared = std::move(preparedBlobs_);
+        prepared.reserve(prepared_.size());
+        for (const auto& [_, entry] : prepared_)
+            prepared.push_back({entry.coord, entry.blob});
     }
 
     std::sort(toSave.begin(), toSave.end());
@@ -122,6 +158,7 @@ void ChunkSaveService::flush() {
 
         std::lock_guard lock(mutex_);
         dirty_.clear();
+        prepared_.clear();
         lastCompletedSerial_ = batchSerial;
         lastSuccessfulSerial_ = batchSerial;
         lastError_.clear();
@@ -130,22 +167,18 @@ void ChunkSaveService::flush() {
         std::lock_guard lock(mutex_);
         lastCompletedSerial_ = batchSerial;
         lastError_ = ex.what();
-        for (auto& entry : prepared)
-            preparedBlobs_.push_back(entry);
         FABRIC_LOG_ERROR("ChunkSaveService: flush failed serial={}: {}", batchSerial, ex.what());
     } catch (...) {
         std::lock_guard lock(mutex_);
         lastCompletedSerial_ = batchSerial;
         lastError_ = "unknown error";
-        for (auto& entry : prepared)
-            preparedBlobs_.push_back(entry);
         FABRIC_LOG_ERROR("ChunkSaveService: flush failed serial={} with unknown error", batchSerial);
     }
 }
 
 size_t ChunkSaveService::pendingCount() const {
     std::lock_guard lock(mutex_);
-    return dirty_.size();
+    return dirty_.size() + prepared_.size();
 }
 
 ChunkSaveService::ActivitySnapshot ChunkSaveService::activitySnapshot() const {
@@ -153,17 +186,32 @@ ChunkSaveService::ActivitySnapshot ChunkSaveService::activitySnapshot() const {
 
     ActivitySnapshot snapshot;
     snapshot.dirtyChunks = dirty_.size();
-    snapshot.preparedChunks = preparedBlobs_.size();
+    snapshot.preparedChunks = prepared_.size();
     snapshot.lastStartedSerial = lastStartedSerial_;
     snapshot.lastCompletedSerial = lastCompletedSerial_;
     snapshot.lastSuccessfulSerial = lastSuccessfulSerial_;
     snapshot.hasError = !lastError_.empty();
     snapshot.lastError = lastError_;
 
+    float nextSaveSeconds = std::numeric_limits<float>::infinity();
     for (const auto& [_, entry] : dirty_) {
+        if (entry.saving) {
+            ++snapshot.savingChunks;
+            continue;
+        }
+
+        float debounceRemaining = std::max(0.0f, debounceSeconds - entry.lastDirtyAge);
+        float maxDelayRemaining = std::max(0.0f, maxDelaySeconds - entry.firstDirtyAge);
+        nextSaveSeconds = std::min(nextSaveSeconds, std::min(debounceRemaining, maxDelayRemaining));
+    }
+
+    for (const auto& [_, entry] : prepared_) {
         if (entry.saving)
             ++snapshot.savingChunks;
     }
+
+    if (nextSaveSeconds != std::numeric_limits<float>::infinity())
+        snapshot.secondsUntilNextSave = nextSaveSeconds;
 
     return snapshot;
 }
@@ -178,10 +226,19 @@ ChunkSaveService::ChunkKey ChunkSaveService::makeKey(int cx, int cy, int cz) {
 
 void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chunks) {
     std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> prepared;
+    std::vector<ChunkKey> preparedKeys;
     uint64_t batchSerial = 0;
     {
         std::lock_guard lock(mutex_);
-        prepared = std::move(preparedBlobs_);
+        prepared.reserve(prepared_.size());
+        preparedKeys.reserve(prepared_.size());
+        for (auto& [key, entry] : prepared_) {
+            if (entry.saving)
+                continue;
+            entry.saving = true;
+            prepared.push_back({entry.coord, entry.blob});
+            preparedKeys.push_back(key);
+        }
         batchSerial = ++nextBatchSerial_;
         lastStartedSerial_ = batchSerial;
         lastError_.clear();
@@ -190,7 +247,8 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
     FABRIC_LOG_INFO("ChunkSaveService: dispatch batch serial={} dirty={} prepared={}", batchSerial, chunks.size(),
                     prepared.size());
 
-    writerQueue_.submit([this, batch = std::move(chunks), prepared = std::move(prepared), batchSerial]() mutable {
+    writerQueue_.submit([this, batch = std::move(chunks), prepared = std::move(prepared),
+                         preparedKeys = std::move(preparedKeys), batchSerial]() mutable {
         try {
             std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>> entries;
             entries.reserve(batch.size() + prepared.size());
@@ -215,6 +273,17 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
             for (auto& [cx, cy, cz] : batch) {
                 dirty_.erase(makeKey(cx, cy, cz));
             }
+            for (ChunkKey key : preparedKeys) {
+                auto it = prepared_.find(key);
+                if (it == prepared_.end())
+                    continue;
+                if (it->second.resaveRequested) {
+                    it->second.saving = false;
+                    it->second.resaveRequested = false;
+                } else {
+                    prepared_.erase(it);
+                }
+            }
             lastCompletedSerial_ = batchSerial;
             lastSuccessfulSerial_ = batchSerial;
             lastError_.clear();
@@ -228,8 +297,11 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
                 if (it != dirty_.end())
                     it->second.saving = false;
             }
-            for (auto& entry : prepared)
-                preparedBlobs_.push_back(std::move(entry));
+            for (ChunkKey key : preparedKeys) {
+                auto it = prepared_.find(key);
+                if (it != prepared_.end())
+                    it->second.saving = false;
+            }
             FABRIC_LOG_ERROR("ChunkSaveService: batch failed serial={}: {}", batchSerial, ex.what());
         } catch (...) {
             std::lock_guard lock(mutex_);
@@ -240,8 +312,11 @@ void ChunkSaveService::dispatchBatch(std::vector<std::tuple<int, int, int>> chun
                 if (it != dirty_.end())
                     it->second.saving = false;
             }
-            for (auto& entry : prepared)
-                preparedBlobs_.push_back(std::move(entry));
+            for (ChunkKey key : preparedKeys) {
+                auto it = prepared_.find(key);
+                if (it != prepared_.end())
+                    it->second.saving = false;
+            }
             FABRIC_LOG_ERROR("ChunkSaveService: batch failed serial={} with unknown error", batchSerial);
         }
     });

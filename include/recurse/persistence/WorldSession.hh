@@ -95,6 +95,7 @@ class WorldSession {
     std::vector<ops::CompletedLoad> pollPendingLoads();
     bool cancelPendingLoad(int cx, int cy, int cz);
     bool hasPendingLoad(int cx, int cy, int cz) const;
+    bool hasPersistPending(int cx, int cy, int cz) const;
     void updateLODRing(int playerCx, int playerCy, int playerCz, int streamingRadius, int lodRadius, int lodGenBudget);
 
     // --- Session lifecycle methods ---
@@ -149,6 +150,10 @@ class WorldSession {
     }
 
     FABRIC_ALWAYS_INLINE bool resolve(const ops::HasPendingLoad& op) { return hasPendingLoad(op.cx, op.cy, op.cz); }
+
+    FABRIC_ALWAYS_INLINE bool resolve(const ops::HasPersistPending& op) {
+        return hasPersistPending(op.cx, op.cy, op.cz);
+    }
 
     FABRIC_ALWAYS_INLINE bool resolve(const ops::QueryChunkEntities& op) { return chunkEntities_.contains(op.coord); }
 

@@ -25,6 +25,12 @@ struct DebugData {
     int physicsBodyCount = 0;
     int audioVoiceCount = 0;
     int chunkMeshQueueSize = 0;
+
+    std::string autosaveState = "Idle";
+    std::string autosaveNextSave = "-";
+    int autosaveDirtyChunks = 0;
+    int autosaveSavingChunks = 0;
+    int autosaveQueuedChunks = 0;
 };
 
 class DebugHUD : public fabric::RmlPanel {
@@ -55,6 +61,11 @@ class DebugHUD : public fabric::RmlPanel {
     int physicsBodyCount_ = 0;
     int audioVoiceCount_ = 0;
     int chunkMeshQueueSize_ = 0;
+    Rml::String autosaveState_;
+    Rml::String autosaveNextSave_;
+    int autosaveDirtyChunks_ = 0;
+    int autosaveSavingChunks_ = 0;
+    int autosaveQueuedChunks_ = 0;
 };
 
 } // namespace recurse

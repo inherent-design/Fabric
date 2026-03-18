@@ -166,6 +166,7 @@ TEST_F(ChunkSaveServiceTest, ActivitySnapshotTracksDirtySavingAndSuccess) {
     auto snapshot = svc.activitySnapshot();
     EXPECT_EQ(snapshot.dirtyChunks, 1u);
     EXPECT_EQ(snapshot.savingChunks, 0u);
+    EXPECT_FLOAT_EQ(snapshot.secondsUntilNextSave, 0.0f);
     EXPECT_EQ(snapshot.lastStartedSerial, 0u);
 
     svc.update(0.0f);
@@ -185,6 +186,24 @@ TEST_F(ChunkSaveServiceTest, ActivitySnapshotTracksDirtySavingAndSuccess) {
     EXPECT_EQ(snapshot.lastSuccessfulSerial, 1u);
     EXPECT_FALSE(snapshot.hasError);
     EXPECT_TRUE(store_->hasChunk(0, 0, 0));
+}
+
+TEST_F(ChunkSaveServiceTest, ActivitySnapshotTracksNextAutosaveCountdown) {
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
+    svc.debounceSeconds = 2.0f;
+    svc.maxDelaySeconds = 5.0f;
+
+    svc.markDirty(0, 0, 0);
+    auto snapshot = svc.activitySnapshot();
+    EXPECT_FLOAT_EQ(snapshot.secondsUntilNextSave, 2.0f);
+
+    svc.update(0.75f);
+    snapshot = svc.activitySnapshot();
+    EXPECT_NEAR(snapshot.secondsUntilNextSave, 1.25f, 0.001f);
+
+    svc.markDirty(0, 0, 0);
+    snapshot = svc.activitySnapshot();
+    EXPECT_FLOAT_EQ(snapshot.secondsUntilNextSave, 2.0f);
 }
 
 TEST_F(ChunkSaveServiceTest, ActivitySnapshotRetainsFailureAndRequeuesPreparedBlobs) {

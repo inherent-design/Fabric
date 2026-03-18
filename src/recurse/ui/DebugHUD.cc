@@ -38,6 +38,11 @@ void DebugHUD::init(Rml::Context* context) {
     constructor.Bind("physics_body_count", &physicsBodyCount_);
     constructor.Bind("audio_voice_count", &audioVoiceCount_);
     constructor.Bind("chunk_mesh_queue_size", &chunkMeshQueueSize_);
+    constructor.Bind("autosave_state", &autosaveState_);
+    constructor.Bind("autosave_next_save", &autosaveNextSave_);
+    constructor.Bind("autosave_dirty_chunks", &autosaveDirtyChunks_);
+    constructor.Bind("autosave_saving_chunks", &autosaveSavingChunks_);
+    constructor.Bind("autosave_queued_chunks", &autosaveQueuedChunks_);
 
     modelHandle_ = constructor.GetModelHandle();
 
@@ -68,6 +73,11 @@ void DebugHUD::update(const DebugData& data) {
     physicsBodyCount_ = data.physicsBodyCount;
     audioVoiceCount_ = data.audioVoiceCount;
     chunkMeshQueueSize_ = data.chunkMeshQueueSize;
+    autosaveState_ = data.autosaveState;
+    autosaveNextSave_ = data.autosaveNextSave;
+    autosaveDirtyChunks_ = data.autosaveDirtyChunks;
+    autosaveSavingChunks_ = data.autosaveSavingChunks;
+    autosaveQueuedChunks_ = data.autosaveQueuedChunks;
 
     FABRIC_PLOT("Draw Calls", static_cast<int64_t>(data.drawCallCount));
     FABRIC_PLOT("GPU Time (ms)", static_cast<double>(data.gpuTimeMs));

@@ -45,14 +45,23 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 namespace recurse::systems {
 
 namespace {
 
-constexpr int K_AUTOSAVE_SAVED_FRAMES = 120;
+constexpr float K_AUTOSAVE_COUNTDOWN_WINDOW_SECONDS = 10.0f;
+constexpr float K_AUTOSAVE_SAVED_SECONDS = 4.0f;
+constexpr float K_FALLBACK_FRAME_SECONDS = 1.0f / 60.0f;
 
+std::string formatAutosaveSeconds(float seconds) {
+    char buffer[16];
+    std::snprintf(buffer, sizeof(buffer), "%.1fs", std::max(0.0f, seconds));
+    return buffer;
 }
+
+} // namespace
 
 void DebugOverlaySystem::doInit(fabric::AppContext& ctx) {
     if (auto* wl = ctx.worldLifecycle) {
@@ -340,6 +349,7 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             cpuMs = 1000.0f * static_cast<float>(static_cast<double>(stats->cpuTimeEnd - stats->cpuTimeBegin) /
                                                  static_cast<double>(stats->cpuTimerFreq));
         }
+        float frameSeconds = cpuMs > 0.0f ? (cpuMs / 1000.0f) : K_FALLBACK_FRAME_SECONDS;
 
         DebugData debugData;
         debugData.fps = (cpuMs > 0.0f) ? 1000.0f / cpuMs : 0.0f;
@@ -376,8 +386,6 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
         debugData.audioVoiceCount = static_cast<int>(audio_->activeSoundCount());
         debugData.chunkMeshQueueSize = 0; // No accessor available; would need VoxelMeshingSystem::pendingQueueSize()
 
-        debugHUD_.update(debugData);
-
         recurse::AutosaveIndicatorData autosaveData;
         if (chunks_ && chunks_->session()) {
             auto saveStatus = chunks_->session()->runtimeStatusSnapshot().saveActivity;
@@ -388,49 +396,72 @@ void DebugOverlaySystem::render(fabric::AppContext& ctx) {
             bool hasPending = pendingDirty > 0 || saveStatus.preparedChunks > 0;
             bool hasWork = saveStatus.dirtyChunks > 0 || saveStatus.savingChunks > 0 || saveStatus.preparedChunks > 0;
 
+            debugData.autosaveDirtyChunks = static_cast<int>(pendingDirty);
+            debugData.autosaveSavingChunks = static_cast<int>(saveStatus.savingChunks);
+            debugData.autosaveQueuedChunks = static_cast<int>(saveStatus.preparedChunks);
+            if (saveStatus.secondsUntilNextSave >= 0.0f) {
+                debugData.autosaveNextSave = formatAutosaveSeconds(saveStatus.secondsUntilNextSave);
+            } else if (saveStatus.preparedChunks > 0) {
+                debugData.autosaveNextSave = "queued";
+            }
+
             if (saveStatus.hasError) {
                 autosaveData.visible = true;
                 autosaveData.statusText = "Autosave issue";
                 autosaveData.detailText =
                     saveStatus.lastError.empty() ? "Save failed. Retry pending." : saveStatus.lastError;
-                autosaveSavedFramesRemaining_ = 0;
+                autosaveSavedSecondsRemaining_ = 0.0f;
+                debugData.autosaveState = "Issue";
             } else if (hasSaving) {
                 autosaveData.visible = true;
                 autosaveData.statusText = "Saving...";
-                autosaveData.detailText = std::to_string(saveStatus.savingChunks) + " chunk(s) writing";
+                autosaveData.detailText = "Writing recent world changes";
                 autosaveHadWork_ = true;
-                autosaveSavedFramesRemaining_ = 0;
+                autosaveSavedSecondsRemaining_ = 0.0f;
+                debugData.autosaveState = "Saving";
+            } else if (pendingDirty > 0 && saveStatus.secondsUntilNextSave >= 0.0f &&
+                       saveStatus.secondsUntilNextSave <= K_AUTOSAVE_COUNTDOWN_WINDOW_SECONDS) {
+                autosaveData.visible = true;
+                autosaveData.statusText = "Autosave in " + formatAutosaveSeconds(saveStatus.secondsUntilNextSave);
+                autosaveData.detailText = "Recent world changes will be written soon";
+                autosaveHadWork_ = true;
+                autosaveSavedSecondsRemaining_ = 0.0f;
+                debugData.autosaveState = "Pending";
             } else if (hasPending) {
                 autosaveData.visible = true;
-                autosaveData.statusText = "Autosave pending";
-                autosaveData.detailText =
-                    std::to_string(pendingDirty) + " dirty, " + std::to_string(saveStatus.preparedChunks) + " queued";
+                autosaveData.statusText = "Autosave queued";
+                autosaveData.detailText = "Recent world changes are waiting to write";
                 autosaveHadWork_ = true;
-                autosaveSavedFramesRemaining_ = 0;
+                autosaveSavedSecondsRemaining_ = 0.0f;
+                debugData.autosaveState = "Pending";
             } else {
                 if (saveStatus.lastSuccessfulSerial != 0 &&
                     saveStatus.lastSuccessfulSerial != lastAutosaveSuccessSerial_) {
                     lastAutosaveSuccessSerial_ = saveStatus.lastSuccessfulSerial;
                     if (autosaveHadWork_)
-                        autosaveSavedFramesRemaining_ = K_AUTOSAVE_SAVED_FRAMES;
+                        autosaveSavedSecondsRemaining_ = K_AUTOSAVE_SAVED_SECONDS;
                     autosaveHadWork_ = false;
                 }
 
-                if (autosaveSavedFramesRemaining_ > 0) {
+                if (autosaveSavedSecondsRemaining_ > 0.0f) {
                     autosaveData.visible = true;
                     autosaveData.statusText = "Saved";
                     autosaveData.detailText = "All recent world changes are on disk";
-                    --autosaveSavedFramesRemaining_;
+                    autosaveSavedSecondsRemaining_ = std::max(0.0f, autosaveSavedSecondsRemaining_ - frameSeconds);
+                    debugData.autosaveState = "Saved";
+                } else {
+                    debugData.autosaveState = "Idle";
                 }
             }
 
-            if (!hasWork && !saveStatus.hasError)
-                autosaveHadWork_ = autosaveHadWork_ && autosaveSavedFramesRemaining_ > 0;
+            if (!hasWork && !saveStatus.hasError && autosaveSavedSecondsRemaining_ <= 0.0f)
+                autosaveHadWork_ = false;
         } else {
             lastAutosaveSuccessSerial_ = 0;
-            autosaveSavedFramesRemaining_ = 0;
+            autosaveSavedSecondsRemaining_ = 0.0f;
             autosaveHadWork_ = false;
         }
+        debugHUD_.update(debugData);
         autosavePanel_.update(autosaveData);
 
         // Periodic performance log (every 1000 frames)
@@ -543,11 +574,16 @@ void DebugOverlaySystem::doShutdown() {
 }
 
 void DebugOverlaySystem::onWorldBegin() {
-    // Debug state is reactive; no initialization needed.
+    lastAutosaveSuccessSerial_ = 0;
+    autosaveSavedSecondsRemaining_ = 0.0f;
+    autosaveHadWork_ = false;
 }
 
 void DebugOverlaySystem::onWorldEnd() {
     btDebugSelectedNpc_ = flecs::entity{};
+    lastAutosaveSuccessSerial_ = 0;
+    autosaveSavedSecondsRemaining_ = 0.0f;
+    autosaveHadWork_ = false;
 }
 
 void DebugOverlaySystem::configureDependencies() {

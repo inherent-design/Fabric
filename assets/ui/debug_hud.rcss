@@ -1,4 +1,7 @@
 body {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
     font-family: "Commit Mono";
     font-size: 14dp;
     color: #e0e0e0;
@@ -11,5 +14,25 @@ body {
     padding: 8dp 12dp;
     background-color: #00000099;
     border: 1dp #ffffff33;
-    width: 320dp;
+    width: 340dp;
+}
+
+.debug-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10dp;
+    margin-bottom: 3dp;
+}
+
+.debug-label {
+    color: #888888;
+    width: 96dp;
+}
+
+.debug-value {
+    color: #ffffff;
+    width: 220dp;
+    text-align: right;
 }

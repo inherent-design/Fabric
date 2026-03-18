@@ -16,6 +16,11 @@ TEST(DebugDataTest, DefaultInitialization) {
     EXPECT_FLOAT_EQ(data.cameraPosition.z, 0.0f);
     EXPECT_EQ(data.currentRadius, 0);
     EXPECT_EQ(data.currentState, "None");
+    EXPECT_EQ(data.autosaveState, "Idle");
+    EXPECT_EQ(data.autosaveNextSave, "-");
+    EXPECT_EQ(data.autosaveDirtyChunks, 0);
+    EXPECT_EQ(data.autosaveSavingChunks, 0);
+    EXPECT_EQ(data.autosaveQueuedChunks, 0);
 }
 
 TEST(DebugDataTest, AssignValues) {
@@ -29,10 +34,20 @@ TEST(DebugDataTest, AssignValues) {
     data.cameraPosition = {10.0f, 20.0f, 30.0f};
     data.currentRadius = 8;
     data.currentState = "Grounded";
+    data.autosaveState = "Pending";
+    data.autosaveNextSave = "1.3s";
+    data.autosaveDirtyChunks = 2;
+    data.autosaveSavingChunks = 1;
+    data.autosaveQueuedChunks = 3;
 
     EXPECT_FLOAT_EQ(data.fps, 60.0f);
     EXPECT_EQ(data.entityCount, 1000);
     EXPECT_EQ(data.currentState, "Grounded");
+    EXPECT_EQ(data.autosaveState, "Pending");
+    EXPECT_EQ(data.autosaveNextSave, "1.3s");
+    EXPECT_EQ(data.autosaveDirtyChunks, 2);
+    EXPECT_EQ(data.autosaveSavingChunks, 1);
+    EXPECT_EQ(data.autosaveQueuedChunks, 3);
 }
 
 TEST(DebugHUDTest, DefaultNotVisible) {
