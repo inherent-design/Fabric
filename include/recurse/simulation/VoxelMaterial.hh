@@ -62,9 +62,10 @@ inline std::array<float, 4> unpackARGBColor(uint32_t color) {
     return {r, g, b, a};
 }
 
-/// Terrain render contract for the current smooth terrain path.
-/// Full-res chunk meshes and distant LOD sections both derive visible color from
-/// MaterialDef::baseColor. Chunk-local essence remains simulation/debug data.
+/// Terrain render contract for the current voxel-first production path.
+/// Full-res chunk meshes, optional smooth comparison meshes, and distant LOD
+/// sections all derive visible color from MaterialDef::baseColor. Chunk-local
+/// essence remains simulation/debug data.
 inline std::array<float, 4> terrainAppearanceColor(const MaterialDef& def) {
     return unpackARGBColor(def.baseColor);
 }
