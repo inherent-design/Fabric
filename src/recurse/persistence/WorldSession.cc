@@ -497,6 +497,24 @@ void WorldSession::updateLODRing(int centerCX, int centerCY, int centerCZ, int s
     lastLodCY_ = centerCY;
     lastLodCZ_ = centerCZ;
 
+    std::unordered_map<fabric::ChunkCoord, int, fabric::ChunkCoordHash> surfaceMaxByColumn;
+    if (terrainSystem_) {
+        const size_t lodDiameter = static_cast<size_t>(lodRadius * 2 + 1);
+        surfaceMaxByColumn.reserve(lodDiameter * lodDiameter);
+    }
+
+    struct LoadCandidate {
+        fabric::ChunkCoord coord;
+        int distSq = 0;
+    };
+
+    auto distSq = [&](const fabric::ChunkCoord& c) {
+        int ddx = c.x - centerCX;
+        int ddy = c.y - centerCY;
+        int ddz = c.z - centerCZ;
+        return ddx * ddx + ddy * ddy + ddz * ddz;
+    };
+
     auto isLodCandidate = [&](const fabric::ChunkCoord& c) -> bool {
         int ddx = c.x - centerCX;
         int ddy = c.y - centerCY;
@@ -504,7 +522,11 @@ void WorldSession::updateLODRing(int centerCX, int centerCY, int centerCZ, int s
         if (std::abs(ddx) <= chunkRadius && std::abs(ddy) <= chunkRadius && std::abs(ddz) <= chunkRadius)
             return false;
         if (terrainSystem_) {
-            int surfaceMax = terrainSystem_->worldGenerator().maxSurfaceHeight(c.x, c.z);
+            const fabric::ChunkCoord column{c.x, 0, c.z};
+            auto [it, inserted] = surfaceMaxByColumn.try_emplace(column, 0);
+            if (inserted)
+                it->second = terrainSystem_->worldGenerator().maxSurfaceHeight(c.x, c.z);
+            int surfaceMax = it->second;
             int chunkBottomY = c.y * K_CHUNK_SIZE;
             int chunkTopY = (c.y + 1) * K_CHUNK_SIZE;
             if (chunkBottomY > surfaceMax || chunkTopY < surfaceMax - K_CHUNK_SIZE)
@@ -513,15 +535,19 @@ void WorldSession::updateLODRing(int centerCX, int centerCY, int centerCZ, int s
         return true;
     };
 
-    std::vector<fabric::ChunkCoord> toLoad;
+    std::vector<LoadCandidate> toLoad;
+
+    auto considerCandidate = [&](const fabric::ChunkCoord& c) {
+        if (isLodCandidate(c) && !lodChunks_.contains(c))
+            toLoad.push_back({c, distSq(c)});
+    };
 
     if (isTeleport) {
         for (int ddz = -lodRadius; ddz <= lodRadius; ++ddz)
             for (int ddy = -lodRadius; ddy <= lodRadius; ++ddy)
                 for (int ddx = -lodRadius; ddx <= lodRadius; ++ddx) {
                     fabric::ChunkCoord c{centerCX + ddx, centerCY + ddy, centerCZ + ddz};
-                    if (isLodCandidate(c) && !lodChunks_.contains(c))
-                        toLoad.push_back(c);
+                    considerCandidate(c);
                 }
     } else {
         auto scanSlab = [&](int axis, int sign) {
@@ -535,8 +561,7 @@ void WorldSession::updateLODRing(int centerCX, int centerCY, int centerCZ, int s
                         c = {centerCX + a, centerCY + edge, centerCZ + b};
                     else
                         c = {centerCX + a, centerCY + b, centerCZ + edge};
-                    if (isLodCandidate(c) && !lodChunks_.contains(c))
-                        toLoad.push_back(c);
+                    considerCandidate(c);
                 }
             }
         };
@@ -548,19 +573,21 @@ void WorldSession::updateLODRing(int centerCX, int centerCY, int centerCZ, int s
             scanSlab(2, dz);
     }
 
-    auto distSq = [&](const fabric::ChunkCoord& c) {
-        int ddx = c.x - centerCX;
-        int ddy = c.y - centerCY;
-        int ddz = c.z - centerCZ;
-        return ddx * ddx + ddy * ddy + ddz * ddz;
-    };
-    std::sort(toLoad.begin(), toLoad.end(),
-              [&](const fabric::ChunkCoord& a, const fabric::ChunkCoord& b) { return distSq(a) < distSq(b); });
-
     int loadCount = std::min(static_cast<int>(toLoad.size()), lodGenBudget);
+    if (loadCount > 0) {
+        auto byDistance = [](const LoadCandidate& a, const LoadCandidate& b) {
+            return a.distSq < b.distSq;
+        };
+        if (static_cast<int>(toLoad.size()) > loadCount) {
+            std::partial_sort(toLoad.begin(), toLoad.begin() + loadCount, toLoad.end(), byDistance);
+            toLoad.resize(static_cast<size_t>(loadCount));
+        } else {
+            std::sort(toLoad.begin(), toLoad.end(), byDistance);
+        }
+    }
     FABRIC_ZONE_VALUE(loadCount);
     for (int i = 0; i < loadCount; ++i) {
-        const auto& c = toLoad[static_cast<size_t>(i)];
+        const auto& c = toLoad[static_cast<size_t>(i)].coord;
         if (lodSystem_)
             lodSystem_->requestDirectLOD(c.x, c.y, c.z);
         lodChunks_.insert(c);
