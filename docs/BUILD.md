@@ -30,6 +30,7 @@ mise run build:release
 
 | Task | Alias | Purpose |
 |------|-------|---------|
+| `clean` | none | Remove build artifacts |
 | `build` | `b`, `bd`, `build:debug` | Configure and build the debug preset |
 | `build:release` | `br` | Configure and build the release preset |
 | `run` | `r`, `rd`, `run:debug` | Run `Recurse` from the debug preset |
@@ -38,6 +39,8 @@ mise run build:release
 | `format:fix` | none | Auto-format tracked source files |
 | `lint` | none | clang-tidy on the full source set |
 | `lint:changed` | none | clang-tidy on changed files only |
+| `lint:fix` | `fix` | clang-tidy auto-fix on changed files |
+| `cppcheck` | none | Run cppcheck static analysis |
 | `test` | `t` | Unit tests |
 | `test:e2e` | none | E2E tests |
 | `test:all` | none | Unit plus E2E |
@@ -46,6 +49,8 @@ mise run build:release
 | `profile:release` | `pr` | Tracy-enabled RelWithDebInfo build |
 | `profile:capture` | `cap`, `profile:capture:debug` | Capture a debug Tracy trace |
 | `profile:capture:release` | `capr` | Capture a release-style Tracy trace |
+| `profile:view` | none | Open the latest `.tracy` capture in Tracy Profiler |
+| `profile:csv` | none | Export the latest `.tracy` capture to CSV |
 | `sanitize` | none | ASan plus UBSan build and test |
 | `sanitize:tsan` | none | ThreadSanitizer build and test |
 | `coverage` | none | Coverage build and report |
@@ -94,6 +99,7 @@ Important current build characteristics:
 - Vulkan is the only renderer backend the repository targets
 - FreeType may come from the system package or a fallback source build
 - Tracy and mimalloc are optional and controlled by CMake options and presets
+- benchmark and profiling validation currently expect the capture tasks, not ad-hoc manual profiler launches
 
 ## Platform notes
 
@@ -121,6 +127,7 @@ The build contract is intentionally conservative right now:
 - `FabricLib` remains the reusable engine anchor
 - Recurse remains the reference app and validation target
 - the default configuration keeps Greedy meshing as the production near path
+- SnapMC remains optional and experimental behind the pluggable mesher boundary
 - profiling and benchmark capture stay first-class workflows, not side scripts
 
 The combined Goal #4 plus meshing checkpoint wave is expected to change implementation internals, not the top-level build contract.
@@ -133,3 +140,5 @@ Over time the repository should support more application targets on top of the s
 - retain `FabricLib` as the reusable engine root
 - allow additional game or tool targets without collapsing the `fabric::` and `recurse::` boundary
 - keep profiling, analysis, and validation tasks as first-class build surfaces
+
+The deeper architecture is expected to keep moving toward ops-as-values, type-state, centralized execution, and broader multi-project readiness, but those shifts should fit inside the same top-level build and task model rather than replacing it.
