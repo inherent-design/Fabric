@@ -73,7 +73,7 @@ void VoxelSimulationSystem::tick() {
     std::vector<std::vector<CellSwap>> cellSwapsPerWorker(workerSlots);
     {
         FABRIC_ZONE_SCOPED_N("phase_3_simulate");
-        scheduler_.parallelFor(active.size(), [&](size_t jobIdx, size_t workerIdx) {
+        scheduler_.parallelFor(active.size(), "phase_3_simulate", [&](size_t jobIdx, size_t workerIdx) {
             const auto& pos = active[jobIdx].pos;
             std::mt19937 rng(static_cast<uint32_t>(worldSeed_ ^ spatialHash(pos)));
             bool reverseDir = (spatialHash(pos) & 1) != 0;

@@ -96,6 +96,28 @@ void fillUniformSection(LODSection& section, uint16_t materialId) {
     section.dirty = true;
 }
 
+void setSectionMaterial(LODSection& section, int lx, int ly, int lz, uint16_t materialId) {
+    auto it = std::find(section.palette.begin(), section.palette.end(), materialId);
+    uint16_t palIdx = 0;
+    if (it != section.palette.end()) {
+        palIdx = static_cast<uint16_t>(std::distance(section.palette.begin(), it));
+    } else {
+        palIdx = static_cast<uint16_t>(section.palette.size());
+        section.palette.push_back(materialId);
+    }
+    section.set(lx, ly, lz, palIdx);
+}
+
+void fillReductionSample(LODSection& section, int clx, int cly, int clz, uint16_t topMaterial,
+                         uint16_t bottomMaterial) {
+    for (int dz = 0; dz <= 1; ++dz) {
+        for (int dx = 0; dx <= 1; ++dx) {
+            setSectionMaterial(section, clx + dx, cly, clz + dz, bottomMaterial);
+            setSectionMaterial(section, clx + dx, cly + 1, clz + dz, topMaterial);
+        }
+    }
+}
+
 uint16_t sectionMaterialAt(const LODSection& section, int lx, int ly, int lz) {
     return section.materialOf(section.get(lx, ly, lz));
 }
@@ -308,6 +330,46 @@ TEST(LODGrid, ParallelFill_EmptySectionsAboveTerrain) {
     }
 }
 
+TEST(LODSystem, RenderSmallBatchFillFromSimulationGridMatchesSequential) {
+    recurse::systems::LODSystem lodSystem;
+    LODSystemTestHarness harness;
+    fabric::JobScheduler scheduler(2);
+    recurse::NoiseGenConfig cfg;
+    NaturalWorldGenerator gen(cfg);
+
+    std::tuple<int, int, int> coords[] = {{0, 0, 0}, {1, 0, 0}, {0, -1, 0}, {-1, 0, 1}};
+
+    SimulationGrid simGrid;
+    for (auto [cx, cy, cz] : coords) {
+        simGrid.registry().addChunk(cx, cy, cz);
+        simGrid.materializeChunk(cx, cy, cz);
+        auto* buf = simGrid.writeBuffer(cx, cy, cz);
+        ASSERT_NE(buf, nullptr);
+        gen.generateToBuffer(buf->data(), cx, cy, cz);
+        simGrid.syncChunkBuffers(cx, cy, cz);
+        lodSystem.pendingChunks_.emplace_back(cx, cy, cz);
+    }
+    simGrid.advanceEpoch();
+
+    lodSystem.simGrid_ = &simGrid;
+    lodSystem.scheduler_ = &scheduler;
+
+    auto ctx = harness.makeCtx();
+    lodSystem.render(ctx);
+
+    for (auto [cx, cy, cz] : coords) {
+        LODSection expected;
+        fillSectionFromGrid(expected, simGrid, cx, cy, cz);
+
+        auto* actual = lodSystem.grid_->get(LODSectionKey::make(0, cx, cy, cz));
+        ASSERT_NE(actual, nullptr);
+        for (int i = 0; i < LODSection::K_VOLUME; ++i) {
+            EXPECT_EQ(actual->materialOf(actual->blockIndices[i]), expected.materialOf(expected.blockIndices[i]))
+                << "section (" << cx << "," << cy << "," << cz << ") index=" << i;
+        }
+    }
+}
+
 TEST(LODGrid, Downsample_UsesAllEightChildrenAcrossParentExtent) {
     LODGrid grid;
     auto* parent = grid.getOrCreate(1, 0, 0, 0);
@@ -330,6 +392,29 @@ TEST(LODGrid, Downsample_UsesAllEightChildrenAcrossParentExtent) {
     EXPECT_EQ(sectionMaterialAt(*parent, 24, 8, 24), 15);
     EXPECT_EQ(sectionMaterialAt(*parent, 8, 24, 24), 16);
     EXPECT_EQ(sectionMaterialAt(*parent, 24, 24, 24), 17);
+}
+
+TEST(LODGrid, Downsample_PreservesThinSurfaceSemanticMaterialsOverStone) {
+    LODGrid grid;
+    auto* parent = grid.getOrCreate(1, 0, 0, 0);
+    ASSERT_NE(parent, nullptr);
+
+    std::array<LODSection, 8> storage;
+    std::array<LODSection*, 8> children{};
+    for (int idx = 0; idx < 8; ++idx) {
+        fillUniformSection(storage[static_cast<size_t>(idx)], material_ids::AIR);
+        children[static_cast<size_t>(idx)] = &storage[static_cast<size_t>(idx)];
+    }
+
+    fillReductionSample(storage[0], 0, 0, 0, material_ids::SAND, material_ids::STONE);
+    fillReductionSample(storage[0], 2, 0, 0, material_ids::GRAVEL, material_ids::STONE);
+    fillReductionSample(storage[0], 4, 0, 0, material_ids::DIRT, material_ids::STONE);
+
+    grid.downsample(*parent, children);
+
+    EXPECT_EQ(sectionMaterialAt(*parent, 0, 0, 0), material_ids::SAND);
+    EXPECT_EQ(sectionMaterialAt(*parent, 1, 0, 0), material_ids::GRAVEL);
+    EXPECT_EQ(sectionMaterialAt(*parent, 2, 0, 0), material_ids::DIRT);
 }
 
 TEST(LODGrid, GetOrCreate_UsesLevelScaledOriginAndAirDefaults) {
@@ -361,12 +446,12 @@ TEST(LODMeshManager, MeshSection_ScalesVerticesByLevel) {
     auto mesh = meshManager.meshSection(section);
     ASSERT_FALSE(mesh.empty());
 
-    float maxCoord = 0.0f;
+    uint8_t maxCoord = 0;
     for (const auto& vertex : mesh.vertices) {
-        maxCoord = std::max({maxCoord, vertex.px, vertex.py, vertex.pz});
+        maxCoord = std::max({maxCoord, vertex.posX(), vertex.posY(), vertex.posZ()});
     }
 
-    EXPECT_FLOAT_EQ(maxCoord, 4.0f);
+    EXPECT_EQ(maxCoord, 1u);
 }
 
 TEST(LODGrid, DirectWorldGenFill_MatchesAuthoritativeChunkMaterialSemantics) {
@@ -406,8 +491,8 @@ TEST(LODMeshManager, MeshSection_UsesTerrainAppearanceContract) {
     ASSERT_GE(mesh.palette.size(), 2u);
 
     for (const auto& vertex : mesh.vertices) {
-        EXPECT_EQ(vertex.getMaterialId(), 1u);
-        EXPECT_EQ(vertex.getAO(), recurse::SmoothVoxelVertex::K_SHADER_DEFAULT_AO);
+        EXPECT_EQ(vertex.paletteIndex(), 1u);
+        EXPECT_EQ(vertex.aoLevel(), 3u);
     }
 
     const auto expected = materials.terrainAppearanceColor(material_ids::WATER);
@@ -415,6 +500,27 @@ TEST(LODMeshManager, MeshSection_UsesTerrainAppearanceContract) {
     EXPECT_FLOAT_EQ(mesh.palette[1][1], expected[1]);
     EXPECT_FLOAT_EQ(mesh.palette[1][2], expected[2]);
     EXPECT_FLOAT_EQ(mesh.palette[1][3], expected[3]);
+}
+
+TEST(LODMeshManager, MeshSection_EmitsBoundaryVoxelFacesAtSectionEdge) {
+    recurse::simulation::MaterialRegistry materials;
+    LODGrid grid;
+    LODMeshManager meshManager(grid, materials);
+
+    LODSection section;
+    section.palette = {material_ids::AIR, material_ids::STONE};
+    section.blockIndices.assign(LODSection::K_VOLUME, 0);
+    section.set(LODSection::K_SIZE - 1, LODSection::K_SIZE - 1, LODSection::K_SIZE - 1, 1);
+
+    auto mesh = meshManager.meshSection(section);
+    ASSERT_FALSE(mesh.empty());
+
+    uint8_t maxCoord = 0;
+    for (const auto& vertex : mesh.vertices) {
+        maxCoord = std::max({maxCoord, vertex.posX(), vertex.posY(), vertex.posZ()});
+    }
+
+    EXPECT_EQ(maxCoord, static_cast<uint8_t>(LODSection::K_SIZE));
 }
 
 TEST(LODGrid, SectionChunkCoverage_UsesLevelScaledChunkSpan) {
@@ -521,4 +627,36 @@ TEST_F(LODSystemResidentRefreshTest, DirtyResidentParentDropsStaleGpuMeshWhenSec
     lodSystem.render(ctx);
 
     EXPECT_EQ(lodSystem.gpuSections_.count(parentKey.value), 0u);
+}
+
+TEST_F(LODSystemResidentRefreshTest, UploadSection_UsesVoxelFormatScaleAndPackedByteAccounting) {
+    recurse::systems::LODSystem lodSystem;
+    recurse::simulation::MaterialRegistry materials;
+    LODGrid grid;
+    LODMeshManager meshManager(grid, materials);
+
+    LODSection section;
+    section.level = 2;
+    section.palette = {material_ids::AIR, material_ids::STONE};
+    section.blockIndices.assign(LODSection::K_VOLUME, 0);
+    section.set(0, 0, 0, 1);
+
+    auto mesh = meshManager.meshSection(section);
+    ASSERT_FALSE(mesh.empty());
+
+    auto key = LODSectionKey::make(section.level, 0, 0, 0);
+    lodSystem.uploadSection(key, mesh);
+
+    auto gpuIt = lodSystem.gpuSections_.find(key.value);
+    ASSERT_NE(gpuIt, lodSystem.gpuSections_.end());
+    const auto& gpu = gpuIt->second;
+    EXPECT_TRUE(gpu.resident);
+    EXPECT_EQ(gpu.mesh.vertexFormat, recurse::ChunkMesh::VertexFormat::Voxel);
+    EXPECT_EQ(gpu.mesh.vertexStrideBytes, sizeof(recurse::VoxelVertex));
+    EXPECT_FLOAT_EQ(gpu.mesh.modelScale, 4.0f);
+
+    const auto debug = lodSystem.debugInfo();
+    const size_t expectedBytes = static_cast<size_t>(gpu.vertexCount) * sizeof(recurse::VoxelVertex) +
+                                 static_cast<size_t>(gpu.mesh.indexCount) * sizeof(uint32_t);
+    EXPECT_EQ(debug.estimatedGpuBytes, expectedBytes);
 }

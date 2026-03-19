@@ -1,10 +1,24 @@
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
+#include <cstdint>
 #include <mutex>
 #include <TaskScheduler.h>
 #include <thread>
 
 namespace fabric {
+
+namespace {
+
+void annotateParallelDispatchZone(std::string_view traceLabel, int64_t workUnits) {
+    (void)traceLabel;
+    (void)workUnits;
+    if (!traceLabel.empty()) {
+        FABRIC_ZONE_TEXT(traceLabel.data(), traceLabel.size());
+    }
+    FABRIC_ZONE_VALUE(workUnits);
+}
+
+} // namespace
 
 struct JobScheduler::PendingTask {
     enki::TaskSet task;
@@ -60,22 +74,51 @@ void JobScheduler::runInline(size_t count, const std::function<void(size_t jobId
 }
 
 void JobScheduler::parallelFor(size_t count, std::function<void(size_t jobIdx, size_t workerIdx)> fn) {
+    parallelFor(count, std::string_view{}, std::move(fn));
+}
+
+void JobScheduler::parallelFor(size_t count, std::string_view traceLabel,
+                               std::function<void(size_t jobIdx, size_t workerIdx)> fn) {
     FABRIC_ZONE_SCOPED_N("job_scheduler_dispatch");
+    annotateParallelDispatchZone(traceLabel, static_cast<int64_t>(count));
 
     if (count == 0)
         return;
 
     if (disabled_ || count == 1 || workerCount_ <= 1) {
+        FABRIC_ZONE_SCOPED_N("job_scheduler_inline_execute");
+        annotateParallelDispatchZone(traceLabel, static_cast<int64_t>(count));
         runInline(count, fn);
         return;
     }
 
-    enki::TaskSet taskSet(static_cast<uint32_t>(count), [&fn](enki::TaskSetPartition range, uint32_t threadnum) {
-        for (uint32_t i = range.start; i < range.end; ++i)
-            fn(static_cast<size_t>(i), static_cast<size_t>(threadnum));
-    });
-    scheduler_->AddTaskSetToPipe(&taskSet);
-    scheduler_->WaitforTask(&taskSet);
+    enki::TaskSet taskSet(static_cast<uint32_t>(count),
+                          [&fn, traceLabel](enki::TaskSetPartition range, uint32_t threadnum) {
+                              const auto partitionSize = static_cast<int64_t>(range.end - range.start);
+                              if (threadnum == 0) {
+                                  FABRIC_ZONE_SCOPED_N("job_scheduler_caller_execute");
+                                  annotateParallelDispatchZone(traceLabel, partitionSize);
+                                  for (uint32_t i = range.start; i < range.end; ++i)
+                                      fn(static_cast<size_t>(i), static_cast<size_t>(threadnum));
+                                  return;
+                              }
+
+                              FABRIC_ZONE_SCOPED_N("job_scheduler_worker_execute");
+                              annotateParallelDispatchZone(traceLabel, partitionSize);
+                              for (uint32_t i = range.start; i < range.end; ++i)
+                                  fn(static_cast<size_t>(i), static_cast<size_t>(threadnum));
+                          });
+
+    {
+        FABRIC_ZONE_SCOPED_N("job_scheduler_enqueue");
+        annotateParallelDispatchZone(traceLabel, static_cast<int64_t>(count));
+        scheduler_->AddTaskSetToPipe(&taskSet);
+    }
+    {
+        FABRIC_ZONE_SCOPED_N("job_scheduler_wait");
+        annotateParallelDispatchZone(traceLabel, static_cast<int64_t>(count));
+        scheduler_->WaitforTask(&taskSet);
+    }
 }
 
 void JobScheduler::submitAsync(std::function<void()> work, bool background) {

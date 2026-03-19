@@ -9,6 +9,7 @@
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/render/Camera.hh"
 #include "fabric/render/SceneView.hh"
+#include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/LODGrid.hh"
 #include "recurse/render/LODMeshManager.hh"
@@ -18,14 +19,69 @@
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelRenderSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
-#include "recurse/world/SmoothVoxelVertex.hh"
+#include "recurse/world/VoxelVertex.hh"
 #include "recurse/world/WorldGenerator.hh"
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <utility>
 #include <vector>
 
 namespace recurse::systems {
+
+namespace {
+
+constexpr size_t K_INLINE_LOD_FILL_TASK_THRESHOLD = 2;
+constexpr size_t K_COARSENED_LOD_FILL_TASK_THRESHOLD = 4;
+constexpr size_t K_COARSENED_LOD_FILL_JOB_COUNT = 2;
+
+struct LODGenTask {
+    LODSection* section;
+    int cx, cy, cz;
+    bool useWorldGen;
+};
+
+std::pair<size_t, size_t> partitionRange(size_t taskCount, size_t jobCount, size_t jobIdx) {
+    const size_t start = (jobIdx * taskCount) / jobCount;
+    const size_t end = ((jobIdx + 1) * taskCount) / jobCount;
+    return {start, end};
+}
+
+void fillLODSectionTask(const LODGenTask& task, recurse::simulation::SimulationGrid* grid, WorldGenerator* gen) {
+    auto* section = task.section;
+    section->origin = LODGrid::sectionOrigin(0, task.cx, task.cy, task.cz);
+    section->palette.clear();
+    section->palette.push_back(simulation::material_ids::AIR);
+    section->blockIndices.assign(LODSection::K_VOLUME, 0);
+
+    for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
+        for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
+            for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
+                int wx = section->origin.x + lx;
+                int wy = section->origin.y + ly;
+                int wz = section->origin.z + lz;
+
+                uint16_t matId =
+                    task.useWorldGen ? gen->sampleMaterial(wx, wy, wz) : grid->readCell(wx, wy, wz).materialId;
+
+                uint16_t palIdx = 0;
+                auto it = std::find(section->palette.begin(), section->palette.end(), matId);
+                if (it != section->palette.end()) {
+                    palIdx = static_cast<uint16_t>(std::distance(section->palette.begin(), it));
+                } else {
+                    palIdx = static_cast<uint16_t>(section->palette.size());
+                    section->palette.push_back(matId);
+                }
+                section->set(lx, ly, lz, palIdx);
+            }
+        }
+    }
+
+    section->dirty = true;
+}
+
+} // namespace
 
 LODSystem::LODSystem() : grid_(std::make_unique<LODGrid>()) {}
 
@@ -89,12 +145,7 @@ void LODSystem::render(fabric::AppContext& ctx) {
 
     // Generate pending LOD sections (budget-capped parallel fill).
     if (scheduler_) {
-        struct GenTask {
-            LODSection* section;
-            int cx, cy, cz;
-            bool useWorldGen;
-        };
-        std::vector<GenTask> tasks;
+        std::vector<LODGenTask> tasks;
         tasks.reserve(static_cast<size_t>(genBudget_));
 
         while (simGrid_ && !pendingChunks_.empty() && static_cast<int>(tasks.size()) < genBudget_) {
@@ -116,46 +167,30 @@ void LODSystem::render(fabric::AppContext& ctx) {
         }
 
         if (!tasks.empty()) {
+            FABRIC_ZONE_SCOPED_N("lod_section_fill");
+            FABRIC_ZONE_VALUE(static_cast<int64_t>(tasks.size()));
             auto* grid = simGrid_;
             auto* gen = terrain_ ? &terrain_->worldGenerator() : nullptr;
-            scheduler_->parallelFor(tasks.size(), [&tasks, grid, gen](size_t idx, size_t /*workerIdx*/) {
-                auto& task = tasks[idx];
-                auto* section = task.section;
-
-                section->origin = LODGrid::sectionOrigin(0, task.cx, task.cy, task.cz);
-                section->palette.clear();
-                section->palette.push_back(simulation::material_ids::AIR);
-                section->blockIndices.assign(LODSection::K_VOLUME, 0);
-
-                for (int lz = 0; lz < LODSection::K_SIZE; ++lz) {
-                    for (int ly = 0; ly < LODSection::K_SIZE; ++ly) {
-                        for (int lx = 0; lx < LODSection::K_SIZE; ++lx) {
-                            int wx = section->origin.x + lx;
-                            int wy = section->origin.y + ly;
-                            int wz = section->origin.z + lz;
-
-                            uint16_t matId;
-                            if (task.useWorldGen) {
-                                matId = gen->sampleMaterial(wx, wy, wz);
-                            } else {
-                                matId = grid->readCell(wx, wy, wz).materialId;
-                            }
-
-                            uint16_t palIdx = 0;
-                            auto it = std::find(section->palette.begin(), section->palette.end(), matId);
-                            if (it != section->palette.end()) {
-                                palIdx = static_cast<uint16_t>(std::distance(section->palette.begin(), it));
-                            } else {
-                                palIdx = static_cast<uint16_t>(section->palette.size());
-                                section->palette.push_back(matId);
-                            }
-                            section->set(lx, ly, lz, palIdx);
-                        }
-                    }
-                }
-
-                section->dirty = true;
-            });
+            if (tasks.size() <= K_INLINE_LOD_FILL_TASK_THRESHOLD) {
+                FABRIC_ZONE_SCOPED_N("lod_section_fill_inline");
+                FABRIC_ZONE_VALUE(static_cast<int64_t>(tasks.size()));
+                for (const auto& task : tasks)
+                    fillLODSectionTask(task, grid, gen);
+            } else if (tasks.size() <= K_COARSENED_LOD_FILL_TASK_THRESHOLD) {
+                const size_t jobCount = std::min(tasks.size(), K_COARSENED_LOD_FILL_JOB_COUNT);
+                scheduler_->parallelFor(
+                    jobCount, "lod_section_fill",
+                    [&tasks, taskCount = tasks.size(), jobCount, grid, gen](size_t jobIdx, size_t /*workerIdx*/) {
+                        auto [start, end] = partitionRange(taskCount, jobCount, jobIdx);
+                        for (size_t taskIdx = start; taskIdx < end; ++taskIdx)
+                            fillLODSectionTask(tasks[taskIdx], grid, gen);
+                    });
+            } else {
+                scheduler_->parallelFor(tasks.size(), "lod_section_fill",
+                                        [&tasks, grid, gen](size_t idx, size_t /*workerIdx*/) {
+                                            fillLODSectionTask(tasks[idx], grid, gen);
+                                        });
+            }
         }
     }
 
@@ -373,10 +408,9 @@ void LODSystem::uploadSection(LODSectionKey key, const recurse::LODMeshManager::
     auto& gpu = it->second;
 
     // Create vertex buffer (copy: mesh data is temporary); reset destroys old handle
-    bgfx::VertexLayout layout = SmoothVoxelVertex::getVertexLayout();
+    bgfx::VertexLayout layout = VoxelVertex::getVertexLayout();
     gpu.mesh.vbh.reset(bgfx::createVertexBuffer(
-        bgfx::copy(mesh.vertices.data(), static_cast<uint32_t>(mesh.vertices.size() * sizeof(SmoothVoxelVertex))),
-        layout));
+        bgfx::copy(mesh.vertices.data(), static_cast<uint32_t>(mesh.vertices.size() * sizeof(VoxelVertex))), layout));
 
     // Create index buffer (copy: mesh data is temporary); reset destroys old handle
     gpu.mesh.ibh.reset(bgfx::createIndexBuffer(
@@ -386,6 +420,9 @@ void LODSystem::uploadSection(LODSectionKey key, const recurse::LODMeshManager::
     gpu.vertexCount = static_cast<uint32_t>(mesh.vertices.size());
     gpu.mesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
     gpu.mesh.palette = mesh.palette;
+    gpu.mesh.vertexFormat = recurse::ChunkMesh::VertexFormat::Voxel;
+    gpu.mesh.vertexStrideBytes = sizeof(VoxelVertex);
+    gpu.mesh.modelScale = static_cast<float>(LODGrid::sectionScale(key.level()));
     gpu.mesh.valid = true;
     gpu.resident = true;
 }
@@ -456,12 +493,11 @@ LODDebugInfo LODSystem::debugInfo() const {
         info.fullResRadius = (fullResCoverage_.maxCX - fullResCoverage_.minCX) / 2;
     }
 
-    constexpr size_t K_VERTEX_BYTES = 32; // SmoothVoxelVertex
-    constexpr size_t K_INDEX_BYTES = 4;   // uint32_t
+    constexpr size_t K_INDEX_BYTES = 4; // uint32_t
     size_t totalBytes = 0;
     for (const auto& [key, gpu] : gpuSections_) {
         if (gpu.resident)
-            totalBytes += gpu.vertexCount * K_VERTEX_BYTES + gpu.mesh.indexCount * K_INDEX_BYTES;
+            totalBytes += gpu.vertexCount * gpu.mesh.vertexStrideBytes + gpu.mesh.indexCount * K_INDEX_BYTES;
     }
     info.estimatedGpuBytes = totalBytes;
     return info;

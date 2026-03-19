@@ -4,6 +4,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -35,6 +36,10 @@ class JobScheduler {
     /// Dispatch count jobs and block until all complete.
     /// fn receives (jobIndex, workerIndex) so callers can seed per-job PRNGs.
     void parallelFor(size_t count, std::function<void(size_t jobIdx, size_t workerIdx)> fn);
+
+    /// Dispatch count jobs with an optional profiling label for attribution.
+    void parallelFor(size_t count, std::string_view traceLabel,
+                     std::function<void(size_t jobIdx, size_t workerIdx)> fn);
 
     /// Run all jobs inline on calling thread (deterministic, for tests).
     void disableForTesting();

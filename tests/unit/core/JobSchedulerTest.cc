@@ -147,6 +147,17 @@ TEST(JobSchedulerTest, LargeJobCount) {
     EXPECT_EQ(counter.load(), 10000);
 }
 
+TEST(JobSchedulerTest, ParallelForTraceLabelOverloadRunsAllJobs) {
+    JobScheduler scheduler(4);
+
+    std::atomic<int> counter{0};
+    scheduler.parallelFor(32, "trace_label_test", [&](size_t /*jobIdx*/, size_t /*workerIdx*/) {
+        counter.fetch_add(1, std::memory_order_relaxed);
+    });
+
+    EXPECT_EQ(counter.load(), 32);
+}
+
 // 12. submit() returns a value through the future
 TEST(JobSchedulerTest, SubmitReturnsValue) {
     JobScheduler scheduler(4);

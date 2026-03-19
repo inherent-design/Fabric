@@ -397,6 +397,12 @@ void PhysicsWorld::rebuildChunkCollisionBatch(const recurse::simulation::Simulat
     if (!initialized_ || chunks.empty())
         return;
 
+    if (chunks.size() == 1) {
+        FABRIC_ZONE_SCOPED_N("collision_single_chunk");
+        rebuildChunkCollision(grid, chunks.front().x, chunks.front().y, chunks.front().z);
+        return;
+    }
+
     // Per-worker scratch allocators (1MB each; worst case ~200KB for BVH construction).
     // enkiTS thread 0 = calling thread (participates during WaitforTask), so
     // total thread count is workerCount + 1.
@@ -409,7 +415,7 @@ void PhysicsWorld::rebuildChunkCollisionBatch(const recurse::simulation::Simulat
     std::vector<std::vector<TileShapeResult>> results(chunks.size());
     {
         FABRIC_ZONE_SCOPED_N("collision_parallel_gen");
-        scheduler.parallelFor(chunks.size(), [&](size_t jobIdx, size_t workerIdx) {
+        scheduler.parallelFor(chunks.size(), "collision_parallel_gen", [&](size_t jobIdx, size_t workerIdx) {
             const auto& key = chunks[jobIdx];
             auto isSolid = [&grid](int wx, int wy, int wz) {
                 return grid.readCell(wx, wy, wz).materialId != recurse::simulation::material_ids::AIR;
