@@ -7,18 +7,15 @@
 
 namespace fabric {
 
-namespace {
-
-void annotateParallelDispatchZone(std::string_view traceLabel, int64_t workUnits) {
-    (void)traceLabel;
-    (void)workUnits;
-    if (!traceLabel.empty()) {
-        FABRIC_ZONE_TEXT(traceLabel.data(), traceLabel.size());
-    }
-    FABRIC_ZONE_VALUE(workUnits);
-}
-
-} // namespace
+#define FABRIC_ANNOTATE_PARALLEL_DISPATCH(traceLabel, workUnits)                                                       \
+    do {                                                                                                               \
+        const auto& fabricTraceLabel_ = (traceLabel);                                                                  \
+        const auto fabricWorkUnits_ = (workUnits);                                                                     \
+        if (!fabricTraceLabel_.empty()) {                                                                              \
+            FABRIC_ZONE_TEXT(fabricTraceLabel_.data(), fabricTraceLabel_.size());                                      \
+        }                                                                                                              \
+        FABRIC_ZONE_VALUE(fabricWorkUnits_);                                                                           \
+    } while (false)
 
 struct JobScheduler::PendingTask {
     enki::TaskSet task;
@@ -80,14 +77,14 @@ void JobScheduler::parallelFor(size_t count, std::function<void(size_t jobIdx, s
 void JobScheduler::parallelFor(size_t count, std::string_view traceLabel,
                                std::function<void(size_t jobIdx, size_t workerIdx)> fn) {
     FABRIC_ZONE_SCOPED_N("job_scheduler_dispatch");
-    annotateParallelDispatchZone(traceLabel, static_cast<int64_t>(count));
+    FABRIC_ANNOTATE_PARALLEL_DISPATCH(traceLabel, static_cast<int64_t>(count));
 
     if (count == 0)
         return;
 
     if (disabled_ || count == 1 || workerCount_ <= 1) {
         FABRIC_ZONE_SCOPED_N("job_scheduler_inline_execute");
-        annotateParallelDispatchZone(traceLabel, static_cast<int64_t>(count));
+        FABRIC_ANNOTATE_PARALLEL_DISPATCH(traceLabel, static_cast<int64_t>(count));
         runInline(count, fn);
         return;
     }
@@ -97,26 +94,26 @@ void JobScheduler::parallelFor(size_t count, std::string_view traceLabel,
                               const auto partitionSize = static_cast<int64_t>(range.end - range.start);
                               if (threadnum == 0) {
                                   FABRIC_ZONE_SCOPED_N("job_scheduler_caller_execute");
-                                  annotateParallelDispatchZone(traceLabel, partitionSize);
+                                  FABRIC_ANNOTATE_PARALLEL_DISPATCH(traceLabel, partitionSize);
                                   for (uint32_t i = range.start; i < range.end; ++i)
                                       fn(static_cast<size_t>(i), static_cast<size_t>(threadnum));
                                   return;
                               }
 
                               FABRIC_ZONE_SCOPED_N("job_scheduler_worker_execute");
-                              annotateParallelDispatchZone(traceLabel, partitionSize);
+                              FABRIC_ANNOTATE_PARALLEL_DISPATCH(traceLabel, partitionSize);
                               for (uint32_t i = range.start; i < range.end; ++i)
                                   fn(static_cast<size_t>(i), static_cast<size_t>(threadnum));
                           });
 
     {
         FABRIC_ZONE_SCOPED_N("job_scheduler_enqueue");
-        annotateParallelDispatchZone(traceLabel, static_cast<int64_t>(count));
+        FABRIC_ANNOTATE_PARALLEL_DISPATCH(traceLabel, static_cast<int64_t>(count));
         scheduler_->AddTaskSetToPipe(&taskSet);
     }
     {
         FABRIC_ZONE_SCOPED_N("job_scheduler_wait");
-        annotateParallelDispatchZone(traceLabel, static_cast<int64_t>(count));
+        FABRIC_ANNOTATE_PARALLEL_DISPATCH(traceLabel, static_cast<int64_t>(count));
         scheduler_->WaitforTask(&taskSet);
     }
 }
@@ -144,5 +141,7 @@ void JobScheduler::submitBackground(std::function<void()> fn) {
     }
     submitAsync(std::move(fn), true);
 }
+
+#undef FABRIC_ANNOTATE_PARALLEL_DISPATCH
 
 } // namespace fabric
