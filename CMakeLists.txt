@@ -271,6 +271,7 @@ set(RECURSE_GAME_SOURCE_FILES
 
     # config/
     src/recurse/config/RecurseConfig.cc
+    src/recurse/BenchmarkStartup.cc
 
     # components/
     src/recurse/components/EssenceTypes.cc
