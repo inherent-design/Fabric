@@ -132,7 +132,7 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
         }
 
         fabric::ChunkCoord coord{cl.cx, cl.cy, cl.cz};
-        auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
+        auto ent = ecsWorld.get().entity().set<fabric::BoundingBox>(
             {static_cast<float>(cl.cx * K_CHUNK_SIZE), static_cast<float>(cl.cy * K_CHUNK_SIZE),
              static_cast<float>(cl.cz * K_CHUNK_SIZE), static_cast<float>((cl.cx + 1) * K_CHUNK_SIZE),
              static_cast<float>((cl.cy + 1) * K_CHUNK_SIZE), static_cast<float>((cl.cz + 1) * K_CHUNK_SIZE)});
@@ -235,12 +235,13 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
     for (const auto& [cx, cy, cz] : toGenerate)
         readyChunks.push_back({cx, cy, cz});
 
-    // Create ECS entities for chunks ready this frame
+    // Create chunk tracker entities for chunks ready this frame.
+    // These are used for presence/debug bookkeeping, not SceneView culling.
     for (const auto& coord : readyChunks) {
         if (lodSystem_)
             lodSystem_->onChunkReady(coord.x, coord.y, coord.z);
 
-        auto ent = ecsWorld.get().entity().add<fabric::SceneEntity>().set<fabric::BoundingBox>(
+        auto ent = ecsWorld.get().entity().set<fabric::BoundingBox>(
             {static_cast<float>(coord.x * K_CHUNK_SIZE), static_cast<float>(coord.y * K_CHUNK_SIZE),
              static_cast<float>(coord.z * K_CHUNK_SIZE), static_cast<float>((coord.x + 1) * K_CHUNK_SIZE),
              static_cast<float>((coord.y + 1) * K_CHUNK_SIZE), static_cast<float>((coord.z + 1) * K_CHUNK_SIZE)});
