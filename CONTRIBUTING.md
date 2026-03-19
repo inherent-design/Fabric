@@ -1,20 +1,20 @@
-# Contributing to Fabric Engine
+# Contributing to Fabric
 
 ## Prerequisites
 
-- [mise](https://mise.jdx.dev/) (manages cmake, ninja, and task running)
-- C++20 compiler (Clang 13+, GCC 10+, MSVC 19.29+)
-- Platform-specific Vulkan tooling (see [Build Guide](docs/BUILD.md))
+- [mise](https://mise.jdx.dev/) for task execution and tool provisioning
+- A C++20 compiler: Apple Clang, GCC 10+, Clang 13+, or MSVC 19.29+
+- Platform Vulkan support as described in [docs/BUILD.md](docs/BUILD.md)
 
-### Platform Requirements
+### Platform requirements
 
-Vulkan is the sole rendering backend (SPIR-V shaders).
+Rendering is Vulkan-only.
 
-- **macOS**: Vulkan runs via MoltenVK. Install with `brew install molten-vk vulkan-loader`. The build sets `BUILD_RPATH` to `/opt/homebrew/lib` so the Vulkan loader is found at runtime.
-- **Linux**: Install Vulkan SDK and drivers for your GPU.
-- **Windows**: Install the LunarG Vulkan SDK.
+- **macOS**: install MoltenVK and the Vulkan loader with `brew install molten-vk vulkan-loader`
+- **Linux**: install the Vulkan SDK or distribution Vulkan packages plus GPU drivers
+- **Windows**: install the LunarG Vulkan SDK
 
-## Getting Started
+## Getting started
 
 ```bash
 git clone <repository-url>
@@ -24,294 +24,127 @@ mise run build
 mise run test
 ```
 
-## Task Reference
+## Task reference
 
-All tasks are defined in `mise.toml` and run via `mise run <task>`.
+All developer workflows live in `mise.toml` and run with `mise run <task>`.
 
 | Task | Alias | Description |
 |------|-------|-------------|
-| `build` | `b` | Configure and build (Debug) |
-| `build:release` | `br` | Configure and build (Release) |
-| `clean` | *none* | Remove build artifacts |
-| `run` | *none* | Build and run (Debug) |
-| `run:release` | *none* | Build and run (Release) |
-| `format` | *none* | Check clang-format |
-| `format:fix` | *none* | Auto-format with clang-format |
-| `lint` | *none* | Run clang-tidy on all source files (slow) |
-| `lint:changed` | *none* | Run clang-tidy on git-dirty files only (fast) |
-| `lint:fix` | `fix` | Run clang-tidy with auto-fix |
-| `cppcheck` | *none* | Run cppcheck static analysis |
-| `test` | `t` | Run unit tests |
-| `test:e2e` | *none* | Run E2E tests |
-| `test:all` | *none* | Run unit + E2E tests |
-| `test:filter` | `tf` | Run unit tests with gtest filter |
-| `profile` | *none* | Build with Tracy profiling (Debug) |
-| `profile:release` | *none* | Build with Tracy profiling (Release) |
-| `profile:capture` | *none* | Build + capture Tracy trace (Debug) |
-| `profile:view` | *none* | Open Tracy profiler GUI |
-| `profile:csv` | *none* | Export Tracy trace to CSV |
-| `sanitize` | *none* | ASan + UBSan build and run |
-| `sanitize:tsan` | *none* | ThreadSanitizer build and run |
-| `coverage` | *none* | Code coverage with lcov report |
-| `codeql` | *none* | CodeQL security analysis |
+| `build` | `b`, `bd`, `build:debug` | Configure and build the default debug preset |
+| `build:release` | `br` | Release build |
+| `run` | `r`, `rd`, `run:debug` | Build and run the debug app target |
+| `run:release` | `rr` | Run the release app target |
+| `format` | `fmt` | Check clang-format |
+| `format:fix` | none | Auto-format tracked source files |
+| `lint` | none | clang-tidy on the full source set |
+| `lint:changed` | none | clang-tidy on git-dirty files only |
+| `lint:fix` | `fix` | clang-tidy auto-fix on changed files |
+| `cppcheck` | none | cppcheck static analysis |
+| `test` | `t` | Unit tests |
+| `test:e2e` | none | End-to-end tests |
+| `test:all` | none | Unit plus E2E |
+| `test:filter` | `tf` | Unit tests with a gtest filter |
+| `profile` | `pd`, `p`, `profile:debug` | Tracy-enabled debug build |
+| `profile:release` | `pr` | Tracy-enabled release-style build |
+| `profile:capture` | `cap`, `profile:capture:debug` | Build and capture a Tracy trace |
+| `profile:capture:release` | `capr` | Capture a release-style Tracy trace |
+| `sanitize` | none | ASan plus UBSan build and run |
+| `sanitize:tsan` | none | ThreadSanitizer build and run |
+| `coverage` | none | Coverage report generation |
+| `codeql` | none | Local CodeQL analysis |
 
-## Development Workflow
+## Development workflow
 
-1. Create a feature branch from `main`
-2. Build and test:
+1. Branch from `dev`, or work on `dev` when that is the agreed integration branch.
+2. Build and test early.
    ```bash
-   mise run build && mise run test
+   mise run build
+   mise run test
    ```
-3. Lint (fast mode for iteration, full before submitting):
+3. Use focused validation while iterating, then broader checks before review.
    ```bash
    mise run lint:changed
    mise run lint
    ```
-4. Submit a pull request
-
-## Dependency Management
-
-All third-party libraries are fetched via [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) v0.42.1. Each library has a dedicated module in `cmake/modules/` (32 modules: 22 CPM dependencies + 10 shader/build modules).
-
-`CPM_SOURCE_CACHE=~/.cache/CPM` is configured in `mise.toml` to share downloads across builds. The build uses `ccache` when available.
-
-### CPM Patches
-
-Some dependencies require vendored fixes. `cmake/patches/` holds patch files applied via the CPM `PATCHES` argument. For example, `bgfx-vk-suboptimal.patch` fixes a case where bgfx treats `VK_SUBOPTIMAL_KHR` as a fatal error on window resize with MoltenVK.
-
-## Project Structure
-
-```
-fabric/                         # Engine (L0-L4)
-  include/fabric/
-    codec/                      # Encode/decode framework
-    core/                       # ECS, Resource, Event, Command, Pipeline,
-                                # Camera, Rendering, BVH, ChunkedGrid,
-                                # Spatial, Temporal, Types, Log, Constants
-    input/                      # Input routing and bindings
-    parser/                     # ArgumentParser, SyntaxTree, Token
-    platform/                   # FabricApp, SDL3 integration
-    render/                     # Render systems, vertex pools, shaders
-    ui/                         # RmlUi panels, BgfxRenderInterface, WebView
-    utils/                      # ErrorHandling, Profiler, Testing, BufferPool
-    world/                      # ChunkedGrid, ChunkCoordUtils
-  src/
-    core/                       # Engine implementation (.cc)
-    input/
-    platform/
-    render/
-    ui/
-    world/
-
-recurse/                        # Game (L5); depends on fabric, never reverse
-  include/recurse/
-    ai/                         # BehaviorTree debug panel
-    animation/                  # Skeletal animation
-    audio/                      # Miniaudio integration
-    character/                  # CharacterController, MovementFSM
-    components/                 # Game-specific ECS components
-    gameplay/                   # Game rules
-    persistence/                # Save/load, chunk storage
-    physics/                    # Jolt integration, collision
-    render/                     # Game-specific render systems
-    simulation/                 # FallingSand, voxel simulation
-    systems/                    # Per-frame game systems
-    ui/                         # DevConsole, game UI panels
-    world/                      # World generation, chunk pipeline
-  src/recurse/
-    ...                         # Mirrors include layout
-
-shaders/
-  oit/                          # Order-independent transparency
-  panini/                       # Panini projection
-  particle/                     # Particle system
-  post/                         # Post-processing (bloom, tonemap)
-  rmlui/                        # RmlUi render interface
-  shared/                       # Shared varying defs, fullscreen VS
-  skinned/                      # Skeletal animation
-  sky/                          # Atmospheric rendering
-  voxel/                        # Greedy mesh voxel
-  voxel-lighting/               # Smooth mesh voxel (merged LOD+Smooth)
-
-assets/
-  ui/                           # RmlUi documents (.rml, .rcss)
-  fonts/                        # Font files
-
-tests/
-  unit/                         # Unit tests (2089 tests, 135 files)
-  e2e/                          # End-to-end tests
-
-cmake/
-  modules/                      # 32 CMake modules
-  patches/                      # Vendored dependency patches
-
-CMakeLists.txt                  # Single static library (FabricLib)
-CMakePresets.json               # 13 configure presets (1 hidden base, 12 visible)
-mise.toml                       # Task runner and tool management
-```
-
-## Design Principles
-
-### Operations as values
-
-State mutations are expressed as data structures, not direct function calls. Instead of calling a method on a resource from inside a worker thread closure, submit an operation struct to an executor that owns the resource.
-
-```cpp
-// Instead of this (side effect in closure, raw pointer capture):
-scheduler.submit([store, cx, cy, cz]() {
-    store->loadChunk(cx, cy, cz);  // store might be destroyed
-});
-
-// Do this (operation is data, executor owns lifetime):
-pipeline.submit(LoadChunk{cx, cy, cz});
-// Executor resolves the operation; owns the store.
-```
+4. Update documentation in the same change when behavior, configuration, architecture guidance, or contributor workflow changed.
+5. Submit the pull request.
 
-This makes operations inspectable, batchable, cancellable, and replayable. Lifetime management is centralized in the executor, not distributed across closures.
+## Build and dependency notes
 
-### Compile-time correctness
+The build uses CMake plus CPM.cmake modules under `cmake/modules/`. `mise.toml` sets `CPM_SOURCE_CACHE=~/.cache/CPM` so repeated builds reuse downloads. Use package managers or CMake dependency plumbing for dependency changes. Do not hand-edit vendored metadata or lock-equivalent files.
 
-Use C++20 features to push validation to compile time:
+The current targets are:
 
-- **Concepts** for constraining template parameters at API boundaries
-- **`constexpr`/`consteval`** for compile-time computation and validation
-- **Phantom types** for encoding state in the type system (a `ChunkRef<Active>` exposes different methods than `ChunkRef<Loading>`)
-- **`requires` clauses** as precondition documentation that the compiler enforces
+- `FabricLib`: reusable engine static library
+- `RecurseGame`: game object library
+- `Recurse`: application executable
+- `UnitTests` and `E2ETests`
 
-```cpp
-// State encoded in the type; invalid usage is a compile error
-auto active = executor.resolve(Activate{coord});
-const auto& buf = active.readBuffer();   // OK: Active chunks are readable
-// loading.readBuffer();                 // COMPILE ERROR: Loading chunks are not
-```
+## Repository boundaries
 
-Use runtime checks only for inherently dynamic state (I/O results, user input, network).
+- `fabric::` is the engine layer
+- `recurse::` is the current game layer
+- dependency direction stays one way: game depends on engine, never reverse
 
-### RAII session boundaries
+Ask this before moving code into `fabric::`: would a second game on Fabric need this exact abstraction?
 
-Group related resources into a session object whose destructor guarantees complete cleanup. This prevents the class of bugs where teardown forgets to clean up some state.
+## Documentation conventions
 
-```cpp
-// WorldSession owns: store, save service, ECS entities, pending loads, streaming state
-// Destroying the session drains futures, flushes persistence, clears everything.
-std::unique_ptr<WorldSession> session_;
-void loadWorld(...) { session_ = std::make_unique<WorldSession>(...); }
-void unloadWorld() { session_.reset(); }  // complete by construction
-```
+- `README.md` is the hub and should stay short and scannable
+- `docs/*.md` are deep references and the source of truth for their topic
+- `CONTRIBUTING.md` stays workflow-focused
+- `CLAUDE.md` carries agent and implementation guidance that should match the real codebase
+- update docs in the same change when code or config behavior changed
 
-### Error composition
+Follow the prose rules from [docs/TOOLING.md](docs/TOOLING.md):
 
-Operations that can fail declare their error types. Composed operations merge error channels automatically. Do not create ad-hoc `FooResult` structs; use `fabric::fx::Result<A, Es...>` with tagged error types from `fabric/fx/Error.hh`.
+- technical reference tone
+- no em dashes, en dashes, or double hyphens in prose
+- no marketing language or fluff
+- prefer exact identifiers and defaults
 
-### Engine/game separation
+## Current project stance
 
-`fabric::` is the engine; `recurse::` is the game. The dependency is strictly one-way: game code depends on engine code, never reverse. Engine code must not reference game-specific types, constants, or assumptions.
+Contributors should preserve the current production posture:
 
-When adding engine features, ask: "Would a second game on Fabric need this?" If yes, it belongs in `fabric::`. If no, it belongs in `recurse::`.
+- Greedy meshing is the primary near-path production renderer
+- SnapMC is optional and experimental behind the pluggable mesher boundary
+- the shipped visual target is visibly voxel terrain, not smooth-surface replacement
 
-## Code Style
+The active short-term sequence combines Goal #4 with the meshing checkpoints:
 
-### Files
+1. instrument the Greedy production path
+2. remove the smooth-intermediate repack cost
+3. add a read-only mesh semantic and query adapter
+4. replace blind neighbor invalidation with semantic boundary decisions
+5. move LOD policy onto the same semantic authority
 
-- `.hh` for headers, `.cc` for source files
-- `#pragma once` header guards
+Other near-term work continues to tighten engine and game separation, benchmark automation, and multi-project readiness without destabilizing the Greedy-first shipped path.
 
-### Namespaces
+## Long-term direction
 
-Engine code lives under `fabric::` with sub-namespaces matching directory structure:
+The long arc of the codebase is unchanged:
 
-| Namespace | Domain |
-|-----------|--------|
-| `fabric` | Core engine types and systems |
-| `fabric::async` | Coroutine and async primitives |
-| `fabric::codec` | Encode/decode framework |
-| `fabric::log` | Logging utilities |
-| `fabric::world` | Chunk grid, coordinate utilities |
-| `recurse` | Game-layer types |
-| `recurse::physics` | Jolt physics integration |
-| `recurse::simulation` | Voxel simulation (FallingSand, materials) |
-| `recurse::systems` | Per-frame game systems |
+- ops-as-values instead of hidden side effects in worker closures
+- phantom type-state at API boundaries
+- centralized execution for world access
+- RAII session ownership for world-scoped state
+- a clean `fabric::` and `recurse::` boundary that supports more than one game
 
-Dependency is one-way: `recurse` depends on `fabric`, never reverse.
+Some scaffolding already exists in `fabric::fx::WorldContext`, `recurse::world::FunctionContracts`, and `recurse::simulation::VoxelSemanticView`, but contributors should treat those as evolving surfaces, not as proof that the migration is complete.
 
-### Naming
+## Code and commit expectations
 
-| Element | Convention | Example |
-|---------|------------|---------|
-| Classes, structs, enums | `PascalCase` | `ChunkSlot`, `VoxelCell` |
-| Functions, methods | `camelCase` | `advanceEpoch()`, `syncChunkBuffers()` |
-| Variables, parameters | `camelCase` | `chunkSize`, `workerCount` |
-| Constants | `K_SCREAMING_SNAKE` | `K_CHUNK_SIZE`, `K_DEFAULT_VIEW_ID` |
-| Macros | `FABRIC_MACRO_NAME` | `FABRIC_LOG_INFO`, `FABRIC_ZONE_SCOPED` |
+- `.hh` headers and `.cc` sources
+- `PascalCase` for types, `camelCase` for functions, `K_SCREAMING_SNAKE_CASE` for constants
+- prefer `throwError()` over raw `throw`
+- prefer `fabric::fx::Result<A, Es...>` over ad-hoc result structs
+- use Quill logging macros, not `printf` or `std::cerr`
+- add Tracy zones where frame analysis will need them
 
-Prefer `constexpr` over macros.
+Use conventional prefixes for commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `perf:`, `build:`.
 
-### Compiler Hints
-
-`fabric/core/CompilerHints.hh` provides cross-platform compiler attribute macros:
-
-| Macro | GCC/Clang | MSVC | Purpose |
-|-------|-----------|------|---------|
-| `FABRIC_ALWAYS_INLINE` | `[[gnu::always_inline]] inline` | `__forceinline` | Force inlining for zero-overhead wrappers |
-| `FABRIC_NOINLINE` | `[[gnu::noinline]]` | `__declspec(noinline)` | Prevent inlining for benchmarks and stack traces |
-
-Use these macros instead of raw compiler attributes.
-
-### Error Handling
-
-- `throwError()` from `fabric/utils/ErrorHandling.hh` for error conditions; not raw `throw`
-- `fabric::fx::Result<A, Es...>` for typed error handling (tagged errors from `fabric/fx/Error.hh`)
-- All exceptions subclass `FabricException`
-
-### Logging
-
-`FABRIC_LOG_*` macros from `fabric/core/Log.hh` (Quill v11, `{}` format placeholders):
-
-```cpp
-FABRIC_LOG_DEBUG("Chunk loaded at ({}, {}, {})", x, y, z);
-FABRIC_LOG_ERROR("Failed to decode FCHK: {}", reason);
-```
-
-Levels: `DEBUG`, `INFO`, `WARN`, `ERROR`, `CRITICAL`.
-
-### Profiling
-
-`FABRIC_ZONE_SCOPED` / `FABRIC_ZONE_SCOPED_N("name")` for Tracy profiling zones. Add to any function that may appear in frame traces.
-
-### Lifecycle
-
-All `SystemBase` subclasses override `doInit()` / `doShutdown()`. The base class provides non-virtual idempotent `init()` / `shutdown()` wrappers.
-
-### Comments
-
-Default to no comments. Code should be self-explanatory through naming and structure. Comment when:
-
-- The "why" is non-obvious (workaround, performance constraint, spec requirement)
-- The behavior has surprising side effects
-- A constant comes from an external spec (include the reference)
-
-Write code with future doc-gen in mind: clear naming, consistent patterns, structured types.
-
-## Writing and Prose
-
-- No em-dashes, en-dashes, or double-hyphens in prose; use semicolons, commas, or colons
-- No emojis
-- No superlatives or marketing language
-- Technical reference tone; precision over poetry
-- Say it once, clearly; no long-then-short restatement
-
-## Commits
-
-Conventional-style prefixes: `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`, `perf:`, `build:`
-
-Subject under 72 characters, imperative mood. Body explains why, not what. Bullet points for multi-line bodies.
-
-## Documentation
-
-- **README.md** is the hub: feature summary, quickstart, links to `docs/`
-- **docs/*.md** are deep reference per topic (source of truth for that domain)
-- **CONTRIBUTING.md** covers development workflow only
-- When changing code that affects documented behavior, update `docs/` in the same change
+Keep subjects under 72 characters and explain why in the body when a body is needed.
 
 ## License
 
