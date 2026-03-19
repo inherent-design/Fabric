@@ -10,6 +10,7 @@ namespace recurse::simulation {
 
 using EssenceVector = fabric::Vector4<float, fabric::Space::World>;
 
+/// Named semantic projection of the four-channel essence vector.
 struct EssenceValue {
     float order{0.0f};
     float chaos{0.0f};
@@ -41,6 +42,7 @@ struct TerrainAppearanceProjection {
     std::array<float, 4> color{0.0f, 0.0f, 0.0f, 0.0f};
 };
 
+/// Semantic occupancy projection used by query, debug, and interaction code.
 struct VoxelOccupancyProjection {
     bool occupied{false};
     bool blocksRaycast{false};
@@ -81,6 +83,11 @@ inline const char* moveTypeLabel(MoveType moveType) {
     }
 }
 
+/// Material-level semantic view independent of raw voxel storage layout.
+///
+/// This is the short-term mesh-facing semantic surface shared by chunk
+/// meshing, LOD generation, debug inspection, and other callers that should
+/// agree on terrain appearance without depending on low-level buffers.
 struct MaterialSemanticView {
     MaterialId materialId{material_ids::AIR};
     const MaterialDef* material{nullptr};
@@ -95,6 +102,7 @@ struct MaterialSemanticView {
     VoxelOccupancyProjection occupancy{};
 };
 
+/// Result of resolving optional per-voxel essence through a palette.
 struct SampledEssenceResolution {
     uint8_t index{0};
     bool hasPalette{false};
@@ -102,15 +110,22 @@ struct SampledEssenceResolution {
     std::optional<EssenceValue> value{};
 };
 
+/// Combined material semantics and sampled per-voxel essence.
 struct ResolvedVoxelSemantics {
     MaterialSemanticView material{};
     SampledEssenceResolution sampledEssence{};
 };
 
+/// Semantic registry layered over MaterialRegistry plus optional palette data.
+///
+/// The current Goal #4 plus meshing rollout uses this as a short-term semantic
+/// or query surface so render, mesh, debug, and gameplay code can agree on
+/// material meaning while raw VoxelCell storage remains a game-layer detail.
 class MaterialSemanticRegistry {
   public:
     explicit MaterialSemanticRegistry(const MaterialRegistry& materials) : materials_(&materials) {}
 
+    /// Resolve material-only semantics without per-voxel palette sampling.
     MaterialSemanticView view(MaterialId id) const {
         const auto& def = materials_->get(id);
 
@@ -131,6 +146,7 @@ class MaterialSemanticRegistry {
         return result;
     }
 
+    /// Resolve semantics for a voxel cell and optional essence palette.
     ResolvedVoxelSemantics resolve(const VoxelCell& cell, const recurse::EssencePalette* palette = nullptr) const {
         ResolvedVoxelSemantics result{};
         result.material = view(cell.materialId);
@@ -143,6 +159,7 @@ class MaterialSemanticRegistry {
         return result;
     }
 
+    /// Resolve semantics for a voxel cell using a required palette reference.
     ResolvedVoxelSemantics resolve(const VoxelCell& cell, const recurse::EssencePalette& palette) const {
         return resolve(cell, &palette);
     }

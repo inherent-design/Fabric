@@ -5,8 +5,11 @@
 
 namespace recurse {
 
-/// 32-byte vertex for smooth isosurface rendering (SnapMC / Surface Nets).
-/// Replaces 8-byte VoxelVertex for VP0+ smooth terrain pipeline.
+/// 32-byte smooth-terrain vertex used by smooth meshers and CPU-side staging.
+///
+/// Greedy is the current production near-chunk path and typically packs down
+/// to VoxelVertex before upload. This format remains the higher-fidelity
+/// interchange for optional smooth meshers and comparison paths.
 struct SmoothVoxelVertex {
     float px, py, pz;  // 12 bytes: chunk-local sub-voxel position
     float nx, ny, nz;  // 12 bytes: analytic normal from density gradient
@@ -31,7 +34,7 @@ struct SmoothVoxelVertex {
         return s_layout;
     }
 
-    /// Pack a raw material payload + AO + flags into the material field.
+    /// Pack a raw material payload plus AO and flags into the material field.
     /// Mesh extractors use this for intermediate material IDs before the
     /// render path repacks them to shader palette indices.
     static uint32_t packMaterial(uint16_t materialId, uint8_t ao = 255, uint8_t flags = 0) {

@@ -1,4 +1,4 @@
-# Launch Recurse and capture a Tracy trace to tracy/<timestamp>.tracy.
+# Launch Recurse directly into benchmark mode and capture a Tracy trace.
 # Env: PROFILE_MODE    - "debug" (default) or "release"
 #      CAPTURE_SECONDS  - seconds to capture (default: 30)
 #      CAPTURE_PORT     - Tracy listen port (default: 8086)
@@ -34,8 +34,8 @@ New-Item -ItemType Directory -Force -Path tracy | Out-Null
 $timestamp = Get-Date -Format "yyyy-MM-dd-HHmm"
 $outfile = "tracy\$timestamp.tracy"
 
-Write-Host "Starting Recurse ($preset)..."
-$proc = Start-Process -FilePath $bin -PassThru
+Write-Host "Starting Recurse ($preset) in benchmark mode..."
+$proc = Start-Process -FilePath $bin -ArgumentList "--benchmark" -PassThru
 
 Start-Sleep -Seconds 2
 

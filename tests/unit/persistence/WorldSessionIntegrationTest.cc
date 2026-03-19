@@ -19,6 +19,7 @@
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
 #include "recurse/world/EssencePalette.hh"
+#include "recurse/world/TestWorldGenerator.hh"
 #include "recurse/world/WorldGenerator.hh"
 
 #include <array>
@@ -29,6 +30,25 @@
 #include <flecs.h>
 
 namespace fs = std::filesystem;
+
+namespace {
+
+class CountingFlatWorldGenerator final : public recurse::FlatWorldGenerator {
+  public:
+    explicit CountingFlatWorldGenerator(int groundLevel) : recurse::FlatWorldGenerator(groundLevel) {}
+
+    int maxSurfaceHeight(int cx, int cz) const override {
+        ++maxSurfaceHeightCalls_;
+        return recurse::FlatWorldGenerator::maxSurfaceHeight(cx, cz);
+    }
+
+    int maxSurfaceHeightCalls() const { return maxSurfaceHeightCalls_; }
+
+  private:
+    mutable int maxSurfaceHeightCalls_ = 0;
+};
+
+} // namespace
 
 /// Integration tests for WorldSession lifecycle.
 /// Tests verify RAII behavior: open/close, event listener registration,
@@ -243,6 +263,91 @@ TEST_F(WorldSessionIntegrationTest, EventListenerMarksDirty) {
     dispatcher_.dispatchEvent(e);
 
     EXPECT_EQ(saveService->pendingCount(), 1u);
+}
+
+class WorldSessionLodRingOptimizationTest : public ::testing::Test {
+  protected:
+    void SetUp() override {
+        hub_.disableWorkerThreadsForTesting();
+        scheduler_.disableForTesting();
+
+        tmpDir_ =
+            fs::temp_directory_path() / ("fabric_world_session_lod_ring_test_" +
+                                         std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        fs::create_directories(tmpDir_);
+        worldDir_ = tmpDir_.string();
+
+        terrain_ = &systemRegistry_.registerSystem<recurse::systems::TerrainSystem>(fabric::SystemPhase::FixedUpdate);
+        ASSERT_TRUE(systemRegistry_.resolve());
+        auto ctx = makeCtx();
+        systemRegistry_.initAll(ctx);
+    }
+
+    void TearDown() override {
+        session_.reset();
+        systemRegistry_.shutdownAll();
+        fs::remove_all(tmpDir_);
+    }
+
+    fabric::AppContext makeCtx() {
+        return fabric::AppContext{
+            .world = world_,
+            .timeline = timeline_,
+            .dispatcher = dispatcher_,
+            .resourceHub = hub_,
+            .assetRegistry = assetRegistry_,
+            .systemRegistry = systemRegistry_,
+            .configManager = configManager_,
+        };
+    }
+
+    void openSession(recurse::systems::TerrainSystem* terrainSystem = nullptr) {
+        auto result = recurse::WorldSession::open(worldDir_, dispatcher_, scheduler_, world_.get(), nullptr, nullptr,
+                                                  nullptr, nullptr, terrainSystem);
+        ASSERT_TRUE(result.isSuccess()) << "WorldSession::open failed: "
+                                        << result.error<fabric::fx::IOError>().ctx.message;
+        session_ = std::move(result).value();
+    }
+
+    fabric::World world_;
+    fabric::Timeline timeline_;
+    fabric::EventDispatcher dispatcher_;
+    fabric::ResourceHub hub_;
+    fabric::AssetRegistry assetRegistry_{hub_};
+    fabric::SystemRegistry systemRegistry_;
+    fabric::ConfigManager configManager_;
+    fabric::JobScheduler scheduler_;
+    recurse::systems::TerrainSystem* terrain_ = nullptr;
+    std::unique_ptr<recurse::WorldSession> session_;
+    fs::path tmpDir_;
+    std::string worldDir_;
+};
+
+TEST_F(WorldSessionLodRingOptimizationTest, UpdateLODRingLoadsNearestBudgetedCandidatesWithoutFullSort) {
+    openSession();
+
+    session_->updateLODRing(0, 0, 0, 1, 2, 6);
+
+    const std::unordered_set<fabric::ChunkCoord, fabric::ChunkCoordHash> expected{
+        fabric::ChunkCoord{-2, 0, 0}, fabric::ChunkCoord{2, 0, 0},  fabric::ChunkCoord{0, -2, 0},
+        fabric::ChunkCoord{0, 2, 0},  fabric::ChunkCoord{0, 0, -2}, fabric::ChunkCoord{0, 0, 2},
+    };
+
+    EXPECT_EQ(session_->lodChunks().size(), expected.size());
+    for (const auto& coord : expected)
+        EXPECT_TRUE(session_->lodChunks().contains(coord));
+}
+
+TEST_F(WorldSessionLodRingOptimizationTest, UpdateLODRingCachesSurfaceHeightPerColumnWithinOneUpdate) {
+    auto generator = std::make_unique<CountingFlatWorldGenerator>(0);
+    auto* countingGenerator = generator.get();
+    terrain_->setWorldGenerator(std::move(generator));
+    openSession(terrain_);
+
+    session_->updateLODRing(0, 0, 0, 0, 2, 200);
+
+    EXPECT_EQ(countingGenerator->maxSurfaceHeightCalls(), 25);
+    EXPECT_EQ(session_->lodChunks().size(), 74u);
 }
 
 TEST_F(WorldSessionIntegrationTest, RuntimeStatusSnapshotIncludesSaveActivity) {
@@ -642,4 +747,29 @@ TEST_F(WorldSessionPersistedDeltaReopenTest, ReopenDistinguishesResidentPersiste
 
     voxelSim_->generateChunk(K_FAR_CX, K_FAR_CY, K_FAR_CZ);
     EXPECT_EQ(loadedMaterial(K_FAR_CX, K_FAR_CY, K_FAR_CZ), recurse::simulation::material_ids::STONE);
+}
+
+TEST_F(WorldSessionPersistedDeltaReopenTest, ReopenFallsBackWhenGeneratorFingerprintChanges) {
+    constexpr int K_CX = 1;
+    constexpr int K_CY = 0;
+    constexpr int K_CZ = 1;
+
+    const uint32_t originalFingerprint = terrain_->worldGenerator().worldgenFingerprint();
+
+    generateEditedChunk(K_CX, K_CY, K_CZ, recurse::simulation::material_ids::SAND);
+    auto blob = encodeDeltaBlobForCurrentChunk(K_CX, K_CY, K_CZ, originalFingerprint);
+    ASSERT_FALSE(blob.empty());
+    session_->chunkStore()->saveChunk(K_CX, K_CY, K_CZ, blob);
+    voxelSim_->removeChunk(K_CX, K_CY, K_CZ);
+
+    session_.reset();
+    voxelSim_->resetWorld();
+    voxelSim_->setWorldSeed(1337);
+    terrain_->setWorldGenerator(std::make_unique<recurse::FlatWorldGenerator>(2));
+    const uint32_t changedFingerprint = terrain_->worldGenerator().worldgenFingerprint();
+    ASSERT_NE(originalFingerprint, changedFingerprint);
+    openSession();
+
+    reloadChunkFromStore(K_CX, K_CY, K_CZ);
+    EXPECT_EQ(loadedMaterial(K_CX, K_CY, K_CZ), recurse::simulation::material_ids::AIR);
 }

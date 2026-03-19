@@ -27,12 +27,9 @@ namespace recurse::systems {
 namespace {
 
 void dispatchGenerationEvent(fabric::EventDispatcher& dispatcher, int cx, int cy, int cz) {
-    fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelSimulationSystem");
-    e.setData("cx", cx);
-    e.setData("cy", cy);
-    e.setData("cz", cz);
-    e.setData("source", static_cast<int>(ChangeSource::Generation));
-    dispatcher.dispatchEvent(e);
+    emitChunkChangeSummary(dispatcher, cx, cy, cz, ChangeSource::Generation, FunctionHistoryMode::SnapshotOnly,
+                           FunctionCostClass::ChunkLinear,
+                           recurse::simulation::ChunkFinalizationCause::StreamingGenerationReady);
 }
 
 uint32_t packVoxelCell(const recurse::simulation::VoxelCell& cell) {
@@ -103,12 +100,7 @@ void VoxelSimulationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fix
     // moved cells but the event was not emitted during parallel dispatch).
     if (dispatcher_) {
         for (const auto& pos : fabSim_->settledChunks()) {
-            fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelSimulationSystem");
-            e.setData("cx", pos.x);
-            e.setData("cy", pos.y);
-            e.setData("cz", pos.z);
-            e.setData("source", static_cast<int>(ChangeSource::Physics));
-            dispatcher_->dispatchEvent(e);
+            emitChunkChangeSummary(*dispatcher_, pos.x, pos.y, pos.z, ChangeSource::Physics);
         }
     }
 
@@ -187,12 +179,9 @@ void VoxelSimulationSystem::generateInitialWorld() {
 
     // Initialize Jolt physics collision for each chunk
     for (const auto& [cx, cy, cz] : generatedChunks) {
-        fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelSimulationSystem");
-        e.setData("cx", cx);
-        e.setData("cy", cy);
-        e.setData("cz", cz);
-        e.setData("source", static_cast<int>(ChangeSource::Generation));
-        dispatcher_->dispatchEvent(e);
+        emitChunkChangeSummary(*dispatcher_, cx, cy, cz, ChangeSource::Generation, FunctionHistoryMode::SnapshotOnly,
+                               FunctionCostClass::ChunkLinear,
+                               recurse::simulation::ChunkFinalizationCause::InitialWorldGenerationReady);
     }
 
     FABRIC_LOG_INFO("VoxelSimulationSystem: World generated ({} chunks in grid, collision synced)",
@@ -332,7 +321,7 @@ void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int
     {
         FABRIC_ZONE_SCOPED_N("gen_parallel");
         const auto& mats = fabSim_->materials();
-        sched.parallelFor(tasks.size(), [&](size_t idx, size_t /*workerIdx*/) {
+        sched.parallelFor(tasks.size(), "generation_batch", [&](size_t idx, size_t /*workerIdx*/) {
             gen.generateToBuffer(tasks[idx].buffer, tasks[idx].cx, tasks[idx].cy, tasks[idx].cz);
             if (tasks[idx].palette) {
                 recurse::simulation::assignEssence(tasks[idx].buffer, tasks[idx].cx, tasks[idx].cy, tasks[idx].cz, mats,

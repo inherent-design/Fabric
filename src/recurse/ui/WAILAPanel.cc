@@ -48,7 +48,7 @@ void WAILAPanel::update(const WAILAData& data) {
     hasHit_ = data.hasHit;
 
     if (data.hasHit) {
-        displayText_ = "";
+        displayText_ = data.displayText;
         voxelX_ = data.voxelX;
         voxelY_ = data.voxelY;
         voxelZ_ = data.voxelZ;

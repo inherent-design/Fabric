@@ -22,6 +22,11 @@ constexpr int log2Floor(int v) {
 }
 } // namespace detail
 
+/// Sparse infinite grid partitioned into fixed-size chunks.
+///
+/// ChunkSize is already part of the public contract. Current Recurse callers
+/// mostly use the default size of 32, but alternative chunk sizes remain part
+/// of the engine-facing template boundary for future multi-project use.
 template <typename T, int ChunkSize = 32> class ChunkedGrid {
   public:
     static_assert(ChunkSize > 0 && (ChunkSize & (ChunkSize - 1)) == 0, "ChunkSize must be a power of 2");
@@ -123,7 +128,9 @@ template <typename T, int ChunkSize = 32> class ChunkedGrid {
 
     void clear() { chunks_.clear(); }
 
-    // Returns: [+x, -x, +y, -y, +z, -z]
+    /// Return the 6 face-adjacent neighbor values around a world-space cell.
+    ///
+    /// The return order is {+x, -x, +y, -y, +z, -z}.
     std::array<T, 6> getNeighbors6(int x, int y, int z) const {
         return {{get(x + 1, y, z), get(x - 1, y, z), get(x, y + 1, z), get(x, y - 1, z), get(x, y, z + 1),
                  get(x, y, z - 1)}};

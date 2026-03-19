@@ -1,6 +1,8 @@
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/EssenceColor.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/simulation/VoxelSemanticView.hh"
+#include "recurse/world/EssencePalette.hh"
 
 #include <cmath>
 #include <gtest/gtest.h>
@@ -89,4 +91,81 @@ TEST_F(MaterialRegistryTest, TerrainAppearanceColorUsesBaseColorContract) {
 
     EXPECT_GT(std::fabs(terrainColor[0] - essenceColor[0]), 0.2f);
     EXPECT_GT(std::fabs(terrainColor[1] - essenceColor[1]), 0.1f);
+}
+
+TEST_F(MaterialRegistryTest, EssenceValueBridgesCurrentRepresentations) {
+    const auto& water = registry.get(material_ids::WATER);
+    const auto value = EssenceValue::fromMaterialDef(water);
+
+    const auto asArray = value.toArray();
+    const auto asVector = value.toVector();
+    const auto asSemantic = value.toSemanticEssence();
+
+    EXPECT_FLOAT_EQ(asArray[0], 0.0f);
+    EXPECT_FLOAT_EQ(asArray[2], 0.9f);
+    EXPECT_FLOAT_EQ(asVector.z, 0.9f);
+    EXPECT_FLOAT_EQ(asSemantic.life, 0.9f);
+
+    const auto roundTrip = EssenceValue::fromSemantic(asSemantic);
+    EXPECT_FLOAT_EQ(roundTrip.life, 0.9f);
+    EXPECT_EQ(roundTrip.dominant(), recurse::EssenceType::Life);
+}
+
+TEST_F(MaterialRegistryTest, MaterialSemanticRegistryMirrorsCurrentMaterialTruth) {
+    MaterialSemanticRegistry semantics(registry);
+
+    const auto sand = semantics.view(material_ids::SAND);
+
+    EXPECT_STREQ(sand.displayName, "Sand");
+    EXPECT_EQ(sand.moveType, MoveType::Powder);
+    EXPECT_STREQ(sand.moveTypeName, "Powder");
+    EXPECT_EQ(sand.materialDensity, 130);
+    EXPECT_EQ(sand.viscosity, 0);
+    EXPECT_TRUE(sand.occupancy.occupied);
+    EXPECT_TRUE(sand.occupancy.blocksRaycast);
+    EXPECT_FLOAT_EQ(sand.occupancy.density, 1.0f);
+    EXPECT_FLOAT_EQ(sand.terrainAppearance.color[0], 194.0f / 255.0f);
+    EXPECT_FLOAT_EQ(sand.intrinsicEssence.order, 0.3f);
+    EXPECT_FLOAT_EQ(sand.intrinsicEssence.life, 0.3f);
+}
+
+TEST_F(MaterialRegistryTest, ResolveVoxelSemanticsUsesChunkLocalPaletteAsOptionalContext) {
+    MaterialSemanticRegistry semantics(registry);
+    recurse::EssencePalette palette;
+
+    const auto index = palette.addEntryRaw({0.1f, 0.2f, 0.3f, 0.4f});
+    ASSERT_LT(index, 256u);
+
+    VoxelCell cell;
+    cell.materialId = material_ids::STONE;
+    cell.essenceIdx = static_cast<uint8_t>(index);
+
+    const auto resolved = semantics.resolve(cell, palette);
+
+    EXPECT_STREQ(resolved.material.displayName, "Stone");
+    EXPECT_EQ(resolved.sampledEssence.index, index);
+    EXPECT_TRUE(resolved.sampledEssence.hasPalette);
+    EXPECT_TRUE(resolved.sampledEssence.inRange);
+    ASSERT_TRUE(resolved.sampledEssence.value.has_value());
+    EXPECT_FLOAT_EQ(resolved.sampledEssence.value->order, 0.1f);
+    EXPECT_FLOAT_EQ(resolved.sampledEssence.value->chaos, 0.2f);
+    EXPECT_FLOAT_EQ(resolved.sampledEssence.value->life, 0.3f);
+    EXPECT_FLOAT_EQ(resolved.sampledEssence.value->decay, 0.4f);
+}
+
+TEST_F(MaterialRegistryTest, ResolveVoxelSemanticsDoesNotTreatEssenceIndexAsCanonicalWithoutPalette) {
+    MaterialSemanticRegistry semantics(registry);
+
+    VoxelCell cell;
+    cell.materialId = material_ids::DIRT;
+    cell.essenceIdx = 17;
+
+    const auto resolved = semantics.resolve(cell, nullptr);
+
+    EXPECT_STREQ(resolved.material.displayName, "Dirt");
+    EXPECT_FALSE(resolved.sampledEssence.hasPalette);
+    EXPECT_FALSE(resolved.sampledEssence.inRange);
+    EXPECT_FALSE(resolved.sampledEssence.value.has_value());
+    EXPECT_FLOAT_EQ(resolved.material.intrinsicEssence.order, 0.2f);
+    EXPECT_FLOAT_EQ(resolved.material.intrinsicEssence.life, 0.6f);
 }

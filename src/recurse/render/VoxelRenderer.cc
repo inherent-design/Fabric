@@ -117,6 +117,9 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, float offse
     // Camera-relative transform supplied by caller.
     float mtx[16];
     bx::mtxIdentity(mtx);
+    mtx[0] = mesh.modelScale;
+    mtx[5] = mesh.modelScale;
+    mtx[10] = mesh.modelScale;
     mtx[12] = offsetX;
     mtx[13] = offsetY;
     mtx[14] = offsetZ;
@@ -281,6 +284,9 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
 
             float mtx[16];
             bx::mtxIdentity(mtx);
+            mtx[0] = ci.mesh->modelScale;
+            mtx[5] = ci.mesh->modelScale;
+            mtx[10] = ci.mesh->modelScale;
             mtx[12] = ci.offsetX;
             mtx[13] = ci.offsetY;
             mtx[14] = ci.offsetZ;

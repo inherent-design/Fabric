@@ -3,12 +3,15 @@
 #include "fabric/core/AppContext.hh"
 #include "fabric/log/Log.hh"
 #include "fabric/render/Camera.hh"
+#include "fabric/utils/Profiler.hh"
 
 #include <cmath>
 
 namespace recurse::systems {
 
 void ShadowRenderSystem::doShutdown() {
+    FABRIC_ZONE_SCOPED_N("ShadowRenderSystem::doShutdown");
+
     if (shadowSystem_) {
         FABRIC_LOG_DEBUG("ShadowRenderSystem: releasing ShadowSystem GPU resources");
         shadowSystem_.reset();
@@ -17,6 +20,8 @@ void ShadowRenderSystem::doShutdown() {
 }
 
 void ShadowRenderSystem::doInit(fabric::AppContext& /*ctx*/) {
+    FABRIC_ZONE_SCOPED_N("ShadowRenderSystem::doInit");
+
     shadowSystem_ =
         std::make_unique<recurse::ShadowSystem>(recurse::presetConfig(recurse::ShadowQualityPreset::Medium));
 
@@ -28,6 +33,8 @@ void ShadowRenderSystem::doInit(fabric::AppContext& /*ctx*/) {
 }
 
 void ShadowRenderSystem::render(fabric::AppContext& ctx) {
+    FABRIC_ZONE_SCOPED_N("ShadowRenderSystem::render");
+
     shadowSystem_->update(*ctx.camera,
                           fabric::Vector3<float, fabric::Space::World>(lightDir_.x, lightDir_.y, lightDir_.z));
 }

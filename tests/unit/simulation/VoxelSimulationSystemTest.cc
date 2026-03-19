@@ -398,12 +398,14 @@ TEST(RecurseVoxelSimSystemTest, ApplyExternalEditIntoSleepingChunkWritesAndSimul
 
     int eventCount = 0;
     std::vector<recurse::VoxelChangeDetail> details;
+    recurse::WorldChangeEnvelope envelope;
     auto listenerId = dispatcher.addEventListener(recurse::K_VOXEL_CHANGED_EVENT, [&](fabric::Event& event) {
         ++eventCount;
         EXPECT_EQ(event.getData<int>("cx"), 0);
         EXPECT_EQ(event.getData<int>("cy"), 0);
         EXPECT_EQ(event.getData<int>("cz"), 0);
         details = event.getAnyData<std::vector<recurse::VoxelChangeDetail>>("detail");
+        envelope = event.getAnyData<recurse::WorldChangeEnvelope>(recurse::K_WORLD_CHANGE_ENVELOPE_KEY);
     });
 
     recurse::InteractionResult edit{true, 16, 10, 16, 0, 0, 0, sand, recurse::ChangeSource::Place, 0};
@@ -419,6 +421,15 @@ TEST(RecurseVoxelSimSystemTest, ApplyExternalEditIntoSleepingChunkWritesAndSimul
     EXPECT_EQ(details[0].oldCell, oldCell);
     EXPECT_EQ(details[0].newCell, newCell);
     EXPECT_EQ(details[0].source, recurse::ChangeSource::Place);
+    EXPECT_EQ(envelope.source, recurse::ChangeSource::Place);
+    EXPECT_EQ(envelope.targetKind, recurse::FunctionTargetKind::Voxel);
+    EXPECT_EQ(envelope.historyMode, recurse::FunctionHistoryMode::PerVoxelDelta);
+    ASSERT_EQ(envelope.touchedChunks.size(), 1u);
+    EXPECT_EQ(envelope.touchedChunks[0], (ChunkCoord{0, 0, 0}));
+    ASSERT_EQ(envelope.voxelDeltas.size(), 1u);
+    EXPECT_EQ(envelope.voxelDeltas[0].chunk, (ChunkCoord{0, 0, 0}));
+    EXPECT_EQ(envelope.voxelDeltas[0].oldCell, oldCell);
+    EXPECT_EQ(envelope.voxelDeltas[0].newCell, newCell);
 
     dispatcher.removeEventListener(recurse::K_VOXEL_CHANGED_EVENT, listenerId);
 

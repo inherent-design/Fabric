@@ -5,8 +5,10 @@
 #include "recurse/persistence/ChangeSource.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/world/FunctionContracts.hh"
 #include "recurse/world/VoxelRaycast.hh"
 
+#include <optional>
 #include <vector>
 
 namespace recurse {
@@ -14,16 +16,9 @@ namespace recurse {
 // Event name for voxel data changes (formerly in ChunkMeshManager.hh)
 inline constexpr const char* K_VOXEL_CHANGED_EVENT = "voxel_changed";
 
-/// Per-voxel change detail attached to K_VOXEL_CHANGED_EVENT via setAnyData.
-/// Carried by player place/destroy events and physics simulation events.
-/// Generation events omit this (snapshot system covers; massive volume).
-struct VoxelChangeDetail {
-    int vx, vy, vz;
-    uint32_t oldCell;
-    uint32_t newCell;
-    int32_t playerId;
-    ChangeSource source;
-};
+inline void attachWorldChangeEnvelope(fabric::Event& event, WorldChangeEnvelope envelope) {
+    event.setAnyData(K_WORLD_CHANGE_ENVELOPE_KEY, std::move(envelope));
+}
 
 /// Emit a chunk-level voxel-changed event (no per-voxel detail).
 inline void emitVoxelChanged(fabric::EventDispatcher& dispatcher, int cx, int cy, int cz) {
@@ -41,7 +36,10 @@ inline void emitVoxelChanged(fabric::EventDispatcher& dispatcher, int cx, int cy
     e.setData("cx", cx);
     e.setData("cy", cy);
     e.setData("cz", cz);
-    e.setAnyData("detail", std::vector<VoxelChangeDetail>{detail});
+    const auto chunk = fabric::ChunkCoord{cx, cy, cz};
+    const auto details = std::vector<VoxelChangeDetail>{detail};
+    e.setAnyData("detail", details);
+    attachWorldChangeEnvelope(e, makeDetailedChangeEnvelope(chunk, details));
     dispatcher.dispatchEvent(e);
 }
 
@@ -52,7 +50,24 @@ inline void emitVoxelChanged(fabric::EventDispatcher& dispatcher, int cx, int cy
     e.setData("cx", cx);
     e.setData("cy", cy);
     e.setData("cz", cz);
+    const auto chunk = fabric::ChunkCoord{cx, cy, cz};
+    attachWorldChangeEnvelope(e, makeDetailedChangeEnvelope(chunk, details));
     e.setAnyData("detail", std::move(details));
+    dispatcher.dispatchEvent(e);
+}
+
+inline void emitChunkChangeSummary(fabric::EventDispatcher& dispatcher, int cx, int cy, int cz, ChangeSource source,
+                                   FunctionHistoryMode historyMode = FunctionHistoryMode::ChunkSummary,
+                                   FunctionCostClass costClass = FunctionCostClass::ChunkLinear,
+                                   std::optional<simulation::ChunkFinalizationCause> finalizationCause = std::nullopt,
+                                   FunctionTargetKind targetKind = FunctionTargetKind::Chunk) {
+    fabric::Event e(K_VOXEL_CHANGED_EVENT, "VoxelInteraction");
+    e.setData("cx", cx);
+    e.setData("cy", cy);
+    e.setData("cz", cz);
+    e.setData("source", static_cast<int>(source));
+    attachWorldChangeEnvelope(
+        e, makeChunkSummaryChangeEnvelope({cx, cy, cz}, source, targetKind, historyMode, costClass, finalizationCause));
     dispatcher.dispatchEvent(e);
 }
 

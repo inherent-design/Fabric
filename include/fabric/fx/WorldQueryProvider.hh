@@ -4,10 +4,12 @@
 
 namespace fabric::fx {
 
-/// A type that can sample scalar fields at world-space positions.
+/// Concept for a game-layer provider that samples world-space query fields.
 ///
-/// Game layer implements this concept (e.g. FunctionCostModifier in recurse::).
-/// Engine references via concept constraint; no virtual dispatch.
+/// This keeps engine code depending on a query capability instead of
+/// Recurse-specific voxel types. Future mesh-facing semantic or scalar query
+/// providers can widen what is sampled without changing the engine to game
+/// dependency direction.
 template <typename T>
 concept WorldQueryProvider = requires(const T& provider, float x, float y, float z, int fieldId) {
     { provider.sampleField(x, y, z, fieldId) } -> std::convertible_to<float>;

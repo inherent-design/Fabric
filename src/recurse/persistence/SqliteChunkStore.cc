@@ -2,6 +2,7 @@
 
 #include "fabric/log/Log.hh"
 #include "fabric/utils/ErrorHandling.hh"
+#include "fabric/utils/Profiler.hh"
 #include "recurse/persistence/SchemaMigrations.hh"
 #include <algorithm>
 #include <cstring>
@@ -48,6 +49,8 @@ void resetStmt(sqlite3_stmt* stmt) {
 // ---------------------------------------------------------------------------
 
 SqliteChunkStore::SqliteChunkStore(const std::string& worldDir) {
+    FABRIC_ZONE_SCOPED_N("SqliteChunkStore::SqliteChunkStore");
+
     dbPath_ = worldDir + "/world.db";
     fs::create_directories(worldDir);
 
@@ -68,6 +71,9 @@ SqliteChunkStore::~SqliteChunkStore() {
 // ---------------------------------------------------------------------------
 
 void SqliteChunkStore::openConnections(const std::string& dbPath) {
+    FABRIC_ZONE_SCOPED_N("SqliteChunkStore::openConnections");
+    FABRIC_ZONE_TEXT(dbPath.c_str(), dbPath.size());
+
     // Writer connection
     int rc = sqlite3_open(dbPath.c_str(), &writerDb_);
     if (rc != SQLITE_OK) {
@@ -109,6 +115,8 @@ void SqliteChunkStore::configurePragmas(sqlite3* db) {
 }
 
 void SqliteChunkStore::runMigrations() {
+    FABRIC_ZONE_SCOPED_N("SqliteChunkStore::runMigrations");
+
     // Read current schema version.
     sqlite3_stmt* versionStmt = nullptr;
     int rc = sqlite3_prepare_v2(writerDb_, "PRAGMA user_version", -1, &versionStmt, nullptr);
@@ -129,6 +137,8 @@ void SqliteChunkStore::runMigrations() {
                            " is newer than this build supports (max " + std::to_string(targetVersion) +
                            "); update Fabric to load this world");
     }
+
+    FABRIC_ZONE_VALUE(targetVersion - currentVersion);
 
     if (currentVersion == targetVersion)
         return;
@@ -216,6 +226,8 @@ void SqliteChunkStore::execSql(sqlite3* db, const char* sql) {
 // ---------------------------------------------------------------------------
 
 void SqliteChunkStore::computeSavedBounds() {
+    FABRIC_ZONE_SCOPED_N("SqliteChunkStore::computeSavedBounds");
+
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(readerDb_, "SELECT cx, cy, cz FROM chunk_state", -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
@@ -235,6 +247,8 @@ void SqliteChunkStore::computeSavedBounds() {
     } else {
         FABRIC_LOG_INFO("savedCoords: {} chunks in DB", savedCoords_.size());
     }
+
+    FABRIC_ZONE_VALUE(static_cast<int64_t>(savedCoords_.size()));
 }
 
 bool SqliteChunkStore::isInSavedRegion(int cx, int cy, int cz) const {
@@ -267,6 +281,8 @@ bool SqliteChunkStore::hasChunk(int cx, int cy, int cz) const {
 }
 
 std::optional<ChunkBlob> SqliteChunkStore::loadChunk(int cx, int cy, int cz) const {
+    FABRIC_ZONE_SCOPED_N("SqliteChunkStore::loadChunk");
+
     std::lock_guard lock(readerMutex_);
     sqlite3_bind_int(stmtLoad_, 1, cx);
     sqlite3_bind_int(stmtLoad_, 2, cy);
@@ -283,10 +299,14 @@ std::optional<ChunkBlob> SqliteChunkStore::loadChunk(int cx, int cy, int cz) con
         }
     }
     resetStmt(stmtLoad_);
+    FABRIC_ZONE_VALUE(result ? static_cast<int64_t>(result->size()) : 0);
     return result;
 }
 
 void SqliteChunkStore::saveChunk(int cx, int cy, int cz, const ChunkBlob& data) {
+    FABRIC_ZONE_SCOPED_N("SqliteChunkStore::saveChunk");
+    FABRIC_ZONE_VALUE(static_cast<int64_t>(data.size()));
+
     if (data.empty())
         return;
 
@@ -344,6 +364,9 @@ SqliteChunkStore::loadBatch(const std::vector<fabric::ChunkCoord>& coords) const
 }
 
 void SqliteChunkStore::saveBatch(const std::vector<std::pair<fabric::ChunkCoord, ChunkBlob>>& entries) {
+    FABRIC_ZONE_SCOPED_N("SqliteChunkStore::saveBatch");
+    FABRIC_ZONE_VALUE(static_cast<int64_t>(entries.size()));
+
     if (entries.empty())
         return;
 
@@ -381,6 +404,8 @@ void SqliteChunkStore::saveBatch(const std::vector<std::pair<fabric::ChunkCoord,
 // ---------------------------------------------------------------------------
 
 void SqliteChunkStore::maybeCheckpoint() {
+    FABRIC_ZONE_SCOPED_N("SqliteChunkStore::maybeCheckpoint");
+
     if (!writerDb_)
         return;
 
@@ -394,6 +419,8 @@ void SqliteChunkStore::maybeCheckpoint() {
 // ---------------------------------------------------------------------------
 
 void SqliteChunkStore::close() {
+    FABRIC_ZONE_SCOPED_N("SqliteChunkStore::close");
+
     finalizeStatements();
 
     if (readerDb_) {

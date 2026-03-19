@@ -374,6 +374,27 @@ TEST_F(FrustumCullerTest, ChunkEntityMapAndVisibilitySetFilterGpuMeshKeys) {
     EXPECT_EQ(drawList[0], (ChunkCoord{0, 0, 0}));
 }
 
+TEST_F(FrustumCullerTest, BoundingBoxWithoutSceneEntityIsIgnoredByCuller) {
+    Camera camera;
+    camera.setPerspective(60.0f, 1.0f, 0.1f, 1000.0f, true);
+    Transform<float> camTransform;
+    camera.updateView(camTransform);
+
+    auto trackedChunk = ecsWorld.get().entity("tracked_chunk_only");
+    trackedChunk.set<BoundingBox>({-16.0f, -16.0f, 16.0f, 16.0f, 16.0f, 48.0f});
+
+    auto visibleScene = createEntity("visible_scene");
+    setBoundingBox(visibleScene, -4.0f, -4.0f, 8.0f, 4.0f, 4.0f, 24.0f);
+
+    float vp[16];
+    camera.getViewProjection(vp);
+    auto visible = culler.cull(vp, ecsWorld.get());
+    auto names = visibleNames(visible);
+
+    EXPECT_TRUE(names.count("visible_scene"));
+    EXPECT_FALSE(names.count("tracked_chunk_only"));
+}
+
 // --- BVH-backed frustum culling tests (TD-5) ---
 
 TEST_F(FrustumCullerTest, BVHCullMatchesFlatIteration) {

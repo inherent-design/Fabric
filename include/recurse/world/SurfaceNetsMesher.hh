@@ -5,6 +5,11 @@
 
 namespace recurse {
 
+/// Reference Surface Nets smooth mesher.
+///
+/// This implementation remains useful for experimentation and parity checks
+/// while the current Goal #4 plus meshing rollout proceeds through Checkpoints
+/// 0-4 and keeps the production near-chunk path Greedy-first.
 class SurfaceNetsMesher : public MesherInterface {
   public:
     SmoothChunkMeshData meshChunk(const ChunkDensityCache& density, const ChunkMaterialCache& material,

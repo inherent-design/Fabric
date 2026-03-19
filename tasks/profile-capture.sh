@@ -1,5 +1,5 @@
 #!/bin/sh
-# Launch Recurse and capture a Tracy trace to tracy/<timestamp>.tracy.
+# Launch Recurse directly into benchmark mode and capture a Tracy trace.
 # Env: PROFILE_MODE    - "debug" (default) or "release"
 #      CAPTURE_SECONDS  - seconds to capture (default: 30)
 #      CAPTURE_PORT     - Tracy listen port (default: 8086)
@@ -43,8 +43,8 @@ mkdir -p tracy
 timestamp="$(date +%Y-%m-%d-%H%M)"
 outfile="tracy/${timestamp}.tracy"
 
-echo "Starting Recurse (${preset})..."
-"$bin" &
+echo "Starting Recurse (${preset}) in benchmark mode..."
+"$bin" --benchmark &
 app_pid=$!
 
 # Give the app time to initialize Tracy listener

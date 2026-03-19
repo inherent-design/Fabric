@@ -263,11 +263,17 @@ recurse::VoxelVertex packGreedyVoxelVertex(const recurse::SmoothVoxelVertex& ver
 
 } // namespace
 
-VoxelMeshingSystem::VoxelMeshingSystem() : snapMcMesher_(std::make_unique<SnapMCMesher>()) {}
+VoxelMeshingSystem::VoxelMeshingSystem() = default;
 
 VoxelMeshingSystem::~VoxelMeshingSystem() {
     for (auto& [_, gpuMesh] : gpuMeshes_)
         destroyChunkMesh(gpuMesh);
+}
+
+void VoxelMeshingSystem::setNearChunkMesher(NearChunkMesher mesher) {
+    nearChunkMesher_ = mesher;
+    if (nearChunkMesher_ == NearChunkMesher::SnapMC && !snapMcMesher_)
+        snapMcMesher_ = std::make_unique<SnapMCMesher>();
 }
 
 void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
@@ -281,10 +287,6 @@ void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
         materials_ = &simSystem_->materials();
         scheduler_ = &simSystem_->scheduler();
     }
-
-    if (!snapMcMesher_)
-        snapMcMesher_ = std::make_unique<SnapMCMesher>();
-
     const auto configuredNearChunkMesher =
         ctx.configManager.get<std::string>(K_NEAR_CHUNK_MESHER_CONFIG_KEY, std::string{"greedy"});
     if (const auto parsed = parseNearChunkMesher(configuredNearChunkMesher)) {
@@ -293,6 +295,11 @@ void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
         setNearChunkMesher(NearChunkMesher::Greedy);
         FABRIC_LOG_WARN("VoxelMeshingSystem: unknown {}='{}'; falling back to {}", K_NEAR_CHUNK_MESHER_CONFIG_KEY,
                         configuredNearChunkMesher, nearChunkMesherName(nearChunkMesher_));
+    }
+
+    if (nearChunkMesher_ == NearChunkMesher::SnapMC) {
+        FABRIC_LOG_INFO("VoxelMeshingSystem: {}='{}' selects experimental SnapMC comparison path",
+                        K_NEAR_CHUNK_MESHER_CONFIG_KEY, configuredNearChunkMesher);
     }
 
     gpuUploadEnabled_ = (ctx.renderCaps != nullptr);
@@ -371,7 +378,7 @@ void VoxelMeshingSystem::processFrame() {
         activityTracker_ = &simSystem_->activityTracker();
     }
 
-    if (!activityTracker_ || !simGrid_ || !snapMcMesher_) {
+    if (!activityTracker_ || !simGrid_ || (nearChunkMesher_ == NearChunkMesher::SnapMC && !snapMcMesher_)) {
         pendingMeshCount_ = 0;
         return;
     }
@@ -430,7 +437,7 @@ void VoxelMeshingSystem::processFrame() {
     {
         FABRIC_ZONE_SCOPED_N("mesh_parallel_gen");
         if (scheduler_) {
-            scheduler_->parallelFor(toMesh.size(), [&](size_t jobIdx, size_t /*workerIdx*/) {
+            scheduler_->parallelFor(toMesh.size(), "mesh_parallel_gen", [&](size_t jobIdx, size_t /*workerIdx*/) {
                 results[jobIdx] = generateMeshCPU(toMesh[jobIdx]);
             });
         } else {
@@ -501,6 +508,10 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
             meshData = buildGreedyMesh(meshCtx, simGrid_);
             break;
         case NearChunkMesher::SnapMC: {
+            result.meshFormat = recurse::ChunkMesh::VertexFormat::Smooth;
+            if (!snapMcMesher_)
+                return result;
+
             ChunkedGrid<float> densityGrid;
             ChunkedGrid<uint16_t> materialGrid;
 
@@ -663,9 +674,8 @@ void VoxelMeshingSystem::destroyChunkMesh(ChunkGPUMesh& gpuMesh) {
     gpuMesh.mesh.ibh.reset();
     gpuMesh.mesh.indexCount = 0;
     gpuMesh.mesh.palette.clear();
-    gpuMesh.mesh.vertexFormat = recurse::ChunkMesh::VertexFormat::Smooth;
-    gpuMesh.mesh.vertexStrideBytes =
-        recurse::ChunkMesh::vertexStrideForFormat(recurse::ChunkMesh::VertexFormat::Smooth);
+    gpuMesh.mesh.vertexFormat = recurse::ChunkMesh::VertexFormat::Voxel;
+    gpuMesh.mesh.vertexStrideBytes = recurse::ChunkMesh::vertexStrideForFormat(recurse::ChunkMesh::VertexFormat::Voxel);
     gpuMesh.mesh.valid = false;
 
     gpuMesh.vertexCount = 0;

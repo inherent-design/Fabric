@@ -13,6 +13,7 @@
 #include "recurse/simulation/ChunkState.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/world/VoxelOps.hh"
 
 #include <chrono>
 #include <filesystem>
@@ -256,4 +257,44 @@ TEST_F(WorldContextTest, SessionEscapeHatch) {
     fabric::fx::WorldContext<recurse::WorldSession> ctx(*session_);
     auto& entities = ctx.session().chunkEntities();
     EXPECT_TRUE(entities.empty());
+}
+
+TEST(WorldOpContractTest, VoxelWriteExposesPointMutationContract) {
+    using recurse::FunctionCapability;
+    using recurse::FunctionCostClass;
+    using recurse::FunctionHistoryMode;
+    using recurse::FunctionTargetKind;
+
+    EXPECT_EQ(recurse::ops::VoxelWrite::K_CONTRACT.targetKind, FunctionTargetKind::Voxel);
+    EXPECT_EQ(recurse::ops::VoxelWrite::K_CONTRACT.historyMode, FunctionHistoryMode::PerVoxelDelta);
+    EXPECT_EQ(recurse::ops::VoxelWrite::K_CONTRACT.costClass, FunctionCostClass::Constant);
+    EXPECT_TRUE(
+        recurse::hasCapability(recurse::ops::VoxelWrite::K_CONTRACT.capabilities, FunctionCapability::PointWrite));
+    EXPECT_TRUE(recurse::hasCapability(recurse::ops::VoxelWrite::K_CONTRACT.capabilities,
+                                       FunctionCapability::WakeAffectedChunks));
+    EXPECT_TRUE(recurse::hasCapability(recurse::ops::VoxelWrite::K_CONTRACT.capabilities,
+                                       FunctionCapability::EmitDetailedHistory));
+}
+
+TEST(WorldOpContractTest, ChunkAndRegionOpsExposeContractTargets) {
+    using recurse::FunctionCapability;
+    using recurse::FunctionCostClass;
+    using recurse::FunctionHistoryMode;
+    using recurse::FunctionTargetKind;
+
+    EXPECT_EQ(recurse::ops::ReadBuffer::K_CONTRACT.targetKind, FunctionTargetKind::Chunk);
+    EXPECT_TRUE(
+        recurse::hasCapability(recurse::ops::ReadBuffer::K_CONTRACT.capabilities, FunctionCapability::RegionRead));
+    EXPECT_TRUE(recurse::hasCapability(recurse::ops::ReadBuffer::K_CONTRACT.capabilities,
+                                       FunctionCapability::RequireMaterializedChunks));
+    EXPECT_EQ(recurse::ops::GenerateChunks::K_CONTRACT.targetKind, FunctionTargetKind::Region);
+    EXPECT_EQ(recurse::ops::GenerateChunks::K_CONTRACT.historyMode, FunctionHistoryMode::SnapshotOnly);
+    EXPECT_EQ(recurse::ops::GenerateChunks::K_CONTRACT.costClass, FunctionCostClass::ChunkLinear);
+    EXPECT_TRUE(
+        recurse::hasCapability(recurse::ops::GenerateChunks::K_CONTRACT.capabilities, FunctionCapability::RegionWrite));
+    EXPECT_TRUE(recurse::hasCapability(recurse::ops::GenerateChunks::K_CONTRACT.capabilities,
+                                       FunctionCapability::AllowChunkStreaming));
+    EXPECT_TRUE(recurse::hasCapability(recurse::ops::GenerateChunks::K_CONTRACT.capabilities,
+                                       FunctionCapability::EmitSummaryHistory));
+    EXPECT_TRUE(recurse::ops::GenerateChunks::K_CONTRACT.needsBudget());
 }

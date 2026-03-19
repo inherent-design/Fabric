@@ -1,164 +1,105 @@
-# Fabric Engine API Reference
+# API Surface Map
 
-Public header classification for game developers building on Fabric Engine.
-Headers are organized by stability tier and subsystem.
+This document is a current-state API map, not a promise that every included header is frozen. Its job is to show which headers are the practical engine-facing surface today, which surfaces are still evolving, and which Recurse headers are game-specific rather than reusable engine API.
 
-## Stability Tiers
+## Scope and status
 
-**Stable**: API contract maintained across versions. Safe to depend on.
+- `fabric::` is the intended reusable engine surface
+- `recurse::` is the current game layer and should not be treated as stable engine API
+- some engine headers are mature and widely used today
+- some headers are forward-looking scaffolding for the longer-term ops-as-values and type-state direction
 
-**Unstable**: API may change. Functional but subject to revision.
+## Minimal bootstrap for an app
 
-**Internal**: Implementation detail. Do not include directly.
+A new app built on the current engine shape typically starts from these headers:
 
-## Minimal Bootstrap
-
-A new game needs these 6 headers to register systems and run the main loop:
-
-| Header | Purpose |
-|--------|---------|
-| `fabric/platform/FabricApp.hh` | Application entry point and main loop |
+| Header | Role |
+|--------|------|
+| `fabric/platform/FabricApp.hh` | App entry point and main loop owner |
 | `fabric/platform/FabricAppDesc.hh` | System registration and lifecycle callbacks |
-| `fabric/core/SystemBase.hh` | CRTP base class for game systems |
-| `fabric/core/SystemPhase.hh` | Phase enum for system registration order |
-| `fabric/core/AppContext.hh` | Context struct passed to init, update, render |
+| `fabric/core/SystemBase.hh` | CRTP base for systems |
+| `fabric/core/SystemPhase.hh` | Phase selection for system registration |
+| `fabric/core/AppContext.hh` | Per-frame context passed to systems |
 | `fabric/log/Log.hh` | Structured logging macros |
 
-The transitive closure of these headers pulls in no game-specific types.
-`AppContext.hh` transitively includes `Event.hh`, `Temporal.hh`, and `ECS.hh`.
+## Current engine-facing surface by subsystem
 
-## Public Stable Headers
+| Subsystem | Notable headers | Current status |
+|-----------|-----------------|----------------|
+| `fabric/core` | `AppContext.hh`, `AppModeManager.hh`, `Spatial.hh`, `StateMachine.hh`, `SystemBase.hh`, `SystemPhase.hh`, `RuntimeState.hh`, `JsonTypes.hh` | Core bootstrap and utility surface. `RuntimeState.hh` is more transitional than the others. |
+| `fabric/ecs` | `ECS.hh`, `Component.hh`, `WorldScoped.hh` | Reusable, but still influenced by current world-lifecycle patterns. |
+| `fabric/fx` | `Error.hh`, `Never.hh`, `OneOf.hh`, `Result.hh`, `WorldContext.hh`, `WorldOps.hh`, `SpatialDataOp.hh`, `WorldQueryProvider.hh` | Important evolving surface. This is where future executor-style work is incubating. |
+| `fabric/input` | `InputAction.hh`, `InputAxis.hh`, `InputContext.hh`, `InputManager.hh`, `InputRouter.hh`, `InputSource.hh`, `InputSystem.hh` | Mature, app-facing input surface. |
+| `fabric/log` | `Log.hh`, `LogConfig.hh`, `FilteredConsoleSink.hh` | Stable in daily use, though sink internals are less reusable than the macros and config surface. |
+| `fabric/platform` | `FabricApp.hh`, `FabricAppDesc.hh`, `ConfigManager.hh`, `Async.hh`, `JobScheduler.hh`, `ScopedTaskGroup.hh`, `WriterQueue.hh`, `WindowDesc.hh`, `PlatformInfo.hh`, `CursorManager.hh`, `DefaultConfig.hh` | Practical bootstrap and runtime surface. Some helpers remain implementation-heavy. |
+| `fabric/render` | `Camera.hh`, `DrawCall.hh`, `Geometry.hh`, `SceneView.hh`, `PostProcess.hh`, `PaniniPass.hh`, `RenderCaps.hh`, `BgfxHandle.hh`, `HandleMap.hh`, `BgfxCallback.hh`, `FullscreenQuad.hh` | Real engine surface, but still tightly shaped by current bgfx and Recurse usage. |
+| `fabric/resource` | `Resource.hh`, `ResourceHub.hh`, `AssetLoader.hh`, `AssetRegistry.hh`, `Handle.hh` | Reusable subsystem with active test coverage. |
+| `fabric/ui` | `RmlPanel.hh`, `ToastManager.hh`, `WebView.hh`, `BgfxRenderInterface.hh`, `BgfxSystemInterface.hh`, `ConcurrencyPanel.hh`, `HotkeyPanel.hh` | Mixed surface: some headers are reusable panel abstractions, others are backend plumbing. |
+| `fabric/utils` | `ErrorHandling.hh`, `Profiler.hh`, `Testing.hh`, `TextSanitize.hh`, `BVH.hh`, `CoordinatedGraph*.hh`, `Utils.hh` | Utility surface with varying stability. `Profiler.hh` and `ErrorHandling.hh` are the most generally reusable. |
+| `fabric/world` | `ChunkCoord.hh`, `ChunkCoordUtils.hh`, `ChunkedGrid.hh` | Core spatial world helpers. `ChunkedGrid.hh` is useful today but still carries assumptions from the current voxel-heavy usage. |
 
-### core/
+## Evolving surfaces to treat carefully
 
-| Header | Purpose |
-|--------|---------|
-| `fabric/core/AppContext.hh` | Per-frame context: ECS world, dispatcher, system registry, render state |
-| `fabric/core/AppModeManager.hh` | Application mode state machine (Game, Paused, Menu, Editor, Console) |
-| `fabric/core/CompilerHints.hh` | Branch prediction hints and force-inline macros |
-| `fabric/core/Event.hh` | Type-erased event dispatcher with string-keyed listeners |
-| `fabric/core/Spatial.hh` | Tagged vector and matrix types with coordinate space safety |
-| `fabric/core/StateMachine.hh` | Generic state machine with transition validation |
-| `fabric/core/SystemBase.hh` | CRTP base class for systems with phase-dispatched lifecycle |
-| `fabric/core/SystemPhase.hh` | Phase enum (Init, Input, Update, Physics, Render, Shutdown) |
-| `fabric/core/SystemRegistry.hh` | System storage and phase-ordered dispatch |
-| `fabric/core/Temporal.hh` | Timeline management: time regions, entity state snapshots, temporal operations |
-| `fabric/core/WorldLifecycle.hh` | World begin/end participant registration |
+The following surfaces are real and used, but they are still expected to move as the architecture matures:
 
-### ecs/
+- `fabric::fx::WorldContext` and related op types
+- `fabric::core::RuntimeState`
+- `fabric::ecs::WorldScoped`
+- `fabric::world::ChunkedGrid`
+- any surface whose current shape is heavily influenced by Recurse's voxel world
 
-| Header | Purpose |
-|--------|---------|
-| `fabric/ecs/ECS.hh` | Flecs ECS world wrapper and query utilities |
+## Recurse-specific and experimental surfaces
 
-### fx/
+These are important to the repository, but they are not generic engine API.
 
-| Header | Purpose |
-|--------|---------|
-| `fabric/fx/Error.hh` | Error type for Result monad |
-| `fabric/fx/Never.hh` | Bottom type for infallible Result |
-| `fabric/fx/OneOf.hh` | Tagged union (variant wrapper) |
-| `fabric/fx/Result.hh` | Result monad with error propagation |
+### Game-layer headers
 
-### input/
+`include/recurse/` contains the current game domain: simulation, persistence, world generation, gameplay, render systems, audio, AI, UI, and benchmark startup support.
 
-| Header | Purpose |
-|--------|---------|
-| `fabric/input/InputManager.hh` | Action-based input mapping and state queries |
-| `fabric/input/InputRouter.hh` | Key callback registration and console toggle routing |
+Examples of intentionally game-specific surfaces:
 
-### log/
+- `recurse/BenchmarkStartup.hh`
+- `recurse/persistence/*`
+- `recurse/systems/*`
+- `recurse/world/*`
+- `recurse/simulation/*`
 
-| Header | Purpose |
-|--------|---------|
-| `fabric/log/Log.hh` | Structured async logging via Quill backend |
+### Goal #4 and meshing rollout surfaces
 
-### platform/
+A few Recurse headers are especially relevant to the active roadmap:
 
-| Header | Purpose |
-|--------|---------|
-| `fabric/platform/ConfigManager.hh` | TOML configuration file loading and access |
-| `fabric/platform/FabricApp.hh` | Application entry point; owns the main loop |
-| `fabric/platform/FabricAppDesc.hh` | Descriptor for system registration, window config, lifecycle hooks |
-| `fabric/platform/JobScheduler.hh` | enkiTS-backed parallel task dispatch |
-| `fabric/platform/PlatformInfo.hh` | OS, CPU, and GPU capability queries |
-| `fabric/platform/ScopedTaskGroup.hh` | RAII task group with automatic join on scope exit |
-| `fabric/platform/WriterQueue.hh` | Serial write executor: dedicated consumer thread with FIFO task queue |
+- `recurse/world/MesherInterface.hh`
+- `recurse/world/FunctionContracts.hh`
+- `recurse/simulation/VoxelSemanticView.hh`
 
-### render/
+These are evolving rollout surfaces for the combined Goal #4 plus meshing checkpoint sequence. They should be treated as important, but not frozen.
 
-| Header | Purpose |
-|--------|---------|
-| `fabric/render/BgfxHandle.hh` | RAII wrappers for bgfx resource handles |
-| `fabric/render/Camera.hh` | Camera with world-space double-precision position and camera-relative rendering |
-| `fabric/render/FullscreenQuad.hh` | Lazy-init singleton fullscreen triangle vertex buffer |
-| `fabric/render/Geometry.hh` | Vertex layout declarations and mesh data structures |
-| `fabric/render/Rendering.hh` | Render state management and frame submission |
-| `fabric/render/SceneView.hh` | View and projection matrix management, projection mode cycling |
-| `fabric/render/ShaderProgram.hh` | Utility for creating bgfx programs from embedded shaders |
-| `fabric/render/SpvOnly.hh` | SPIRV-only shader suppression block for non-SPIR-V renderers |
-| `fabric/render/ViewLayout.hh` | Constexpr view ID ranges with static_assert overlap validation |
+## Current production posture
 
-### ui/
+API decisions should preserve the current shipped stance:
 
-| Header | Purpose |
-|--------|---------|
-| `fabric/ui/ConcurrencyPanel.hh` | RmlUi panel displaying worker thread and job queue stats |
-| `fabric/ui/HotkeyPanel.hh` | RmlUi panel showing keybindings per application mode |
+- Greedy meshing is the primary near-path production contract
+- SnapMC is optional and experimental behind the pluggable mesher boundary
+- the visual direction remains visibly voxel, not a forced smooth-surface conversion
 
-### utils/
+## Near-term API direction
 
-| Header | Purpose |
-|--------|---------|
-| `fabric/utils/BVH.hh` | Bounding volume hierarchy for spatial queries |
-| `fabric/utils/ErrorHandling.hh` | Exception types and assertion macros |
-| `fabric/utils/Profiler.hh` | Tracy profiler integration macros (no-op when profiling disabled) |
+In the short term, expect the API surface to shift in ways that support:
 
-### world/
+1. Greedy-path instrumentation and output cleanup
+2. semantic-query adapter introduction without behavior drift
+3. semantic boundary-change invalidation
+4. LOD policy alignment with the same semantic authority
+5. continued cleanup of engine versus game ownership
 
-| Header | Purpose |
-|--------|---------|
-| `fabric/world/ChunkCoord.hh` | Integer chunk coordinate type and hashing |
-| `fabric/world/ChunkCoordUtils.hh` | Coordinate conversion between world, chunk, and local space |
+The goal is not to churn public seams for style reasons. It is to make current production paths clearer and safer while the engine boundary improves.
 
-## Public Unstable Headers
+## Long-term direction
 
-These headers are functional and used by Recurse, but their API is subject to change.
+Over the longer term, the repository aims for:
 
-| Header | Reason | Purpose |
-|--------|--------|---------|
-| `fabric/core/RuntimeState.hh` | Contains voxel-specific fields (visibleChunks, totalChunks) | Aggregate of per-frame engine runtime statistics |
-| `fabric/ecs/WorldScoped.hh` | API under revision | ECS component lifetime scoped to world begin/end |
-| `fabric/fx/SpatialDataOp.hh` | Concept interface still evolving | Concept for spatial data operations via WorldContext |
-| `fabric/fx/WorldContext.hh` | Executor template interface still evolving | Type-erased world operation executor |
-| `fabric/world/ChunkedGrid.hh` | Hardcoded K_CHUNK_SIZE=32; will be parameterized via template | Sparse infinite grid with chunk-based spatial partitioning |
-
-## Internal Headers
-
-Implementation details not intended for direct inclusion by game code.
-These are used by engine internals or exposed only transitively.
-
-| Subsystem | Count | Headers |
-|-----------|-------|---------|
-| core | 4 | Constants.g.hh, JsonTypes.hh, Lifecycle.hh, Types.hh |
-| ecs | 1 | Component.hh |
-| fx | 2 | WorldOps.hh, WorldQueryProvider.hh |
-| input | 5 | InputAction.hh, InputAxis.hh, InputContext.hh, InputSource.hh, InputSystem.hh |
-| log | 2 | FilteredConsoleSink.hh, LogConfig.hh |
-| platform | 4 | Async.hh, CursorManager.hh, DefaultConfig.hh, WindowDesc.hh |
-| render | 7 | BgfxCallback.hh, DrawCall.hh, HandleMap.hh, PaniniPass.hh, PostProcess.hh, RenderCaps.hh, SkyRenderer.hh |
-| resource | 5 | AssetLoader.hh, AssetRegistry.hh, Handle.hh, Resource.hh, ResourceHub.hh |
-| ui | 7 | BgfxRenderInterface.hh, BgfxSystemInterface.hh, RmlPanel.hh, ToastManager.hh, WebView.hh, font/FontEngineInterfaceHarfBuzz.hh, font/LanguageData.hh |
-| utils | 6 | CoordinatedGraph.hh, CoordinatedGraphCore.hh, CoordinatedGraphLocking.hh, CoordinatedGraphTypes.hh, Testing.hh, Utils.hh |
-
-## Game-Layer Panels (Recurse)
-
-Four UI panels with voxel-specific data structures ship with Recurse in the `recurse::` namespace.
-They are not part of the engine API surface.
-
-| Header | Purpose |
-|--------|---------|
-| `recurse/ui/ChunkDebugPanel.hh` | Chunk mesh statistics overlay |
-| `recurse/ui/DebugHUD.hh` | FPS, draw calls, memory, and chunk stats HUD |
-| `recurse/ui/LODStatsPanel.hh` | Far-horizon LOD section statistics |
-| `recurse/ui/WAILAPanel.hh` | Voxel crosshair inspector (What Am I Looking At) |
+- a cleaner `fabric::` API that another game can consume directly
+- ops-as-values and centralized execution for world access
+- type-state at important boundaries
+- a stronger distinction between reusable engine API and Recurse-only gameplay API
+- generated API docs later, once the curated surface is stable enough to publish

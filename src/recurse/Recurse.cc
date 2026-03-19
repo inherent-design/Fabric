@@ -21,6 +21,7 @@
 // System headers forward-declare types held in unique_ptr; the factory lambda
 // needs their destructors visible at template instantiation time.
 #include "fabric/platform/PlatformInfo.hh"
+#include "recurse/BenchmarkStartup.hh"
 #include "recurse/character/CharacterController.hh"
 #include "recurse/character/FlightController.hh"
 #include "recurse/character/VoxelInteraction.hh"
@@ -239,7 +240,8 @@ fabric::FabricAppDesc buildRecurseDesc() {
 
 int main(int argc, char* argv[]) {
     fabric::log::init();
-    int result = fabric::FabricApp::run(argc, argv, buildRecurseDesc());
+    auto startupArgs = recurse::prepareStartupArguments(argc, argv);
+    int result = fabric::FabricApp::run(startupArgs.argc(), startupArgs.data(), buildRecurseDesc());
     fabric::log::shutdown();
     return result;
 }

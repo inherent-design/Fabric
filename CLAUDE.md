@@ -37,7 +37,7 @@ cmake --preset dev-debug
 cmake --build --preset dev-debug
 ```
 
-FabricLib is a static library that all targets link against. The `Fabric` executable additionally links mimalloc for global allocator override. Test executables do not link mimalloc.
+FabricLib is a static library that all targets link against. The `Recurse` executable additionally links mimalloc when `FABRIC_USE_MIMALLOC` is enabled. Test executables do not link mimalloc.
 
 ## Tests
 
@@ -428,6 +428,7 @@ perf(meshing): parallel chunk meshing via JobScheduler
 - Header changes that alter public API: update corresponding `docs/` file in the same change.
 - New systems or subsystems: add a section to `CLAUDE.md` if it has patterns agents need to know.
 - Config changes (TOML keys, env vars, CLI flags): update both `docs/` and relevant CLAUDE.md sections.
+- Roadmap or architecture shifts: update the existing markdown set in place instead of scattering new one-off planning docs.
 
 **Writing style:**
 - Match code identifiers exactly (camelCase methods, PascalCase types, `K_CONSTANT`)
@@ -436,9 +437,16 @@ perf(meshing): parallel chunk meshing via JobScheduler
 - No emojis, no superlatives, no flattery, no preamble
 - Technical reference tone; precision over poetry
 
+## Current repository stance
+
+- Greedy meshing is the primary near-path production path. Preserve it first.
+- SnapMC is optional and experimental behind the pluggable mesher boundary.
+- The active short-term sequence combines Goal #4 with meshing checkpoints 0 through 4: Greedy instrumentation, packed-vertex cleanup, read-only semantic adapter introduction, semantic invalidation, and LOD semantic alignment.
+- Other near-term work should keep improving engine and game separation plus multi-project readiness without destabilizing the shipped voxel-first path.
+
 ## Programming model
 
-Fabric is migrating toward an effect-like programming model. The target architecture has three pillars: ops-as-values, phantom type-state, and centralized execution. These are not yet implemented; this section describes the direction so new code aligns with it and avoids introducing patterns that conflict.
+Fabric is migrating toward an effect-like programming model. The target architecture has three pillars: ops-as-values, phantom type-state, and centralized execution. These are not yet implemented end-to-end, though `fabric::fx::WorldContext`, `recurse::world::FunctionContracts`, and `recurse::simulation::VoxelSemanticView` already act as scaffolding toward that direction. This section describes the target so new code aligns with it and avoids introducing patterns that conflict.
 
 Reference: `~/.atlas/integrator/reports/fabric/effect-cpp-proposal-2026-03-02.md`
 
@@ -539,7 +547,7 @@ Current violations to address:
 Resolved violations:
 - `ChunkCoord` 4-way duplication unified to single `fabric::ChunkCoord{x,y,z}` in Wave 1b (2026-03-13)
 
-The `fabric::`/`recurse::` boundary must be a clean API surface that a second game can depend on without importing Recurse-specific types.
+The `fabric::`/`recurse::` boundary must be a clean API surface that a second game can depend on without importing Recurse-specific types. Near-term work should keep removing game-specific assumptions from `fabric::` while preserving the current Greedy-first production path in `recurse::`.
 
 ## Dead code
 

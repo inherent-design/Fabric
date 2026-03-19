@@ -53,6 +53,20 @@ TEST_F(VoxelMeshingSystemTest, NearChunkMesherDefaultsToGreedy) {
     EXPECT_EQ(system.nearChunkMesher(), VoxelMeshingSystem::NearChunkMesher::Greedy);
 }
 
+TEST_F(VoxelMeshingSystemTest, GreedyDefaultDoesNotPreinitializeSnapMCFallback) {
+    EXPECT_EQ(system.nearChunkMesher(), VoxelMeshingSystem::NearChunkMesher::Greedy);
+    EXPECT_EQ(system.snapMcMesher_, nullptr);
+}
+
+TEST_F(VoxelMeshingSystemTest, SelectingSnapMCLazilyInstantiatesExperimentalFallback) {
+    EXPECT_EQ(system.snapMcMesher_, nullptr);
+
+    system.setNearChunkMesher(VoxelMeshingSystem::NearChunkMesher::SnapMC);
+
+    EXPECT_EQ(system.nearChunkMesher(), VoxelMeshingSystem::NearChunkMesher::SnapMC);
+    EXPECT_NE(system.snapMcMesher_, nullptr);
+}
+
 TEST_F(VoxelMeshingSystemTest, GreedySelectionLeavesAirChunkEmpty) {
     ChunkCoord coord{0, 0, 0};
     system.setNearChunkMesher(VoxelMeshingSystem::NearChunkMesher::Greedy);

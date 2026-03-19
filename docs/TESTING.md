@@ -1,164 +1,109 @@
 # Testing
 
-## Overview
+## Scope
 
-Fabric uses GoogleTest 1.17.0 for all testing, organized into unit and E2E categories. The current count is 1890 tests across 116 test files and 117 suites (1887 pass, 3 skip). Use `mise run test:all` to confirm current totals on your branch.
+Fabric uses GoogleTest for both unit and end-to-end coverage. The current tree contains:
 
-Both test executables use a custom `tests/TestMain.cc` that initializes Quill logging before GoogleTest runs and shuts it down afterward.
+- `tests/unit/` with 147 `.cc` files spread across `core`, `fx`, `persistence`, `platform`, `simulation`, `ui`, `utils`, and `world`
+- `tests/e2e/FabricE2ETest.cc` for broad application validation
+- `tests/fixtures/` for reusable test fixtures such as `BgfxNoopFixture.hh` and `SDLFixture.hh`
 
-## Running Tests
+Both test executables share `tests/TestMain.cc`, which initializes Quill logging before GoogleTest runs. Do not add a second `main()` to test files.
 
-### Via mise (Preferred)
+## Common commands
 
 ```bash
-mise run build                      # Build first (test tasks depend on build)
-mise run test                       # Unit tests (with timeout)
-mise run test:e2e                   # E2E tests
-mise run test:all                   # Unit + E2E tests
-mise run test:filter SpatialTest    # Run specific test by name
+mise run test
+mise run test:e2e
+mise run test:all
+mise run test:filter RecurseBenchmarkStartupTest
 ```
 
-### Direct Execution
+Direct execution is still useful for quick local runs:
 
 ```bash
 ./build/dev-debug/bin/UnitTests
 ./build/dev-debug/bin/E2ETests
-./build/dev-debug/bin/UnitTests --gtest_filter=EventTest*
-./build/dev-debug/bin/UnitTests --gtest_filter=ResourceHubTest.LoadResource
+./build/dev-debug/bin/UnitTests --gtest_filter=ChunkActivityTrackerTest*
 ```
 
-## Test Binaries
+## Current test layout
 
-| Binary | Path | Purpose |
-|--------|------|---------|
-| UnitTests | `build/<preset>/bin/UnitTests` | Per-component isolation tests |
-| E2ETests | `build/<preset>/bin/E2ETests` | Full application workflow tests |
+| Location | Current focus |
+|----------|---------------|
+| `tests/unit/core/` | app bootstrap, input, rendering helpers, gameplay systems, config, UI-adjacent engine pieces |
+| `tests/unit/fx/` | `Result`, `Error`, and typed error helpers |
+| `tests/unit/persistence/` | chunk save service, codec, SQLite store, replay, registry, world session integration |
+| `tests/unit/platform/` | benchmark startup, task groups, queueing helpers |
+| `tests/unit/simulation/` | chunk state, activity, simulation grid, falling sand, finalization, parallel simulation |
+| `tests/unit/ui/` | debug HUD, panels, RmlUi backend, toast and asset flow |
+| `tests/unit/utils/` | async helpers, logging, graphs, text sanitization, BVH |
+| `tests/unit/world/` | world generators and noise sampling |
+| `tests/e2e/` | whole-app smoke coverage |
 
-## Test Infrastructure
+## Shared harness and fixtures
 
-### Custom Test Main (`tests/TestMain.cc`)
+### `tests/TestMain.cc`
 
-The test binary uses a custom `main()` that:
+The shared main currently does one important thing beyond GoogleTest bootstrap: it initializes Quill logging so test output and engine code follow the same logging path as the app.
 
-1. Initializes Quill logging via `fabric::log::init()`
-2. Runs all GoogleTest tests
-3. Shuts down logging via `fabric::log::shutdown()`
+### `BgfxNoopFixture`
 
-`ThreadPoolExecutor` is paused during test execution to prevent background threads from interfering with deterministic test behavior.
+Use `BgfxNoopFixture` when a test needs bgfx state without requiring a real GPU backend. This keeps rendering-adjacent tests deterministic and CI-friendly.
 
-### BgfxNoopFixture
+### `SDLFixture`
 
-Tests that require bgfx state (uniform creation, texture handles, view configuration) use `BgfxNoopFixture`. This fixture initializes bgfx with `RendererType::Noop`, which provides the full bgfx API surface without requiring a GPU. Tests that need a live Vulkan device skip via `GTEST_SKIP()`.
+Use `SDLFixture` when the test needs SDL video setup or display queries. Headless environments may still need `GTEST_SKIP()` for platform-dependent cases.
 
-### SDLFixture
+### ResourceHub guidance
 
-Tests that depend on SDL display queries (window creation, display enumeration) use `SDLFixture`. This fixture calls `SDL_Init(SDL_INIT_VIDEO)` in `SetUp()` and `SDL_Quit()` in `TearDown()`. Display-dependent tests skip in headless CI environments.
-
-### Disabled Tests
-
-Some tests are disabled (prefixed with `DISABLED_`). Use `--gtest_also_run_disabled_tests` to include them. Current disabled tests: 3 Sprint 7 stubs and 1 property system test.
-
-## Test Organization
-
-### Unit Tests
-
-Unit tests live in `tests/unit/` and mirror the source directory structure:
-
-| Directory | File Count | Coverage Area |
-|-----------|------------|---------------|
-| `tests/unit/codec/` | 1 | Encode/decode framework |
-| `tests/unit/core/` | 92 | Core engine and game systems |
-| `tests/unit/parser/` | 1 | CLI argument parsing |
-| `tests/unit/ui/` | 5 | DebugHUD, RmlUi backend, Toast, WebView |
-| `tests/unit/utils/` | 7 | BVH, BufferPool, CoordinatedGraph, ErrorHandling, ImmutableDAG, Logging, Utils |
-
-### E2E Tests
-
-E2E tests live in `tests/e2e/`. The sole test file (`FabricE2ETest.cc`) validates full application execution with CLI parameters. E2E tests must run from the build directory for correct asset path resolution.
-
-## Naming Conventions
-
-| Category | Pattern | Example |
-|----------|---------|---------|
-| Unit tests | `ComponentNameTest.cc` | `SpatialTest.cc` |
-| E2E tests | `FeatureE2ETest.cc` | `FabricE2ETest.cc` |
-| Regression tests | `SubsystemRegressionTest.cc` | `VulkanRegressionTest.cc` |
-
-## Sanitizer Integration
-
-CI runs three sanitizer configurations, each using a dedicated CMake preset. All sanitizer presets use Clang and are non-Windows only.
-
-| Sanitizer | Preset | mise Task | Flags |
-|-----------|--------|-----------|-------|
-| ASan + UBSan | `ci-sanitize` | `mise run sanitize` | `-fsanitize=address,undefined -fno-omit-frame-pointer` |
-| TSan | `ci-tsan` | `mise run sanitize:tsan` | `-fsanitize=thread` |
-| Coverage | `ci-coverage` | `mise run coverage` | `-fprofile-instr-generate -fcoverage-mapping` |
-
-### Sanitizer Environment Variables
-
-Test presets set sanitizer-specific environment variables:
-
-| Preset | Variable | Value |
-|--------|----------|-------|
-| `ci-sanitize` | `ASAN_OPTIONS` | `detect_leaks=1:halt_on_error=1` |
-| `ci-sanitize` | `UBSAN_OPTIONS` | `print_stacktrace=1:halt_on_error=1` |
-| `ci-tsan` | `TSAN_OPTIONS` | `halt_on_error=1:second_deadlock_stack=1` |
-| `ci-coverage` | `LLVM_PROFILE_FILE` | `fabric-%p.profraw` |
-
-All sanitizer presets set `FABRIC_USE_MIMALLOC=OFF` to avoid allocator interference.
-
-## Coverage
-
-```bash
-mise run coverage    # Build with coverage, generate lcov report
-```
-
-Coverage uses Clang source-based instrumentation (`-fprofile-instr-generate -fcoverage-mapping`) via the `ci-coverage` preset. The coverage workflow generates an lcov report at `build/ci-coverage/coverage.lcov`. The CI coverage workflow is manual-only (`workflow_dispatch`) until Codecov integration is configured.
-
-## Writing Tests
-
-### ResourceHub Tests
-
-When testing code that interacts with ResourceHub, create a local instance and disable worker threads to prevent hangs:
+For `ResourceHub` tests, create a local hub instance and disable worker threads for the test:
 
 ```cpp
 ResourceHub hub;
 hub.disableWorkerThreadsForTesting();
-ASSERT_EQ(hub.getWorkerThreadCount(), 0);
 ```
 
-Restore in teardown:
+Or use:
 
 ```cpp
-hub.restartWorkerThreadsAfterTesting();
+ResourceHub hub;
+hub.reset();
 ```
 
-### General Guidance
+Prefer focused tests, explicit lock timeouts, and direct resource objects when possible.
 
-- Use explicit timeouts on all locks to prevent deadlocks.
-- Handle exceptions with try/catch so tests can clean up resources.
-- Avoid test dependencies on ResourceHub singleton state (ResourceHub is de-singletoned; always create local instances).
-- Prefer testing with direct Resource objects rather than going through the hub when possible.
-- Test one thing at a time; keep test functions focused.
-- Tests that require bgfx should use BgfxNoopFixture; tests that require SDL should use SDLFixture.
-- GPU-dependent tests that need a live Vulkan device should skip via `GTEST_SKIP()` when no bgfx context is available. These tests run locally but skip in CI.
+## Current validation priorities
 
-## Vulkan Regression Tests
+The present test suite is strongest where the current implementation is most active:
 
-`VulkanRegressionTest.cc` validates Vulkan/MoltenVK correctness. These tests cover:
+- chunk and simulation correctness
+- persistence and world-session behavior
+- app startup and benchmark automation wiring
+- UI and debug tooling behavior
+- low-level engine primitives such as `Result`, async helpers, and logging
 
-- Shader profiles: SPIR-V is the only enabled profile; all others are suppressed
-- View ID conflicts: all bgfx view IDs are unique and ordered correctly
-- OIT compositor guards: uninitialized compositor is not valid; composite view follows accumulation view
-- VoxelVertex format: 8-byte packed layout, pack/unpack round-trip, stride matches layout
-- PostProcess guards: disabled by default; render without init is a no-op
-- GPU timer sanitization: clamps garbage timestamps from MoltenVK (negative values, overflow)
-- Runtime tests: GPU-dependent checks skip via `GTEST_SKIP` when no bgfx context is available
+This matches the codebase's current center of gravity better than the older generic engine-only framing.
 
-Run with:
+## Short-term testing direction
 
-```bash
-mise run test:filter VulkanRegression
-```
+As the combined Goal #4 plus meshing checkpoints land, testing should focus on:
 
-Most tests validate constraints statically without a live Vulkan device. Runtime tests that require a bgfx context skip in CI.
+- Greedy-path regression safety first
+- semantic-query adapter correctness without behavior drift
+- invalidation and boundary-change behavior
+- LOD policy alignment with the same semantic authority
+- rollback-safe comparison coverage when SnapMC is used as an experimental reference path
+
+Benchmark automation should continue to get targeted startup and control-path tests because it is part of the real workflow, not a one-off tool.
+
+## Long-term testing direction
+
+As the repository moves toward ops-as-values, type-state, and centralized execution, the suite should increasingly add:
+
+- operation contract tests
+- executor and session boundary tests
+- engine and game boundary tests for multi-project readiness
+- narrow regression tests around reusable `fabric::` surfaces
+
+Until then, keep the tests grounded in the current implementation rather than documenting purely aspirational architecture.

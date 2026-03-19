@@ -9,7 +9,11 @@
 
 namespace fabric::fx {
 
-/// Read a single value at a world-space position from a ChunkedGrid<T>.
+/// Low-level world-space read of a raw stored value.
+///
+/// These spatial ops intentionally describe storage-facing access. Higher-level
+/// semantic or mesh-facing queries should layer on top through WorldContext
+/// instead of baking rendering or gameplay meaning into this contract.
 template <typename T> struct SpatialRead {
     int wx, wy, wz;
 
@@ -18,7 +22,7 @@ template <typename T> struct SpatialRead {
     using Errors = TypeList<Never>;
 };
 
-/// Write a single value at a world-space position into a ChunkedGrid<T>.
+/// Low-level world-space write of a raw stored value.
 template <typename T> struct SpatialWrite {
     int wx, wy, wz;
     T value;
@@ -28,7 +32,7 @@ template <typename T> struct SpatialWrite {
     using Errors = TypeList<Never>;
 };
 
-/// Swap values at two world-space positions.
+/// Low-level swap of two raw stored values.
 struct SpatialSwap {
     int ax, ay, az;
     int bx, by, bz;
@@ -38,7 +42,11 @@ struct SpatialSwap {
     using Errors = TypeList<Never>;
 };
 
-/// Query a region with a predicate, returning matching positions and values.
+/// Query a region for raw stored values matching a predicate.
+///
+/// This remains a storage-level query surface during the current Goal #4 plus
+/// meshing rollout. Richer semantic or mesh-facing queries are expected to
+/// compose above it instead of replacing the underlying op boundary.
 template <typename T, typename Pred> struct SpatialQuery {
     ChunkCoord min;
     ChunkCoord max;

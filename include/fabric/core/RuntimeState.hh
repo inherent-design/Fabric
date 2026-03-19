@@ -5,8 +5,11 @@
 
 namespace fabric {
 
-/// Transient runtime state (Layer T). Not persisted, not configurable via TOML.
-/// Read by any system; written by the owning system (e.g., window resize writes pixelWidth).
+/// Transient runtime state shared across systems for the current process.
+///
+/// This data is not persisted and is not configured via TOML. Some counters
+/// remain Recurse-specific transitional fields while engine and game telemetry
+/// continue to separate for multi-project readiness.
 struct RuntimeState {
     // Window (written by resize handler)
     uint32_t pixelWidth = 0;

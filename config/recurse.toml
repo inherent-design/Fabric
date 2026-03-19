@@ -39,6 +39,9 @@ max_occlusion_voxels = 8       # max voxels for audio occlusion raycast
 [simulation]
 max_fixed_steps = 3            # max fixed timestep iterations per frame
 
+[voxel_meshing]
+near_chunk_mesher = "greedy"  # production default; set snapmc only for comparison or emergency fallback
+
 [panini]
 enabled = true
 strength = 0.5

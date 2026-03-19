@@ -62,13 +62,61 @@ mise run test
 mise run run
 ```
 
-Useful follow-up commands:
+## mise task surface
 
-- `mise run build:release`
-- `mise run test:e2e`
-- `mise run lint:changed`
-- `mise run profile`
-- `mise run profile:capture`
+`mise.toml` is the primary developer entry point. `docs/BUILD.md` remains the deep reference; this section is the current hub-level task map.
+
+### Build and run
+
+| Task | Alias | Current behavior |
+|------|-------|------------------|
+| `clean` | none | Remove build artifacts |
+| `build` | `b`, `bd`, `build:debug` | Configure and build the default debug preset |
+| `build:release` | `br` | Configure and build the release preset |
+| `run` | `r`, `rd`, `run:debug` | Build if needed, then run the debug `Recurse` executable |
+| `run:release` | `rr` | Build if needed, then run the release `Recurse` executable |
+
+### Format and static analysis
+
+| Task | Alias | Current behavior |
+|------|-------|------------------|
+| `format` | `fmt` | Check clang-format on tracked source files |
+| `format:fix` | none | Auto-format tracked source files |
+| `lint` | none | Run clang-tidy on the full source set |
+| `lint:changed` | none | Run clang-tidy on git-dirty files only for faster iteration |
+| `lint:fix` | `fix` | Run clang-tidy auto-fix on changed files |
+| `cppcheck` | none | Run cppcheck static analysis |
+
+### Test and validation
+
+| Task | Alias | Current behavior |
+|------|-------|------------------|
+| `test` | `t` | Build if needed, then run unit tests |
+| `test:e2e` | none | Build if needed, then run end-to-end tests |
+| `test:all` | none | Build if needed, then run unit plus end-to-end tests |
+| `test:filter` | `tf` | Build if needed, then run unit tests with a gtest filter argument |
+
+### Profiling and capture workflows
+
+| Task | Alias | Current behavior |
+|------|-------|------------------|
+| `profile` | `pd`, `p`, `profile:debug` | Build a Tracy-enabled debug configuration |
+| `profile:release` | `pr` | Build a Tracy-enabled `RelWithDebInfo` configuration |
+| `profile:capture` | `cap`, `profile:capture:debug` | Build the profiling target if needed, launch the debug app, and capture a 30 second Tracy trace |
+| `profile:capture:release` | `capr` | Build the profiling target if needed, launch the release-style app, and capture a 30 second Tracy trace |
+| `profile:view` | none | Open the latest `.tracy` capture in Tracy Profiler |
+| `profile:csv` | none | Export the latest `.tracy` capture to CSV |
+
+Current expectation: use the capture tasks when validating benchmark and profiling flows, since benchmark automation startup plumbing and in-game benchmark entry points are part of the repository's real workflow.
+
+### Sanitizers and broader analysis
+
+| Task | Alias | Current behavior |
+|------|-------|------------------|
+| `sanitize` | none | Build and test with ASan plus UBSan |
+| `sanitize:tsan` | none | Build and test with ThreadSanitizer |
+| `coverage` | none | Build with coverage instrumentation and generate a report |
+| `codeql` | none | Run local CodeQL analysis after a build |
 
 ## Repository layout
 

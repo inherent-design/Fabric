@@ -51,6 +51,10 @@ int FlatWorldGenerator::maxSurfaceHeight(int /*cx*/, int /*cz*/) const {
     return groundLevel_;
 }
 
+std::string FlatWorldGenerator::worldgenFingerprintSource() const {
+    return name() + "|groundLevel=" + std::to_string(groundLevel_);
+}
+
 // -- LayeredWorldGenerator ----------------------------------------------------
 
 LayeredWorldGenerator::LayeredWorldGenerator(int stoneLevel, int sandDepth)
@@ -99,6 +103,10 @@ uint16_t LayeredWorldGenerator::sampleMaterial(int /*wx*/, int wy, int /*wz*/) c
 
 int LayeredWorldGenerator::maxSurfaceHeight(int /*cx*/, int /*cz*/) const {
     return stoneLevel_ + sandDepth_;
+}
+
+std::string LayeredWorldGenerator::worldgenFingerprintSource() const {
+    return name() + "|stoneLevel=" + std::to_string(stoneLevel_) + "|sandDepth=" + std::to_string(sandDepth_);
 }
 
 } // namespace recurse

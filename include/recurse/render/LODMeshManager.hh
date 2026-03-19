@@ -1,10 +1,9 @@
 #pragma once
 
 #include "recurse/render/LODGrid.hh"
-#include "recurse/world/SmoothVoxelVertex.hh"
+#include "recurse/world/VoxelVertex.hh"
 
 #include <array>
-#include <memory>
 #include <vector>
 
 namespace recurse::simulation {
@@ -13,17 +12,12 @@ class MaterialRegistry;
 
 namespace recurse {
 
-class SnapMCMesher;
-class ChunkDensityCache;
-class ChunkMaterialCache;
-
-/// Manages mesh generation for LOD sections using the SnapMC mesher.
-/// Each LODSection produces a MeshResult (vertices + indices + palette)
-/// which can be uploaded to GPU by LODSystem.
+/// Manages mesh generation for LOD sections using the voxel-first packed mesh
+/// contract shared with the default near path.
 class LODMeshManager {
   public:
     struct MeshResult {
-        std::vector<SmoothVoxelVertex> vertices;
+        std::vector<VoxelVertex> vertices;
         std::vector<uint32_t> indices;
         std::vector<std::array<float, 4>> palette;
         bool empty() const { return vertices.empty() || indices.empty(); }
@@ -44,12 +38,8 @@ class LODMeshManager {
     size_t pendingCount() const;
 
   private:
-    /// Build density and material caches from a LODSection for meshing.
-    void buildCaches(const LODSection& section, ChunkDensityCache& density, ChunkMaterialCache& material);
-
     LODGrid& grid_;
     const recurse::simulation::MaterialRegistry& materials_;
-    std::unique_ptr<SnapMCMesher> mesher_;
 };
 
 } // namespace recurse

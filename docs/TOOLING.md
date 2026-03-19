@@ -1,101 +1,100 @@
 # Tooling
 
-Reference for documentation generation tooling, comment conventions, and integration
-strategy for the Fabric Engine codebase.
+This document covers repository tooling with an emphasis on documentation conventions, source comments, and how curated docs relate to build, test, and profiling workflows.
 
-## Documentation Generation
+## Repository documentation roles
 
-Doxygen 1.16.1 is the selected documentation generator. It provides functional C++20
-support for concepts (`\concept` command, improved in 1.16.0), requires clauses (trailing
-and inline, fixed in 1.10+), template specializations, and constexpr. Standardese was
-evaluated but rejected; the original author abandoned it in 2019 and community maintenance
-is minimal. hdoc offers superior parse accuracy through its Clang-based frontend, but has
-had no public release since February 2023 and lacks official macOS support. Doxygen's
-built-in CMake integration, universal `///` comment compatibility, and active maintenance
-make it the practical choice for a project at Fabric's scale.
+The markdown set has distinct jobs:
 
-## Comment Style Guide
+- `README.md`: hub, status snapshot, quickstart, links
+- `docs/*.md`: deep reference documents and current source of truth for their topic
+- `CONTRIBUTING.md`: contributor workflow and repository policy
+- `CLAUDE.md`: agent-facing implementation, style, and workflow guidance
 
-Every public type, function, method, and constant gets a `///` doc comment. The first
-sentence is a standalone summary; doc-gen tools extract it as the brief description.
+Keep those roles distinct. Do not turn `README.md` into a full architecture manual, and do not let `CONTRIBUTING.md` drift into a deep subsystem reference.
 
-### Basic format
+## Current documentation posture
+
+The repository currently relies on curated markdown first. That is the right tradeoff for the present state of the codebase because:
+
+- current implementation and roadmap details change faster than generated API docs would stay useful
+- the codebase includes both mature production systems and actively shifting architectural scaffolding
+- short-term planning, especially the combined Goal #4 plus meshing checkpoint work, needs narrative context that generated symbol docs cannot provide
+
+## Prose and markdown conventions
+
+Use these rules across repository docs:
+
+- technical reference tone
+- match identifiers exactly
+- state what a thing does, valid values, and defaults in that order when relevant
+- no em dashes, en dashes, or double hyphens in prose
+- no emojis, superlatives, or marketing language
+- keep `README.md` short; move depth into `docs/*.md`
+
+Update docs in the same change when behavior, config, architecture guidance, or workflow changed.
+
+## Source comment conventions
+
+Doxygen remains the selected generator direction, but comment coverage is still intentionally selective.
+
+Current rules:
+
+- use `///` for doc comments
+- keep the first sentence as a standalone summary
+- use `@tparam`, `@param`, and `@return` when the public contract needs them
+- prefer no non-doc comments unless the code needs a clear explanation of why
+- do not add doc comments mechanically to unchanged code during unrelated work
+
+Example:
 
 ```cpp
-/// Summary sentence describing what the type or function does.
-```
-
-### With parameters
-
-```cpp
-/// Resolve a synchronous read operation against the session.
+/// Resolve a synchronous read operation against the current world session.
 ///
-/// @tparam Op  Operation type satisfying SyncReadOp concept.
-/// @param op   The operation to resolve.
-/// @return     Result containing the operation's return value or error.
-template <SyncReadOp Op>
-auto resolve(const Op& op) -> OpResult<Op>;
+/// @tparam Op Operation type satisfying the sync-read contract.
+/// @param op Operation value to resolve.
+/// @return Result containing the operation return type or error.
 ```
 
-### Concept documentation
+## Developer tooling touchpoints
 
-```cpp
-/// A synchronous read operation resolved inline by the executor.
-///
-/// Requires Returns and Errors type aliases and K_IS_SYNC == true.
-template <typename Op>
-concept SyncReadOp = /* ... */;
-```
+Documentation should stay aligned with the real developer entry points:
 
-### constexpr data
+- build and run via mise plus CMake presets
+- test execution through `mise run test`, `test:e2e`, and `test:filter`
+- formatting, clang-tidy, cppcheck, sanitizers, coverage, and CodeQL tasks from `mise.toml`
+- Tracy profiling builds and capture workflows
+- Quill logging configuration through TOML, env vars, and CLI flags
 
-```cpp
-/// Maximum number of unique essence values per chunk palette.
-static constexpr uint16_t K_DEFAULT_MAX_SIZE = 65535;
-```
+When any of those change, update the corresponding doc page in the same change.
 
-### Rules
+## Generated documentation direction
 
-- Use `///` exclusively; do not use `/** */` or `//!`.
-- First sentence ends with a period and stands alone as the brief description.
-- Separate the brief from the detailed description with a blank `///` line.
-- Use `@tparam` for template parameters (including packs: `@tparam Es Error types.`),
-  `@param` for function parameters, and `@return` for return values.
-- Use `@note` sparingly for non-obvious behavior.
-- Cover: what it does, input expectations, side effects, error conditions.
-- Do not document what the code already says; `size()` does not need `/// Returns the size`.
-- Private members and implementation details: document only when behavior is surprising.
-- Match existing codebase style; do not add doc comments to unchanged code during a refactor.
+Generated API docs are still deferred until the public comment surface is worth publishing. The expected path remains:
 
-## When to Comment (Non-Doc)
+1. keep curated markdown accurate
+2. improve public `///` coverage on reusable `fabric::` surfaces
+3. add Doxygen generation once the output becomes more signal than noise
+4. layer richer HTML on top later only if the repository needs it
 
-Default to no comments. Code should be self-explanatory through naming and structure.
-Add a non-doc comment (`//`) when:
+Doxygen remains the preferred generator candidate because it is maintained, integrates well with CMake, and is good enough for the current codebase shape.
 
-- The "why" is non-obvious: a workaround, API quirk, or spec requirement that the reader
-  could not infer from the code alone.
-- Behavior has surprising side effects that are not captured by the function signature or
-  doc comment.
-- A constant comes from an external specification; include the source reference.
+## Short-term tooling and docs work
 
-These guidelines mirror the existing policy in CONTRIBUTING.md. Doc comments (`///`) and
-inline comments (`//`) serve different purposes: doc comments describe the public contract,
-inline comments explain implementation rationale.
+The short-term focus is not new tooling for its own sake. It is keeping existing tooling and docs aligned with:
 
-## CMake Integration (Deferred)
+- the Greedy-first near-meshing production path
+- benchmark automation and profiling capture workflows
+- the combined Goal #4 plus meshing checkpoint sequence
+- engine and game boundary cleanup needed for multi-project readiness
 
-CMake integration is deferred until the comment coverage reaches a useful threshold. When
-ready, use CMake's built-in `FindDoxygen` module with `doxygen_add_docs()` or a custom
-target. The Doxyfile template (or inline CMake variable configuration) is TBD. If richer
-output is needed later, Sphinx combined with Breathe can consume Doxygen's XML output
-without requiring any changes to source comments.
+Prefer updating existing markdown files over creating new ones unless a new document is genuinely required.
 
-## Tool Versions
+## Long-term direction
 
-| Tool | Version | Status | C++20 Concepts | Notes |
-|------|---------|--------|----------------|-------|
-| Doxygen | 1.16.1 | Active (Jan 2026) | Yes | Selected. `\concept` command, built-in CMake support. |
-| Standardese | N/A | Abandoned (2019) | Uncertain | Original author post-mortem published; community maintenance minimal. |
-| hdoc | 1.4.1 | Stale (Feb 2023) | Likely (Clang AST) | No public release in 3+ years; Linux-only official support. |
-| Poxy | 0.19.7 | Active | Yes (via Doxygen) | Upgrade option for modern HTML output; wraps Doxygen with m.css. |
-| Sphinx + Breathe | N/A | Active | Yes (via Doxygen XML) | Upgrade path for narrative + API docs; higher setup cost. |
+Longer term, the tooling story should support a cleaner engine API and more than one game on Fabric. That likely means:
+
+- stronger public docs for `fabric::`
+- clearer separation between engine docs and game docs
+- generated API docs as a supplement, not a replacement, for curated architecture and workflow docs
+- validation tooling that continues to treat profiling and benchmark automation as first-class workflows

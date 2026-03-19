@@ -58,6 +58,13 @@ TEST(VoxelRendererTest, RenderEmptyMeshReturnsWithoutInitialization) {
     EXPECT_FALSE(renderer.isValid());
 }
 
+TEST(VoxelRendererTest, ChunkMeshDefaultsToVoxelFirstProductionFormat) {
+    ChunkMesh mesh;
+
+    EXPECT_EQ(mesh.vertexFormat, ChunkMesh::VertexFormat::Voxel);
+    EXPECT_EQ(mesh.vertexStrideBytes, sizeof(VoxelVertex));
+}
+
 TEST_F(BgfxNoopFixture, VoxelRendererRenderWithInvalidBuffersNoOp) {
     VoxelRenderer renderer;
     // Render with valid-looking mesh but invalid buffer handles.
@@ -69,6 +76,19 @@ TEST_F(BgfxNoopFixture, VoxelRendererRenderWithInvalidBuffersNoOp) {
 
     renderer.render(0, mesh, 0, 0, 0);
     // Noop renderer: initProgram succeeds, so renderer is valid.
+    EXPECT_TRUE(renderer.isValid());
+    renderer.shutdown();
+}
+
+TEST_F(BgfxNoopFixture, VoxelRendererRenderWithVoxelFormatInvalidBuffersNoOp) {
+    VoxelRenderer renderer;
+    ChunkMesh mesh;
+    mesh.valid = true;
+    mesh.indexCount = 100;
+    mesh.vertexFormat = ChunkMesh::VertexFormat::Voxel;
+    mesh.vertexStrideBytes = sizeof(VoxelVertex);
+
+    renderer.render(0, mesh, 0, 0, 0);
     EXPECT_TRUE(renderer.isValid());
     renderer.shutdown();
 }

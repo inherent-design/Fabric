@@ -142,12 +142,14 @@ run_windows = "$env:PROFILE_MODE='release'; & .\\tasks\\profile.ps1"
 [tasks."profile:capture"]
 alias = ["cap", "profile:capture:debug"]
 description = "Launch Debug build and capture a Tracy trace (30s)"
+depends = ["profile"]
 run = "sh tasks/profile-capture.sh"
 run_windows = "& .\\tasks\\profile-capture.ps1"
 
 [tasks."profile:capture:release"]
 alias = "capr"
 description = "Launch Release build and capture a Tracy trace (30s)"
+depends = ["profile:release"]
 run = "PROFILE_MODE=release sh tasks/profile-capture.sh"
 run_windows = "$env:PROFILE_MODE='release'; & .\\tasks\\profile-capture.ps1"
 

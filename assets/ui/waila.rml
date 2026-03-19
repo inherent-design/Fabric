@@ -6,6 +6,7 @@
 <!-- Full-screen flex container for positioning -->
 <div id="ui-top-center">
     <div id="waila-panel" data-if="has_hit">
+        <div class="waila-row"><span class="waila-label">Material: </span><span class="waila-value">{{ display_text }}</span></div>
         <div class="waila-row"><span class="waila-label">Pos: </span><span class="waila-value">{{ voxel_x }}, {{ voxel_y }}, {{ voxel_z }}</span></div>
         <div class="waila-row"><span class="waila-label">Chunk: </span><span class="waila-value">{{ chunk_x }}, {{ chunk_y }}, {{ chunk_z }}</span></div>
         <div class="waila-row"><span class="waila-label">Normal: </span><span class="waila-value">{{ normal_str }}</span></div>

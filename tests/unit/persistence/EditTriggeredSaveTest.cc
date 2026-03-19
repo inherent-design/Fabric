@@ -105,3 +105,31 @@ TEST_F(EditTriggeredSaveTest, NoSaveServiceNoOp) {
     recurse::emitVoxelChanged(dispatcher, 0, 0, 0);
     SUCCEED();
 }
+
+TEST_F(EditTriggeredSaveTest, SummaryEventCarriesWorldChangeEnvelope) {
+    fabric::EventDispatcher dispatcher;
+
+    recurse::WorldChangeEnvelope envelope;
+    bool sawEvent = false;
+    auto listenerId = dispatcher.addEventListener(recurse::K_VOXEL_CHANGED_EVENT, [&](fabric::Event& e) {
+        sawEvent = true;
+        ASSERT_TRUE(e.hasAnyData(recurse::K_WORLD_CHANGE_ENVELOPE_KEY));
+        envelope = e.getAnyData<recurse::WorldChangeEnvelope>(recurse::K_WORLD_CHANGE_ENVELOPE_KEY);
+    });
+
+    recurse::emitChunkChangeSummary(dispatcher, 4, 5, 6, recurse::ChangeSource::Generation,
+                                    recurse::FunctionHistoryMode::SnapshotOnly,
+                                    recurse::FunctionCostClass::ChunkLinear);
+
+    ASSERT_TRUE(sawEvent);
+    EXPECT_EQ(envelope.source, recurse::ChangeSource::Generation);
+    EXPECT_EQ(envelope.targetKind, recurse::FunctionTargetKind::Chunk);
+    EXPECT_EQ(envelope.historyMode, recurse::FunctionHistoryMode::SnapshotOnly);
+    ASSERT_EQ(envelope.touchedChunks.size(), 1u);
+    EXPECT_EQ(envelope.touchedChunks[0], (fabric::ChunkCoord{4, 5, 6}));
+    EXPECT_TRUE(envelope.voxelDeltas.empty());
+    ASSERT_EQ(envelope.chunkDeltas.size(), 1u);
+    EXPECT_EQ(envelope.chunkDeltas[0].chunk, (fabric::ChunkCoord{4, 5, 6}));
+
+    dispatcher.removeEventListener(recurse::K_VOXEL_CHANGED_EVENT, listenerId);
+}

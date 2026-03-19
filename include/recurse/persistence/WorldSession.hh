@@ -53,9 +53,13 @@ class PhysicsGameSystem;
 class TerrainSystem;
 } // namespace systems
 
-/// RAII session owning all per-world persistence and streaming state.
-/// Created via static factory open(); destroyed on world unload.
-/// First production consumer of fabric::fx::Result.
+/// RAII session owning per-world persistence, streaming, and world-op state.
+///
+/// Created via open() and destroyed on world unload. This is the current
+/// concrete backend for fabric::fx::WorldContext in Recurse. The Checkpoints
+/// 0-4 rollout continues moving more world, meshing, and query traffic onto
+/// explicit resolve() and submit() surfaces while preserving centralized
+/// lifetime and teardown.
 class WorldSession {
   public:
     WorldSession(const WorldSession&) = delete;
@@ -63,7 +67,10 @@ class WorldSession {
 
     ~WorldSession();
 
-    /// Open a world session. Returns IOError if the database cannot be opened.
+    /// Open a world session and its owned persistence services.
+    ///
+    /// @return Result containing the opened session or IOError if the backing
+    ///         database or required services cannot be initialized.
     static fabric::fx::Result<std::unique_ptr<WorldSession>, fabric::fx::IOError>
     open(const std::string& worldDir, fabric::EventDispatcher& dispatcher, fabric::JobScheduler& scheduler,
          flecs::world& ecsWorld, systems::VoxelSimulationSystem* simSystem, systems::VoxelMeshingSystem* meshingSystem,
@@ -135,7 +142,7 @@ class WorldSession {
         return streamSourceQuery_;
     }
 
-    // --- Sync read resolve (Phase III: ops-as-values) ---
+    // --- Current sync-read resolve surface for WorldContext ---
 
     FABRIC_ALWAYS_INLINE bool resolve(const ops::HasChunk& op) {
         return simSystem_->simulationGrid().hasChunk(op.cx, op.cy, op.cz);
@@ -182,7 +189,7 @@ class WorldSession {
 
     FABRIC_ALWAYS_INLINE int resolve(const ops::QueryLODChunks&) { return static_cast<int>(lodChunks_.size()); }
 
-    // --- Async mutation submit (Phase III: ops-as-values) ---
+    // --- Current async-mutation submit surface for WorldContext ---
 
     bool submit(ops::LoadChunk op);
     void submit(ops::SaveChunk op);
