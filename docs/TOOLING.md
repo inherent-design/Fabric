@@ -20,6 +20,7 @@ The repository currently relies on curated markdown first. That is the right tra
 - current implementation and roadmap details change faster than generated API docs would stay useful
 - the codebase includes both mature production systems and actively shifting architectural scaffolding
 - short-term planning, especially the combined Goal #4 plus meshing checkpoint work, needs narrative context that generated symbol docs cannot provide
+- the docs also need to preserve the current production stance: Greedy first, visibly voxel, with SnapMC documented only as optional and experimental behind the pluggable mesher boundary
 
 ## Prose and markdown conventions
 
@@ -84,6 +85,7 @@ Doxygen remains the preferred generator candidate because it is maintained, inte
 The short-term focus is not new tooling for its own sake. It is keeping existing tooling and docs aligned with:
 
 - the Greedy-first near-meshing production path
+- the optional and experimental status of SnapMC behind the mesher boundary
 - benchmark automation and profiling capture workflows
 - the combined Goal #4 plus meshing checkpoint sequence
 - engine and game boundary cleanup needed for multi-project readiness
@@ -98,3 +100,5 @@ Longer term, the tooling story should support a cleaner engine API and more than
 - clearer separation between engine docs and game docs
 - generated API docs as a supplement, not a replacement, for curated architecture and workflow docs
 - validation tooling that continues to treat profiling and benchmark automation as first-class workflows
+
+Those docs also need to keep explaining the architectural direction without overstating completion: ops-as-values, type-state, and centralized execution are the direction of travel, while the current repository still contains a mix of mature production systems and evolving scaffolding.

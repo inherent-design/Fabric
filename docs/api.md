@@ -8,6 +8,7 @@ This document is a current-state API map, not a promise that every included head
 - `recurse::` is the current game layer and should not be treated as stable engine API
 - some engine headers are mature and widely used today
 - some headers are forward-looking scaffolding for the longer-term ops-as-values and type-state direction
+- the long-term API goal is multi-project readiness, not a Fabric API that only works for Recurse
 
 ## Minimal bootstrap for an app
 
@@ -103,3 +104,5 @@ Over the longer term, the repository aims for:
 - type-state at important boundaries
 - a stronger distinction between reusable engine API and Recurse-only gameplay API
 - generated API docs later, once the curated surface is stable enough to publish
+
+That work is part of the larger multi-project readiness push: `fabric::` should become a clean engine boundary that additional games can adopt without inheriting Recurse-specific world or meshing assumptions.
