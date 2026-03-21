@@ -1,7 +1,6 @@
 #include "recurse/persistence/FchkCodec.hh"
 
 #include "fabric/utils/ErrorHandling.hh"
-#include "recurse/simulation/VoxelMaterial.hh"
 #include <bit>
 #include <cstring>
 #include <lz4.h>
@@ -10,71 +9,6 @@
 static_assert(std::endian::native == std::endian::little, "FchkCodec assumes little-endian byte order");
 
 namespace recurse {
-
-namespace {
-
-/// Convert a single v1/v2 cell (old layout) to v4 cell (new layout) in-place.
-/// Old layout (LE): [matId_lo, matId_hi, essenceIdx, flags]
-/// New layout (LE): [essenceIdx, displacementRank, phaseAndFlags, spare]
-/// Since all materialIds < 256, matId_lo IS the materialId.
-void convertV2CellToV4(uint8_t* cell) {
-    uint8_t matIdLo = cell[0];
-    // cell[1] is matId_hi (always 0)
-    uint8_t oldEssenceIdx = cell[2];
-    // cell[3] is flags (already stripped of runtime bits)
-
-    // Derive phase and density from materialId using known constants
-    using namespace simulation;
-    uint8_t phase = 0; // Phase::Empty
-    uint8_t density = 0;
-    switch (matIdLo) {
-        case material_ids::AIR:
-            phase = 0;
-            density = 0;
-            break;
-        case material_ids::STONE:
-            phase = 1;
-            density = 200;
-            break; // Phase::Solid
-        case material_ids::DIRT:
-            phase = 1;
-            density = 150;
-            break; // Phase::Solid
-        case material_ids::SAND:
-            phase = 2;
-            density = 130;
-            break; // Phase::Powder
-        case material_ids::WATER:
-            phase = 3;
-            density = 100;
-            break; // Phase::Liquid
-        case material_ids::GRAVEL:
-            phase = 2;
-            density = 170;
-            break; // Phase::Powder
-        default:
-            phase = 1;
-            density = 128;
-            break; // Unknown: default Solid
-    }
-
-    // Write new layout
-    cell[0] = matIdLo; // essenceIdx == materialId during migration
-    cell[1] = density; // displacementRank
-    cell[2] = phase;   // phaseAndFlags (phase in low 3 bits, flags 0)
-    cell[3] = 0;       // spare
-
-    // Preserve old essenceIdx: overwrite byte 0 only if old essenceIdx was
-    // palette-assigned (non-zero and from a v2 file). For v1 files, old byte 2
-    // was temperature (already zeroed by v1 fixup before this function is called
-    // for v2 only). For v2, the essenceIdx was a palette index separate from
-    // materialId; during migration essenceIdx == materialId, so use matIdLo.
-    // The old essenceIdx (palette-based) is discarded because the palette
-    // indices in old files are not meaningful in the new layout.
-    (void)oldEssenceIdx;
-}
-
-} // namespace
 
 ChunkBlob FchkCodec::encode(const void* cells, size_t cellsByteCount, uint8_t compression, int level,
                             const float* paletteData, uint16_t paletteEntryCount) {
@@ -147,10 +81,10 @@ FchkDecoded FchkCodec::decode(const ChunkBlob& blob) {
     if (header.magic[0] != 'F' || header.magic[1] != 'C' || header.magic[2] != 'H' || header.magic[3] != 'K') {
         fabric::throwError("FCHK invalid magic");
     }
-    if (header.version == 3) {
-        fabric::throwError("FCHK v3 is a delta format; use FchkCodec::decodeDelta()");
+    if (header.version == 2) {
+        fabric::throwError("FCHK v2 is a delta format; use FchkCodec::decodeDelta()");
     }
-    if (header.version < 1 || header.version > 4) {
+    if (header.version != 1) {
         fabric::throwError("FCHK unsupported version: " + std::to_string(header.version));
     }
 
@@ -181,9 +115,7 @@ FchkDecoded FchkCodec::decode(const ChunkBlob& blob) {
         postHeader = decompressed.data_ptr();
         postHeaderSize = decompressed.size();
     } else if (header.compression == 2) {
-        // LZ4: decompressed size derived from chunk dimensions
         size_t expectedCells = static_cast<size_t>(header.dimX) * header.dimY * header.dimZ * 4;
-        // Upper bound: cells + palette count (2) + max palette (65535 * 16)
         size_t maxDecomp = expectedCells + sizeof(uint16_t) + 65535 * 16;
         decompressed.resize(maxDecomp);
 
@@ -211,33 +143,12 @@ FchkDecoded FchkCodec::decode(const ChunkBlob& blob) {
     FchkDecoded result;
     result.cells.assign(postHeader, postHeader + cellsByteCount);
 
-    if (header.version == 4) {
-        // v4: runtime flags in byte 2 (phaseAndFlags), bits 3-4
-        constexpr uint8_t kRuntimeFlagsMask = static_cast<uint8_t>(~(0x08 | 0x10));
-        for (size_t i = 2; i < result.cells.size(); i += 4)
-            result.cells[i] &= kRuntimeFlagsMask;
-    } else if (header.version <= 2) {
-        // v1/v2: strip runtime flags from old layout byte 3
-        constexpr uint8_t kRuntimeFlagsMask = static_cast<uint8_t>(~(0x01 | 0x02));
-        for (size_t i = 3; i < result.cells.size(); i += 4)
-            result.cells[i] &= kRuntimeFlagsMask;
+    // Clear runtime flags: bits 3-4 of phaseAndFlags (byte 2 of each cell)
+    constexpr uint8_t kRuntimeFlagsMask = static_cast<uint8_t>(~(0x08 | 0x10));
+    for (size_t i = 2; i < result.cells.size(); i += 4)
+        result.cells[i] &= kRuntimeFlagsMask;
 
-        if (header.version == 1) {
-            // v1 fixup: zero out old essenceIdx byte (offset 2) before conversion.
-            for (size_t i = 2; i < result.cells.size(); i += 4)
-                result.cells[i] = 0;
-        }
-
-        // Convert old v1/v2 layout to v4 layout in-place
-        for (size_t i = 0; i < result.cells.size(); i += 4)
-            convertV2CellToV4(&result.cells[i]);
-
-        // v1: no palette section, return early
-        if (header.version == 1)
-            return result;
-    }
-
-    // v2/v4: parse palette section after voxel payload
+    // Parse palette section after voxel payload
     const size_t paletteSectionOffset = cellsByteCount;
     if (postHeaderSize >= paletteSectionOffset + sizeof(uint16_t)) {
         std::memcpy(&result.paletteEntryCount, postHeader + paletteSectionOffset, sizeof(uint16_t));
@@ -246,7 +157,7 @@ FchkDecoded FchkCodec::decode(const ChunkBlob& blob) {
         const size_t expectedSize = paletteSectionOffset + sizeof(uint16_t) + paletteByteCount;
 
         if (postHeaderSize < expectedSize) {
-            fabric::throwError("FCHK palette section truncated (v" + std::to_string(header.version) + ")");
+            fabric::throwError("FCHK palette section truncated");
         }
 
         if (result.paletteEntryCount > 0) {
@@ -259,7 +170,7 @@ FchkDecoded FchkCodec::decode(const ChunkBlob& blob) {
     return result;
 }
 
-// --- v3 delta format ---
+// --- v2 delta format ---
 
 static constexpr size_t K_CHUNK_VOLUME = 32 * 32 * 32;
 
@@ -271,12 +182,9 @@ ChunkBlob FchkCodec::encodeDelta(const void* currentCells, const void* reference
     const auto* ref = static_cast<const uint32_t*>(referenceCells);
 
     // Strip runtime-only flags (UPDATED, FREE_FALL) before diffing.
-    // These bits are set by the simulation each tick but are not persistent
-    // state. Without masking, every "touched" cell produces a false diff
-    // against the clean worldgen reference. The decode side already strips
-    // these via kRuntimeFlagsMask.
-    // New VoxelCell layout: phaseAndFlags in byte 2 (LE). Runtime flags (UPDATED, FREE_FALL)
-    // occupy bits 3-4 of that byte (bits 19-20 of the uint32_t). Clear them before diffing.
+    // phaseAndFlags in byte 2 (LE). Runtime flags occupy bits 3-4 of that byte
+    // (bits 19-20 of the uint32_t). Clear them before diffing so simulation-touched
+    // cells that are otherwise unchanged produce no false diff.
     constexpr uint32_t kPersistMask = 0xFF'E7'FF'FF;
 
     std::vector<FchkDeltaEntry> diffs;
@@ -317,7 +225,7 @@ ChunkBlob FchkCodec::encodeDelta(const void* currentCells, const void* reference
     }
 
     FchkHeader header;
-    header.version = 3;
+    header.version = 2;
     header.compression = compression;
 
     if (compression == 0) {
@@ -375,8 +283,8 @@ FchkDeltaDecoded FchkCodec::decodeDelta(const ChunkBlob& blob) {
     if (header.magic[0] != 'F' || header.magic[1] != 'C' || header.magic[2] != 'H' || header.magic[3] != 'K') {
         fabric::throwError("FCHK invalid magic");
     }
-    if (header.version != 3) {
-        fabric::throwError("FCHK decodeDelta requires v3, got v" + std::to_string(header.version));
+    if (header.version != 2) {
+        fabric::throwError("FCHK decodeDelta requires v2, got v" + std::to_string(header.version));
     }
 
     const uint8_t* payload = blob.data_ptr() + sizeof(FchkHeader);
@@ -406,7 +314,6 @@ FchkDeltaDecoded FchkCodec::decodeDelta(const ChunkBlob& blob) {
         postHeader = decompressed.data_ptr();
         postHeaderSize = decompressed.size();
     } else if (header.compression == 2) {
-        // Upper bound for v3: worldgen(4) + count(4) + max entries (32768*8) + palette count(2) + max palette
         size_t maxDecomp = 4 + 4 + K_CHUNK_VOLUME * 8 + sizeof(uint16_t) + 65535 * 16;
         decompressed.resize(maxDecomp);
 
@@ -429,14 +336,14 @@ FchkDeltaDecoded FchkCodec::decodeDelta(const ChunkBlob& blob) {
     size_t cursor = 0;
 
     if (postHeaderSize < cursor + sizeof(uint32_t)) {
-        fabric::throwError("FCHK v3 payload truncated (worldgenVersion)");
+        fabric::throwError("FCHK v2 payload truncated (worldgenVersion)");
     }
     FchkDeltaDecoded result;
     std::memcpy(&result.worldgenVersion, postHeader + cursor, sizeof(uint32_t));
     cursor += sizeof(uint32_t);
 
     if (postHeaderSize < cursor + sizeof(uint32_t)) {
-        fabric::throwError("FCHK v3 payload truncated (diffCount)");
+        fabric::throwError("FCHK v2 payload truncated (diffCount)");
     }
     uint32_t diffCount = 0;
     std::memcpy(&diffCount, postHeader + cursor, sizeof(uint32_t));
@@ -444,7 +351,7 @@ FchkDeltaDecoded FchkCodec::decodeDelta(const ChunkBlob& blob) {
 
     const size_t entriesBytes = static_cast<size_t>(diffCount) * sizeof(FchkDeltaEntry);
     if (postHeaderSize < cursor + entriesBytes) {
-        fabric::throwError("FCHK v3 payload truncated (diff entries)");
+        fabric::throwError("FCHK v2 payload truncated (diff entries)");
     }
 
     result.entries.resize(diffCount);
@@ -453,12 +360,7 @@ FchkDeltaDecoded FchkCodec::decodeDelta(const ChunkBlob& blob) {
     }
     cursor += entriesBytes;
 
-    // Apply runtime flags mask to cell data (v4 layout: phaseAndFlags in byte 2).
-    // Note: All v3 delta files in existence use the v4 (MatterState) cell layout
-    // because v3 delta format was introduced alongside the MatterState migration.
-    // No pre-MatterState v3 deltas exist. The v4 runtime flags mask is correct
-    // for all real v3 files. This version branching will be eliminated by the
-    // persistence format collapse (feat/persistence-collapse).
+    // Clear runtime flags: bits 3-4 of phaseAndFlags (byte 2 of each cell)
     constexpr uint8_t kRuntimeFlagsMask = static_cast<uint8_t>(~(0x08 | 0x10));
     for (auto& e : result.entries) {
         auto* bytes = reinterpret_cast<uint8_t*>(&e.cellData);
@@ -467,14 +369,14 @@ FchkDeltaDecoded FchkCodec::decodeDelta(const ChunkBlob& blob) {
 
     // Parse palette section
     if (postHeaderSize < cursor + sizeof(uint16_t)) {
-        fabric::throwError("FCHK v3 payload truncated (paletteCount)");
+        fabric::throwError("FCHK v2 payload truncated (paletteCount)");
     }
     std::memcpy(&result.paletteEntryCount, postHeader + cursor, sizeof(uint16_t));
     cursor += sizeof(uint16_t);
 
     const size_t paletteByteCount = static_cast<size_t>(result.paletteEntryCount) * 4 * sizeof(float);
     if (postHeaderSize < cursor + paletteByteCount) {
-        fabric::throwError("FCHK v3 palette section truncated");
+        fabric::throwError("FCHK v2 palette section truncated");
     }
 
     if (result.paletteEntryCount > 0) {
@@ -490,7 +392,7 @@ FchkDecoded FchkCodec::decodeAny(const ChunkBlob& blob, const void* refCells) {
         return decode(blob);
 
     if (!refCells)
-        fabric::throwError("FCHK v3 delta requires reference cells for decoding");
+        fabric::throwError("FCHK v2 delta requires reference cells for decoding");
 
     auto delta = decodeDelta(blob);
 
@@ -499,7 +401,7 @@ FchkDecoded FchkCodec::decodeAny(const ChunkBlob& blob, const void* refCells) {
     result.cells.resize(cellsByteCount);
     std::memcpy(result.cells.data(), refCells, cellsByteCount);
 
-    // Clear runtime flags on reference cells (v4 layout: phaseAndFlags in byte 2)
+    // Clear runtime flags on reference cells (phaseAndFlags in byte 2)
     constexpr uint8_t kRuntimeFlagsMask = static_cast<uint8_t>(~(0x08 | 0x10));
     for (size_t i = 2; i < result.cells.size(); i += 4)
         result.cells[i] &= kRuntimeFlagsMask;
@@ -522,7 +424,7 @@ bool FchkCodec::isDelta(const ChunkBlob& blob) {
     FchkHeader header;
     std::memcpy(&header, blob.data_ptr(), sizeof(FchkHeader));
     return header.magic[0] == 'F' && header.magic[1] == 'C' && header.magic[2] == 'H' && header.magic[3] == 'K' &&
-           header.version == 3;
+           header.version == 2;
 }
 
 } // namespace recurse
