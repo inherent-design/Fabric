@@ -1,6 +1,6 @@
 # Animation System
 
-> **Not yet implemented.** Design placeholder for a confirmed game feature.
+> **Partially implemented.** Engine-level animation infrastructure exists (`include/recurse/animation/`: IKSolver, AnimationEvents, Animation, MeshLoader, SkinnedRenderer) but gameplay-level animation design (blend trees, combat states, function casting feedback) is not yet specified.
 
 ## Purpose
 
