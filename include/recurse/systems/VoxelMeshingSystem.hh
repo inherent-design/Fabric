@@ -103,6 +103,7 @@ struct MeshingChunkContext {
     }
 };
 
+/// Per-frame counters published for meshing debug UI and tests.
 struct MeshingDebugInfo {
     int chunksMeshedThisFrame = 0;
     int emptyChunksSkipped = 0;
@@ -121,25 +122,37 @@ struct ChunkGPUMesh {
     bool valid = false;
 };
 
-/// CPU-side mesh output from parallel generation. Consumed by sequential GPU upload.
+/// CPU-side mesh output from parallel generation.
+///
+/// Consumed by the sequential GPU upload phase. Carries either the primary
+/// packed voxel path or an optional smooth comparison path.
 struct CPUMeshResult {
     std::vector<recurse::SmoothVoxelVertex> vertices;
     std::vector<recurse::VoxelVertex> voxelVertices;
     std::vector<uint32_t> indices;
     std::vector<std::array<float, 4>> palette;
-    recurse::ChunkMesh::VertexFormat meshFormat = recurse::ChunkMesh::VertexFormat::Smooth;
+    recurse::ChunkMesh::VertexFormat meshFormat = recurse::ChunkMesh::VertexFormat::Voxel;
     bool valid = false;
     bool deferred = false; ///< True if neighbor check deferred meshing
 };
 
-/// Bridges simulation activity flags to mesh updates via the selected near
-/// chunk meshing path. Runs in PreRender phase. Collects active chunks from
-/// ChunkActivityTracker, sorts by priority, and meshes up to a per-frame chunk
-/// budget.
+/// Bridges simulation activity flags to full-resolution chunk meshes.
+///
+/// Runs in PreRender, collects active chunks from ChunkActivityTracker, sorts
+/// by priority, and meshes up to a per-frame budget. Greedy is the current
+/// production path for visibly voxel near chunks. SnapMC remains available
+/// behind the same selector as an optional experimental smooth path. The
+/// current Goal #4 plus meshing rollout is split into Checkpoints 0-4, with
+/// short-term work moving meshing inputs toward a mesh-facing semantic or
+/// query surface instead of direct storage coupling.
 class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
   public:
+    /// Available full-resolution near-chunk meshing paths.
     enum class NearChunkMesher : uint8_t {
+        /// Optional experimental smooth comparison path.
         SnapMC,
+
+        /// Primary production path for visibly voxel near chunks.
         Greedy,
     };
 
@@ -159,26 +172,34 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
 
     void setSimulationGrid(recurse::simulation::SimulationGrid* grid);
     void setActivityTracker(recurse::simulation::ChunkActivityTracker* tracker);
+    /// Set the maximum number of chunks to remesh in one PreRender pass.
     void setMeshBudget(int budget) { meshBudget_ = budget; }
     int meshBudget() const { return meshBudget_; }
 
-    /// Greedy is the default near chunk path, while SnapMC remains selectable as
-    /// the rollback path during migration.
-    void setNearChunkMesher(NearChunkMesher mesher) { nearChunkMesher_ = mesher; }
+    /// Select the full-resolution near-chunk meshing implementation.
+    ///
+    /// Greedy is the default production path. SnapMC remains selectable as an
+    /// experimental comparison mode behind the same pluggable boundary.
+    void setNearChunkMesher(NearChunkMesher mesher);
     NearChunkMesher nearChunkMesher() const { return nearChunkMesher_; }
 
-    /// When true, requires all 6 face-adjacent neighbors to exist before meshing.
-    /// This prevents geometry gaps at chunk boundaries but requires notification
-    /// system to re-mesh when neighbors load. Default: false (mesh immediately).
+    /// Control whether chunk meshing waits for currently required neighbors.
+    ///
+    /// The current Greedy-first path gates on the horizontal face neighbors so
+    /// streaming does not expose visible side seams. Default: true.
     void setRequireNeighborsForMeshing(bool require) { requireNeighborsForMeshing_ = require; }
 
-    /// Process one frame of meshing. Called by render(); exposed for testing.
+    /// Run one meshing pass.
+    ///
+    /// Collects chunk work, generates CPU meshes in parallel, then performs the
+    /// GPU upload and bookkeeping sequentially. Called by render(); exposed for
+    /// testing.
     void processFrame();
 
-    /// Clear all GPU meshes (for world reset)
+    /// Clear all GPU meshes for world reset or shutdown.
     void clearAllMeshes();
 
-    /// Remove GPU mesh for a single chunk (for streaming unload)
+    /// Remove the GPU mesh for one chunk during streaming unload.
     void removeChunkMesh(const fabric::ChunkCoord& coord);
 
     const auto& gpuMeshes() const { return gpuMeshes_; }
@@ -213,7 +234,7 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     size_t indexBufferSize_ = 0;
     size_t vertexBufferBytes_ = 0;
     size_t indexBufferBytes_ = 0;
-    int meshBudget_ = 50; // Increased from 3 to handle initial load in one frame
+    int meshBudget_ = 50; // Sized for current Greedy-first initial-load behavior.
     bool gpuUploadEnabled_ = false;
     bool requireNeighborsForMeshing_ = true;
 

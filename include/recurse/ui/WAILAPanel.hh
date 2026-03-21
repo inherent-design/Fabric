@@ -4,10 +4,13 @@
 #include "fabric/ui/RmlPanel.hh"
 #include <RmlUi/Core/Types.h>
 
+#include <string>
+
 namespace recurse {
 
 struct WAILAData {
     bool hasHit = false;
+    std::string displayText;
     int voxelX = 0, voxelY = 0, voxelZ = 0;
     int chunkX = 0, chunkY = 0, chunkZ = 0;
     int normalX = 0, normalY = 0, normalZ = 0;

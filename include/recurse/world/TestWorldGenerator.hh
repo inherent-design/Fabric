@@ -13,6 +13,7 @@ class FlatWorldGenerator : public WorldGenerator {
     void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
     uint16_t sampleMaterial(int wx, int wy, int wz) const override;
     int maxSurfaceHeight(int cx, int cz) const override;
+    std::string worldgenFingerprintSource() const override;
     std::string name() const override { return "FlatWorldGenerator"; }
 
   private:
@@ -28,6 +29,7 @@ class LayeredWorldGenerator : public WorldGenerator {
     void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
     uint16_t sampleMaterial(int wx, int wy, int wz) const override;
     int maxSurfaceHeight(int cx, int cz) const override;
+    std::string worldgenFingerprintSource() const override;
     std::string name() const override { return "LayeredWorldGenerator"; }
 
   private:

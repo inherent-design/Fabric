@@ -18,6 +18,7 @@ class NaturalWorldGenerator : public WorldGenerator {
         noiseGen_.generateToBuffer(buffer, cx, cy, cz);
     }
 
+    std::string worldgenFingerprintSource() const override { return noiseGen_.worldgenFingerprintSource(); }
     uint16_t sampleMaterial(int wx, int wy, int wz) const override { return noiseGen_.sampleMaterial(wx, wy, wz); }
     int maxSurfaceHeight(int cx, int cz) const override { return noiseGen_.maxSurfaceHeight(cx, cz); }
 

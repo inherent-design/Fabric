@@ -12,6 +12,7 @@ static bool s_renderCapsInitialized = false;
 
 const RenderCaps& renderCaps() {
     if (!s_renderCapsInitialized) {
+        FABRIC_ZONE_SCOPED_N("renderCaps::initFromBgfx");
         s_renderCaps.initFromBgfx();
         s_renderCapsInitialized = true;
     }

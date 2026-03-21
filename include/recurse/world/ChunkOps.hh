@@ -4,6 +4,7 @@
 #include "fabric/fx/Never.hh"
 #include "fabric/fx/OneOf.hh"
 #include "fabric/world/ChunkCoord.hh"
+#include "recurse/world/FunctionContracts.hh"
 
 #include <tuple>
 #include <vector>
@@ -28,7 +29,8 @@ struct HasChunk {
     static constexpr bool K_IS_SYNC = true;
     using Returns = bool;
     using Errors = fabric::fx::TypeList<fabric::fx::Never>;
-    // TODO: using RequiresState = ...; // Phase IV type-state
+    // Future Checkpoints 0-4 type-state pass: add RequiresState once chunk
+    // state preconditions move from runtime-only checks to explicit types.
 };
 
 /// Find a chunk slot in the registry.
@@ -38,7 +40,8 @@ struct FindSlot {
     static constexpr bool K_IS_SYNC = true;
     using Returns = const simulation::ChunkSlot*;
     using Errors = fabric::fx::TypeList<fabric::fx::Never>;
-    // TODO: using RequiresState = ...; // Phase IV type-state
+    // Future Checkpoints 0-4 type-state pass: add RequiresState once chunk
+    // state preconditions move from runtime-only checks to explicit types.
 };
 
 /// Check if coordinates are within the DB's saved bounding region.
@@ -85,6 +88,14 @@ struct ReadBuffer {
     static constexpr bool K_IS_SYNC = true;
     using Returns = const simulation::VoxelCell*;
     using Errors = fabric::fx::TypeList<fabric::fx::Never>;
+    using ContractTarget = ChunkTarget;
+    static constexpr FunctionOperationContract K_CONTRACT{
+        FunctionTargetKind::Chunk,
+        capabilityMask(FunctionCapability::RegionRead, FunctionCapability::RequireMaterializedChunks),
+        FunctionHistoryMode::DerivedNoHistory,
+        FunctionCostClass::Constant,
+        {},
+    };
 };
 
 /// Get a mutable pointer to the current write buffer for a chunk. Buffer
@@ -144,7 +155,8 @@ struct LoadChunk {
     static constexpr bool K_IS_SYNC = false;
     using Returns = void;
     using Errors = fabric::fx::TypeList<fabric::fx::IOError>;
-    // TODO: using RequiresState = Absent; // Phase IV type-state
+    // Future Checkpoints 0-4 type-state pass: add RequiresState once chunk
+    // state preconditions move from runtime-only checks to explicit types.
 };
 
 /// Encode and queue a chunk for saving.
@@ -154,7 +166,8 @@ struct SaveChunk {
     static constexpr bool K_IS_SYNC = false;
     using Returns = void;
     using Errors = fabric::fx::TypeList<fabric::fx::IOError>;
-    // TODO: using RequiresState = Active; // Phase IV type-state
+    // Future Checkpoints 0-4 type-state pass: add RequiresState once chunk
+    // state preconditions move from runtime-only checks to explicit types.
 };
 
 /// Encode a chunk blob and enqueue it for immediate persistence.
@@ -174,7 +187,8 @@ struct RemoveChunk {
     static constexpr bool K_IS_SYNC = false;
     using Returns = void;
     using Errors = fabric::fx::TypeList<fabric::fx::StateError>;
-    // TODO: using RequiresState = Active; // Phase IV type-state
+    // Future Checkpoints 0-4 type-state pass: add RequiresState once chunk
+    // state preconditions move from runtime-only checks to explicit types.
 };
 
 /// Cancel a pending async load.
@@ -193,6 +207,15 @@ struct GenerateChunks {
     static constexpr bool K_IS_SYNC = false;
     using Returns = void;
     using Errors = fabric::fx::TypeList<fabric::fx::Never>;
+    using ContractTarget = RegionTarget;
+    static constexpr FunctionOperationContract K_CONTRACT{
+        FunctionTargetKind::Region,
+        capabilityMask(FunctionCapability::RegionWrite, FunctionCapability::AllowChunkStreaming,
+                       FunctionCapability::EmitSummaryHistory, FunctionCapability::NeedsBudget),
+        FunctionHistoryMode::SnapshotOnly,
+        FunctionCostClass::ChunkLinear,
+        {},
+    };
 };
 
 /// Per-frame tick combining flush, save service, snapshot, and pruning updates.

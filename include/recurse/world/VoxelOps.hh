@@ -2,6 +2,7 @@
 
 #include "fabric/fx/SpatialDataOp.hh"
 #include "recurse/persistence/ChangeSource.hh"
+#include "recurse/world/FunctionContracts.hh"
 
 namespace recurse::simulation {
 struct VoxelCell;
@@ -21,6 +22,15 @@ struct VoxelWrite {
     static constexpr bool K_IS_SYNC = false;
     using Returns = void;
     using Errors = fabric::fx::TypeList<fabric::fx::Never>;
+    using ContractTarget = VoxelTarget;
+    static constexpr FunctionOperationContract K_CONTRACT{
+        FunctionTargetKind::Voxel,
+        capabilityMask(FunctionCapability::PointWrite, FunctionCapability::WakeAffectedChunks,
+                       FunctionCapability::EmitDetailedHistory),
+        FunctionHistoryMode::PerVoxelDelta,
+        FunctionCostClass::Constant,
+        {},
+    };
 };
 
 } // namespace recurse::ops
