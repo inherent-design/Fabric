@@ -1,4 +1,5 @@
 #include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <gtest/gtest.h>
 
@@ -12,33 +13,33 @@ class SimulationGridTest : public ::testing::Test {
 // 1. Write Sand to epoch N+1 write buffer, read epoch N returns Air
 TEST_F(SimulationGridTest, ReadWriteIsolation) {
     VoxelCell sand;
-    sand.materialId = material_ids::SAND;
+    sand = cellForMaterial(material_ids::SAND);
 
     grid.fillChunk(0, 0, 0, VoxelCell{});
     grid.writeCell(0, 0, 0, sand);
 
     // Read buffer still has the old value (Air default)
     VoxelCell read = grid.readCell(0, 0, 0);
-    EXPECT_EQ(read.materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(read), material_ids::AIR);
 }
 
 // 2. Write Sand, advanceEpoch, read returns Sand
 TEST_F(SimulationGridTest, AdvanceEpochSwapsBuffers) {
     VoxelCell sand;
-    sand.materialId = material_ids::SAND;
+    sand = cellForMaterial(material_ids::SAND);
 
     grid.fillChunk(0, 0, 0, VoxelCell{});
     grid.writeCell(0, 0, 0, sand);
     grid.advanceEpoch();
 
     VoxelCell read = grid.readCell(0, 0, 0);
-    EXPECT_EQ(read.materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(read), material_ids::SAND);
 }
 
 // 3. fillChunk 1000 chunks -> materializedChunkCount == 0
 TEST_F(SimulationGridTest, HomogeneousSentinelNoAllocation) {
     VoxelCell stone;
-    stone.materialId = material_ids::STONE;
+    stone = cellForMaterial(material_ids::STONE);
 
     for (int i = 0; i < 1000; ++i) {
         grid.fillChunk(i, 0, 0, stone);
@@ -50,24 +51,24 @@ TEST_F(SimulationGridTest, HomogeneousSentinelNoAllocation) {
 // 4. fillChunk(Stone) -> readCell returns Stone
 TEST_F(SimulationGridTest, SentinelReadReturnsFillValue) {
     VoxelCell stone;
-    stone.materialId = material_ids::STONE;
+    stone = cellForMaterial(material_ids::STONE);
 
     grid.fillChunk(0, 0, 0, stone);
 
     VoxelCell read = grid.readCell(0, 0, 0);
-    EXPECT_EQ(read.materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(read), material_ids::STONE);
 }
 
 // 5. Write to sentinel -> isMaterialized, untouched cells keep fill
 TEST_F(SimulationGridTest, FirstWritePromotesSentinel) {
     VoxelCell stone;
-    stone.materialId = material_ids::STONE;
+    stone = cellForMaterial(material_ids::STONE);
 
     grid.fillChunk(0, 0, 0, stone);
     EXPECT_FALSE(grid.isChunkMaterialized(0, 0, 0));
 
     VoxelCell sand;
-    sand.materialId = material_ids::SAND;
+    sand = cellForMaterial(material_ids::SAND);
     grid.writeCell(0, 0, 0, sand);
 
     EXPECT_TRUE(grid.isChunkMaterialized(0, 0, 0));
@@ -76,7 +77,7 @@ TEST_F(SimulationGridTest, FirstWritePromotesSentinel) {
     // Cell at (1,0,0) was not written to
     grid.advanceEpoch();
     VoxelCell untouched = grid.readCell(1, 0, 0);
-    EXPECT_EQ(untouched.materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(untouched), material_ids::STONE);
 }
 
 // 6. static_assert Buffer size == 131072 bytes
@@ -89,17 +90,17 @@ TEST_F(SimulationGridTest, MaterializedChunkMemory) {
 // 7. Write at (31,0,0) and (32,0,0), both readable
 TEST_F(SimulationGridTest, CrossChunkReads) {
     VoxelCell sand;
-    sand.materialId = material_ids::SAND;
+    sand = cellForMaterial(material_ids::SAND);
 
     VoxelCell water;
-    water.materialId = material_ids::WATER;
+    water = cellForMaterial(material_ids::WATER);
 
     grid.writeCell(31, 0, 0, sand);
     grid.writeCell(32, 0, 0, water);
     grid.advanceEpoch();
 
-    EXPECT_EQ(grid.readCell(31, 0, 0).materialId, material_ids::SAND);
-    EXPECT_EQ(grid.readCell(32, 0, 0).materialId, material_ids::WATER);
+    EXPECT_EQ(cellMaterialId(grid.readCell(31, 0, 0)), material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(32, 0, 0)), material_ids::WATER);
 
     // They should be in different chunks
     EXPECT_TRUE(grid.hasChunk(0, 0, 0));
@@ -109,12 +110,12 @@ TEST_F(SimulationGridTest, CrossChunkReads) {
 // 8. Write (-1,-1,-1) creates chunk (-1,-1,-1) correctly
 TEST_F(SimulationGridTest, NegativeCoordinates) {
     VoxelCell dirt;
-    dirt.materialId = material_ids::DIRT;
+    dirt = cellForMaterial(material_ids::DIRT);
 
     grid.writeCell(-1, -1, -1, dirt);
     grid.advanceEpoch();
 
-    EXPECT_EQ(grid.readCell(-1, -1, -1).materialId, material_ids::DIRT);
+    EXPECT_EQ(cellMaterialId(grid.readCell(-1, -1, -1)), material_ids::DIRT);
     EXPECT_TRUE(grid.hasChunk(-1, -1, -1));
 }
 
@@ -123,13 +124,12 @@ TEST_F(SimulationGridTest, MultipleEpochCycles) {
     grid.fillChunk(0, 0, 0, VoxelCell{});
 
     for (uint64_t e = 0; e < 10; ++e) {
-        VoxelCell cell;
-        cell.materialId = static_cast<MaterialId>(e % material_ids::COUNT);
+        VoxelCell cell = cellForMaterial(static_cast<MaterialId>(e % material_ids::COUNT));
         grid.writeCell(0, 0, 0, cell);
         grid.advanceEpoch();
 
         VoxelCell read = grid.readCell(0, 0, 0);
-        EXPECT_EQ(read.materialId, static_cast<MaterialId>(e % material_ids::COUNT)) << "Failed at epoch " << e;
+        EXPECT_EQ(cellMaterialId(read), static_cast<MaterialId>(e % material_ids::COUNT)) << "Failed at epoch " << e;
     }
     EXPECT_EQ(grid.currentEpoch(), 10u);
 }
@@ -137,7 +137,7 @@ TEST_F(SimulationGridTest, MultipleEpochCycles) {
 // 10. readBuffer/writeBuffer match readCell/writeCell
 TEST_F(SimulationGridTest, RawBufferMatchesReadWrite) {
     VoxelCell stone;
-    stone.materialId = material_ids::STONE;
+    stone = cellForMaterial(material_ids::STONE);
 
     grid.fillChunk(0, 0, 0, VoxelCell{});
     grid.materializeChunk(0, 0, 0);
@@ -152,38 +152,38 @@ TEST_F(SimulationGridTest, RawBufferMatchesReadWrite) {
     // Read via readBuffer
     const auto* rb = grid.readBuffer(0, 0, 0);
     ASSERT_NE(rb, nullptr);
-    EXPECT_EQ((*rb)[0].materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId((*rb)[0]), material_ids::STONE);
 
     // Should match readCell
-    EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 0, 0)), material_ids::STONE);
 }
 
 // 11. writeCellImmediate visible in read buffer without advanceEpoch
 TEST_F(SimulationGridTest, WriteCellImmediateVisibleWithoutEpochAdvance) {
     VoxelCell sand;
-    sand.materialId = material_ids::SAND;
+    sand = cellForMaterial(material_ids::SAND);
 
     grid.fillChunk(0, 0, 0, VoxelCell{});
     grid.writeCellImmediate(0, 0, 0, sand);
 
     // Read buffer sees the value immediately -- no advanceEpoch needed
-    EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 0, 0)), material_ids::SAND);
 
     // Write buffer also has the value
-    EXPECT_EQ(grid.readFromWriteBuffer(0, 0, 0).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readFromWriteBuffer(0, 0, 0)), material_ids::SAND);
 }
 
 // 12. writeCellImmediate value preserved across advanceEpoch
 TEST_F(SimulationGridTest, WriteCellImmediatePreservedAcrossEpoch) {
     VoxelCell sand;
-    sand.materialId = material_ids::SAND;
+    sand = cellForMaterial(material_ids::SAND);
 
     grid.fillChunk(0, 0, 0, VoxelCell{});
     grid.writeCellImmediate(0, 0, 0, sand);
     grid.advanceEpoch();
 
     // Value survives the epoch swap
-    EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 0, 0)), material_ids::SAND);
 }
 
 // 13. advanceEpoch preserves untouched cells across K_COUNT * 3 cycles.
@@ -194,7 +194,7 @@ TEST_F(SimulationGridTest, UntouchedCellsSurviveManyCycles) {
     grid.materializeChunk(0, 0, 0);
 
     VoxelCell stone;
-    stone.materialId = material_ids::STONE;
+    stone = cellForMaterial(material_ids::STONE);
     grid.writeCell(0, 0, 0, stone);
     grid.advanceEpoch();
 
@@ -204,11 +204,11 @@ TEST_F(SimulationGridTest, UntouchedCellsSurviveManyCycles) {
     for (int i = 0; i < cycles; ++i) {
         // Write to a DIFFERENT cell each epoch to exercise the buffers
         VoxelCell sand;
-        sand.materialId = material_ids::SAND;
+        sand = cellForMaterial(material_ids::SAND);
         grid.writeCell(1, 0, 0, sand);
         grid.advanceEpoch();
 
-        EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::STONE) << "Untouched cell lost at cycle " << i;
+        EXPECT_EQ(cellMaterialId(grid.readCell(0, 0, 0)), material_ids::STONE) << "Untouched cell lost at cycle " << i;
     }
 }
 
@@ -236,20 +236,20 @@ TEST_F(SimulationGridTest, VoxelCellEssenceIdxDefaultZero) {
 
 TEST_F(SimulationGridTest, VoxelCellEssenceIdxPreservedInCopy) {
     VoxelCell cell{};
-    cell.materialId = material_ids::STONE;
+    cell = cellForMaterial(material_ids::STONE);
     cell.essenceIdx = 42;
-    cell.flags = voxel_flags::NONE;
+    cell.setFlags(voxel_flags::NONE);
 
     VoxelCell copy = cell;
     EXPECT_EQ(copy.essenceIdx, 42u);
-    EXPECT_EQ(copy.materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(copy), static_cast<MaterialId>(42));
 }
 
 // --- Group A: Essence round-trip through epoch ---
 
 TEST_F(SimulationGridTest, EssenceIdxPreservedAcrossEpoch) {
     VoxelCell cell{};
-    cell.materialId = material_ids::STONE;
+    cell = cellForMaterial(material_ids::STONE);
     cell.essenceIdx = 42;
 
     grid.fillChunk(0, 0, 0, VoxelCell{});
@@ -262,7 +262,7 @@ TEST_F(SimulationGridTest, EssenceIdxPreservedAcrossEpoch) {
 
 TEST_F(SimulationGridTest, EssenceIdxPreservedMultipleEpochs) {
     VoxelCell cell{};
-    cell.materialId = material_ids::STONE;
+    cell = cellForMaterial(material_ids::STONE);
     cell.essenceIdx = 200;
 
     grid.fillChunk(0, 0, 0, VoxelCell{});
@@ -271,7 +271,7 @@ TEST_F(SimulationGridTest, EssenceIdxPreservedMultipleEpochs) {
 
     for (int i = 0; i < 10; ++i) {
         VoxelCell other{};
-        other.materialId = material_ids::SAND;
+        other = cellForMaterial(material_ids::SAND);
         other.essenceIdx = static_cast<uint8_t>(i);
         grid.writeCell(1, 0, 0, other);
         grid.advanceEpoch();
@@ -290,7 +290,7 @@ TEST_F(SimulationGridTest, EssenceIdxZeroIsDefault) {
 
 TEST_F(SimulationGridTest, EssenceIdxSurvivesWriteCellImmediate) {
     VoxelCell cell{};
-    cell.materialId = material_ids::STONE;
+    cell = cellForMaterial(material_ids::STONE);
     cell.essenceIdx = 100;
 
     grid.fillChunk(0, 0, 0, VoxelCell{});

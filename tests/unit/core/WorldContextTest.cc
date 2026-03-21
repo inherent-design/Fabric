@@ -9,6 +9,7 @@
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/resource/AssetRegistry.hh"
 #include "fabric/resource/ResourceHub.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/ChunkRegistry.hh"
 #include "recurse/simulation/ChunkState.hh"
 #include "recurse/simulation/SimulationGrid.hh"
@@ -24,6 +25,7 @@
 namespace fs = std::filesystem;
 
 using namespace recurse::systems;
+using recurse::simulation::cellForMaterial;
 using recurse::simulation::ChunkSlotState;
 using recurse::simulation::VoxelCell;
 using recurse::simulation::material_ids::STONE;
@@ -91,7 +93,7 @@ class WorldContextTest : public ::testing::Test {
         auto absent = addChunkRef(reg, cx, cy, cz);
         auto generating = transition<Absent, Generating>(absent, reg);
         grid.materializeChunk(cx, cy, cz);
-        grid.writeCell(cx * 32 + 4, cy * 32 + 4, cz * 32 + 4, VoxelCell{STONE});
+        grid.writeCell(cx * 32 + 4, cy * 32 + 4, cz * 32 + 4, cellForMaterial(STONE));
         grid.syncChunkBuffers(cx, cy, cz);
         transition<Generating, Active>(generating, reg);
     }

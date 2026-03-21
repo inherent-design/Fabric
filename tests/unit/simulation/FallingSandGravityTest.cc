@@ -1,3 +1,4 @@
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
@@ -32,11 +33,7 @@ class FallingSandGravityTest : public ::testing::Test {
                     tracker.markSubRegionActive(ChunkCoord{0, 0, 0}, lx, ly, lz);
     }
 
-    VoxelCell makeMaterial(MaterialId id) {
-        VoxelCell c;
-        c.materialId = id;
-        return c;
-    }
+    VoxelCell makeMaterial(MaterialId id) { return cellForMaterial(id); }
 
     void placeCellAndAdvance(int wx, int wy, int wz, VoxelCell cell) {
         grid.writeCell(wx, wy, wz, cell);
@@ -56,8 +53,8 @@ TEST_F(FallingSandGravityTest, SandFallsOnePerTick) {
 
     runGravityTick(ChunkCoord{0, 0, 0}, 0);
 
-    EXPECT_EQ(grid.readCell(16, 30, 16).materialId, material_ids::SAND);
-    EXPECT_EQ(grid.readCell(16, 31, 16).materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 30, 16)), material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 31, 16)), material_ids::AIR);
 }
 
 // 2. Sand falls to ground (stone floor)
@@ -75,8 +72,8 @@ TEST_F(FallingSandGravityTest, SandFallsToGround) {
     for (uint64_t f = 0; f < 10; ++f)
         runGravityTick(ChunkCoord{0, 0, 0}, f);
 
-    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::SAND);
-    EXPECT_EQ(grid.readCell(16, 0, 16).materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 1, 16)), material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 0, 16)), material_ids::STONE);
 }
 
 // 3. Two sand grains stack (contained column prevents diagonal cascade)
@@ -102,8 +99,8 @@ TEST_F(FallingSandGravityTest, SandStacksOnSand) {
     for (uint64_t f = 0; f < 15; ++f)
         runGravityTick(ChunkCoord{0, 0, 0}, f);
 
-    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::SAND);
-    EXPECT_EQ(grid.readCell(16, 2, 16).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 1, 16)), material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 2, 16)), material_ids::SAND);
 }
 
 // 4. Powder cascades diagonally off a pillar
@@ -120,7 +117,7 @@ TEST_F(FallingSandGravityTest, PowderCascadeDiagonal) {
         runGravityTick(ChunkCoord{0, 0, 0}, f);
 
     // Sand should NOT be at (16,1,16) anymore -- it cascaded
-    EXPECT_NE(grid.readCell(16, 1, 16).materialId, material_ids::SAND);
+    EXPECT_NE(cellMaterialId(grid.readCell(16, 1, 16)), material_ids::SAND);
 }
 
 // 5. Stone does not fall
@@ -130,7 +127,7 @@ TEST_F(FallingSandGravityTest, StoneDoesNotFall) {
     for (uint64_t f = 0; f < 100; ++f)
         runGravityTick(ChunkCoord{0, 0, 0}, f);
 
-    EXPECT_EQ(grid.readCell(16, 16, 16).materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 16, 16)), material_ids::STONE);
 }
 
 // 6. Density ordering: gravel sinks below sand (contained column)
@@ -157,8 +154,8 @@ TEST_F(FallingSandGravityTest, DensityOrdering) {
         runGravityTick(ChunkCoord{0, 0, 0}, f);
 
     // Gravel (density 170) should be below sand (density 130)
-    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::GRAVEL);
-    EXPECT_EQ(grid.readCell(16, 2, 16).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 1, 16)), material_ids::GRAVEL);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 2, 16)), material_ids::SAND);
 }
 
 // 7. Direction alternation produces roughly symmetric piles
@@ -182,12 +179,12 @@ TEST_F(FallingSandGravityTest, DirectionAlternationSymmetry) {
     for (int x = 0; x < 16; ++x)
         for (int y = 0; y < K_CHUNK_SIZE; ++y)
             for (int z = 0; z < K_CHUNK_SIZE; ++z)
-                if (grid.readCell(x, y, z).materialId == material_ids::SAND)
+                if (cellMaterialId(grid.readCell(x, y, z)) == material_ids::SAND)
                     ++leftCount;
     for (int x = 17; x < K_CHUNK_SIZE; ++x)
         for (int y = 0; y < K_CHUNK_SIZE; ++y)
             for (int z = 0; z < K_CHUNK_SIZE; ++z)
-                if (grid.readCell(x, y, z).materialId == material_ids::SAND)
+                if (cellMaterialId(grid.readCell(x, y, z)) == material_ids::SAND)
                     ++rightCount;
 
     // Both sides should have at least some sand (rough symmetry)
@@ -225,8 +222,8 @@ TEST_F(FallingSandGravityTest, CrossChunkFalling) {
     boundaryWrites.clear();
     grid.advanceEpoch();
 
-    EXPECT_EQ(grid.readCell(16, 31, 16).materialId, material_ids::SAND);
-    EXPECT_EQ(grid.readCell(16, 32, 16).materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 31, 16)), material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 32, 16)), material_ids::AIR);
 }
 
 // 9. No movement -> simulateGravity returns false (caller handles sleep)
@@ -248,21 +245,21 @@ TEST_F(FallingSandGravityTest, NoMovementSleepsChunk) {
     EXPECT_FALSE(changed) << "All-stone chunk should have no gravity movement";
 }
 
-// 10. Gravity preserves essenceIdx
+// 10. Gravity preserves spare byte
 TEST_F(FallingSandGravityTest, GravityPreservesEssenceIdx) {
     VoxelCell sand;
-    sand.materialId = material_ids::SAND;
-    sand.essenceIdx = 42;
+    sand = cellForMaterial(material_ids::SAND);
+    sand.spare = 42;
     placeCellAndAdvance(16, 31, 16, sand);
 
     runGravityTick(ChunkCoord{0, 0, 0}, 0);
 
     VoxelCell fallen = grid.readCell(16, 30, 16);
-    EXPECT_EQ(fallen.materialId, material_ids::SAND);
-    EXPECT_EQ(fallen.essenceIdx, 42);
+    EXPECT_EQ(cellMaterialId(fallen), material_ids::SAND);
+    EXPECT_EQ(fallen.spare, 42);
 }
 
-// 11. Displacement swap preserves essenceIdx on both cells
+// 11. Displacement swap preserves spare byte on both cells
 TEST_F(FallingSandGravityTest, DisplacementSwapPreservesEssenceIdx) {
     for (int x = 0; x < K_CHUNK_SIZE; ++x)
         for (int z = 0; z < K_CHUNK_SIZE; ++z)
@@ -276,13 +273,13 @@ TEST_F(FallingSandGravityTest, DisplacementSwapPreservesEssenceIdx) {
     grid.advanceEpoch();
 
     VoxelCell sand;
-    sand.materialId = material_ids::SAND;
-    sand.essenceIdx = 10;
+    sand = cellForMaterial(material_ids::SAND);
+    sand.spare = 10;
     grid.writeCell(16, 1, 16, sand);
 
     VoxelCell gravel;
-    gravel.materialId = material_ids::GRAVEL;
-    gravel.essenceIdx = 20;
+    gravel = cellForMaterial(material_ids::GRAVEL);
+    gravel.spare = 20;
     grid.writeCell(16, 2, 16, gravel);
     grid.advanceEpoch();
 
@@ -291,10 +288,10 @@ TEST_F(FallingSandGravityTest, DisplacementSwapPreservesEssenceIdx) {
 
     VoxelCell bottom = grid.readCell(16, 1, 16);
     VoxelCell top = grid.readCell(16, 2, 16);
-    EXPECT_EQ(bottom.materialId, material_ids::GRAVEL);
-    EXPECT_EQ(bottom.essenceIdx, 20);
-    EXPECT_EQ(top.materialId, material_ids::SAND);
-    EXPECT_EQ(top.essenceIdx, 10);
+    EXPECT_EQ(cellMaterialId(bottom), material_ids::GRAVEL);
+    EXPECT_EQ(bottom.spare, 20);
+    EXPECT_EQ(cellMaterialId(top), material_ids::SAND);
+    EXPECT_EQ(top.spare, 10);
 }
 
 // 12. Performance: 50% powder chunk simulates in < 2ms

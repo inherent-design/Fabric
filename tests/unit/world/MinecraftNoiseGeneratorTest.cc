@@ -20,7 +20,7 @@ class MinecraftNoiseGenTest : public ::testing::Test {
     // Find highest solid Y in a column (wx, wz) within a chunk range
     int surfaceY(SimulationGrid& g, int wx, int wz, int minY, int maxY) {
         for (int y = maxY; y >= minY; --y) {
-            auto mat = g.readCell(wx, y, wz).materialId;
+            auto mat = cellMaterialId(g.readCell(wx, y, wz));
             if (mat != material_ids::AIR && mat != material_ids::WATER) {
                 return y;
             }
@@ -110,7 +110,7 @@ TEST_F(MinecraftNoiseGenTest, SeaLevelProducesWater) {
                 for (int ly = 0; ly < K_CHUNK; ++ly)
                     for (int lx = 0; lx < K_CHUNK; lx += 4)
                         for (int lz = 0; lz < K_CHUNK; lz += 4)
-                            if (grid.readCell(bx + lx, by + ly, bz + lz).materialId == material_ids::WATER)
+                            if (cellMaterialId(grid.readCell(bx + lx, by + ly, bz + lz)) == material_ids::WATER)
                                 ++waterCount;
             }
         }
@@ -148,7 +148,7 @@ TEST_F(MinecraftNoiseGenTest, SurfaceMaterialVaries) {
                 for (int lz = 0; lz < K_CHUNK; lz += 4) {
                     int sy = surfaceY(grid, bx + lx, bz + lz, 0, 63);
                     if (sy >= 0) {
-                        auto mat = grid.readCell(bx + lx, sy, bz + lz).materialId;
+                        auto mat = cellMaterialId(grid.readCell(bx + lx, sy, bz + lz));
                         if (mat != material_ids::STONE) {
                             surfaceMats.insert(mat);
                         }
@@ -173,7 +173,7 @@ TEST_F(MinecraftNoiseGenTest, BulkUndergroundStone) {
 
     // All cells this deep should be Stone (density >> 3)
     for (int y = -32; y < -1; ++y) {
-        EXPECT_EQ(grid.readCell(0, y, 0).materialId, material_ids::STONE) << "Expected Stone at y=" << y;
+        EXPECT_EQ(cellMaterialId(grid.readCell(0, y, 0)), material_ids::STONE) << "Expected Stone at y=" << y;
     }
 }
 
@@ -201,7 +201,8 @@ TEST_F(MinecraftNoiseGenTest, DeterministicSameSeed) {
             for (int lx = 0; lx < K_CHUNK; ++lx) {
                 auto c1 = grid1.readCell(bx + lx, by + ly, bz + lz);
                 auto c2 = grid2.readCell(bx + lx, by + ly, bz + lz);
-                EXPECT_EQ(c1.materialId, c2.materialId) << "Mismatch at (" << lx << "," << ly << "," << lz << ")";
+                EXPECT_EQ(cellMaterialId(c1), cellMaterialId(c2))
+                    << "Mismatch at (" << lx << "," << ly << "," << lz << ")";
             }
         }
     }
@@ -234,7 +235,7 @@ TEST_F(MinecraftNoiseGenTest, DifferentSeeds) {
             for (int lx = 0; lx < K_CHUNK; ++lx) {
                 auto c1 = grid1.readCell(bx + lx, by + ly, bz + lz);
                 auto c2 = grid2.readCell(bx + lx, by + ly, bz + lz);
-                if (c1.materialId != c2.materialId) {
+                if (cellMaterialId(c1) != cellMaterialId(c2)) {
                     ++differences;
                 }
             }
@@ -311,7 +312,7 @@ TEST_F(MinecraftNoiseGenTest, ShorelineMaterialsAreContextual) {
             if (sy < 0 || std::abs(sy - static_cast<int>(config.seaLevel)) > 4)
                 continue;
 
-            const auto mat = grid.readCell(wx, sy, wz).materialId;
+            const auto mat = cellMaterialId(grid.readCell(wx, sy, wz));
             if (mat != material_ids::STONE) {
                 shorelineMaterials.insert(mat);
             }
@@ -417,7 +418,7 @@ TEST_F(MinecraftNoiseGenTest, SampleMaterialMatchesGenerateToBufferAtChunkWorldC
                     int wy = baseY + ly;
                     int wz = baseZ + lz;
                     int idx = lx + ly * K_CHUNK + lz * K_CHUNK * K_CHUNK;
-                    ASSERT_EQ(gen.sampleMaterial(wx, wy, wz), buffer[idx].materialId)
+                    ASSERT_EQ(gen.sampleMaterial(wx, wy, wz), cellMaterialId(buffer[idx]))
                         << "world=(" << wx << "," << wy << "," << wz << ")";
                 }
             }

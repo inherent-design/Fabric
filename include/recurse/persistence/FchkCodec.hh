@@ -9,7 +9,7 @@ namespace recurse {
 /// FCHK binary chunk format header (10 bytes).
 struct FchkHeader {
     char magic[4]{'F', 'C', 'H', 'K'};
-    uint16_t version{2};
+    uint16_t version{4};
     uint8_t dimX{32};
     uint8_t dimY{32};
     uint8_t dimZ{32};
@@ -39,17 +39,18 @@ struct FchkDeltaDecoded {
     uint16_t paletteEntryCount{0};
 };
 
-/// Shared FCHK codec. Handles v1/v2 full blobs and v3 delta blobs.
+/// Shared FCHK codec. Handles v1/v2/v4 full blobs and v3 delta blobs.
 struct FchkCodec {
-    /// Encode raw VoxelCell data into FCHK v2 blob.
+    /// Encode raw cell data into FCHK v2 blob (v4 encode added in W4-D).
     /// When paletteData is non-null and paletteEntryCount > 0, palette is appended after the
     /// voxel payload. Compression wraps bytes 10-EOF (payload + palette).
     static ChunkBlob encode(const void* cells, size_t cellsByteCount, uint8_t compression = 0, int level = 1,
                             const float* paletteData = nullptr, uint16_t paletteEntryCount = 0);
 
-    /// Decode FCHK blob (v1 or v2). Validates header, decompresses if needed.
+    /// Decode FCHK blob (v1, v2, or v4). Validates header, decompresses if needed.
     /// v1 files: returns cells only, paletteEntryCount == 0, essenceIdx bytes zeroed.
     /// v2 files: returns cells + palette section.
+    /// v4 files: MatterState layout, runtime flags cleared from phaseAndFlags byte.
     /// Throws for v3 blobs (use decodeDelta instead).
     static FchkDecoded decode(const ChunkBlob& blob);
 
@@ -66,7 +67,7 @@ struct FchkCodec {
     /// Check if a blob is a v3 delta format (without full decode).
     static bool isDelta(const ChunkBlob& blob);
 
-    /// Decode any FCHK blob (v1/v2/v3). For v3 deltas, applies diff entries
+    /// Decode any FCHK blob (v1/v2/v3/v4). For v3 deltas, applies diff entries
     /// to refCells to produce full cell data. refCells must point to
     /// K_CHUNK_VOLUME * sizeof(VoxelCell) bytes when blob is v3.
     /// For v1/v2, refCells is ignored. Throws if blob is v3 and refCells is null.

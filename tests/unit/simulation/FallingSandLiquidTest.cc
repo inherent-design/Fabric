@@ -1,3 +1,4 @@
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
@@ -31,11 +32,7 @@ class FallingSandLiquidTest : public ::testing::Test {
                     tracker.markSubRegionActive(ChunkCoord{0, 0, 0}, lx, ly, lz);
     }
 
-    VoxelCell makeMaterial(MaterialId id) {
-        VoxelCell c;
-        c.materialId = id;
-        return c;
-    }
+    VoxelCell makeMaterial(MaterialId id) { return cellForMaterial(id); }
 
     void runLiquidTick(ChunkCoord pos, uint64_t frame) {
         ghosts.syncGhostCells(pos, grid);
@@ -77,7 +74,7 @@ class FallingSandLiquidTest : public ::testing::Test {
         for (int x = xmin; x <= xmax; ++x)
             for (int y = ymin; y <= ymax; ++y)
                 for (int z = zmin; z <= zmax; ++z)
-                    if (grid.readCell(x, y, z).materialId == id)
+                    if (cellMaterialId(grid.readCell(x, y, z)) == id)
                         ++count;
         return count;
     }
@@ -90,8 +87,8 @@ TEST_F(FallingSandLiquidTest, WaterFallsInAir) {
 
     runLiquidTick(ChunkCoord{0, 0, 0}, 0);
 
-    EXPECT_EQ(grid.readCell(16, 9, 16).materialId, material_ids::WATER);
-    EXPECT_EQ(grid.readCell(16, 10, 16).materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 9, 16)), material_ids::WATER);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 10, 16)), material_ids::AIR);
 }
 
 // 2. Water spreads horizontally on flat surface
@@ -108,12 +105,12 @@ TEST_F(FallingSandLiquidTest, WaterFlowsHorizontally) {
     // With immediate-mode reads, water cascades multiple cells per tick
     // (scan sees its own writes). After 10 ticks, water is far from origin.
     // Verify: (1) origin is empty, (2) water exists somewhere at y=1.
-    EXPECT_NE(grid.readCell(16, 1, 16).materialId, material_ids::WATER) << "Water should have moved from origin";
+    EXPECT_NE(cellMaterialId(grid.readCell(16, 1, 16)), material_ids::WATER) << "Water should have moved from origin";
 
     bool anyWaterAtY1 = false;
     for (int x = 0; x < K_CHUNK_SIZE && !anyWaterAtY1; ++x)
         for (int z = 0; z < K_CHUNK_SIZE && !anyWaterAtY1; ++z)
-            if (grid.readCell(x, 1, z).materialId == material_ids::WATER)
+            if (cellMaterialId(grid.readCell(x, 1, z)) == material_ids::WATER)
                 anyWaterAtY1 = true;
     EXPECT_TRUE(anyWaterAtY1) << "Water should still exist at y=1 level";
 }
@@ -243,7 +240,7 @@ TEST_F(FallingSandLiquidTest, CrossChunkHorizontalFlow) {
     }
 
     // Water should have flowed into chunk(-1,0,0), i.e., world x=-1
-    bool flowedLeft = grid.readCell(-1, 1, 16).materialId == material_ids::WATER;
+    bool flowedLeft = cellMaterialId(grid.readCell(-1, 1, 16)) == material_ids::WATER;
     // Or it might still be at x=0 if it flowed other directions first
     int totalWater = countMaterial(material_ids::WATER, -2, 2, 1, 1, 15, 17);
     EXPECT_GE(totalWater, 1) << "Water should exist near the boundary";
@@ -263,7 +260,7 @@ TEST_F(FallingSandLiquidTest, ViscosityLimitsFlowRate) {
     bool foundFarWater = false;
     for (int x = 0; x < K_CHUNK_SIZE; ++x) {
         for (int z = 0; z < K_CHUNK_SIZE; ++z) {
-            if (grid.readCell(x, 1, z).materialId == material_ids::WATER) {
+            if (cellMaterialId(grid.readCell(x, 1, z)) == material_ids::WATER) {
                 int dist = std::abs(x - 16) + std::abs(z - 16);
                 if (dist > 1)
                     foundFarWater = true;
@@ -313,23 +310,23 @@ TEST_F(FallingSandLiquidTest, WaterDoesNotDisplaceSolids) {
         runChunkTick(ChunkCoord{0, 0, 0}, f);
     }
 
-    EXPECT_EQ(grid.readCell(16, 1, 16).materialId, material_ids::STONE);
-    EXPECT_EQ(grid.readCell(16, 0, 16).materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 1, 16)), material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 0, 16)), material_ids::STONE);
 }
 
-// 10. Liquid flow preserves essenceIdx
+// 10. Liquid flow preserves spare byte
 TEST_F(FallingSandLiquidTest, LiquidFlowPreservesEssenceIdx) {
     VoxelCell water;
-    water.materialId = material_ids::WATER;
-    water.essenceIdx = 7;
+    water = cellForMaterial(material_ids::WATER);
+    water.spare = 7;
     grid.writeCell(16, 10, 16, water);
     grid.advanceEpoch();
 
     runLiquidTick(ChunkCoord{0, 0, 0}, 0);
 
     VoxelCell fallen = grid.readCell(16, 9, 16);
-    EXPECT_EQ(fallen.materialId, material_ids::WATER);
-    EXPECT_EQ(fallen.essenceIdx, 7);
+    EXPECT_EQ(cellMaterialId(fallen), material_ids::WATER);
+    EXPECT_EQ(fallen.spare, 7);
 }
 
 // 11. Performance: 10K liquid cells under 3ms

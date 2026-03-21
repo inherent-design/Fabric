@@ -1,18 +1,8 @@
 #pragma once
 
-#include <cstdint>
+#include "recurse/simulation/VoxelMaterial.hh"
 
 namespace recurse::simulation {
-
-/// Broad matter mode for a voxel cell.
-/// Values 5-7 reserved for future use (Growth, Unstable, etc.).
-enum class Phase : uint8_t {
-    Empty = 0,
-    Solid = 1,
-    Powder = 2,
-    Liquid = 3,
-    Gas = 4
-};
 
 /// MatterState v1: 4-byte cell layout for essence-first world authority.
 /// Shape C: essenceIdx(8b) + displacementRank(8b) + phase(3b) + flags(5b) + spare(8b).

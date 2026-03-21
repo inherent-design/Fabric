@@ -1,3 +1,4 @@
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
@@ -31,11 +32,7 @@ class FallingSandPhysicsChangeTest : public ::testing::Test {
                     tracker.markSubRegionActive(ChunkCoord{0, 0, 0}, lx, ly, lz);
     }
 
-    VoxelCell makeMaterial(MaterialId id) {
-        VoxelCell c;
-        c.materialId = id;
-        return c;
-    }
+    VoxelCell makeMaterial(MaterialId id) { return cellForMaterial(id); }
 
     void placeCellAndAdvance(int wx, int wy, int wz, VoxelCell cell) {
         grid.writeCell(wx, wy, wz, cell);
@@ -177,7 +174,7 @@ TEST_F(FallingSandPhysicsChangeTest, MatterConservationWithTracking) {
         for (int z = 0; z < K_CHUNK_SIZE; ++z)
             for (int y = 0; y < K_CHUNK_SIZE; ++y)
                 for (int x = 0; x < K_CHUNK_SIZE; ++x)
-                    if (g.readCell(x, y, z).materialId == material_ids::SAND)
+                    if (cellMaterialId(g.readCell(x, y, z)) == material_ids::SAND)
                         ++count;
         return count;
     };

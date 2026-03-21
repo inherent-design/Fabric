@@ -33,7 +33,7 @@ void VoxelInteractionSystem::doInit(fabric::AppContext& ctx) {
     camera_ = ctx.systemRegistry.get<CameraGameSystem>();
     voxelSim_ = ctx.systemRegistry.get<VoxelSimulationSystem>();
 
-    voxelInteraction_ = std::make_unique<VoxelInteraction>(voxelSim_->simulationGrid());
+    voxelInteraction_ = std::make_unique<VoxelInteraction>(voxelSim_->simulationGrid(), voxelSim_->materials());
 
     FABRIC_LOG_INFO("VoxelInteractionSystem initialized");
 }

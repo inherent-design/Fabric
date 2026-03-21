@@ -1,4 +1,5 @@
 #include "recurse/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/EssenceColor.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/simulation/VoxelSemanticView.hh"
@@ -15,8 +16,8 @@ TEST(VoxelCellTest, SizeIs4Bytes) {
 
 TEST(VoxelCellTest, DefaultIsAir) {
     VoxelCell cell;
-    EXPECT_EQ(cell.materialId, material_ids::AIR);
-    EXPECT_EQ(cell.flags, voxel_flags::NONE);
+    EXPECT_EQ(cell.phase(), Phase::Empty);
+    EXPECT_EQ(cell.flags(), voxel_flags::NONE);
 }
 
 class MaterialRegistryTest : public ::testing::Test {
@@ -133,17 +134,19 @@ TEST_F(MaterialRegistryTest, ResolveVoxelSemanticsUsesChunkLocalPaletteAsOptiona
     MaterialSemanticRegistry semantics(registry);
     recurse::EssencePalette palette;
 
-    const auto index = palette.addEntryRaw({0.1f, 0.2f, 0.3f, 0.4f});
-    ASSERT_LT(index, 256u);
+    // In the new layout essenceIdx IS the material identity, so the palette
+    // entry must sit at the same index as the material id.  STONE == 1, so
+    // we need a dummy at index 0 and the real entry at index 1.
+    palette.addEntryRaw({0.0f, 0.0f, 0.0f, 0.0f});                       // index 0 (dummy)
+    const auto stoneIdx = palette.addEntryRaw({0.1f, 0.2f, 0.3f, 0.4f}); // index 1
+    ASSERT_EQ(stoneIdx, static_cast<uint8_t>(material_ids::STONE));
 
-    VoxelCell cell;
-    cell.materialId = material_ids::STONE;
-    cell.essenceIdx = static_cast<uint8_t>(index);
+    VoxelCell cell = makeCell(static_cast<uint8_t>(material_ids::STONE), Phase::Solid, 200);
 
     const auto resolved = semantics.resolve(cell, palette);
 
     EXPECT_STREQ(resolved.material.displayName, "Stone");
-    EXPECT_EQ(resolved.sampledEssence.index, index);
+    EXPECT_EQ(resolved.sampledEssence.index, stoneIdx);
     EXPECT_TRUE(resolved.sampledEssence.hasPalette);
     EXPECT_TRUE(resolved.sampledEssence.inRange);
     ASSERT_TRUE(resolved.sampledEssence.value.has_value());
@@ -156,9 +159,10 @@ TEST_F(MaterialRegistryTest, ResolveVoxelSemanticsUsesChunkLocalPaletteAsOptiona
 TEST_F(MaterialRegistryTest, ResolveVoxelSemanticsDoesNotTreatEssenceIndexAsCanonicalWithoutPalette) {
     MaterialSemanticRegistry semantics(registry);
 
-    VoxelCell cell;
-    cell.materialId = material_ids::DIRT;
-    cell.essenceIdx = 17;
+    // essenceIdx == material identity in the new layout, so just use DIRT
+    // directly.  Without a palette, resolve should fall back to intrinsic
+    // essence from the MaterialDef.
+    VoxelCell cell = makeCell(static_cast<uint8_t>(material_ids::DIRT), Phase::Solid, 150);
 
     const auto resolved = semantics.resolve(cell, nullptr);
 

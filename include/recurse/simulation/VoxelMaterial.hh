@@ -17,6 +17,16 @@ inline constexpr MaterialId GRAVEL = 5;
 inline constexpr MaterialId COUNT = 6;
 } // namespace material_ids
 
+/// Broad matter mode for a voxel cell.
+/// Values 5-7 reserved for future use (Growth, Unstable, etc.).
+enum class Phase : uint8_t {
+    Empty = 0,
+    Solid = 1,
+    Powder = 2,
+    Liquid = 3,
+    Gas = 4
+};
+
 enum class MoveType : uint8_t {
     Static = 0, // Stone, Dirt -- does not move
     Powder = 1, // Sand, Gravel -- falls, cascades diagonally
@@ -26,16 +36,27 @@ enum class MoveType : uint8_t {
 
 namespace voxel_flags {
 inline constexpr uint8_t NONE = 0;
-inline constexpr uint8_t UPDATED = 1 << 0;   // Modified this epoch
-inline constexpr uint8_t FREE_FALL = 1 << 1; // In free-fall (optimization)
-// Bits 2-7 reserved
+inline constexpr uint8_t UPDATED = 1 << 0;   // Bit 0 of 5-bit flags field
+inline constexpr uint8_t FREE_FALL = 1 << 1; // Bit 1 of 5-bit flags field
+// Bits 2-4 reserved
 } // namespace voxel_flags
 
 /// 4-byte voxel cell. Fits 32768 cells per 32^3 chunk = 128 KB.
+/// Post Wave-4: essence-first layout matching MatterState Shape C.
 struct VoxelCell {
-    MaterialId materialId{material_ids::AIR}; // 2 bytes
-    uint8_t essenceIdx{0};                    ///< Palette index into per-chunk EssencePalette (0-255).
-    uint8_t flags{voxel_flags::NONE};         // 1 byte
+    uint8_t essenceIdx{0};       ///< Palette index into per-chunk EssencePalette.
+    uint8_t displacementRank{0}; ///< CA displacement ordering (0-255).
+    uint8_t phaseAndFlags{0};    ///< Low 3 bits = Phase, high 5 bits = flags.
+    uint8_t spare{0};            ///< Reserved, must be 0 in v1.
+
+    constexpr Phase phase() const { return static_cast<Phase>(phaseAndFlags & 0x07); }
+    constexpr void setPhase(Phase p) {
+        phaseAndFlags = static_cast<uint8_t>((phaseAndFlags & 0xF8) | (static_cast<uint8_t>(p) & 0x07));
+    }
+    constexpr uint8_t flags() const { return (phaseAndFlags >> 3) & 0x1F; }
+    constexpr void setFlags(uint8_t f) {
+        phaseAndFlags = static_cast<uint8_t>((phaseAndFlags & 0x07) | ((f & 0x1F) << 3));
+    }
 };
 static_assert(sizeof(VoxelCell) == 4, "VoxelCell must be exactly 4 bytes");
 

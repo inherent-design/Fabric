@@ -5,7 +5,9 @@
 
 namespace recurse::simulation {
 
-VoxelSimulationSystem::VoxelSimulationSystem() : sandSystem_(registry_) {}
+VoxelSimulationSystem::VoxelSimulationSystem() : sandSystem_(registry_) {
+    projectionTable_.populateFromRegistry(registry_);
+}
 
 void VoxelSimulationSystem::tick() {
     FABRIC_ZONE_SCOPED_N("voxel_sim_tick");
@@ -187,6 +189,12 @@ MaterialRegistry& VoxelSimulationSystem::materials() {
 }
 const MaterialRegistry& VoxelSimulationSystem::materials() const {
     return registry_;
+}
+ProjectionRuleTable& VoxelSimulationSystem::projectionTable() {
+    return projectionTable_;
+}
+const ProjectionRuleTable& VoxelSimulationSystem::projectionTable() const {
+    return projectionTable_;
 }
 ChunkActivityTracker& VoxelSimulationSystem::activityTracker() {
     return tracker_;

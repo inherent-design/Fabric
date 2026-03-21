@@ -1,5 +1,6 @@
 #include "recurse/audio/MaterialSounds.hh"
 
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/VoxelRaycast.hh"
@@ -104,7 +105,7 @@ MaterialType MaterialSounds::detectSurfaceBelow(const recurse::simulation::Simul
 
     auto cell = grid.readCell(hit->x, hit->y, hit->z);
     using namespace recurse::simulation;
-    switch (cell.materialId) {
+    switch (cellMaterialId(cell)) {
         case material_ids::STONE:
             return MaterialType::Stone;
         case material_ids::DIRT:

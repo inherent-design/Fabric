@@ -1,4 +1,5 @@
 #include "recurse/world/MinecraftNoiseGenerator.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <algorithm>
@@ -9,10 +10,33 @@
 namespace recurse {
 
 using simulation::MaterialId;
+using simulation::Phase;
 namespace material_ids = simulation::material_ids;
 using simulation::VoxelCell;
 
 namespace {
+
+/// Migration helper: construct a VoxelCell from a MaterialId using known
+/// material properties. Avoids requiring a MaterialRegistry in generators.
+VoxelCell cellForMaterial(MaterialId id) {
+    using simulation::makeCell;
+    switch (id) {
+        case material_ids::AIR:
+            return VoxelCell{};
+        case material_ids::STONE:
+            return makeCell(1, Phase::Solid, 200);
+        case material_ids::DIRT:
+            return makeCell(2, Phase::Solid, 150);
+        case material_ids::SAND:
+            return makeCell(3, Phase::Powder, 130);
+        case material_ids::WATER:
+            return makeCell(4, Phase::Liquid, 100);
+        case material_ids::GRAVEL:
+            return makeCell(5, Phase::Powder, 170);
+        default:
+            return makeCell(static_cast<uint8_t>(id), Phase::Solid, 128);
+    }
+}
 
 constexpr float K_FILLED_DENSITY_THRESHOLD = 0.0f;
 constexpr uint32_t K_TERRAIN_RULE_VERSION = 3;
@@ -241,8 +265,7 @@ void MinecraftNoiseGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy
                     continue;
                 }
 
-                VoxelCell cell;
-                cell.materialId = materialId;
+                VoxelCell cell = cellForMaterial(materialId);
                 int idx = lx + ly * K_SIZE + lz * K_SIZE * K_SIZE;
                 buffer[idx] = cell;
             }

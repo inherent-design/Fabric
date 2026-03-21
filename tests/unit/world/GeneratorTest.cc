@@ -1,3 +1,4 @@
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/FlatGenerator.hh"
@@ -21,9 +22,9 @@ TEST_F(GeneratorTest, FlatBelowSurface) {
     grid.advanceEpoch();
 
     // worldY=0 should be Stone
-    EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 0, 0)), material_ids::STONE);
     // worldY=15 should be Stone
-    EXPECT_EQ(grid.readCell(0, 15, 0).materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 15, 0)), material_ids::STONE);
 }
 
 // 2. FlatAboveSurface -- Above = Air
@@ -33,9 +34,9 @@ TEST_F(GeneratorTest, FlatAboveSurface) {
     grid.advanceEpoch();
 
     // worldY=17 should be Air
-    EXPECT_EQ(grid.readCell(0, 17, 0).materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 17, 0)), material_ids::AIR);
     // worldY=31 should be Air
-    EXPECT_EQ(grid.readCell(0, 31, 0).materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 31, 0)), material_ids::AIR);
 }
 
 // 3. FlatSurfaceLayer -- Surface = Dirt
@@ -44,21 +45,21 @@ TEST_F(GeneratorTest, FlatSurfaceLayer) {
     gen.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
 
-    EXPECT_EQ(grid.readCell(0, 16, 0).materialId, material_ids::DIRT);
-    EXPECT_EQ(grid.readCell(15, 16, 15).materialId, material_ids::DIRT);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 16, 0)), material_ids::DIRT);
+    EXPECT_EQ(cellMaterialId(grid.readCell(15, 16, 15)), material_ids::DIRT);
 }
 
 // 4. SingleMaterialFills -- All cells = specified material
 TEST_F(GeneratorTest, SingleMaterialFills) {
     VoxelCell water;
-    water.materialId = material_ids::WATER;
+    water = cellForMaterial(material_ids::WATER);
     SingleMaterialGenerator gen(water);
     gen.generate(grid, 0, 0, 0);
 
     // SingleMaterial uses fillChunk (sentinel), so reads should return Water
-    EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::WATER);
-    EXPECT_EQ(grid.readCell(16, 16, 16).materialId, material_ids::WATER);
-    EXPECT_EQ(grid.readCell(31, 31, 31).materialId, material_ids::WATER);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 0, 0)), material_ids::WATER);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 16, 16)), material_ids::WATER);
+    EXPECT_EQ(cellMaterialId(grid.readCell(31, 31, 31)), material_ids::WATER);
 
     // Should not be materialized (sentinel optimization)
     EXPECT_FALSE(grid.isChunkMaterialized(0, 0, 0));
@@ -67,35 +68,35 @@ TEST_F(GeneratorTest, SingleMaterialFills) {
 // 5. LayeredBoundaries -- Exact Y boundaries
 TEST_F(GeneratorTest, LayeredBoundaries) {
     VoxelCell stone;
-    stone.materialId = material_ids::STONE;
+    stone = cellForMaterial(material_ids::STONE);
     VoxelCell dirt;
-    dirt.materialId = material_ids::DIRT;
+    dirt = cellForMaterial(material_ids::DIRT);
 
     LayeredGenerator gen({{stone, 0, 9}, {dirt, 10, 19}});
     gen.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
 
-    EXPECT_EQ(grid.readCell(0, 9, 0).materialId, material_ids::STONE);
-    EXPECT_EQ(grid.readCell(0, 10, 0).materialId, material_ids::DIRT);
-    EXPECT_EQ(grid.readCell(0, 19, 0).materialId, material_ids::DIRT);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 9, 0)), material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 10, 0)), material_ids::DIRT);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 19, 0)), material_ids::DIRT);
     // worldY=20 above both layers -> Air (default fill)
-    EXPECT_EQ(grid.readCell(0, 20, 0).materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 20, 0)), material_ids::AIR);
 }
 
 // 6. LayeredMultiple -- 3+ layers correct
 TEST_F(GeneratorTest, LayeredMultiple) {
     VoxelCell stone, dirt, sand;
-    stone.materialId = material_ids::STONE;
-    dirt.materialId = material_ids::DIRT;
-    sand.materialId = material_ids::SAND;
+    stone = cellForMaterial(material_ids::STONE);
+    dirt = cellForMaterial(material_ids::DIRT);
+    sand = cellForMaterial(material_ids::SAND);
 
     LayeredGenerator gen({{stone, 0, 4}, {dirt, 5, 9}, {sand, 10, 14}});
     gen.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
 
-    EXPECT_EQ(grid.readCell(0, 2, 0).materialId, material_ids::STONE);
-    EXPECT_EQ(grid.readCell(0, 7, 0).materialId, material_ids::DIRT);
-    EXPECT_EQ(grid.readCell(0, 12, 0).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 2, 0)), material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 7, 0)), material_ids::DIRT);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 12, 0)), material_ids::SAND);
 }
 
 // 7. NoBgfxDependency -- Compiles without bgfx (verified by this test compiling)
@@ -116,8 +117,8 @@ TEST_F(GeneratorTest, NegativeYChunks) {
     gen.generate(grid, 0, -1, 0);
     grid.advanceEpoch();
 
-    EXPECT_EQ(grid.readCell(0, -1, 0).materialId, material_ids::STONE);
-    EXPECT_EQ(grid.readCell(0, -32, 0).materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, -1, 0)), material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, -32, 0)), material_ids::STONE);
 }
 
 // 9. AboveSurfaceAllAir -- chunk above surface = all air (sentinel)
@@ -130,8 +131,8 @@ TEST_F(GeneratorTest, AboveSurfaceAllAir) {
     EXPECT_FALSE(grid.isChunkMaterialized(0, 1, 0));
 
     // All reads should return Air
-    EXPECT_EQ(grid.readCell(0, 32, 0).materialId, material_ids::AIR);
-    EXPECT_EQ(grid.readCell(0, 63, 0).materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 32, 0)), material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 63, 0)), material_ids::AIR);
 }
 
 // 10. GeneratorName -- Verify name() returns correct string

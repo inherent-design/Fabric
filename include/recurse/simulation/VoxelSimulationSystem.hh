@@ -6,6 +6,7 @@
 #include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/ProjectionRuleTable.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include <bit>
 #include <cstdint>
@@ -43,6 +44,8 @@ class VoxelSimulationSystem {
     const SimulationGrid& grid() const;
     MaterialRegistry& materials();
     const MaterialRegistry& materials() const;
+    ProjectionRuleTable& projectionTable();
+    const ProjectionRuleTable& projectionTable() const;
     ChunkActivityTracker& activityTracker();
     const ChunkActivityTracker& activityTracker() const;
     uint64_t frameIndex() const;
@@ -61,6 +64,7 @@ class VoxelSimulationSystem {
 
   private:
     MaterialRegistry registry_;
+    ProjectionRuleTable projectionTable_;
     SimulationGrid grid_;
     ChunkActivityTracker tracker_;
     GhostCellManager ghosts_;

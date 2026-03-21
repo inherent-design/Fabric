@@ -1,3 +1,4 @@
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/systems/VoxelMeshingSystem.hh"
 
 #include "recurse/simulation/SimulationGrid.hh"
@@ -11,6 +12,9 @@ using recurse::simulation::SimulationGrid;
 using recurse::simulation::VoxelCell;
 using recurse::systems::MeshingChunkContext;
 namespace MaterialIds = recurse::simulation::material_ids;
+using recurse::simulation::cellForMaterial;
+using recurse::simulation::cellMaterialId;
+using recurse::simulation::MaterialId;
 
 class MeshingChunkContextTest : public ::testing::Test {
   protected:
@@ -54,8 +58,8 @@ class MeshingChunkContextTest : public ::testing::Test {
         simGrid.syncChunkBuffers(0, 0, -1);
     }
 
-    void fillAll(int cx, int cy, int cz, uint16_t materialId) {
-        VoxelCell cell{materialId};
+    void fillAll(int cx, int cy, int cz, MaterialId materialId) {
+        VoxelCell cell = cellForMaterial(materialId);
         int bx = cx * K_CHUNK_SIZE;
         int by = cy * K_CHUNK_SIZE;
         int bz = cz * K_CHUNK_SIZE;
@@ -65,11 +69,11 @@ class MeshingChunkContextTest : public ::testing::Test {
                     simGrid.writeCell(bx + lx, by + ly, bz + lz, cell);
     }
 
-    void writeSingleCell(int cx, int cy, int cz, int lx, int ly, int lz, uint16_t materialId) {
+    void writeSingleCell(int cx, int cy, int cz, int lx, int ly, int lz, MaterialId materialId) {
         int wx = cx * K_CHUNK_SIZE + lx;
         int wy = cy * K_CHUNK_SIZE + ly;
         int wz = cz * K_CHUNK_SIZE + lz;
-        simGrid.writeCell(wx, wy, wz, VoxelCell{materialId});
+        simGrid.writeCell(wx, wy, wz, cellForMaterial(materialId));
     }
 
     MeshingChunkContext buildCtx() {
@@ -95,37 +99,37 @@ class MeshingChunkContextTest : public ::testing::Test {
 TEST_F(MeshingChunkContextTest, ReadLocalInBounds) {
     auto ctx = buildCtx();
     auto cell = ctx.readLocal(0, 0, 0, &simGrid);
-    EXPECT_EQ(cell.materialId, MaterialIds::STONE);
+    EXPECT_EQ(cellMaterialId(cell), MaterialIds::STONE);
 
     auto mid = ctx.readLocal(K_CHUNK_SIZE / 2, K_CHUNK_SIZE / 2, K_CHUNK_SIZE / 2, &simGrid);
-    EXPECT_EQ(mid.materialId, MaterialIds::STONE);
+    EXPECT_EQ(cellMaterialId(mid), MaterialIds::STONE);
 
     auto edge = ctx.readLocal(K_CHUNK_SIZE - 1, K_CHUNK_SIZE - 1, K_CHUNK_SIZE - 1, &simGrid);
-    EXPECT_EQ(edge.materialId, MaterialIds::STONE);
+    EXPECT_EQ(cellMaterialId(edge), MaterialIds::STONE);
 }
 
 TEST_F(MeshingChunkContextTest, ReadLocalFaceNeighborPlusX) {
     auto ctx = buildCtx();
     auto cell = ctx.readLocal(K_CHUNK_SIZE, 0, 0, &simGrid);
-    EXPECT_EQ(cell.materialId, MaterialIds::DIRT);
+    EXPECT_EQ(cellMaterialId(cell), MaterialIds::DIRT);
 }
 
 TEST_F(MeshingChunkContextTest, ReadLocalFaceNeighborMinusX) {
     auto ctx = buildCtx();
     auto cell = ctx.readLocal(-1, 0, 0, &simGrid);
-    EXPECT_EQ(cell.materialId, MaterialIds::SAND);
+    EXPECT_EQ(cellMaterialId(cell), MaterialIds::SAND);
 }
 
 TEST_F(MeshingChunkContextTest, ReadLocalFaceNeighborPlusY) {
     auto ctx = buildCtx();
     auto cell = ctx.readLocal(0, K_CHUNK_SIZE, 0, &simGrid);
-    EXPECT_EQ(cell.materialId, MaterialIds::WATER);
+    EXPECT_EQ(cellMaterialId(cell), MaterialIds::WATER);
 }
 
 TEST_F(MeshingChunkContextTest, ReadLocalFaceNeighborMinusZ) {
     auto ctx = buildCtx();
     auto cell = ctx.readLocal(0, 0, -1, &simGrid);
-    EXPECT_EQ(cell.materialId, MaterialIds::WATER);
+    EXPECT_EQ(cellMaterialId(cell), MaterialIds::WATER);
 }
 
 TEST_F(MeshingChunkContextTest, ReadLocalNullNeighborReturnsFill) {
@@ -133,10 +137,10 @@ TEST_F(MeshingChunkContextTest, ReadLocalNullNeighborReturnsFill) {
 
     // Null out the +X neighbor (face index 0) and set its fill to GRAVEL
     ctx.neighbors[0] = nullptr;
-    ctx.neighborFill[0] = VoxelCell{MaterialIds::GRAVEL};
+    ctx.neighborFill[0] = cellForMaterial(MaterialIds::GRAVEL);
 
     auto cell = ctx.readLocal(K_CHUNK_SIZE, 5, 5, &simGrid);
-    EXPECT_EQ(cell.materialId, MaterialIds::GRAVEL);
+    EXPECT_EQ(cellMaterialId(cell), MaterialIds::GRAVEL);
 }
 
 TEST_F(MeshingChunkContextTest, ReadLocalEdgeCellFallback) {
@@ -145,7 +149,7 @@ TEST_F(MeshingChunkContextTest, ReadLocalEdgeCellFallback) {
     // The diagonal chunk (1,1,0) is not materialized, so readCell returns default VoxelCell{AIR}.
     auto ctx = buildCtx();
     auto cell = ctx.readLocal(K_CHUNK_SIZE, K_CHUNK_SIZE, 0, &simGrid);
-    EXPECT_EQ(cell.materialId, MaterialIds::AIR);
+    EXPECT_EQ(cellMaterialId(cell), MaterialIds::AIR);
 
     // Materialize the diagonal chunk with SAND and verify fallback resolves it
     simGrid.materializeChunk(1, 1, 0);
@@ -153,14 +157,14 @@ TEST_F(MeshingChunkContextTest, ReadLocalEdgeCellFallback) {
     simGrid.syncChunkBuffers(1, 1, 0);
 
     cell = ctx.readLocal(K_CHUNK_SIZE, K_CHUNK_SIZE, 0, &simGrid);
-    EXPECT_EQ(cell.materialId, MaterialIds::SAND);
+    EXPECT_EQ(cellMaterialId(cell), MaterialIds::SAND);
 }
 
 TEST_F(MeshingChunkContextTest, ReadLocalEdgeCellNullFallback) {
     auto ctx = buildCtx();
     // Corner cell: all 3 axes out of bounds, null fallback
     auto cell = ctx.readLocal(K_CHUNK_SIZE, K_CHUNK_SIZE, K_CHUNK_SIZE, static_cast<const SimulationGrid*>(nullptr));
-    EXPECT_EQ(cell.materialId, MaterialIds::AIR);
+    EXPECT_EQ(cellMaterialId(cell), MaterialIds::AIR);
 }
 
 TEST_F(MeshingChunkContextTest, BuildMeshingContextResolvesNeighbors) {

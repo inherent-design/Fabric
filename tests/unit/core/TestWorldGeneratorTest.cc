@@ -31,7 +31,7 @@ TEST(TestWorldGenerator, FlatWorldGenerator_BelowGround_Stone) {
     // Chunk (0,0,0) spans y=[0,31], entirely below groundLevel=32
     for (int y = 0; y < K_CHUNK_SIZE; ++y) {
         auto cell = grid.readCell(0, y, 0);
-        EXPECT_EQ(cell.materialId, material_ids::STONE) << "y=" << y << " should be stone";
+        EXPECT_EQ(cellMaterialId(cell), material_ids::STONE) << "y=" << y << " should be stone";
     }
 }
 
@@ -43,7 +43,7 @@ TEST(TestWorldGenerator, FlatWorldGenerator_AboveGround_Air) {
 
     for (int y = 64; y < 96; ++y) {
         auto cell = grid.readCell(0, y, 0);
-        EXPECT_EQ(cell.materialId, material_ids::AIR) << "y=" << y << " should be air";
+        EXPECT_EQ(cellMaterialId(cell), material_ids::AIR) << "y=" << y << " should be air";
     }
 }
 
@@ -58,12 +58,12 @@ TEST(TestWorldGenerator, LayeredWorldGenerator_StoneAndSand) {
     // Stone region: y=[0,27]
     for (int y = 0; y < 28; ++y) {
         auto cell = grid.readCell(0, y, 0);
-        EXPECT_EQ(cell.materialId, material_ids::STONE) << "y=" << y << " should be stone";
+        EXPECT_EQ(cellMaterialId(cell), material_ids::STONE) << "y=" << y << " should be stone";
     }
     // Sand region: y=[28,31]
     for (int y = 28; y < 32; ++y) {
         auto cell = grid.readCell(0, y, 0);
-        EXPECT_EQ(cell.materialId, material_ids::SAND) << "y=" << y << " should be sand";
+        EXPECT_EQ(cellMaterialId(cell), material_ids::SAND) << "y=" << y << " should be sand";
     }
 }
 
@@ -115,14 +115,14 @@ TEST(TestWorldGenerator, WorldGeneratorInterface_Swappable) {
     FlatWorldGenerator flat(32);
     flat.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
-    EXPECT_EQ(grid.readCell(0, 28, 0).materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 28, 0)), material_ids::STONE);
 
     // Re-generate same chunk with LayeredWorldGenerator(28, 4):
     // y=28 should now be sand instead of stone
     LayeredWorldGenerator layered(28, 4);
     layered.generate(grid, 0, 0, 0);
     grid.advanceEpoch();
-    EXPECT_EQ(grid.readCell(0, 28, 0).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 28, 0)), material_ids::SAND);
 }
 
 TEST(TestWorldGenerator, GeneratorName_ReturnsCorrect) {
@@ -177,7 +177,7 @@ TEST(TestWorldGenerator, GenerateToBuffer_FlatBelowGround_AllStone) {
 
     for (int y = 0; y < K_CHUNK_SIZE; ++y) {
         int idx = 0 + y * K_CHUNK_SIZE + 0 * K_CHUNK_SIZE * K_CHUNK_SIZE;
-        EXPECT_EQ(buffer[idx].materialId, material_ids::STONE) << "y=" << y;
+        EXPECT_EQ(cellMaterialId(buffer[idx]), material_ids::STONE) << "y=" << y;
     }
 }
 
@@ -187,7 +187,7 @@ TEST(TestWorldGenerator, GenerateToBuffer_FlatAboveGround_AllAir) {
     gen.generateToBuffer(buffer.data(), 0, 2, 0);
 
     for (size_t i = 0; i < K_CHUNK_VOLUME; ++i) {
-        EXPECT_EQ(buffer[i].materialId, material_ids::AIR);
+        EXPECT_EQ(cellMaterialId(buffer[i]), material_ids::AIR);
     }
 }
 
@@ -206,7 +206,7 @@ TEST(TestWorldGenerator, GenerateToBuffer_FlatMatchesGenerate) {
     gen.generateToBuffer(buffer.data(), 0, 0, 0);
 
     for (size_t i = 0; i < K_CHUNK_VOLUME; ++i) {
-        EXPECT_EQ(buffer[i].materialId, fill.materialId) << "index=" << i;
+        EXPECT_EQ(cellMaterialId(buffer[i]), cellMaterialId(fill)) << "index=" << i;
     }
 }
 
@@ -227,7 +227,8 @@ TEST(TestWorldGenerator, GenerateToBuffer_LayeredMatchesGenerate) {
             for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
                 int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
                 auto gridCell = grid.readCell(lx, ly, lz);
-                EXPECT_EQ(buffer[idx].materialId, gridCell.materialId) << "at (" << lx << "," << ly << "," << lz << ")";
+                EXPECT_EQ(cellMaterialId(buffer[idx]), cellMaterialId(gridCell))
+                    << "at (" << lx << "," << ly << "," << lz << ")";
             }
         }
     }
@@ -249,7 +250,7 @@ TEST(TestWorldGenerator, GenerateToBuffer_NaturalMatchesGenerate) {
     const auto* gridBuf = grid.readBuffer(0, 0, 0);
     ASSERT_NE(gridBuf, nullptr);
     for (size_t i = 0; i < K_CHUNK_VOLUME; ++i) {
-        EXPECT_EQ(buffer[i].materialId, (*gridBuf)[i].materialId) << "index=" << i;
+        EXPECT_EQ(cellMaterialId(buffer[i]), cellMaterialId((*gridBuf)[i])) << "index=" << i;
     }
 }
 
@@ -298,7 +299,7 @@ TEST(TestWorldGenerator, BatchGeneration_MatchesSequential) {
         ASSERT_NE(seqBuf, nullptr);
         ASSERT_NE(parBuf, nullptr);
         for (size_t i = 0; i < K_CHUNK_VOLUME; ++i) {
-            EXPECT_EQ((*parBuf)[i].materialId, (*seqBuf)[i].materialId)
+            EXPECT_EQ(cellMaterialId((*parBuf)[i]), cellMaterialId((*seqBuf)[i]))
                 << "chunk (" << cx << "," << cy << "," << cz << ") index=" << i;
         }
     }
