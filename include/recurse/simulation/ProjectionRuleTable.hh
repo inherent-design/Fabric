@@ -32,7 +32,7 @@ static_assert(std::is_trivially_copyable_v<ProjectedMaterial>, "ProjectedMateria
 /// displacementRank-dependent overrides are not part of v1.
 class ProjectionRuleTable {
   public:
-    static constexpr size_t K_PHASE_COUNT = 5;
+    static constexpr size_t K_PHASE_COUNT = 8;
     static constexpr size_t K_MAX_ESSENCE = 256;
     static constexpr size_t K_TABLE_SIZE = K_MAX_ESSENCE * K_PHASE_COUNT;
 
