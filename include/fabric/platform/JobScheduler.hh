@@ -48,7 +48,7 @@ class JobScheduler {
     template <typename F> auto submit(F&& fn) -> std::future<std::invoke_result_t<F>>;
 
     /// Submit fire-and-forget work at low priority (persistence, LOD gen).
-    void submitBackground(std::function<void()> fn);
+    void submitBackground(std::function<void()> fn, std::string_view traceLabel = "");
 
     size_t workerCount() const;
     ConcurrencyDebugInfo debugInfo() const;
@@ -59,7 +59,7 @@ class JobScheduler {
     bool disabled_ = false;
 
     void runInline(size_t count, const std::function<void(size_t jobIdx, size_t workerIdx)>& fn);
-    void submitAsync(std::function<void()> work, bool background);
+    void submitAsync(std::function<void()> work, bool background, std::string_view traceLabel = "");
 
     struct PendingTask;
     mutable std::mutex pendingMutex_;

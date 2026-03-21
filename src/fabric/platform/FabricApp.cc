@@ -313,6 +313,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         bool running = true;
 
         FABRIC_LOG_INFO("Entering main loop");
+        FABRIC_SET_THREAD_NAME("main");
 
         while (running) {
             FABRIC_ZONE_SCOPED_N("main_loop");
@@ -386,6 +387,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
             systemRegistry.runPreUpdate(ctx, static_cast<float>(frameTime));
 
             // Fixed timestep simulation
+            FABRIC_FRAME_MARK_START("fixedUpdate");
             int fixedIter = 0;
             while (accumulator >= K_FIXED_DT && fixedIter < maxFixedSteps) {
                 ++fixedIter;
@@ -406,6 +408,8 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
                 accumulator -= K_FIXED_DT;
             }
 
+            FABRIC_FRAME_MARK_END("fixedUpdate");
+
             // Drain excess accumulator if we hit the iteration cap
             if (fixedIter >= maxFixedSteps && accumulator > K_FIXED_DT) {
                 FABRIC_ZONE_SCOPED_N("accumulator_drain");
@@ -420,9 +424,11 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
             inputRouterPtr->beginFrame();
 
             // Rendering phases
+            FABRIC_FRAME_MARK_START("render");
             systemRegistry.runPreRender(ctx);
             systemRegistry.runRender(ctx);
             systemRegistry.runPostRender(ctx);
+            FABRIC_FRAME_MARK_END("render");
 
             // RmlUi overlay
             {

@@ -1,4 +1,5 @@
 #include "recurse/simulation/SimulationGrid.hh"
+#include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkCoordUtils.hh"
 
 namespace recurse::simulation {
@@ -89,14 +90,18 @@ void SimulationGrid::syncChunkBuffersFrom(int cx, int cy, int cz, int srcBufferI
 }
 
 void SimulationGrid::advanceEpoch() {
+    FABRIC_ZONE_SCOPED_N("SimulationGrid::advanceEpoch");
     int src = writeIndex();
     int dst = static_cast<int>((epoch_ + 2) % ChunkBuffers::K_COUNT);
-    registry_.forEachMaterialized([src, dst](ChunkSlot& slot) {
+    int copyCount = 0;
+    registry_.forEachMaterialized([src, dst, &copyCount](ChunkSlot& slot) {
         if (slot.copyCountdown == 0)
             return;
         *slot.simBuffers.buffers[dst] = *slot.simBuffers.buffers[src];
         --slot.copyCountdown;
+        ++copyCount;
     });
+    FABRIC_ZONE_VALUE(static_cast<int64_t>(copyCount));
     ++epoch_;
 }
 

@@ -136,8 +136,10 @@ void PaniniPass::execute(bgfx::TextureHandle sceneColor, bgfx::ViewId viewId) {
 }
 
 void PaniniPass::setEnabled(bool enabled) {
-    enabled_ = enabled;
-    FABRIC_LOG_DEBUG("PaniniPass enabled: {}", enabled_);
+    if (enabled_ != enabled) {
+        enabled_ = enabled;
+        FABRIC_LOG_DEBUG("PaniniPass enabled: {}", enabled_);
+    }
 }
 
 void PaniniPass::setStrength(float d) {

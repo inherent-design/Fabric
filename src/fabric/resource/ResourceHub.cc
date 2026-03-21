@@ -144,7 +144,8 @@ void ResourceHub::preload(const std::vector<std::string>& typeIds, const std::ve
     for (size_t i = 0; i < resourceIds.size(); ++i) {
         auto typeId = typeIds[i];
         auto resourceId = resourceIds[i];
-        scheduler_->submitBackground([this, typeId, resourceId]() { this->load<Resource>(typeId, resourceId); });
+        scheduler_->submitBackground([this, typeId, resourceId]() { this->load<Resource>(typeId, resourceId); },
+                                     "resource_load");
     }
 }
 

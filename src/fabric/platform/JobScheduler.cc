@@ -1,6 +1,8 @@
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
+#include <array>
 #include <cstdint>
+#include <cstdio>
 #include <mutex>
 #include <TaskScheduler.h>
 #include <thread>
@@ -100,6 +102,15 @@ void JobScheduler::parallelFor(size_t count, std::string_view traceLabel,
                                   return;
                               }
 
+                              {
+                                  thread_local bool named = false;
+                                  if (!named) {
+                                      std::array<char, 32> buf{};
+                                      (void)std::snprintf(buf.data(), buf.size(), "enkiTS_%u", threadnum);
+                                      FABRIC_SET_THREAD_NAME(buf.data());
+                                      named = true;
+                                  }
+                              }
                               FABRIC_ZONE_SCOPED_N("job_scheduler_worker_execute");
                               FABRIC_ANNOTATE_PARALLEL_DISPATCH(traceLabel, partitionSize);
                               for (uint32_t i = range.start; i < range.end; ++i)
@@ -118,10 +129,17 @@ void JobScheduler::parallelFor(size_t count, std::string_view traceLabel,
     }
 }
 
-void JobScheduler::submitAsync(std::function<void()> work, bool background) {
+void JobScheduler::submitAsync(std::function<void()> work, bool background, std::string_view traceLabel) {
     FABRIC_ZONE_SCOPED_N("job_scheduler_submit_async");
 
-    auto pending = std::make_unique<PendingTask>(1, [w = std::move(work)](enki::TaskSetPartition, uint32_t) { w(); });
+    std::string label(traceLabel);
+    auto pending = std::make_unique<PendingTask>(1, [w = std::move(work), label](enki::TaskSetPartition, uint32_t) {
+        FABRIC_ZONE_SCOPED_N("job_scheduler_async_execute");
+        if (!label.empty()) {
+            FABRIC_ZONE_TEXT(label.data(), label.size());
+        }
+        w();
+    });
 
     if (background)
         pending->task.m_Priority = enki::TASK_PRIORITY_LOW;
@@ -134,12 +152,12 @@ void JobScheduler::submitAsync(std::function<void()> work, bool background) {
     scheduler_->AddTaskSetToPipe(rawPtr);
 }
 
-void JobScheduler::submitBackground(std::function<void()> fn) {
+void JobScheduler::submitBackground(std::function<void()> fn, std::string_view traceLabel) {
     if (disabled_) {
         fn();
         return;
     }
-    submitAsync(std::move(fn), true);
+    submitAsync(std::move(fn), true, traceLabel);
 }
 
 #undef FABRIC_ANNOTATE_PARALLEL_DISPATCH

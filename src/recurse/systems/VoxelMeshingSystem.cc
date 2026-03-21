@@ -469,6 +469,10 @@ void VoxelMeshingSystem::processFrame() {
     }
 
     pendingMeshCount_ = activityTracker_->activeChunkCount();
+
+    FABRIC_PLOT("meshing/dirty", static_cast<int64_t>(pendingMeshCount_));
+    FABRIC_PLOT("meshing/meshed", static_cast<int64_t>(meshedThisFrame_));
+    FABRIC_PLOT("meshing/skipped", static_cast<int64_t>(emptySkippedThisFrame_));
 }
 
 MeshingChunkContext VoxelMeshingSystem::buildMeshingContext(const fabric::ChunkCoord& coord) const {
@@ -654,6 +658,21 @@ void VoxelMeshingSystem::uploadMeshResult(const fabric::ChunkCoord& coord, CPUMe
                 gpuMesh.mesh.valid = false;
             }
         }
+
+        // Build wireframe line-list index buffer from triangle indices
+        if (gpuMesh.valid) {
+            uint32_t triCount = static_cast<uint32_t>(result.indices.size());
+            uint32_t lineCount = bgfx::topologyConvert(bgfx::TopologyConvert::TriListToLineList, nullptr, 0,
+                                                       result.indices.data(), triCount, true);
+            if (lineCount > 0) {
+                std::vector<uint32_t> lineIndices(lineCount);
+                bgfx::topologyConvert(bgfx::TopologyConvert::TriListToLineList, lineIndices.data(),
+                                      lineCount * sizeof(uint32_t), result.indices.data(), triCount, true);
+                gpuMesh.mesh.wireIbh.reset(bgfx::createIndexBuffer(
+                    bgfx::copy(lineIndices.data(), lineCount * sizeof(uint32_t)), BGFX_BUFFER_INDEX32));
+                gpuMesh.mesh.wireIndexCount = lineCount;
+            }
+        }
     }
 
     if (!gpuMesh.valid)
@@ -681,7 +700,9 @@ void VoxelMeshingSystem::destroyChunkMesh(ChunkGPUMesh& gpuMesh) {
     }
     gpuMesh.mesh.vbh.reset();
     gpuMesh.mesh.ibh.reset();
+    gpuMesh.mesh.wireIbh.reset();
     gpuMesh.mesh.indexCount = 0;
+    gpuMesh.mesh.wireIndexCount = 0;
     gpuMesh.mesh.palette.clear();
     gpuMesh.mesh.vertexFormat = recurse::ChunkMesh::VertexFormat::Voxel;
     gpuMesh.mesh.vertexStrideBytes = recurse::ChunkMesh::vertexStrideForFormat(recurse::ChunkMesh::VertexFormat::Voxel);

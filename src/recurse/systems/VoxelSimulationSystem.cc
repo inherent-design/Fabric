@@ -94,7 +94,9 @@ void VoxelSimulationSystem::fixedUpdate(fabric::AppContext& /*ctx*/, float /*fix
             return tracker.getState(entry.pos) == recurse::simulation::ChunkState::Active;
         }));
     FABRIC_ZONE_VALUE(static_cast<int64_t>(lastActiveCount_));
+    FABRIC_PLOT("sim/active_chunks", static_cast<int64_t>(lastActiveCount_));
     fabSim_->tick();
+    FABRIC_PLOT("sim/epoch", static_cast<int64_t>(fabSim_->grid().currentEpoch()));
 
     // Dispatch collision rebuild for chunks that just settled (simulation
     // moved cells but the event was not emitted during parallel dispatch).

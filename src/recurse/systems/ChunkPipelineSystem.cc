@@ -159,6 +159,8 @@ void ChunkPipelineSystem::fixedUpdate(fabric::AppContext& ctx, float fixedDt) {
 
     loadsThisFrame_ = static_cast<int>(streamUpdate.toLoad.size());
     unloadsThisFrame_ = static_cast<int>(streamUpdate.toUnload.size());
+    FABRIC_PLOT("chunks/loaded", static_cast<int64_t>(loadsThisFrame_));
+    FABRIC_PLOT("chunks/unloaded", static_cast<int64_t>(unloadsThisFrame_));
 
     // Triage new chunks: already-ready, async-loadable, or needs-generation.
     // Separate budgets prevent load-budget exhaustion from starving generation (K34).

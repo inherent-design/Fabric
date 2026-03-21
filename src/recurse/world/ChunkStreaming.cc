@@ -21,18 +21,22 @@ StreamingUpdate ChunkStreamingManager::update(const std::vector<FocalPoint>& sou
     int maxRadius = 0;
     std::unordered_set<ChunkCoord, ChunkCoordHash> desired;
 
-    for (const auto& src : sources) {
-        int centerCX = static_cast<int>(std::floor(src.x / static_cast<float>(K_CHUNK_SIZE)));
-        int centerCY = static_cast<int>(std::floor(src.y / static_cast<float>(K_CHUNK_SIZE)));
-        int centerCZ = static_cast<int>(std::floor(src.z / static_cast<float>(K_CHUNK_SIZE)));
-        int r = src.radius;
-        if (r > maxRadius)
-            maxRadius = r;
+    {
+        FABRIC_ZONE_SCOPED_N("streaming_build_desired");
+        for (const auto& src : sources) {
+            int centerCX = static_cast<int>(std::floor(src.x / static_cast<float>(K_CHUNK_SIZE)));
+            int centerCY = static_cast<int>(std::floor(src.y / static_cast<float>(K_CHUNK_SIZE)));
+            int centerCZ = static_cast<int>(std::floor(src.z / static_cast<float>(K_CHUNK_SIZE)));
+            int r = src.radius;
+            if (r > maxRadius)
+                maxRadius = r;
 
-        for (int dz = -r; dz <= r; ++dz)
-            for (int dy = -r; dy <= r; ++dy)
-                for (int dx = -r; dx <= r; ++dx)
-                    desired.insert({centerCX + dx, centerCY + dy, centerCZ + dz});
+            for (int dz = -r; dz <= r; ++dz)
+                for (int dy = -r; dy <= r; ++dy)
+                    for (int dx = -r; dx <= r; ++dx)
+                        desired.insert({centerCX + dx, centerCY + dy, centerCZ + dz});
+        }
+        FABRIC_ZONE_VALUE(static_cast<int64_t>(desired.size()));
     }
 
     currentRadius_ = maxRadius;
@@ -52,60 +56,71 @@ StreamingUpdate ChunkStreamingManager::update(const std::vector<FocalPoint>& sou
     };
 
     std::vector<ChunkCoord> newChunks;
-    for (const auto& c : desired) {
-        if (!tracked_.contains(c))
-            newChunks.push_back(c);
-    }
+    {
+        FABRIC_ZONE_SCOPED_N("streaming_sort_new");
+        for (const auto& c : desired) {
+            if (!tracked_.contains(c))
+                newChunks.push_back(c);
+        }
 
-    std::sort(newChunks.begin(), newChunks.end(),
-              [&](const ChunkCoord& a, const ChunkCoord& b) { return minDistSq(a) < minDistSq(b); });
+        std::sort(newChunks.begin(), newChunks.end(),
+                  [&](const ChunkCoord& a, const ChunkCoord& b) { return minDistSq(a) < minDistSq(b); });
+        FABRIC_ZONE_VALUE(static_cast<int64_t>(newChunks.size()));
+    }
 
     std::vector<ChunkCoord> oldChunks;
-    for (const auto& c : tracked_) {
-        if (!desired.contains(c))
-            oldChunks.push_back(c);
-    }
+    {
+        FABRIC_ZONE_SCOPED_N("streaming_sort_old");
+        for (const auto& c : tracked_) {
+            if (!desired.contains(c))
+                oldChunks.push_back(c);
+        }
 
-    std::sort(oldChunks.begin(), oldChunks.end(),
-              [&](const ChunkCoord& a, const ChunkCoord& b) { return minDistSq(a) > minDistSq(b); });
+        std::sort(oldChunks.begin(), oldChunks.end(),
+                  [&](const ChunkCoord& a, const ChunkCoord& b) { return minDistSq(a) > minDistSq(b); });
+        FABRIC_ZONE_VALUE(static_cast<int64_t>(oldChunks.size()));
+    }
 
     StreamingUpdate result;
 
-    int budget = adaptiveBudget_ > 0 ? adaptiveBudget_ : config_.maxLoadsPerTick;
-    int loadCount =
-        budget > 0 ? std::min(static_cast<int>(newChunks.size()), budget) : static_cast<int>(newChunks.size());
-    for (int i = 0; i < loadCount; ++i) {
-        result.toLoad.push_back(newChunks[static_cast<size_t>(i)]);
-        tracked_.insert(newChunks[static_cast<size_t>(i)]);
-    }
-
-    int unloadCount = config_.maxUnloadsPerTick > 0
-                          ? std::min(static_cast<int>(oldChunks.size()), config_.maxUnloadsPerTick)
-                          : static_cast<int>(oldChunks.size());
-    for (int i = 0; i < unloadCount; ++i) {
-        result.toUnload.push_back(oldChunks[static_cast<size_t>(i)]);
-        tracked_.erase(oldChunks[static_cast<size_t>(i)]);
-    }
-
-    if (config_.maxTrackedChunks > 0 && static_cast<int>(tracked_.size()) > config_.maxTrackedChunks) {
-        std::vector<ChunkCoord> evictionCandidates;
-        evictionCandidates.reserve(tracked_.size());
-        for (const auto& c : tracked_) {
-            if (!desired.contains(c))
-                evictionCandidates.push_back(c);
+    {
+        FABRIC_ZONE_SCOPED_N("streaming_apply_budget");
+        int budget = adaptiveBudget_ > 0 ? adaptiveBudget_ : config_.maxLoadsPerTick;
+        int loadCount =
+            budget > 0 ? std::min(static_cast<int>(newChunks.size()), budget) : static_cast<int>(newChunks.size());
+        for (int i = 0; i < loadCount; ++i) {
+            result.toLoad.push_back(newChunks[static_cast<size_t>(i)]);
+            tracked_.insert(newChunks[static_cast<size_t>(i)]);
         }
 
-        std::sort(evictionCandidates.begin(), evictionCandidates.end(),
-                  [&](const ChunkCoord& a, const ChunkCoord& b) { return minDistSq(a) > minDistSq(b); });
-
-        int excess = static_cast<int>(tracked_.size()) - config_.maxTrackedChunks;
-        int evictionCount = std::min(excess, static_cast<int>(evictionCandidates.size()));
-        for (int i = 0; i < evictionCount; ++i) {
-            const auto& c = evictionCandidates[static_cast<size_t>(i)];
-            result.toUnload.push_back(c);
-            tracked_.erase(c);
+        int unloadCount = config_.maxUnloadsPerTick > 0
+                              ? std::min(static_cast<int>(oldChunks.size()), config_.maxUnloadsPerTick)
+                              : static_cast<int>(oldChunks.size());
+        for (int i = 0; i < unloadCount; ++i) {
+            result.toUnload.push_back(oldChunks[static_cast<size_t>(i)]);
+            tracked_.erase(oldChunks[static_cast<size_t>(i)]);
         }
-    }
+
+        if (config_.maxTrackedChunks > 0 && static_cast<int>(tracked_.size()) > config_.maxTrackedChunks) {
+            std::vector<ChunkCoord> evictionCandidates;
+            evictionCandidates.reserve(tracked_.size());
+            for (const auto& c : tracked_) {
+                if (!desired.contains(c))
+                    evictionCandidates.push_back(c);
+            }
+
+            std::sort(evictionCandidates.begin(), evictionCandidates.end(),
+                      [&](const ChunkCoord& a, const ChunkCoord& b) { return minDistSq(a) > minDistSq(b); });
+
+            int excess = static_cast<int>(tracked_.size()) - config_.maxTrackedChunks;
+            int evictionCount = std::min(excess, static_cast<int>(evictionCandidates.size()));
+            for (int i = 0; i < evictionCount; ++i) {
+                const auto& c = evictionCandidates[static_cast<size_t>(i)];
+                result.toUnload.push_back(c);
+                tracked_.erase(c);
+            }
+        }
+    } // streaming_apply_budget
 
     return result;
 }
