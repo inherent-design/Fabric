@@ -6,12 +6,12 @@
 namespace recurse::simulation {
 
 /// True when the cell contains a non-AIR material.
-inline constexpr bool isOccupied(const VoxelCell& cell) {
+inline constexpr bool isOccupied(VoxelCell cell) {
     return cell.materialId != material_ids::AIR;
 }
 
 /// True when the cell is AIR (empty).
-inline constexpr bool isEmpty(const VoxelCell& cell) {
+inline constexpr bool isEmpty(VoxelCell cell) {
     return cell.materialId == material_ids::AIR;
 }
 

@@ -1,6 +1,6 @@
 #include "fabric/ecs/ECS.hh"
-#include "fabric/log/Log.hh"
 #include "fabric/core/Spatial.hh"
+#include "fabric/log/Log.hh"
 #include "fabric/utils/Profiler.hh"
 
 #include <utility>
