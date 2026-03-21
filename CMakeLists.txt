@@ -321,6 +321,7 @@ set(FABRIC_SIMULATION_SOURCE_FILES
     src/recurse/simulation/VoxelSimulationSystem.cc
     src/recurse/simulation/EssenceAssigner.cc
     src/recurse/simulation/ChangeVelocityTracker.cc
+    src/recurse/simulation/ProjectionRuleTable.cc
 )
 
 # Utils library components
