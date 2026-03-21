@@ -1,6 +1,7 @@
 #include "recurse/simulation/EssenceAssigner.hh"
 #include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/world/EssencePalette.hh"
@@ -62,9 +63,9 @@ void assignEssence(VoxelCell* buffer, int cx, int cy, int cz, const MaterialRegi
     int matCount = 0;
 
     for (int i = 0; i < K_CHUNK_VOLUME; ++i) {
-        auto mid = buffer[i].materialId;
-        if (mid == material_ids::AIR)
+        if (isEmpty(buffer[i]))
             continue;
+        auto mid = buffer[i].materialId;
         bool found = false;
         for (int m = 0; m < matCount; ++m) {
             if (uniqueMats[m] == mid) {
@@ -127,7 +128,7 @@ void assignEssence(VoxelCell* buffer, int cx, int cy, int cz, const MaterialRegi
                 int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
                 auto& cell = buffer[idx];
 
-                if (cell.materialId == material_ids::AIR)
+                if (isEmpty(cell))
                     continue;
 
                 int matIdx = 0;

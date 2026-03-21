@@ -3,6 +3,7 @@
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
 #include "recurse/physics/JoltCharacterController.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/VoxelRaycast.hh"
@@ -376,7 +377,7 @@ void PhysicsWorld::rebuildChunkCollision(const recurse::simulation::SimulationGr
     removeChunkCollision(cx, cy, cz);
 
     auto isSolid = [&grid](int wx, int wy, int wz) {
-        return grid.readCell(wx, wy, wz).materialId != recurse::simulation::material_ids::AIR;
+        return recurse::simulation::isOccupied(grid.readCell(wx, wy, wz));
     };
 
     auto tiles = buildChunkShapesImpl(cx, cy, cz, faceShapes_, isSolid, *tempAllocator_);
@@ -418,7 +419,7 @@ void PhysicsWorld::rebuildChunkCollisionBatch(const recurse::simulation::Simulat
         scheduler.parallelFor(chunks.size(), "collision_parallel_gen", [&](size_t jobIdx, size_t workerIdx) {
             const auto& key = chunks[jobIdx];
             auto isSolid = [&grid](int wx, int wy, int wz) {
-                return grid.readCell(wx, wy, wz).materialId != recurse::simulation::material_ids::AIR;
+                return recurse::simulation::isOccupied(grid.readCell(wx, wy, wz));
             };
             results[jobIdx] = buildChunkShapesImpl(key.x, key.y, key.z, faceShapes_, isSolid, *workerAllocs[workerIdx]);
         });

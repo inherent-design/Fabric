@@ -581,6 +581,7 @@ if(FABRIC_BUILD_TESTS)
 
     # Test fixture include path (tests/fixtures/)
     target_include_directories(UnitTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+    target_include_directories(E2ETests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 
     # Add test directories
     add_subdirectory(tests)

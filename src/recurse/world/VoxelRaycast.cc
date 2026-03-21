@@ -1,5 +1,6 @@
 #include "recurse/world/VoxelRaycast.hh"
 #include "fabric/utils/Profiler.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 
@@ -170,7 +171,7 @@ std::optional<VoxelHit> castRay(const recurse::simulation::SimulationGrid& grid,
     auto s = initDDA(ox, oy, oz, dx, dy, dz);
 
     // Check starting voxel
-    if (grid.readCell(s.vx, s.vy, s.vz).materialId != recurse::simulation::material_ids::AIR) {
+    if (recurse::simulation::isOccupied(grid.readCell(s.vx, s.vy, s.vz))) {
         return VoxelHit{s.vx, s.vy, s.vz, 0, 0, 0, 0.0f};
     }
 
@@ -207,7 +208,7 @@ std::optional<VoxelHit> castRay(const recurse::simulation::SimulationGrid& grid,
         if (t > maxDistance)
             break;
 
-        if (grid.readCell(s.vx, s.vy, s.vz).materialId != recurse::simulation::material_ids::AIR) {
+        if (recurse::simulation::isOccupied(grid.readCell(s.vx, s.vy, s.vz))) {
             return VoxelHit{s.vx, s.vy, s.vz, normalX, normalY, normalZ, t};
         }
     }
@@ -222,7 +223,7 @@ std::vector<VoxelHit> castRayAll(const recurse::simulation::SimulationGrid& grid
     std::vector<VoxelHit> hits;
     auto s = initDDA(ox, oy, oz, dx, dy, dz);
 
-    if (grid.readCell(s.vx, s.vy, s.vz).materialId != recurse::simulation::material_ids::AIR) {
+    if (recurse::simulation::isOccupied(grid.readCell(s.vx, s.vy, s.vz))) {
         hits.push_back({s.vx, s.vy, s.vz, 0, 0, 0, 0.0f});
     }
 
@@ -259,7 +260,7 @@ std::vector<VoxelHit> castRayAll(const recurse::simulation::SimulationGrid& grid
         if (t > maxDistance)
             break;
 
-        if (grid.readCell(s.vx, s.vy, s.vz).materialId != recurse::simulation::material_ids::AIR) {
+        if (recurse::simulation::isOccupied(grid.readCell(s.vx, s.vy, s.vz))) {
             hits.push_back({s.vx, s.vy, s.vz, normalX, normalY, normalZ, t});
         }
     }
