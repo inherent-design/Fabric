@@ -4,13 +4,13 @@
 
 ## Overview
 
-Manages chunk load/unload around the player. `ChunkPipelineSystem` tracks a streaming radius, transitions chunks through lifecycle states (Generating, Active, Unloading), and coordinates with world generation and persistence.
+Manages chunk load/unload around the player. `ChunkPipelineSystem` tracks a streaming radius, transitions chunks through lifecycle states (Generating, Active, Draining), and coordinates with world generation and persistence.
 
 ## Key Code
 
-- `include/recurse/world/ChunkPipelineSystem.hh`
-- `include/recurse/world/ChunkSlotState.hh` (lifecycle enum)
-- `include/recurse/world/SimulationGrid.hh` (buffer management)
+- `include/recurse/systems/ChunkPipelineSystem.hh`
+- `include/recurse/simulation/ChunkRegistry.hh` (`ChunkSlotState` enum)
+- `include/recurse/simulation/SimulationGrid.hh` (buffer management)
 
 ## Lifecycle States
 

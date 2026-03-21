@@ -1,6 +1,6 @@
 # Player Controller
 
-> **Not yet implemented.** Design placeholder for a confirmed game feature.
+> **Not yet designed.** Basic character and input infrastructure exists in the engine (`include/recurse/character/`, `include/recurse/input/`) but the gameplay-level controller (movement feel, camera behavior, function casting interface) is not yet specified.
 
 ## Purpose
 

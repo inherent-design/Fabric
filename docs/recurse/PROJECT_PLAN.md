@@ -16,7 +16,7 @@
 ## Day 2: Content and Systems
 - **AM:**
   - [ ] Implement remaining 4 `FUNCTIONS` and 5 more `BLOCKS`.
-  - [ ] Implement NPC stat/transformation system (`NPCs.md`).
+  - [ ] Implement NPC stat/transformation system (see `systems/NPC_SYSTEM_DESIGN.md`).
   - [ ] Spawn first NPC (Stone Golem).
 - **PM:**
   - [ ] Implement basic AI (`ATTACK`, `IDLE` states).

@@ -4,7 +4,7 @@
 
 ## Overview
 
-Defines the material palette for the voxel world: stone, sand, water, dirt, grass, and their physical properties. Each material maps to a `MaterialId`, which the `MaterialRegistry` resolves to phase (solid, powder, liquid, gas), displacement rank, density, and rendering attributes.
+Defines the material palette for the voxel world: stone, dirt, sand, water, and gravel. Each material maps to a `MaterialId` (defined in `VoxelMaterial.hh`), which the `MaterialRegistry` resolves to phase (solid, powder, liquid, gas), displacement rank, density, and rendering attributes.
 
 ## Key Code
 
