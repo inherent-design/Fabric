@@ -164,7 +164,7 @@ class BehaviorAI {
 
     void setPerceptionConfig(flecs::entity npc, const PerceptionConfig& config);
     std::vector<Vec3f> getEntitiesInRange(const Vec3f& pos, float range);
-    static bool hasLineOfSight(const ChunkedGrid<float>& grid, const Vec3f& from, const Vec3f& to);
+    static bool hasLineOfSight(const ChunkedGrid<float, 32>& grid, const Vec3f& from, const Vec3f& to);
     static bool hasLineOfSight(const recurse::simulation::SimulationGrid& grid, const Vec3f& from, const Vec3f& to);
 
     // Per-tree observer for debugging. Returns nullptr if no observer attached.

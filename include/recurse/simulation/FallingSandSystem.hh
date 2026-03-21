@@ -34,8 +34,6 @@ class FallingSandSystem {
     VoxelCell readCell(ChunkCoord pos, int lx, int ly, int lz, const SimulationGrid& grid,
                        const GhostCellManager& ghosts) const;
 
-    bool canDisplace(VoxelCell mover, VoxelCell target) const;
-
     void writeSwap(ChunkCoord pos, int srcLx, int srcLy, int srcLz, int dstLx, int dstLy, int dstLz, VoxelCell srcCell,
                    VoxelCell dstCell, SimulationGrid& grid, ChunkActivityTracker& tracker,
                    BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps) const;

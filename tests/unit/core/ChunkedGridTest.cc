@@ -8,7 +8,7 @@ using namespace fabric;
 
 class ChunkedGridTest : public ::testing::Test {
   protected:
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
 };
 
 TEST_F(ChunkedGridTest, DefaultGetReturnsZero) {
@@ -93,7 +93,7 @@ TEST_F(ChunkedGridTest, ForEachCellIteratesFullChunk) {
     grid.set(0, 0, 0, 1.0f); // allocate chunk (0,0,0)
     int count = 0;
     grid.forEachCell(0, 0, 0, [&](int, int, int, float&) { ++count; });
-    EXPECT_EQ(count, ChunkedGrid<float>::K_VOLUME);
+    EXPECT_EQ(count, (ChunkedGrid<float, 32>::K_VOLUME));
 }
 
 TEST_F(ChunkedGridTest, NegativeCoordinates) {
@@ -109,15 +109,15 @@ TEST_F(ChunkedGridTest, NegativeCoordinates) {
 TEST_F(ChunkedGridTest, WorldToChunkNegativeFloorDivision) {
     int cx, cy, cz, lx, ly, lz;
 
-    ChunkedGrid<float>::worldToChunk(-1, 0, 0, cx, cy, cz, lx, ly, lz);
+    ChunkedGrid<float, 32>::worldToChunk(-1, 0, 0, cx, cy, cz, lx, ly, lz);
     EXPECT_EQ(cx, -1);
     EXPECT_EQ(lx, 31);
 
-    ChunkedGrid<float>::worldToChunk(-32, 0, 0, cx, cy, cz, lx, ly, lz);
+    ChunkedGrid<float, 32>::worldToChunk(-32, 0, 0, cx, cy, cz, lx, ly, lz);
     EXPECT_EQ(cx, -1);
     EXPECT_EQ(lx, 0);
 
-    ChunkedGrid<float>::worldToChunk(-33, 0, 0, cx, cy, cz, lx, ly, lz);
+    ChunkedGrid<float, 32>::worldToChunk(-33, 0, 0, cx, cy, cz, lx, ly, lz);
     EXPECT_EQ(cx, -2);
     EXPECT_EQ(lx, 31);
 }
@@ -135,7 +135,7 @@ TEST_F(ChunkedGridTest, ActiveChunksOrderIsDeterministic) {
     EXPECT_EQ(first, second);
 
     // New grid, same chunks inserted in different order
-    ChunkedGrid<float> grid2;
+    ChunkedGrid<float, 32> grid2;
     grid2.set(0, 2 * 32, 0, 1.0f);
     grid2.set(-1 * 32, 0, 0, 1.0f);
     grid2.set(0, 0, 0, 1.0f);
@@ -163,7 +163,7 @@ TEST_F(ChunkedGridTest, IterationOrderMatchesAfterInsertDelete) {
     auto first = grid.activeChunks();
 
     // Repeat identical operations on a fresh grid in different insert order
-    ChunkedGrid<float> grid2;
+    ChunkedGrid<float, 32> grid2;
     grid2.set(128, 0, 0, 1.0f);
     grid2.set(0, 0, 32, 1.0f);
     grid2.set(0, 0, 0, 1.0f);

@@ -8,7 +8,7 @@ class CharacterControllerTest : public ::testing::Test {
   protected:
     // 1x2x1 character (width, height, depth)
     CharacterController controller{1.0f, 2.0f, 1.0f};
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
 
     void fillFloor(int y, int xMin, int xMax, int zMin, int zMax) {
         for (int z = zMin; z <= zMax; ++z)

@@ -216,7 +216,7 @@ TEST(PhysicsWorldTest, RebuildChunkCollisionEmpty) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     // All zeros, no solid voxels
     pw.rebuildChunkCollision(grid, 0, 0, 0);
     SUCCEED();
@@ -228,7 +228,7 @@ TEST(PhysicsWorldTest, RebuildChunkCollisionSolid) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     // Fill a small region with solid density
     for (int z = 0; z < 4; ++z) {
         for (int y = 0; y < 4; ++y) {
@@ -251,7 +251,7 @@ TEST(PhysicsWorldTest, RebuildChunkCollisionReplace) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(0, 0, 0, 1.0f);
     pw.rebuildChunkCollision(grid, 0, 0, 0);
 
@@ -267,7 +267,7 @@ TEST(PhysicsWorldTest, RemoveChunkCollision) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(0, 0, 0, 1.0f);
     pw.rebuildChunkCollision(grid, 0, 0, 0);
     pw.removeChunkCollision(0, 0, 0);
@@ -283,7 +283,7 @@ TEST(PhysicsWorldTest, RebuildChunkCollisionCustomThreshold) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(0, 0, 0, 0.3f);
     grid.set(1, 0, 0, 0.8f);
 
@@ -302,7 +302,7 @@ TEST(PhysicsWorldTest, DensityBridgeWithDynamicBody) {
     pw.init();
 
     // Create terrain from density
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     for (int z = 0; z < 8; ++z) {
         for (int x = 0; x < 8; ++x) {
             grid.set(x, 0, z, 1.0f);
@@ -675,7 +675,7 @@ TEST(PhysicsWorldTest, SingleVoxelProduces6Faces) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(4, 4, 4, 1.0f);
 
     pw.rebuildChunkCollision(grid, 0, 0, 0);
@@ -690,7 +690,7 @@ TEST(PhysicsWorldTest, TwoAdjacentVoxelsProduce10Faces) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(4, 4, 4, 1.0f);
     grid.set(5, 4, 4, 1.0f); // adjacent along +X
 
@@ -706,7 +706,7 @@ TEST(PhysicsWorldTest, SolidBlockExteriorFacesOnly) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     // Fill a 2x2x2 block
     for (int z = 0; z < 2; ++z)
         for (int y = 0; y < 2; ++y)
@@ -726,7 +726,7 @@ TEST(PhysicsWorldTest, FullyEnclosedVoxelNoShapes) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     // 3x3x3 block: center voxel at (1,1,1) is fully enclosed
     for (int z = 0; z < 3; ++z)
         for (int y = 0; y < 3; ++y)
@@ -747,7 +747,7 @@ TEST(PhysicsWorldTest, EmptyChunkNoShapes) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     pw.rebuildChunkCollision(grid, 0, 0, 0);
 
     EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 0u);

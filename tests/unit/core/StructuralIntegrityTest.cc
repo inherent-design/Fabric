@@ -10,7 +10,7 @@ using namespace recurse;
 class StructuralIntegrityTest : public ::testing::Test {
   protected:
     StructuralIntegrity si;
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
 
     void TearDown() override { si.setDebrisCallback(nullptr); }
 };

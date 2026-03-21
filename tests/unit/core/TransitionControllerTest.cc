@@ -8,7 +8,7 @@ using namespace recurse;
 class TransitionControllerTest : public ::testing::Test {
   protected:
     TransitionController tc;
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
 
     void fillFloor(int y, int xMin, int xMax, int zMin, int zMax) {
         for (int z = zMin; z <= zMax; ++z)

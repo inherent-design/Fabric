@@ -290,7 +290,7 @@ class DensityBlurCrossChunkTest : public ::testing::Test {
   protected:
     // Helper to compute what the blur would produce at a given position
     // This mirrors the blur logic in VoxelMeshingSystem::meshChunk()
-    float compute5x5x5Blur(const fabric::ChunkedGrid<float>& grid, int wx, int wy, int wz) {
+    float compute5x5x5Blur(const fabric::ChunkedGrid<float, 32>& grid, int wx, int wy, int wz) {
         float sum = 0.0f;
         int count = 0;
         for (int nz = -2; nz <= 2; ++nz) {
@@ -309,7 +309,7 @@ TEST_F(DensityBlurCrossChunkTest, BlurAtChunkBoundaryWithMissingNeighbor) {
     // Create a density grid where chunk (0,0,0) is solid (density 1.0)
     // and chunk (1,0,0) is missing (ChunkedGrid returns 0.0 for missing)
 
-    fabric::ChunkedGrid<float> densityGrid;
+    fabric::ChunkedGrid<float, 32> densityGrid;
 
     // Fill chunk (0,0,0) with density 1.0
     for (int z = 0; z < 32; ++z) {
@@ -343,7 +343,7 @@ TEST_F(DensityBlurCrossChunkTest, BlurWithSolidNeighborHasHigherDensity) {
     // Compare boundary blur with and without solid neighbor
 
     // Case A: No neighbor (air beyond boundary)
-    fabric::ChunkedGrid<float> gridNoNeighbor;
+    fabric::ChunkedGrid<float, 32> gridNoNeighbor;
     for (int z = 0; z < 32; ++z) {
         for (int y = 0; y < 32; ++y) {
             for (int x = 0; x < 32; ++x) {
@@ -354,7 +354,7 @@ TEST_F(DensityBlurCrossChunkTest, BlurWithSolidNeighborHasHigherDensity) {
     float densityNoNeighbor = compute5x5x5Blur(gridNoNeighbor, 31, 16, 16);
 
     // Case B: Solid neighbor at +X (chunk 1,0,0)
-    fabric::ChunkedGrid<float> gridWithNeighbor;
+    fabric::ChunkedGrid<float, 32> gridWithNeighbor;
     for (int z = 0; z < 32; ++z) {
         for (int y = 0; y < 32; ++y) {
             for (int x = 0; x < 64; ++x) { // Both chunks

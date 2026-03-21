@@ -19,7 +19,7 @@ int SimulationGrid::writeIndex() const {
 
 VoxelCell SimulationGrid::readFromBuffer(int wx, int wy, int wz, int bufferIdx) const {
     int cx, cy, cz, lx, ly, lz;
-    ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
+    ChunkedGrid<VoxelCell, 32>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
     const auto* slot = registry_.find(cx, cy, cz);
     if (!slot)
         return VoxelCell{};
@@ -39,7 +39,7 @@ VoxelCell SimulationGrid::readFromWriteBuffer(int wx, int wy, int wz) const {
 
 void SimulationGrid::writeCell(int wx, int wy, int wz, VoxelCell cell) {
     int cx, cy, cz, lx, ly, lz;
-    ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
+    ChunkedGrid<VoxelCell, 32>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
     auto& slot = registry_.addChunk(cx, cy, cz);
     if (!slot.isMaterialized())
         slot.materialize();
@@ -50,7 +50,7 @@ void SimulationGrid::writeCell(int wx, int wy, int wz, VoxelCell cell) {
 
 bool SimulationGrid::writeCellIfExists(int wx, int wy, int wz, VoxelCell cell) {
     int cx, cy, cz, lx, ly, lz;
-    ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
+    ChunkedGrid<VoxelCell, 32>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
     auto* slot = registry_.find(cx, cy, cz);
     if (!slot)
         return false;
@@ -64,7 +64,7 @@ bool SimulationGrid::writeCellIfExists(int wx, int wy, int wz, VoxelCell cell) {
 
 void SimulationGrid::writeCellImmediate(int wx, int wy, int wz, VoxelCell cell) {
     int cx, cy, cz, lx, ly, lz;
-    ChunkedGrid<VoxelCell>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
+    ChunkedGrid<VoxelCell, 32>::worldToChunk(wx, wy, wz, cx, cy, cz, lx, ly, lz);
     auto& slot = registry_.addChunk(cx, cy, cz);
     if (!slot.isMaterialized())
         slot.materialize();

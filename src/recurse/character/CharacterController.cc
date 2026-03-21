@@ -14,15 +14,16 @@ AABB CharacterController::getAABB(const Vec3f& pos) const {
     return physics::getAABB(pos, width_, height_, depth_);
 }
 
-bool CharacterController::isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid, float threshold) const {
+bool CharacterController::isSolid(int vx, int vy, int vz, const ChunkedGrid<float, 32>& grid, float threshold) const {
     return physics::isSolid(vx, vy, vz, grid, threshold);
 }
 
-bool CharacterController::aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold) const {
+bool CharacterController::aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float, 32>& grid,
+                                            float threshold) const {
     return physics::aabbOverlapsSolid(box, grid, threshold, K_GROUND_EPSILON);
 }
 
-float CharacterController::tryStepUp(const Vec3f& pos, float dx, float dz, const ChunkedGrid<float>& grid,
+float CharacterController::tryStepUp(const Vec3f& pos, float dx, float dz, const ChunkedGrid<float, 32>& grid,
                                      float threshold) const {
     // TODO(human): Implement the step-up resolution strategy
     // Try stepping up by increments up to stepHeight_ to clear obstacles.
@@ -38,7 +39,8 @@ float CharacterController::tryStepUp(const Vec3f& pos, float dx, float dz, const
 }
 
 CharacterController::CollisionResult CharacterController::move(const Vec3f& currentPos, const Vec3f& displacement,
-                                                               const ChunkedGrid<float>& grid, float densityThreshold) {
+                                                               const ChunkedGrid<float, 32>& grid,
+                                                               float densityThreshold) {
 
     CollisionResult result;
     Vec3f pos = currentPos;
@@ -121,7 +123,7 @@ CharacterController::CollisionResult CharacterController::move(const Vec3f& curr
     return result;
 }
 
-bool CharacterController::checkOnGround(const Vec3f& pos, const ChunkedGrid<float>& grid,
+bool CharacterController::checkOnGround(const Vec3f& pos, const ChunkedGrid<float, 32>& grid,
                                         float densityThreshold) const {
     // Check voxels directly below feet
     float checkY = pos.y - K_GROUND_EPSILON;

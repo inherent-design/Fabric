@@ -10,8 +10,8 @@ using namespace recurse;
 // Helper: build a sealed box of solid voxels with air interior.
 // Walls at [0..size-1] boundaries, air inside [1..size-2].
 // ---------------------------------------------------------------------------
-static ChunkedGrid<float> makeSealedBox(int size) {
-    ChunkedGrid<float> grid;
+static ChunkedGrid<float, 32> makeSealedBox(int size) {
+    ChunkedGrid<float, 32> grid;
     for (int x = 0; x < size; ++x) {
         for (int y = 0; y < size; ++y) {
             for (int z = 0; z < size; ++z) {
@@ -44,7 +44,7 @@ TEST(ReverbZoneTest, SealedBoxMetrics) {
 // ---------------------------------------------------------------------------
 TEST(ReverbZoneTest, OpenAreaHighOpenness) {
     // Empty grid: all voxels return default T{} = 0.0f (air).
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
 
     // Budget-limited so BFS can't go forever.
     auto est = estimateZone(grid, 0, 0, 0, 0.5f, 500);
@@ -128,7 +128,7 @@ TEST(ReverbZoneTest, OpenAreaLowWetMix) {
 // 6. Empty grid (all air): high openness
 // ---------------------------------------------------------------------------
 TEST(ReverbZoneTest, EmptyGridAllAir) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
 
     auto est = estimateZone(grid, 0, 0, 0, 0.5f, 1000);
 
@@ -142,7 +142,7 @@ TEST(ReverbZoneTest, EmptyGridAllAir) {
 // 7. Single voxel start in solid: volume = 0
 // ---------------------------------------------------------------------------
 TEST(ReverbZoneTest, StartInSolidZeroVolume) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(5, 5, 5, 1.0f); // Solid at start.
 
     // Surround with solid so BFS can't escape.

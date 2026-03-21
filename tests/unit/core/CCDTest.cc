@@ -16,7 +16,7 @@ TEST(CCDTest, CastProjectileRayEmptyGrid) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
 
     // Ray through empty space should not hit
     auto hit = pw.castProjectileRay(grid, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 10.0f);
@@ -29,7 +29,7 @@ TEST(CCDTest, CastProjectileRayHitSolid) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(5, 0, 0, 1.0f);
 
     // Ray from origin towards x=5 should hit
@@ -48,7 +48,7 @@ TEST(CCDTest, CastProjectileRayCustomThreshold) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(5, 0, 0, 0.3f);
     grid.set(10, 0, 0, 0.8f);
 
@@ -69,7 +69,7 @@ TEST(CCDTest, CastProjectileRayMaxDistance) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(100, 0, 0, 1.0f);
 
     // Ray with max distance 50 should not hit voxel at x=100
@@ -83,7 +83,7 @@ TEST(CCDTest, CastProjectileRayDiagonal) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(5, 5, 0, 1.0f);
 
     // Diagonal ray should hit
@@ -99,7 +99,7 @@ TEST(CCDTest, CastProjectileRayNegativeDirection) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(-5, 0, 0, 1.0f);
 
     // Ray in negative x direction
@@ -115,7 +115,7 @@ TEST(CCDTest, CastProjectileRayStartingInSolid) {
     PhysicsWorld pw;
     pw.init();
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(0, 0, 0, 1.0f);
 
     // Ray starting inside solid should report hit at origin
@@ -131,7 +131,7 @@ TEST(CCDTest, CastProjectileRayBeforeInit) {
     PhysicsWorld pw;
     // Not calling init()
 
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(5, 0, 0, 1.0f);
 
     // Should still work (doesn't depend on Jolt initialization)

@@ -24,10 +24,9 @@ constexpr int log2Floor(int v) {
 
 /// Sparse infinite grid partitioned into fixed-size chunks.
 ///
-/// ChunkSize is already part of the public contract. Current Recurse callers
-/// mostly use the default size of 32, but alternative chunk sizes remain part
-/// of the engine-facing template boundary for future multi-project use.
-template <typename T, int ChunkSize = 32> class ChunkedGrid {
+/// ChunkSize must be specified explicitly at every instantiation site.
+/// No default is provided so game-specific sizes do not leak into the engine.
+template <typename T, int ChunkSize> class ChunkedGrid {
   public:
     static_assert(ChunkSize > 0 && (ChunkSize & (ChunkSize - 1)) == 0, "ChunkSize must be a power of 2");
 

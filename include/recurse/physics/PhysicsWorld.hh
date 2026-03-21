@@ -165,7 +165,8 @@ class PhysicsWorld {
     BodyHandle createDynamicBody(const JPH::Shape* shape, float px, float py, float pz, float mass = 1.0f);
     void removeBody(BodyHandle handle);
 
-    void rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx, int cy, int cz, float densityThreshold = 0.5f);
+    void rebuildChunkCollision(const ChunkedGrid<float, 32>& grid, int cx, int cy, int cz,
+                               float densityThreshold = 0.5f);
     void rebuildChunkCollision(const recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz);
 
     /// Parallel collision rebuild for multiple chunks.
@@ -221,8 +222,9 @@ class PhysicsWorld {
     void destroyCharacter(JoltCharacterController* character);
 
     // CCD: grid-based raycast for fast projectiles (DDA)
-    std::optional<VoxelHit> castProjectileRay(const ChunkedGrid<float>& grid, float ox, float oy, float oz, float dx,
-                                              float dy, float dz, float maxDistance, float densityThreshold = 0.5f);
+    std::optional<VoxelHit> castProjectileRay(const ChunkedGrid<float, 32>& grid, float ox, float oy, float oz,
+                                              float dx, float dy, float dz, float maxDistance,
+                                              float densityThreshold = 0.5f);
 
     // CCD: swept AABB for entity-to-entity continuous collision
     bool sweptAABBIntersect(float ax1, float ay1, float az1, float ax2, float ay2, float az2, float vx, float vy,

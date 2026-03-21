@@ -18,7 +18,7 @@ int64_t ReverbZoneEstimator::packCoord(int x, int y, int z) {
 
 // ---------- One-shot estimateZone ----------
 
-ZoneEstimate estimateZone(const ChunkedGrid<float>& density, int startX, int startY, int startZ, float threshold,
+ZoneEstimate estimateZone(const ChunkedGrid<float, 32>& density, int startX, int startY, int startZ, float threshold,
                           int maxVoxels) {
     ReverbZoneEstimator estimator;
     estimator.reset(startX, startY, startZ);
@@ -41,7 +41,7 @@ void ReverbZoneEstimator::reset(int startX, int startY, int startZ) {
     visited_.insert(packCoord(startX, startY, startZ));
 }
 
-void ReverbZoneEstimator::advanceBFS(const ChunkedGrid<float>& density, float threshold, int budget) {
+void ReverbZoneEstimator::advanceBFS(const ChunkedGrid<float, 32>& density, float threshold, int budget) {
     if (!started_ || complete_)
         return;
 

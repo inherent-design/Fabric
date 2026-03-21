@@ -28,7 +28,7 @@ class FlightController {
     FlightController(float width, float height, float depth);
 
     // 6DOF collision resolution: displacement in world space, no gravity, no step-up
-    FlightResult move(const Vec3f& currentPos, const Vec3f& displacement, const ChunkedGrid<float>& grid,
+    FlightResult move(const Vec3f& currentPos, const Vec3f& displacement, const ChunkedGrid<float, 32>& grid,
                       float densityThreshold = 0.5f);
 
     FlightResult move(const Vec3f& currentPos, const Vec3f& displacement,
@@ -47,9 +47,9 @@ class FlightController {
     static constexpr float K_EPSILON = 0.01f;
     static constexpr float K_DRAG_FLOOR = 0.01f;
 
-    bool isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid, float threshold) const;
+    bool isSolid(int vx, int vy, int vz, const ChunkedGrid<float, 32>& grid, float threshold) const;
 
-    bool aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold) const;
+    bool aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float, 32>& grid, float threshold) const;
 
     bool isSolid(int vx, int vy, int vz, const recurse::simulation::SimulationGrid& grid) const;
 

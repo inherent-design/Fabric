@@ -8,7 +8,7 @@ using recurse::simulation::K_CHUNK_SIZE;
 class ChunkDensityCacheTest : public ::testing::Test {
   protected:
     ChunkDensityCache cache;
-    ChunkedGrid<float> density;
+    ChunkedGrid<float, 32> density;
 };
 
 TEST_F(ChunkDensityCacheTest, InteriorMatchesGrid) {
@@ -83,7 +83,7 @@ TEST_F(ChunkDensityCacheTest, TrilinearMidpointIsAverage) {
 }
 
 TEST_F(ChunkDensityCacheTest, MaterialCacheNearestSample) {
-    ChunkedGrid<uint16_t> materialGrid;
+    ChunkedGrid<uint16_t, 32> materialGrid;
     ChunkMaterialCache matCache;
 
     // Place a known material at world (1, 1, 2) -> cache (2, 2, 3)

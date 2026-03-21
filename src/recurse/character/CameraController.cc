@@ -44,15 +44,15 @@ void CameraController::processMouseInput(float deltaX, float deltaY) {
     clampPitch();
 }
 
-void CameraController::update(const Vector3<float, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid,
-                              float densityThreshold) {
+void CameraController::update(const Vector3<float, Space::World>& targetPos, float dt,
+                              const ChunkedGrid<float, 32>* grid, float densityThreshold) {
     update(Vector3<double, Space::World>(static_cast<double>(targetPos.x), static_cast<double>(targetPos.y),
                                          static_cast<double>(targetPos.z)),
            dt, grid, densityThreshold);
 }
 
-void CameraController::update(const Vector3<double, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid,
-                              float densityThreshold) {
+void CameraController::update(const Vector3<double, Space::World>& targetPos, float dt,
+                              const ChunkedGrid<float, 32>* grid, float densityThreshold) {
 
     const auto eyePointD = targetPos + Vector3<double, Space::World>(0.0, static_cast<double>(config_.eyeHeight), 0.0);
     auto rot = buildRotation();

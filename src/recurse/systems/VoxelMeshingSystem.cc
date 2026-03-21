@@ -513,8 +513,8 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
             if (!snapMcMesher_)
                 return result;
 
-            ChunkedGrid<float> densityGrid;
-            ChunkedGrid<uint16_t> materialGrid;
+            ChunkedGrid<float, 32> densityGrid;
+            ChunkedGrid<uint16_t, 32> materialGrid;
 
             const int baseX = coord.x * K_CHUNK_SIZE;
             const int baseY = coord.y * K_CHUNK_SIZE;

@@ -323,7 +323,7 @@ std::vector<Vec3f> BehaviorAI::getEntitiesInRange(const Vec3f& pos, float range)
     return results;
 }
 
-bool BehaviorAI::hasLineOfSight(const ChunkedGrid<float>& grid, const Vec3f& from, const Vec3f& to) {
+bool BehaviorAI::hasLineOfSight(const ChunkedGrid<float, 32>& grid, const Vec3f& from, const Vec3f& to) {
     Vec3f dir = to - from;
     float dist = dir.length();
     if (dist < 1e-6f)

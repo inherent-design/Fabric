@@ -19,7 +19,7 @@ bool areAdjacent(const PathNode& a, const PathNode& b) {
 } // namespace
 
 TEST(PathfindingTest, EmptyGridDirectPath) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     Pathfinding pf;
     pf.init();
 
@@ -38,7 +38,7 @@ TEST(PathfindingTest, EmptyGridDirectPath) {
 }
 
 TEST(PathfindingTest, BlockedPath) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     for (int y = 0; y < 8; ++y)
         for (int z = 0; z < 8; ++z)
             grid.set(4, y, z, 1.0f);
@@ -65,7 +65,7 @@ TEST(PathfindingTest, BlockedPath) {
 }
 
 TEST(PathfindingTest, NoPathExists) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     int gx = 5, gy = 5, gz = 5;
     for (int dx = -1; dx <= 1; ++dx)
         for (int dy = -1; dy <= 1; ++dy)
@@ -83,7 +83,7 @@ TEST(PathfindingTest, NoPathExists) {
 }
 
 TEST(PathfindingTest, StartEqualsGoal) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     Pathfinding pf;
     pf.init();
 
@@ -99,7 +99,7 @@ TEST(PathfindingTest, StartEqualsGoal) {
 }
 
 TEST(PathfindingTest, StartOrGoalBlocked) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(0, 0, 0, 1.0f);
 
     Pathfinding pf;
@@ -113,7 +113,7 @@ TEST(PathfindingTest, StartOrGoalBlocked) {
 }
 
 TEST(PathfindingTest, MaxNodesBudget) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     Pathfinding pf;
     pf.init();
 
@@ -125,7 +125,7 @@ TEST(PathfindingTest, MaxNodesBudget) {
 }
 
 TEST(PathfindingTest, WalkabilityCheck) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(1, 1, 1, 1.0f);
     grid.set(2, 2, 2, 0.0f);
 
@@ -135,7 +135,7 @@ TEST(PathfindingTest, WalkabilityCheck) {
 }
 
 TEST(PathfindingTest, ThresholdControl) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(3, 3, 3, 0.3f);
 
     EXPECT_TRUE(Pathfinding::isWalkable(grid, 3, 3, 3, 0.5f));
@@ -143,7 +143,7 @@ TEST(PathfindingTest, ThresholdControl) {
 }
 
 TEST(PathfindingTest, DiagonalAvoidance) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     Pathfinding pf;
     pf.init();
 

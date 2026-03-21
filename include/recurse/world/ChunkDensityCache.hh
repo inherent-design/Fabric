@@ -16,7 +16,7 @@ inline constexpr int K_CACHE_VOLUME = K_CACHE_SIZE * K_CACHE_SIZE * K_CACHE_SIZE
 
 class ChunkDensityCache {
   public:
-    void build(int cx, int cy, int cz, const ChunkedGrid<float>& density);
+    void build(int cx, int cy, int cz, const ChunkedGrid<float, 32>& density);
     float at(int lx, int ly, int lz) const;
     float sample(float lx, float ly, float lz) const;
     const float* data() const;
@@ -30,7 +30,7 @@ class ChunkDensityCache {
 
 class ChunkMaterialCache {
   public:
-    void build(int cx, int cy, int cz, const ChunkedGrid<uint16_t>& materialGrid);
+    void build(int cx, int cy, int cz, const ChunkedGrid<uint16_t, 32>& materialGrid);
     uint16_t at(int lx, int ly, int lz) const;
     uint16_t sampleNearest(float lx, float ly, float lz) const;
 

@@ -14,11 +14,11 @@ AABB getAABB(const Vec3f& pos, float width, float height, float depth) {
     return AABB(minCorner, maxCorner);
 }
 
-bool isSolid(int vx, int vy, int vz, const ChunkedGrid<float>& grid, float threshold) {
+bool isSolid(int vx, int vy, int vz, const ChunkedGrid<float, 32>& grid, float threshold) {
     return grid.get(vx, vy, vz) >= threshold;
 }
 
-bool aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float>& grid, float threshold, float epsilon) {
+bool aabbOverlapsSolid(const AABB& box, const ChunkedGrid<float, 32>& grid, float threshold, float epsilon) {
     int minVX = static_cast<int>(std::floor(box.min.x));
     int minVY = static_cast<int>(std::floor(box.min.y));
     int minVZ = static_cast<int>(std::floor(box.min.z));

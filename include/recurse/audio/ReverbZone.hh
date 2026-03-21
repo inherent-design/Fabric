@@ -29,7 +29,7 @@ struct ReverbParams {
 /// One-shot BFS flood-fill zone estimation.
 /// Walks 6-connected air voxels from start position, counting volume,
 /// surface area, and openness up to a budget cap.
-ZoneEstimate estimateZone(const ChunkedGrid<float>& density, int startX, int startY, int startZ, float threshold,
+ZoneEstimate estimateZone(const ChunkedGrid<float, 32>& density, int startX, int startY, int startZ, float threshold,
                           int maxVoxels);
 
 /// Map a zone estimate to reverb parameters using the Sabine equation.
@@ -44,7 +44,7 @@ class ReverbZoneEstimator {
     void reset(int startX, int startY, int startZ);
 
     /// Process up to `budget` voxels of BFS.
-    void advanceBFS(const ChunkedGrid<float>& density, float threshold, int budget);
+    void advanceBFS(const ChunkedGrid<float, 32>& density, float threshold, int budget);
 
     /// Current zone estimate (may be partial if BFS is incomplete).
     ZoneEstimate estimate() const;

@@ -14,9 +14,11 @@ TransitionController::TransitionResult TransitionController::enterFlight(const V
     return result;
 }
 
-TransitionController::TransitionResult
-TransitionController::exitFlight(const Vec3f& currentVelocity, const Vec3f& position, const ChunkedGrid<float>& grid,
-                                 float groundCheckDistance, float densityThreshold) {
+TransitionController::TransitionResult TransitionController::exitFlight(const Vec3f& currentVelocity,
+                                                                        const Vec3f& position,
+                                                                        const ChunkedGrid<float, 32>& grid,
+                                                                        float groundCheckDistance,
+                                                                        float densityThreshold) {
 
     TransitionResult result;
     result.velocity = currentVelocity;
@@ -31,7 +33,7 @@ TransitionController::exitFlight(const Vec3f& currentVelocity, const Vec3f& posi
     return result;
 }
 
-bool TransitionController::checkGroundBelow(const Vec3f& position, const ChunkedGrid<float>& grid, float distance,
+bool TransitionController::checkGroundBelow(const Vec3f& position, const ChunkedGrid<float, 32>& grid, float distance,
                                             float densityThreshold) const {
 
     int x = static_cast<int>(std::floor(position.x));
