@@ -1,4 +1,5 @@
 #include "recurse/world/FlatGenerator.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 
@@ -18,22 +19,19 @@ void FlatGenerator::generate(SimulationGrid& grid, int cx, int cy, int cz) {
     }
 
     if (topY < surfaceHeight_) {
-        VoxelCell stone;
-        stone.materialId = material_ids::STONE;
+        VoxelCell stone = makeCell(static_cast<uint8_t>(material_ids::STONE), Phase::Solid, 200);
         grid.fillChunk(cx, cy, cz, stone);
         return;
     }
 
-    VoxelCell stone;
-    stone.materialId = material_ids::STONE;
+    VoxelCell stone = makeCell(static_cast<uint8_t>(material_ids::STONE), Phase::Solid, 200);
     grid.fillChunk(cx, cy, cz, stone);
 
     for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
         for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
             int worldY = baseY + ly;
             if (worldY == surfaceHeight_) {
-                VoxelCell dirt;
-                dirt.materialId = material_ids::DIRT;
+                VoxelCell dirt = makeCell(static_cast<uint8_t>(material_ids::DIRT), Phase::Solid, 150);
                 for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
                     int wx = cx * K_CHUNK_SIZE + lx;
                     int wz = cz * K_CHUNK_SIZE + lz;

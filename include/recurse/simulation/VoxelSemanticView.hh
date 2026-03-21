@@ -1,6 +1,7 @@
 #pragma once
 
 #include "recurse/components/EssenceTypes.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/world/EssencePalette.hh"
 
@@ -149,7 +150,7 @@ class MaterialSemanticRegistry {
     /// Resolve semantics for a voxel cell and optional essence palette.
     ResolvedVoxelSemantics resolve(const VoxelCell& cell, const recurse::EssencePalette* palette = nullptr) const {
         ResolvedVoxelSemantics result{};
-        result.material = view(cell.materialId);
+        result.material = view(cellMaterialId(cell));
         result.sampledEssence.index = cell.essenceIdx;
         result.sampledEssence.hasPalette = (palette != nullptr);
         if (palette != nullptr && cell.essenceIdx < palette->paletteSize()) {

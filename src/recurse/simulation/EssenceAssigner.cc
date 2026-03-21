@@ -65,7 +65,7 @@ void assignEssence(VoxelCell* buffer, int cx, int cy, int cz, const MaterialRegi
     for (int i = 0; i < K_CHUNK_VOLUME; ++i) {
         if (isEmpty(buffer[i]))
             continue;
-        auto mid = buffer[i].materialId;
+        auto mid = cellMaterialId(buffer[i]);
         bool found = false;
         for (int m = 0; m < matCount; ++m) {
             if (uniqueMats[m] == mid) {
@@ -133,7 +133,7 @@ void assignEssence(VoxelCell* buffer, int cx, int cy, int cz, const MaterialRegi
 
                 int matIdx = 0;
                 for (int m = 0; m < matCount; ++m) {
-                    if (uniqueMats[m] == cell.materialId) {
+                    if (uniqueMats[m] == cellMaterialId(cell)) {
                         matIdx = m;
                         break;
                     }
@@ -149,7 +149,7 @@ void assignEssence(VoxelCell* buffer, int cx, int cy, int cz, const MaterialRegi
                 int qw = quantStep(spatialHash(wx, wy, wz, 3, seed) * K_NOISE_AMPLITUDE);
 
                 int noiseIdx = qx + qy * K + qz * K * K + qw * K * K * K;
-                cell.essenceIdx = paletteLUT[matIdx * entriesPerMat + noiseIdx];
+                cell.spare = paletteLUT[matIdx * entriesPerMat + noiseIdx];
             }
         }
     }

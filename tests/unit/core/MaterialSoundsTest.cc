@@ -1,4 +1,5 @@
 #include "recurse/audio/MaterialSounds.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 
@@ -7,6 +8,7 @@
 
 using namespace fabric;
 using namespace recurse;
+using recurse::simulation::cellForMaterial;
 
 // Convenience alias
 using Ess = Vector4<float, Space::World>;
@@ -178,7 +180,7 @@ TEST(MaterialSoundsTest, DetectSurfaceBelowReturnsMaterial) {
     SimulationGrid grid;
     // Place a stone voxel one unit below the query point
     // Query at (5.5, 10.5, 5.5), solid at y=9
-    grid.writeCellImmediate(5, 9, 5, VoxelCell{material_ids::STONE, 0, 0});
+    grid.writeCellImmediate(5, 9, 5, cellForMaterial(material_ids::STONE));
 
     MaterialType result = ms.detectSurfaceBelow(grid, 5.5f, 10.5f, 5.5f);
     EXPECT_EQ(result, MaterialType::Stone);
@@ -200,7 +202,7 @@ TEST(MaterialSoundsTest, DetectSurfaceBelowBeyondMaxDistance) {
 
     SimulationGrid grid;
     // Place solid voxel 5 units below (beyond maxDistance of 2.0)
-    grid.writeCellImmediate(5, 5, 5, VoxelCell{material_ids::STONE, 0, 0});
+    grid.writeCellImmediate(5, 5, 5, cellForMaterial(material_ids::STONE));
 
     MaterialType result = ms.detectSurfaceBelow(grid, 5.5f, 10.5f, 5.5f);
     EXPECT_EQ(result, MaterialType::Default);

@@ -1,4 +1,5 @@
 #include "recurse/character/VoxelInteraction.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/VoxelConstants.hh"
 
 using recurse::simulation::K_CHUNK_SHIFT;
@@ -13,13 +14,14 @@ InteractionResult makeInteractionResult(int x, int y, int z, VoxelCell newCell, 
 
 } // namespace
 
-VoxelInteraction::VoxelInteraction(SimulationGrid& grid) : grid_(grid) {}
+VoxelInteraction::VoxelInteraction(SimulationGrid& grid, const simulation::MaterialRegistry& registry)
+    : grid_(grid), registry_(registry) {}
 
 InteractionResult VoxelInteraction::createMatter(const VoxelHit& hit, MaterialId materialId) {
     int x = hit.x + hit.nx;
     int y = hit.y + hit.ny;
     int z = hit.z + hit.nz;
-    VoxelCell newCell{materialId, 0, recurse::simulation::voxel_flags::UPDATED};
+    VoxelCell newCell = simulation::makeCellFromMaterial(materialId, registry_, simulation::voxel_flags::UPDATED);
     return makeInteractionResult(x, y, z, newCell, ChangeSource::Place);
 }
 
@@ -27,7 +29,8 @@ InteractionResult VoxelInteraction::destroyMatter(const VoxelHit& hit) {
     int x = hit.x;
     int y = hit.y;
     int z = hit.z;
-    VoxelCell newCell{recurse::simulation::material_ids::AIR, 0, recurse::simulation::voxel_flags::UPDATED};
+    VoxelCell newCell = simulation::emptyCell();
+    newCell.setFlags(simulation::voxel_flags::UPDATED);
     return makeInteractionResult(x, y, z, newCell, ChangeSource::Destroy);
 }
 

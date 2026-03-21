@@ -1,6 +1,7 @@
 #include "recurse/physics/PhysicsWorld.hh"
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 
@@ -811,7 +812,7 @@ TEST(PhysicsWorldTest, SimGridSingleVoxelProduces6Faces) {
 
     recurse::simulation::SimulationGrid grid;
     grid.materializeChunk(0, 0, 0);
-    grid.writeCell(4, 4, 4, {recurse::simulation::material_ids::STONE});
+    grid.writeCell(4, 4, 4, recurse::simulation::cellForMaterial(recurse::simulation::material_ids::STONE));
     grid.advanceEpoch();
 
     pw.rebuildChunkCollision(grid, 0, 0, 0);
@@ -826,8 +827,8 @@ TEST(PhysicsWorldTest, SimGridTwoAdjacentVoxels10Faces) {
 
     recurse::simulation::SimulationGrid grid;
     grid.materializeChunk(0, 0, 0);
-    grid.writeCell(4, 4, 4, {recurse::simulation::material_ids::STONE});
-    grid.writeCell(5, 4, 4, {recurse::simulation::material_ids::STONE});
+    grid.writeCell(4, 4, 4, recurse::simulation::cellForMaterial(recurse::simulation::material_ids::STONE));
+    grid.writeCell(5, 4, 4, recurse::simulation::cellForMaterial(recurse::simulation::material_ids::STONE));
     grid.advanceEpoch();
 
     pw.rebuildChunkCollision(grid, 0, 0, 0);
@@ -846,8 +847,9 @@ TEST(PhysicsWorldTest, BatchCollisionMatchesSequential) {
     for (int x = 0; x < 4; ++x)
         for (int y = 0; y < 4; ++y)
             for (int z = 0; z < 4; ++z) {
-                grid.writeCell(x, y, z, {recurse::simulation::material_ids::STONE});
-                grid.writeCell(32 + x, y, z, {recurse::simulation::material_ids::STONE});
+                grid.writeCell(x, y, z, recurse::simulation::cellForMaterial(recurse::simulation::material_ids::STONE));
+                grid.writeCell(32 + x, y, z,
+                               recurse::simulation::cellForMaterial(recurse::simulation::material_ids::STONE));
             }
     grid.advanceEpoch();
 
@@ -895,7 +897,7 @@ TEST(PhysicsWorldTest, BatchCollisionEmptyChunks) {
 TEST(PhysicsWorldTest, BatchCollisionReplacesExisting) {
     recurse::simulation::SimulationGrid grid;
     grid.materializeChunk(0, 0, 0);
-    grid.writeCell(4, 4, 4, {recurse::simulation::material_ids::STONE});
+    grid.writeCell(4, 4, 4, recurse::simulation::cellForMaterial(recurse::simulation::material_ids::STONE));
     grid.advanceEpoch();
 
     PhysicsWorld pw;
@@ -908,7 +910,7 @@ TEST(PhysicsWorldTest, BatchCollisionReplacesExisting) {
     EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 6u);
 
     // Add another voxel and rebuild
-    grid.writeCell(5, 4, 4, {recurse::simulation::material_ids::STONE});
+    grid.writeCell(5, 4, 4, recurse::simulation::cellForMaterial(recurse::simulation::material_ids::STONE));
     grid.advanceEpoch();
     pw.rebuildChunkCollisionBatch(grid, chunks, scheduler);
     EXPECT_EQ(pw.chunkCollisionShapeCount(0, 0, 0), 10u);

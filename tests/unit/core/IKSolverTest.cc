@@ -1,5 +1,6 @@
 #include "recurse/animation/IKSolver.hh"
 #include "recurse/animation/Animation.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <cmath>
@@ -11,6 +12,7 @@
 
 using namespace fabric;
 using namespace recurse;
+using recurse::simulation::cellForMaterial;
 
 class TwoBoneIKTest : public ::testing::Test {
   protected:
@@ -328,7 +330,7 @@ class FootIKTest : public ::testing::Test {
         SimulationGrid grid;
         for (int x = -5; x <= 5; ++x) {
             for (int z = -5; z <= 5; ++z) {
-                grid.writeCellImmediate(x, groundVoxelY, z, VoxelCell{material_ids::STONE, 0, 0});
+                grid.writeCellImmediate(x, groundVoxelY, z, cellForMaterial(material_ids::STONE));
             }
         }
         return grid;
@@ -363,12 +365,12 @@ TEST_F(FootIKTest, SteppedTerrain) {
     SimulationGrid grid;
     for (int x = -5; x < 0; ++x) {
         for (int z = -5; z <= 5; ++z) {
-            grid.writeCellImmediate(x, -1, z, VoxelCell{material_ids::STONE, 0, 0});
+            grid.writeCellImmediate(x, -1, z, cellForMaterial(material_ids::STONE));
         }
     }
     for (int x = 0; x <= 5; ++x) {
         for (int z = -5; z <= 5; ++z) {
-            grid.writeCellImmediate(x, 0, z, VoxelCell{material_ids::STONE, 0, 0});
+            grid.writeCellImmediate(x, 0, z, cellForMaterial(material_ids::STONE));
         }
     }
 
@@ -398,7 +400,7 @@ TEST_F(FootIKTest, UnreachableGround) {
     SimulationGrid grid;
     for (int x = -5; x <= 5; ++x) {
         for (int z = -5; z <= 5; ++z) {
-            grid.writeCellImmediate(x, 2, z, VoxelCell{material_ids::STONE, 0, 0});
+            grid.writeCellImmediate(x, 2, z, cellForMaterial(material_ids::STONE));
         }
     }
 

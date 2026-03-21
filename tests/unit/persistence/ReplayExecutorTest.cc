@@ -2,6 +2,7 @@
 #include "recurse/character/VoxelInteraction.hh"
 #include "recurse/persistence/FchkCodec.hh"
 #include "recurse/persistence/WorldTransactionStore.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
@@ -82,11 +83,7 @@ class ReplayExecutorTest : public ::testing::Test {
                     tracker.markSubRegionActive(pos, lx, ly, lz);
     }
 
-    VoxelCell makeMaterial(MaterialId id) {
-        VoxelCell c{};
-        c.materialId = id;
-        return c;
-    }
+    VoxelCell makeMaterial(MaterialId id) { return cellForMaterial(id); }
 
     ReplayExecutor makeExecutor() {
         return ReplayExecutor(txStore, grid, sandSystem, ghosts, tracker, worldSeed, &registry);
@@ -155,7 +152,7 @@ TEST_F(ReplayExecutorTest, SnapshotRoundTrip) {
     const auto* buf = grid.readBuffer(0, 0, 0);
     ASSERT_NE(buf, nullptr);
     for (int i = 0; i < K_CHUNK_VOLUME; ++i) {
-        EXPECT_EQ((*buf)[i].materialId, original[i].materialId) << "Mismatch at cell " << i;
+        EXPECT_EQ(cellMaterialId((*buf)[i]), cellMaterialId(original[i])) << "Mismatch at cell " << i;
     }
 }
 
@@ -187,7 +184,8 @@ TEST_F(ReplayExecutorTest, DeterministicReplayMatchesProduction) {
     const auto* replayBuf = grid.readBuffer(0, 0, 0);
     ASSERT_NE(replayBuf, nullptr);
     for (int i = 0; i < K_CHUNK_VOLUME; ++i) {
-        EXPECT_EQ((*replayBuf)[i].materialId, productionState[i].materialId) << "Mismatch at cell index " << i;
+        EXPECT_EQ(cellMaterialId((*replayBuf)[i]), cellMaterialId(productionState[i]))
+            << "Mismatch at cell index " << i;
     }
 }
 
@@ -213,7 +211,7 @@ TEST_F(ReplayExecutorTest, UserEditsInterleaveCorrectly) {
     ASSERT_EQ(result.status, ReplayStatus::Ok);
 
     VoxelCell cell = grid.readCell(16, 10, 16);
-    EXPECT_EQ(cell.materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(cell), material_ids::STONE);
 }
 
 TEST_F(ReplayExecutorTest, VisualReplayFrameDelivery) {
@@ -308,8 +306,10 @@ TEST_F(ReplayExecutorTest, BoundaryDrainDeterministic) {
     const auto* buf0 = grid.readBuffer(0, 0, 0);
     const auto* buf1 = grid.readBuffer(1, 0, 0);
     for (int i = 0; i < K_CHUNK_VOLUME; ++i) {
-        EXPECT_EQ((*buf0)[i].materialId, state0[i].materialId) << "Non-determinism in chunk (0,0,0) at cell " << i;
-        EXPECT_EQ((*buf1)[i].materialId, state1[i].materialId) << "Non-determinism in chunk (1,0,0) at cell " << i;
+        EXPECT_EQ(cellMaterialId((*buf0)[i]), cellMaterialId(state0[i]))
+            << "Non-determinism in chunk (0,0,0) at cell " << i;
+        EXPECT_EQ(cellMaterialId((*buf1)[i]), cellMaterialId(state1[i]))
+            << "Non-determinism in chunk (1,0,0) at cell " << i;
     }
 }
 
@@ -409,7 +409,7 @@ TEST_F(ReplayExecutorTest, ReplayPlaceEditMatchesLiveExternalEditOutcomeAfterOne
     VoxelCell replayCell = grid.readCell(12, 10, 12);
     ChunkState replayState = tracker.getState({0, 0, 0});
 
-    EXPECT_EQ(replayCell.materialId, liveCell.materialId);
-    EXPECT_EQ(replayCell.flags, liveCell.flags);
+    EXPECT_EQ(cellMaterialId(replayCell), cellMaterialId(liveCell));
+    EXPECT_EQ(replayCell.flags(), liveCell.flags());
     EXPECT_EQ(replayState, liveState);
 }

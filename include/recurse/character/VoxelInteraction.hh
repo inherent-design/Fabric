@@ -3,6 +3,7 @@
 #include "fabric/core/Event.hh"
 #include "fabric/render/Geometry.hh"
 #include "recurse/persistence/ChangeSource.hh"
+#include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/FunctionContracts.hh"
@@ -89,7 +90,7 @@ struct InteractionResult {
 
 class VoxelInteraction {
   public:
-    explicit VoxelInteraction(SimulationGrid& grid);
+    VoxelInteraction(SimulationGrid& grid, const simulation::MaterialRegistry& registry);
 
     // Place voxel adjacent to hit face
     InteractionResult createMatter(const VoxelHit& hit,
@@ -112,6 +113,7 @@ class VoxelInteraction {
 
   private:
     SimulationGrid& grid_;
+    const simulation::MaterialRegistry& registry_;
 };
 
 } // namespace recurse

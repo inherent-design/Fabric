@@ -1,6 +1,7 @@
 #include "recurse/world/TestWorldGenerator.hh"
 
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 
@@ -24,20 +25,21 @@ void FlatWorldGenerator::generate(recurse::simulation::SimulationGrid& grid, int
 
     // Entirely below ground: fill with stone sentinel (no allocation)
     if (topY < groundLevel_) {
-        grid.fillChunk(cx, cy, cz, VoxelCell{material_ids::STONE});
+        grid.fillChunk(cx, cy, cz, makeCell(static_cast<uint8_t>(material_ids::STONE), Phase::Solid, 200));
         return;
     }
 
     // Mixed chunk: per-voxel
     int baseX = cx * K_CHUNK_SIZE;
     int baseZ = cz * K_CHUNK_SIZE;
+    VoxelCell stone = makeCell(static_cast<uint8_t>(material_ids::STONE), Phase::Solid, 200);
     for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
         for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
             int wy = baseY + ly;
             if (wy >= groundLevel_)
                 break;
             for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
-                grid.writeCell(baseX + lx, wy, baseZ + lz, VoxelCell{material_ids::STONE});
+                grid.writeCell(baseX + lx, wy, baseZ + lz, stone);
             }
         }
     }
@@ -73,21 +75,23 @@ void LayeredWorldGenerator::generate(recurse::simulation::SimulationGrid& grid, 
 
     // Entirely below stone level: all stone
     if (topY < stoneLevel_) {
-        grid.fillChunk(cx, cy, cz, VoxelCell{material_ids::STONE});
+        grid.fillChunk(cx, cy, cz, makeCell(static_cast<uint8_t>(material_ids::STONE), Phase::Solid, 200));
         return;
     }
 
     // Mixed or sand-only chunk: per-voxel
     int baseX = cx * K_CHUNK_SIZE;
     int baseZ = cz * K_CHUNK_SIZE;
+    VoxelCell stone = makeCell(static_cast<uint8_t>(material_ids::STONE), Phase::Solid, 200);
+    VoxelCell sand = makeCell(static_cast<uint8_t>(material_ids::SAND), Phase::Powder, 130);
     for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
         for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
             int wy = baseY + ly;
             if (wy >= totalGround)
                 break;
-            MaterialId mat = (wy < stoneLevel_) ? material_ids::STONE : material_ids::SAND;
+            VoxelCell mat = (wy < stoneLevel_) ? stone : sand;
             for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
-                grid.writeCell(baseX + lx, wy, baseZ + lz, VoxelCell{mat});
+                grid.writeCell(baseX + lx, wy, baseZ + lz, mat);
             }
         }
     }

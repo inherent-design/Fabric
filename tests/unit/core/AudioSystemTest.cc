@@ -1,5 +1,6 @@
 #include "recurse/audio/AudioSystem.hh"
 #include "recurse/audio/ReverbZone.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 
@@ -7,6 +8,7 @@
 
 using namespace fabric;
 using namespace recurse;
+using recurse::simulation::cellForMaterial;
 
 class AudioSystemTest : public ::testing::Test {
   protected:
@@ -212,7 +214,7 @@ TEST_F(AudioSystemTest, ComputeOcclusionBlockedPath) {
     SimulationGrid grid;
     for (int y = 0; y < 10; ++y)
         for (int z = 0; z < 10; ++z)
-            grid.writeCellImmediate(5, y, z, VoxelCell{material_ids::STONE, 0, 0});
+            grid.writeCellImmediate(5, y, z, cellForMaterial(material_ids::STONE));
     audio.setSimulationGrid(&grid);
     Vec3f source(2.0f, 5.0f, 5.0f);
     Vec3f listener(8.0f, 5.0f, 5.0f);
@@ -227,7 +229,7 @@ TEST_F(AudioSystemTest, ComputeOcclusionFullyBlocked) {
     for (int x = 2; x <= 9; ++x)
         for (int y = 0; y < 10; ++y)
             for (int z = 0; z < 10; ++z)
-                grid.writeCellImmediate(x, y, z, VoxelCell{material_ids::STONE, 0, 0});
+                grid.writeCellImmediate(x, y, z, cellForMaterial(material_ids::STONE));
     audio.setSimulationGrid(&grid);
     Vec3f source(0.0f, 5.0f, 5.0f);
     Vec3f listener(12.0f, 5.0f, 5.0f);
@@ -251,7 +253,7 @@ TEST_F(AudioSystemTest, OcclusionWithSolidVoxels) {
     SimulationGrid grid;
     for (int y = 0; y < 10; ++y)
         for (int z = 0; z < 10; ++z)
-            grid.writeCellImmediate(5, y, z, VoxelCell{material_ids::STONE, 0, 0});
+            grid.writeCellImmediate(5, y, z, cellForMaterial(material_ids::STONE));
     audio.setSimulationGrid(&grid);
     Vec3f source(2.0f, 5.0f, 5.0f);
     Vec3f listener(8.0f, 5.0f, 5.0f);
@@ -265,7 +267,7 @@ TEST_F(AudioSystemTest, UpdateAppliesOcclusion) {
     SimulationGrid grid;
     for (int y = 0; y < 10; ++y)
         for (int z = 0; z < 10; ++z)
-            grid.writeCellImmediate(5, y, z, VoxelCell{material_ids::STONE, 0, 0});
+            grid.writeCellImmediate(5, y, z, cellForMaterial(material_ids::STONE));
     audio.setSimulationGrid(&grid);
     audio.setOcclusionEnabled(true);
     audio.setListenerPosition(Vec3f(8.0f, 5.0f, 5.0f));

@@ -16,4 +16,5 @@ target_sources(UnitTests
   BoundaryDrainTest.cc
   MatterStateTest.cc
   ProjectionRuleTableTest.cc
+  CellFactoryTest.cc
 )

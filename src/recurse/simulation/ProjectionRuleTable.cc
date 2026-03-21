@@ -1,6 +1,8 @@
 #include "recurse/simulation/ProjectionRuleTable.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 
+#include <algorithm>
+
 namespace recurse::simulation {
 
 ProjectionRuleTable::ProjectionRuleTable() = default;
@@ -19,10 +21,8 @@ void ProjectionRuleTable::setRule(uint8_t essenceIdx, Phase phase, const Project
 
 void ProjectionRuleTable::populateFromRegistry(const MaterialRegistry& registry) {
     // During migration, MaterialId maps 1:1 to essenceIdx for registered materials.
-    for (MaterialId id = 0; id < registry.count(); ++id) {
-        if (id >= K_MAX_ESSENCE) {
-            continue;
-        }
+    const MaterialId limit = std::min(registry.count(), static_cast<MaterialId>(K_MAX_ESSENCE));
+    for (MaterialId id = 0; id < limit; ++id) {
         const auto& def = registry.get(id);
 
         // Derive phase from MoveType (mirrors CellAccessors.hh cellPhase logic)

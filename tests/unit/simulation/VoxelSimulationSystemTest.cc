@@ -1,6 +1,7 @@
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/character/VoxelInteraction.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
@@ -36,11 +37,7 @@ class VoxelSimulationSystemTest : public ::testing::Test {
                     sim.activityTracker().markSubRegionActive(pos, lx, ly, lz);
     }
 
-    VoxelCell makeMaterial(MaterialId id) {
-        VoxelCell c;
-        c.materialId = id;
-        return c;
-    }
+    VoxelCell makeMaterial(MaterialId id) { return cellForMaterial(id); }
 
     void placeCellAndAdvance(int wx, int wy, int wz, VoxelCell cell) {
         sim.grid().writeCell(wx, wy, wz, cell);
@@ -72,7 +69,7 @@ class VoxelSimulationSystemTest : public ::testing::Test {
         for (int z = 0; z < K_CHUNK_SIZE; ++z)
             for (int y = 0; y < K_CHUNK_SIZE; ++y)
                 for (int x = 0; x < K_CHUNK_SIZE; ++x)
-                    if (sim.grid().readCell(x, y, z).materialId == id)
+                    if (cellMaterialId(sim.grid().readCell(x, y, z)) == id)
                         ++count;
         return count;
     }
@@ -111,7 +108,7 @@ TEST_F(VoxelSimulationSystemTest, SandFallsOverTicks) {
     }
 
     // Sand should be at y=1 (on top of stone floor)
-    EXPECT_EQ(sim.grid().readCell(16, 1, 16).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(sim.grid().readCell(16, 1, 16)), material_ids::SAND);
 }
 
 // 3. Water fills a stone box cavity over ticks
@@ -134,7 +131,7 @@ TEST_F(VoxelSimulationSystemTest, WaterFillsCavity) {
     int bottomWater = 0;
     for (int x = 11; x <= 13; ++x)
         for (int z = 11; z <= 13; ++z)
-            if (sim.grid().readCell(x, 1, z).materialId == material_ids::WATER)
+            if (cellMaterialId(sim.grid().readCell(x, 1, z)) == material_ids::WATER)
                 ++bottomWater;
     EXPECT_EQ(bottomWater, 9);
 }
@@ -203,7 +200,7 @@ TEST_F(VoxelSimulationSystemTest, GridAccessible) {
     auto& g = sim.grid();
     g.writeCell(0, 0, 0, makeMaterial(material_ids::SAND));
     g.advanceEpoch();
-    EXPECT_EQ(g.readCell(0, 0, 0).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(g.readCell(0, 0, 0)), material_ids::SAND);
 }
 
 // 8. Total sand count is conserved over 50 ticks
@@ -275,11 +272,11 @@ TEST(RecurseVoxelSimSystemTest, LiquidFlowsHorizontally) {
 
     for (int x = 0; x < K_CHUNK_SIZE; ++x)
         for (int z = 0; z < K_CHUNK_SIZE; ++z)
-            grid.writeCell(x, 0, z, VoxelCell{material_ids::STONE});
+            grid.writeCell(x, 0, z, cellForMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
     for (int y = 1; y <= 4; ++y)
-        grid.writeCell(16, y, 16, VoxelCell{material_ids::WATER});
+        grid.writeCell(16, y, 16, cellForMaterial(material_ids::WATER));
     grid.advanceEpoch();
 
     auto countWater = [&]() {
@@ -288,8 +285,8 @@ TEST(RecurseVoxelSimSystemTest, LiquidFlowsHorizontally) {
             for (int lz = 0; lz < K_CHUNK_SIZE; ++lz)
                 for (int ly = 0; ly < K_CHUNK_SIZE; ++ly)
                     for (int lx = 0; lx < K_CHUNK_SIZE; ++lx)
-                        if (grid.readCell(cx * K_CHUNK_SIZE + lx, cy * K_CHUNK_SIZE + ly, cz * K_CHUNK_SIZE + lz)
-                                .materialId == material_ids::WATER)
+                        if (cellMaterialId(grid.readCell(cx * K_CHUNK_SIZE + lx, cy * K_CHUNK_SIZE + ly,
+                                                         cz * K_CHUNK_SIZE + lz)) == material_ids::WATER)
                             ++count;
         return count;
     };
@@ -310,16 +307,16 @@ TEST(RecurseVoxelSimSystemTest, WakeOnNeighborActivity) {
     sim.scheduler().disableForTesting();
     auto& grid = sim.grid();
 
-    grid.fillChunk(0, 0, 0, VoxelCell{material_ids::STONE});
+    grid.fillChunk(0, 0, 0, cellForMaterial(material_ids::STONE));
     grid.advanceEpoch();
     sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Sleeping);
 
     for (int x = K_CHUNK_SIZE; x < K_CHUNK_SIZE * 2; ++x)
         for (int z = 0; z < K_CHUNK_SIZE; ++z)
-            grid.writeCell(x, 0, z, VoxelCell{material_ids::STONE});
+            grid.writeCell(x, 0, z, cellForMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
-    grid.writeCell(K_CHUNK_SIZE, 5, 16, VoxelCell{material_ids::SAND});
+    grid.writeCell(K_CHUNK_SIZE, 5, 16, cellForMaterial(material_ids::SAND));
     grid.advanceEpoch();
     sim.activityTracker().setState(ChunkCoord{1, 0, 0}, ChunkState::Active);
 
@@ -336,7 +333,7 @@ TEST(RecurseVoxelSimSystemTest, GhostCellCopyCorrectness) {
     sim.scheduler().disableForTesting();
     auto& grid = sim.grid();
 
-    grid.writeCell(31, 0, 0, VoxelCell{material_ids::STONE});
+    grid.writeCell(31, 0, 0, cellForMaterial(material_ids::STONE));
     grid.advanceEpoch();
 
     grid.materializeChunk(0, 0, 0);
@@ -348,7 +345,7 @@ TEST(RecurseVoxelSimSystemTest, GhostCellCopyCorrectness) {
     sim.tick();
 
     auto cell = grid.readCell(31, 0, 0);
-    EXPECT_EQ(cell.materialId, material_ids::STONE) << "Boundary voxel should be preserved after ghost sync";
+    EXPECT_EQ(cellMaterialId(cell), material_ids::STONE) << "Boundary voxel should be preserved after ghost sync";
 }
 
 TEST(RecurseVoxelSimSystemTest, ApplyExternalEditIntoSleepingChunkWritesAndSimulatesWithoutCallerRepair) {
@@ -385,12 +382,13 @@ TEST(RecurseVoxelSimSystemTest, ApplyExternalEditIntoSleepingChunkWritesAndSimul
     grid.materializeChunk(0, 0, 0);
     for (int x = 0; x < K_CHUNK_SIZE; ++x)
         for (int z = 0; z < K_CHUNK_SIZE; ++z)
-            grid.writeCellImmediate(x, 0, z, VoxelCell{material_ids::STONE});
+            grid.writeCellImmediate(x, 0, z, cellForMaterial(material_ids::STONE));
 
     sim->activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Sleeping);
 
     VoxelCell air{};
-    VoxelCell sand{material_ids::SAND, 0, voxel_flags::UPDATED};
+    VoxelCell sand = cellForMaterial(material_ids::SAND);
+    sand.setFlags(voxel_flags::UPDATED);
     uint32_t oldCell = 0;
     uint32_t newCell = 0;
     std::memcpy(&oldCell, &air, sizeof(uint32_t));
@@ -412,7 +410,7 @@ TEST(RecurseVoxelSimSystemTest, ApplyExternalEditIntoSleepingChunkWritesAndSimul
     sim->applyExternalEdit(edit);
 
     EXPECT_EQ(sim->activityTracker().getState(ChunkCoord{0, 0, 0}), ChunkState::Active);
-    EXPECT_EQ(grid.readCell(16, 10, 16).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 10, 16)), material_ids::SAND);
     ASSERT_EQ(eventCount, 1);
     ASSERT_EQ(details.size(), 1u);
     EXPECT_EQ(details[0].vx, 16);
@@ -435,8 +433,8 @@ TEST(RecurseVoxelSimSystemTest, ApplyExternalEditIntoSleepingChunkWritesAndSimul
 
     sysReg.runFixedUpdate(ctx, 1.0f / 60.0f);
 
-    EXPECT_EQ(grid.readCell(16, 9, 16).materialId, material_ids::SAND);
-    EXPECT_EQ(grid.readCell(16, 10, 16).materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 9, 16)), material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(16, 10, 16)), material_ids::AIR);
 
     sysReg.shutdownAll();
 }

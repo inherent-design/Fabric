@@ -6,11 +6,7 @@ using namespace recurse::simulation;
 
 class BoundaryDrainTest : public ::testing::Test {
   protected:
-    VoxelCell makeMaterial(MaterialId id) {
-        VoxelCell c;
-        c.materialId = id;
-        return c;
-    }
+    VoxelCell makeMaterial(MaterialId id) { return cellForMaterial(id); }
 
     void markAllSubRegions(ChunkActivityTracker& tracker, ChunkCoord pos) {
         for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
@@ -100,7 +96,7 @@ TEST_F(BoundaryDrainTest, SortedDrainDeterministic) {
 
     for (size_t chunk = 0; chunk < run1.size(); ++chunk)
         for (size_t i = 0; i < run1[chunk].size(); ++i)
-            EXPECT_EQ(run1[chunk][i].materialId, run2[chunk][i].materialId)
+            EXPECT_EQ(cellMaterialId(run1[chunk][i]), cellMaterialId(run2[chunk][i]))
                 << "Mismatch in chunk " << chunk << " at index " << i;
 }
 
@@ -200,6 +196,6 @@ TEST_F(BoundaryDrainTest, SortedDrainNormalCaseUnchanged) {
     }
 
     // Sand should have crossed the boundary and be at y=31 in lower chunk
-    EXPECT_EQ(sim.grid().readCell(16, 31, 16).materialId, material_ids::SAND);
-    EXPECT_EQ(sim.grid().readCell(16, 32, 16).materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(sim.grid().readCell(16, 31, 16)), material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(sim.grid().readCell(16, 32, 16)), material_ids::AIR);
 }

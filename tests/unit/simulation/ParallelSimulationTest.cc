@@ -1,3 +1,4 @@
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include <chrono>
 #include <gtest/gtest.h>
@@ -6,11 +7,7 @@ using namespace recurse::simulation;
 
 class ParallelSimulationTest : public ::testing::Test {
   protected:
-    VoxelCell makeMaterial(MaterialId id) {
-        VoxelCell c;
-        c.materialId = id;
-        return c;
-    }
+    VoxelCell makeMaterial(MaterialId id) { return cellForMaterial(id); }
 
     void markAllSubRegions(ChunkActivityTracker& tracker, ChunkCoord pos) {
         for (int lz = 0; lz < K_CHUNK_SIZE; lz += 8)
@@ -87,7 +84,8 @@ TEST_F(ParallelSimulationTest, IdenticalResults1vsN) {
         auto seqSnap = snapshotChunk(seqSim.grid(), cx, 0, 0);
         auto parSnap = snapshotChunk(parSim.grid(), cx, 0, 0);
         for (size_t i = 0; i < seqSnap.size(); ++i) {
-            EXPECT_EQ(seqSnap[i].materialId, parSnap[i].materialId) << "Mismatch in chunk " << cx << " at index " << i;
+            EXPECT_EQ(cellMaterialId(seqSnap[i]), cellMaterialId(parSnap[i]))
+                << "Mismatch in chunk " << cx << " at index " << i;
         }
     }
 }
@@ -193,7 +191,7 @@ TEST_F(ParallelSimulationTest, GravityTestsStillPass) {
         sim.tick();
     }
 
-    EXPECT_EQ(sim.grid().readCell(16, 1, 16).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(sim.grid().readCell(16, 1, 16)), material_ids::SAND);
 }
 
 // 6. Liquid tests still pass through the parallel dispatch path
@@ -228,7 +226,7 @@ TEST_F(ParallelSimulationTest, LiquidTestsStillPass) {
     int bottomWater = 0;
     for (int x = 11; x <= 13; ++x)
         for (int z = 11; z <= 13; ++z)
-            if (sim.grid().readCell(x, 1, z).materialId == material_ids::WATER)
+            if (cellMaterialId(sim.grid().readCell(x, 1, z)) == material_ids::WATER)
                 ++bottomWater;
     EXPECT_EQ(bottomWater, 9);
 }
@@ -264,9 +262,9 @@ TEST_F(ParallelSimulationTest, BoundaryWriteQueueCrossChunkSand) {
     }
 
     // Sand should have crossed the chunk boundary and landed at y=-1
-    EXPECT_EQ(sim.grid().readCell(16, -1, 16).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(sim.grid().readCell(16, -1, 16)), material_ids::SAND);
     // Source position should be air
-    EXPECT_EQ(sim.grid().readCell(16, 0, 16).materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(sim.grid().readCell(16, 0, 16)), material_ids::AIR);
 }
 
 // 7. disableForTesting() runs inline, deterministic

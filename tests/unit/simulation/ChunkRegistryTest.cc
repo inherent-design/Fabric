@@ -1,4 +1,5 @@
 #include "recurse/simulation/ChunkRegistry.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/ChunkState.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
@@ -14,10 +15,10 @@ class ChunkRegistryTest : public ::testing::Test {
 // 1. addChunk returns reference; second call returns same chunk (no duplicate)
 TEST_F(ChunkRegistryTest, AddChunkIdempotent) {
     auto& first = registry.addChunk(0, 0, 0);
-    first.simBuffers.fillValue.materialId = material_ids::STONE;
+    first.simBuffers.fillValue = cellForMaterial(material_ids::STONE);
 
     auto& second = registry.addChunk(0, 0, 0);
-    EXPECT_EQ(second.simBuffers.fillValue.materialId, material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(second.simBuffers.fillValue), material_ids::STONE);
     EXPECT_EQ(&first, &second);
     EXPECT_EQ(registry.chunkCount(), 1u);
 }
@@ -147,12 +148,12 @@ TEST_F(ChunkRegistryTest, ChunkSlotMaterialize) {
 // 11. Materialized buffers are filled with fillValue
 TEST_F(ChunkRegistryTest, MaterializePreservesFillValue) {
     auto& slot = registry.addChunk(0, 0, 0);
-    slot.simBuffers.fillValue.materialId = material_ids::STONE;
+    slot.simBuffers.fillValue = cellForMaterial(material_ids::STONE);
     slot.materialize();
 
     for (int b = 0; b < ChunkBuffers::K_COUNT; ++b) {
         for (size_t i = 0; i < K_CHUNK_VOLUME; ++i) {
-            EXPECT_EQ((*slot.simBuffers.buffers[b])[i].materialId, material_ids::STONE)
+            EXPECT_EQ(cellMaterialId((*slot.simBuffers.buffers[b])[i]), material_ids::STONE)
                 << "Buffer " << b << ", index " << i;
         }
     }
@@ -295,16 +296,16 @@ TEST_F(ChunkRegistryTest, SyncChunkBuffersCopiesSingleChunk) {
     grid.materializeChunk(1, 0, 0);
 
     VoxelCell sand;
-    sand.materialId = material_ids::SAND;
+    sand = cellForMaterial(material_ids::SAND);
     grid.writeCell(0, 0, 0, sand);
 
     grid.syncChunkBuffers(0, 0, 0);
 
     // Chunk A read buffer should now have Sand
-    EXPECT_EQ(grid.readCell(0, 0, 0).materialId, material_ids::SAND);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 0, 0)), material_ids::SAND);
 
     // Chunk B read buffer should still be Air (untouched)
-    EXPECT_EQ(grid.readCell(32, 0, 0).materialId, material_ids::AIR);
+    EXPECT_EQ(cellMaterialId(grid.readCell(32, 0, 0)), material_ids::AIR);
 }
 
 // 25. syncChunkBuffers is a no-op for unmaterialized chunks

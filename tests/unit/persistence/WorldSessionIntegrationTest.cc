@@ -1,4 +1,5 @@
 #include "recurse/persistence/WorldSession.hh"
+#include "recurse/simulation/CellAccessors.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/Event.hh"
@@ -507,7 +508,7 @@ class WorldSessionResidentChunkPersistenceTest : public ::testing::Test {
         auto absent = addChunkRef(registry, cx, cy, cz);
         auto generating = transition<Absent, Generating>(absent, registry);
         grid.materializeChunk(cx, cy, cz);
-        grid.writeCell(cx * 32 + 1, cy * 32 + 1, cz * 32 + 1, VoxelCell{material_ids::STONE});
+        grid.writeCell(cx * 32 + 1, cy * 32 + 1, cz * 32 + 1, cellForMaterial(material_ids::STONE));
         grid.syncChunkBuffers(cx, cy, cz);
         transition<Generating, Active>(generating, registry);
     }
@@ -655,11 +656,11 @@ class WorldSessionPersistedDeltaReopenTest : public ::testing::Test {
         session_ = std::move(result).value();
     }
 
-    void generateEditedChunk(int cx, int cy, int cz, uint16_t materialId) {
+    void generateEditedChunk(int cx, int cy, int cz, recurse::simulation::MaterialId materialId) {
         voxelSim_->generateChunk(cx, cy, cz);
         auto& grid = voxelSim_->simulationGrid();
         grid.writeCell(cx * 32 + K_EDIT_OFFSET, cy * 32 + K_EDIT_OFFSET, cz * 32 + K_EDIT_OFFSET,
-                       recurse::simulation::VoxelCell{materialId});
+                       recurse::simulation::cellForMaterial(materialId));
         grid.syncChunkBuffers(cx, cy, cz);
     }
 
@@ -685,9 +686,8 @@ class WorldSessionPersistedDeltaReopenTest : public ::testing::Test {
     }
 
     uint16_t loadedMaterial(int cx, int cy, int cz) const {
-        return voxelSim_->simulationGrid()
-            .readCell(cx * 32 + K_EDIT_OFFSET, cy * 32 + K_EDIT_OFFSET, cz * 32 + K_EDIT_OFFSET)
-            .materialId;
+        return recurse::simulation::cellMaterialId(voxelSim_->simulationGrid().readCell(
+            cx * 32 + K_EDIT_OFFSET, cy * 32 + K_EDIT_OFFSET, cz * 32 + K_EDIT_OFFSET));
     }
 
     fabric::World world_;

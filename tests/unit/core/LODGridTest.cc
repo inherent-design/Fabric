@@ -8,6 +8,7 @@
 #include "fabric/resource/ResourceHub.hh"
 #include "fixtures/BgfxNoopFixture.hh"
 #include "recurse/render/LODMeshManager.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #define private public
@@ -70,7 +71,7 @@ void fillSectionFromGrid(LODSection& section, const SimulationGrid& grid, int cx
                 int wy = section.origin.y + ly;
                 int wz = section.origin.z + lz;
 
-                uint16_t matId = grid.readCell(wx, wy, wz).materialId;
+                uint16_t matId = cellMaterialId(grid.readCell(wx, wy, wz));
                 uint16_t palIdx = 0;
                 auto it = std::find(section.palette.begin(), section.palette.end(), matId);
                 if (it != section.palette.end()) {
