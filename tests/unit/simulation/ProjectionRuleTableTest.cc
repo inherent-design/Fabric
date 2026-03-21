@@ -12,7 +12,7 @@ TEST(ProjectionRuleTableTest, DefaultLookupReturnsEmptyMaterial) {
     const auto& mat = table.lookup(0, Phase::Empty);
     EXPECT_EQ(mat.baseColor, 0u);
     EXPECT_EQ(mat.soundCategory, 0);
-    EXPECT_EQ(mat.semanticPriority, 0);
+    EXPECT_EQ(mat.reductionTiebreak, 0);
     EXPECT_EQ(mat.moveType, MoveType::Static);
     EXPECT_EQ(mat.density, 0);
     EXPECT_TRUE(mat.displayName.empty());
@@ -34,7 +34,7 @@ TEST(ProjectionRuleTableTest, SetRuleLookupRoundTrip) {
     rule.displayName = "TestMaterial";
     rule.baseColor = 0xFFAA5500;
     rule.soundCategory = 3;
-    rule.semanticPriority = 10;
+    rule.reductionTiebreak = 10;
     rule.moveType = MoveType::Powder;
     rule.density = 130;
 
@@ -44,7 +44,7 @@ TEST(ProjectionRuleTableTest, SetRuleLookupRoundTrip) {
     EXPECT_EQ(result.displayName, "TestMaterial");
     EXPECT_EQ(result.baseColor, 0xFFAA5500u);
     EXPECT_EQ(result.soundCategory, 3);
-    EXPECT_EQ(result.semanticPriority, 10);
+    EXPECT_EQ(result.reductionTiebreak, 10);
     EXPECT_EQ(result.moveType, MoveType::Powder);
     EXPECT_EQ(result.density, 130);
 }

@@ -18,7 +18,7 @@ struct ProjectedMaterial {
     std::string_view displayName{};
     uint32_t baseColor{0};
     uint8_t soundCategory{0};
-    uint8_t semanticPriority{0};
+    uint8_t reductionTiebreak{0};
     MoveType moveType{MoveType::Static};
     uint8_t density{0};
 };

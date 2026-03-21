@@ -1,11 +1,14 @@
 #include "recurse/simulation/ProjectionRuleTable.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 
+#include <cassert>
+
 namespace recurse::simulation {
 
 ProjectionRuleTable::ProjectionRuleTable() = default;
 
 size_t ProjectionRuleTable::index(uint8_t essenceIdx, Phase phase) const {
+    assert(static_cast<uint8_t>(phase) < K_PHASE_COUNT && "Phase value out of valid range");
     return static_cast<size_t>(essenceIdx) * K_PHASE_COUNT + static_cast<size_t>(static_cast<uint8_t>(phase));
 }
 
@@ -50,7 +53,7 @@ void ProjectionRuleTable::populateFromRegistry(const MaterialRegistry& registry)
         projected.baseColor = def.baseColor;
         projected.moveType = def.moveType;
         projected.density = def.density;
-        projected.semanticPriority = def.density;
+        projected.reductionTiebreak = def.density;
         // displayName left empty for v1; B8 (debug/WAILA) will wire names.
         projected.displayName = {};
 
