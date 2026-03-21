@@ -1,5 +1,7 @@
 # RECURSE - Game Design Document
-*GMTK Game Jam 2025 - Theme: "Loop"*
+GMTK Game Jam 2025, Theme: "Loop"
+
+> **Not yet implemented.** High-level design document from the original game jam concept. The game jam scope was not completed; development continued as the Fabric engine project.
 
 ## Core Concept
 
@@ -27,7 +29,7 @@ A 3D third-person action game where the player fights through their life experie
 # Three-Phase Development Plan
 
 ## Phase 1: Bootstrapping (1-2 Days)
-*Foundation Systems & Core Architecture*
+Foundation Systems and Core Architecture
 
 ### Core Engine Systems
 - **Player Controller**: Third-person camera with smooth movement
@@ -58,7 +60,7 @@ A 3D third-person action game where the player fights through their life experie
 ---
 
 ## Phase 2: Incremental Development (1-2 Days)
-*Content Creation & System Refinement*
+Content Creation and System Refinement
 
 ### Content Expansion
 - **Function Library**: Expand to 10-15 unique reality-manipulation functions
@@ -86,8 +88,8 @@ A 3D third-person action game where the player fights through their life experie
 
 ---
 
-## Phase 3: Playtesting & Final Polish (1 Day)
-*Optimization & User Experience*
+## Phase 3: Playtesting and Final Polish (1 Day)
+Optimization and User Experience
 
 ### User Experience Polish
 - **UI/UX**: Clean, minimal interface design
@@ -206,6 +208,3 @@ Game Manager
 - Learning curve allows intuitive function discovery
 - Replayability through procedural variation and systemic depth
 
----
-
-*This design document serves as the foundation for "Recurse" development. Each phase builds systematically toward a polished game jam submission that explores themes of self-discovery, temporal manipulation, and emergent social dynamics.*

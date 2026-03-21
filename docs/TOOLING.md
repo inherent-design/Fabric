@@ -79,26 +79,3 @@ Generated API docs are still deferred until the public comment surface is worth 
 4. layer richer HTML on top later only if the repository needs it
 
 Doxygen remains the preferred generator candidate because it is maintained, integrates well with CMake, and is good enough for the current codebase shape.
-
-## Short-term tooling and docs work
-
-The short-term focus is not new tooling for its own sake. It is keeping existing tooling and docs aligned with:
-
-- the Greedy-first near-meshing production path
-- the optional and experimental status of SnapMC behind the mesher boundary
-- benchmark automation and profiling capture workflows
-- the combined Goal #4 plus meshing checkpoint sequence
-- engine and game boundary cleanup needed for multi-project readiness
-
-Prefer updating existing markdown files over creating new ones unless a new document is genuinely required.
-
-## Long-term direction
-
-Longer term, the tooling story should support a cleaner engine API and more than one game on Fabric. That likely means:
-
-- stronger public docs for `fabric::`
-- clearer separation between engine docs and game docs
-- generated API docs as a supplement, not a replacement, for curated architecture and workflow docs
-- validation tooling that continues to treat profiling and benchmark automation as first-class workflows
-
-Those docs also need to keep explaining the architectural direction without overstating completion: ops-as-values, type-state, and centralized execution are the direction of travel, while the current repository still contains a mix of mature production systems and evolving scaffolding.

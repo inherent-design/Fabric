@@ -1,6 +1,8 @@
 # 3-Day Game Jam Plan
 
-## Day 1: Core Mechanic & Foundation
+> **Not yet implemented.** Historical development plan from the GMTK Game Jam 2025 concept. The game jam scope was not completed; development continued as the Fabric engine project.
+
+## Day 1: Core Mechanic and Foundation
 - **AM:**
   - [ ] Godot Project Setup.
   - [ ] Implement `Quanta Field` system (DENSITY and ESSENCE only).
@@ -11,7 +13,7 @@
   - [ ] Implement basic voxel rendering from `DENSITY` field.
   - **GOAL: Player can create and destroy a single voxel in the world.**
 
-## Day 2: Content & Systems
+## Day 2: Content and Systems
 - **AM:**
   - [ ] Implement remaining 4 `FUNCTIONS` and 5 more `BLOCKS`.
   - [ ] Implement NPC stat/transformation system (`NPCs.md`).
@@ -22,7 +24,7 @@
   - [ ] Build and script Level 2 (Combat).
   - **GOAL: Player can fight and transform NPCs.**
 
-## Day 3: Finalization & Polish
+## Day 3: Finalization and Polish
 - **AM:**
   - [ ] Build and script Level 3 (Rest) and Level 4 (Ending).
   - [ ] Implement the main C-C-R-E game loop sequence.

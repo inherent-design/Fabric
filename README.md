@@ -51,7 +51,7 @@ Fabric is moving toward:
 - RAII session ownership for world-scoped resources
 - engine and game separation suitable for multiple games on the same engine
 
-Some scaffolding for that direction already exists, such as `fabric::fx::WorldContext`, `recurse::world::FunctionContracts`, and `recurse::simulation::VoxelSemanticView`, but those surfaces are not yet the dominant runtime model.
+Some scaffolding for that direction already exists, such as `fabric::fx::WorldContext`, `recurse::world::FunctionContracts`, and `recurse::simulation::MaterialSemanticRegistry`, but those surfaces are not yet the dominant runtime model.
 
 ## Quickstart
 
@@ -62,61 +62,18 @@ mise run test
 mise run run
 ```
 
-## mise task surface
+## mise tasks
 
-`mise.toml` is the primary developer entry point. `docs/BUILD.md` remains the deep reference; this section is the current hub-level task map.
+`mise.toml` is the primary developer entry point. Common quickstart tasks:
 
-### Build and run
+```bash
+mise run build          # Debug build
+mise run test           # Unit tests
+mise run run            # Build and run the debug executable
+mise run lint:changed   # clang-tidy on changed files
+```
 
-| Task | Alias | Current behavior |
-|------|-------|------------------|
-| `clean` | none | Remove build artifacts |
-| `build` | `b`, `bd`, `build:debug` | Configure and build the default debug preset |
-| `build:release` | `br` | Configure and build the release preset |
-| `run` | `r`, `rd`, `run:debug` | Build if needed, then run the debug `Recurse` executable |
-| `run:release` | `rr` | Build if needed, then run the release `Recurse` executable |
-
-### Format and static analysis
-
-| Task | Alias | Current behavior |
-|------|-------|------------------|
-| `format` | `fmt` | Check clang-format on tracked source files |
-| `format:fix` | none | Auto-format tracked source files |
-| `lint` | none | Run clang-tidy on the full source set |
-| `lint:changed` | none | Run clang-tidy on git-dirty files only for faster iteration |
-| `lint:fix` | `fix` | Run clang-tidy auto-fix on changed files |
-| `cppcheck` | none | Run cppcheck static analysis |
-
-### Test and validation
-
-| Task | Alias | Current behavior |
-|------|-------|------------------|
-| `test` | `t` | Build if needed, then run unit tests |
-| `test:e2e` | none | Build if needed, then run end-to-end tests |
-| `test:all` | none | Build if needed, then run unit plus end-to-end tests |
-| `test:filter` | `tf` | Build if needed, then run unit tests with a gtest filter argument |
-
-### Profiling and capture workflows
-
-| Task | Alias | Current behavior |
-|------|-------|------------------|
-| `profile` | `pd`, `p`, `profile:debug` | Build a Tracy-enabled debug configuration |
-| `profile:release` | `pr` | Build a Tracy-enabled `RelWithDebInfo` configuration |
-| `profile:capture` | `cap`, `profile:capture:debug` | Build the profiling target if needed, launch the debug app, and capture a 30 second Tracy trace |
-| `profile:capture:release` | `capr` | Build the profiling target if needed, launch the release-style app, and capture a 30 second Tracy trace |
-| `profile:view` | none | Open the latest `.tracy` capture in Tracy Profiler |
-| `profile:csv` | none | Export the latest `.tracy` capture to CSV |
-
-Current expectation: use the capture tasks when validating benchmark and profiling flows, since benchmark automation startup plumbing and in-game benchmark entry points are part of the repository's real workflow.
-
-### Sanitizers and broader analysis
-
-| Task | Alias | Current behavior |
-|------|-------|------------------|
-| `sanitize` | none | Build and test with ASan plus UBSan |
-| `sanitize:tsan` | none | Build and test with ThreadSanitizer |
-| `coverage` | none | Build with coverage instrumentation and generate a report |
-| `codeql` | none | Run local CodeQL analysis after a build |
+See [docs/BUILD.md](docs/BUILD.md) for the full task table covering release builds, profiling, sanitizers, coverage, and CodeQL.
 
 ## Repository layout
 
@@ -140,6 +97,7 @@ Current expectation: use the capture tasks when validating benchmark and profili
 - [Testing guide](docs/TESTING.md)
 - [Tooling and documentation conventions](docs/TOOLING.md)
 - [API surface map](docs/api.md)
+- [Recurse design documents](docs/recurse/) (historical design notes for the game layer)
 
 ## License
 

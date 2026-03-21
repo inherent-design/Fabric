@@ -125,7 +125,7 @@ The long-term direction is still:
 - RAII session ownership for world-scoped resources
 - multi-project readiness with a clean engine and game boundary
 
-Some scaffolding for that future is already present in `fabric::fx::WorldContext`, `fabric::fx::WorldOps`, `recurse::world::FunctionContracts`, and `recurse::simulation::VoxelSemanticView`. Those types indicate direction, but the migration is not complete and the current runtime still mixes mature production systems with forward-looking scaffolding.
+Some scaffolding for that future is already present in `fabric::fx::WorldContext`, `fabric::fx::WorldOps`, `recurse::world::FunctionContracts`, and `recurse::simulation::MaterialSemanticRegistry`. Those types indicate direction, but the migration is not complete and the current runtime still mixes mature production systems with forward-looking scaffolding.
 
 ## Architectural guidance for new work
 

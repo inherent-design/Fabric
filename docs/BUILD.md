@@ -120,25 +120,4 @@ Important current build characteristics:
 - set `MISE_ENV=windows` before the first mise-driven build if needed
 - `mise.windows.toml` carries Windows-specific overrides such as the CPM cache path
 
-## Current build posture
-
-The build contract is intentionally conservative right now:
-
-- `FabricLib` remains the reusable engine anchor
-- Recurse remains the reference app and validation target
-- the default configuration keeps Greedy meshing as the production near path
-- SnapMC remains optional and experimental behind the pluggable mesher boundary
-- profiling and benchmark capture stay first-class workflows, not side scripts
-
-The combined Goal #4 plus meshing checkpoint wave is expected to change implementation internals, not the top-level build contract.
-
-## Long-term direction
-
-Over time the repository should support more application targets on top of the same engine core. The expected direction is:
-
-- keep CMake plus mise as the primary build interface
-- retain `FabricLib` as the reusable engine root
-- allow additional game or tool targets without collapsing the `fabric::` and `recurse::` boundary
-- keep profiling, analysis, and validation tasks as first-class build surfaces
-
-The deeper architecture is expected to keep moving toward ops-as-values, type-state, centralized execution, and broader multi-project readiness, but those shifts should fit inside the same top-level build and task model rather than replacing it.
+For architectural context and long-term direction, see [ARCHITECTURE.md](ARCHITECTURE.md).

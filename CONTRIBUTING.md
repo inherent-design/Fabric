@@ -26,32 +26,7 @@ mise run test
 
 ## Task reference
 
-All developer workflows live in `mise.toml` and run with `mise run <task>`.
-
-| Task | Alias | Description |
-|------|-------|-------------|
-| `build` | `b`, `bd`, `build:debug` | Configure and build the default debug preset |
-| `build:release` | `br` | Release build |
-| `run` | `r`, `rd`, `run:debug` | Build and run the debug app target |
-| `run:release` | `rr` | Run the release app target |
-| `format` | `fmt` | Check clang-format |
-| `format:fix` | none | Auto-format tracked source files |
-| `lint` | none | clang-tidy on the full source set |
-| `lint:changed` | none | clang-tidy on git-dirty files only |
-| `lint:fix` | `fix` | clang-tidy auto-fix on changed files |
-| `cppcheck` | none | cppcheck static analysis |
-| `test` | `t` | Unit tests |
-| `test:e2e` | none | End-to-end tests |
-| `test:all` | none | Unit plus E2E |
-| `test:filter` | `tf` | Unit tests with a gtest filter |
-| `profile` | `pd`, `p`, `profile:debug` | Tracy-enabled debug build |
-| `profile:release` | `pr` | Tracy-enabled release-style build |
-| `profile:capture` | `cap`, `profile:capture:debug` | Build and capture a Tracy trace |
-| `profile:capture:release` | `capr` | Capture a release-style Tracy trace |
-| `sanitize` | none | ASan plus UBSan build and run |
-| `sanitize:tsan` | none | ThreadSanitizer build and run |
-| `coverage` | none | Coverage report generation |
-| `codeql` | none | Local CodeQL analysis |
+All developer workflows live in `mise.toml` and run with `mise run <task>`. See [docs/BUILD.md](docs/BUILD.md) for the full task table and build details.
 
 ## Development workflow
 
@@ -105,17 +80,7 @@ Follow the prose rules from [docs/TOOLING.md](docs/TOOLING.md):
 
 ## Current project stance
 
-Contributors should preserve the current production posture:
-
-- Greedy meshing is the primary near-path production renderer
-- SnapMC is optional and experimental behind the pluggable mesher boundary
-- the shipped visual target is visibly voxel terrain, not smooth-surface replacement
-
-The active program is the **strong-hybrid MatterState migration**, which replaces `VoxelCell`'s `materialId`-first layout with essence-first `MatterState` storage. The migration follows a strangler-fig pattern: wrap legacy field access behind accessors first (Waves 1-2), define new types (Wave 3), swap the layout (Wave 4), then migrate consumers and GPU pipeline (Waves 5-6).
-
-New code touching cell data should use the accessors in `CellAccessors.hh` rather than reading `VoxelCell` fields directly. This keeps the migration blast radius contained.
-
-Other near-term work continues to tighten engine and game separation, benchmark automation, and multi-project readiness without destabilizing the Greedy-first shipped path.
+Greedy meshing is the primary production renderer; SnapMC is optional behind the pluggable mesher boundary. `VoxelCell` now uses essence-first `MatterState` storage (Wave 4 merged). New code touching cell data should use the accessors in `CellAccessors.hh`. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for architectural context.
 
 ## CI checks
 
@@ -126,18 +91,6 @@ Pull requests run these checks automatically:
 - ASan + UBSan sanitizer builds
 
 All checks must pass before merge. Pre-existing suppressions are documented in `.cppcheck-suppressions` with comments explaining each entry.
-
-## Long-term direction
-
-The long arc of the codebase is unchanged:
-
-- ops-as-values instead of hidden side effects in worker closures
-- phantom type-state at API boundaries
-- centralized execution for world access
-- RAII session ownership for world-scoped state
-- a clean `fabric::` and `recurse::` boundary that supports more than one game
-
-Some scaffolding already exists in `fabric::fx::WorldContext`, `recurse::world::FunctionContracts`, and `recurse::simulation::VoxelSemanticView`, but contributors should treat those as evolving surfaces, not as proof that the migration is complete.
 
 ## Code and commit expectations
 

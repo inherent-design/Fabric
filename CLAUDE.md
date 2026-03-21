@@ -87,7 +87,7 @@ C++20 for clarity and safety; C99-style performance instincts for hot paths. Pre
 
 - **Ownership:** `std::unique_ptr` by default. `std::shared_ptr` only when shared ownership is genuinely required and provable; never as a lazy default.
 - **Polymorphism:** Prefer templates, `if constexpr`, and CRTP over virtual dispatch. Use virtual only at system boundaries (SystemBase, RmlPanel) where the runtime set is small and fixed.
-- **Allocation:** Value types and stack allocation first. Arena/pool allocation (BufferPool, VertexPool) for batch lifetimes. Heap allocation as last resort.
+- **Allocation:** Value types and stack allocation first. Arena/pool allocation (VertexPool) for batch lifetimes. Heap allocation as last resort.
 - **Containers:** `std::array` and fixed-size buffers over `std::vector` when size is known. Raw arrays are acceptable in performance-critical inner loops.
 - **Indirection:** Minimize pointer chasing. Flat SOA layouts for cache-friendly iteration. Avoid deep `unique_ptr` nesting.
 - **constexpr/consteval:** Push computation to compile time where possible (lookup tables, type traits, config constants).
@@ -95,7 +95,7 @@ C++20 for clarity and safety; C99-style performance instincts for hot paths. Pre
 
 ## Logging
 
-Quill v11.x async structured logging via `fabric/core/Log.hh`. Format strings use `{}` placeholders (libfmt style). Quill's backend thread handles all I/O; logging macros are non-blocking on the calling thread.
+Quill v11.x async structured logging via `fabric/log/Log.hh`. Format strings use `{}` placeholders (libfmt style). Quill's backend thread handles all I/O; logging macros are non-blocking on the calling thread.
 
 ### Logger hierarchy
 
@@ -200,7 +200,7 @@ CLI: `--log.level=debug`, `--log.render=trace`, `--log.include=physics`.
 
 ## Async
 
-The `fabric::async` namespace (`fabric/core/Async.hh`) provides a cooperative async subsystem built on standalone Asio with C++20 coroutines:
+The `fabric::async` namespace (`fabric/platform/Async.hh`) provides a cooperative async subsystem built on standalone Asio with C++20 coroutines:
 
 - `fabric::async::init()` / `fabric::async::shutdown()` for lifecycle
 - `fabric::async::poll()` for non-blocking per-frame processing
@@ -400,22 +400,46 @@ The per-tick phase pipeline separates structural modification from data access:
 
 ## Cell accessors
 
-`recurse::simulation::CellAccessors.hh` provides free-function accessors that quarantine direct `VoxelCell` field access. All simulation and consumer code should use these instead of reading `cell.materialId`, `registry.get(id).moveType`, or `registry.get(id).density` directly.
+`recurse::simulation::CellAccessors.hh` provides free-function accessors that quarantine direct `VoxelCell` field access. All simulation and consumer code should use these instead of accessing cell fields directly.
 
-| Accessor | Signature | Replaces |
-|----------|-----------|----------|
-| `isOccupied` | `(VoxelCell cell) -> bool` | `cell.materialId != material_ids::AIR` |
-| `isEmpty` | `(VoxelCell cell) -> bool` | `cell.materialId == material_ids::AIR` |
-| `cellPhase` | `(const MaterialRegistry&, VoxelCell) -> MoveType` | `registry.get(id).moveType` |
-| `canDisplace` | `(const MaterialRegistry&, VoxelCell, VoxelCell) -> bool` | `registry.get(src).density > registry.get(tgt).density` |
+### Query accessors
 
-These accessors exist to contain the blast radius of the MatterState migration. When Wave 4 swaps the cell layout, only the accessor bodies change, not the consumer call sites.
+| Accessor | Signature | Purpose |
+|----------|-----------|---------|
+| `isOccupied` | `(VoxelCell) -> bool` | True when phase is not Empty |
+| `isEmpty` | `(VoxelCell) -> bool` | True when phase is Empty |
+| `cellPhase` | `(const MaterialRegistry&, VoxelCell) -> MoveType` | Phase as MoveType (registry param accepted for concept satisfaction) |
+| `canDisplace` | `(const MaterialRegistry&, VoxelCell, VoxelCell) -> bool` | Displacement check using displacementRank |
+| `cellMaterialId` | `(VoxelCell) -> MaterialId` | Extract MaterialId from essenceIdx (1:1 during migration) |
+| `mergeKey` | `(VoxelCell) -> MergeKey` | Visual identity key for greedy mesher quad merging |
+| `canMergeQuads` | `(MergeKey, MergeKey) -> bool` | True when two face slots can merge |
+| `materialSemanticPriority` | `(uint16_t materialId) -> int` | LOD reduction tiebreak priority |
+
+### Factory functions
+
+| Function | Signature | Purpose |
+|----------|-----------|---------|
+| `makeCell` | `(uint8_t essenceIdx, Phase, uint8_t displacementRank, uint8_t flags) -> VoxelCell` | Construct from raw fields |
+| `emptyCell` | `() -> VoxelCell` | Construct an empty (air) cell |
+| `makeCellFromMaterial` | `(MaterialId, const MaterialRegistry&, uint8_t flags) -> VoxelCell` | Construct from MaterialId via registry lookup |
+| `cellForMaterial` | `(MaterialId) -> VoxelCell` | Migration helper with hardcoded material properties |
+| `phaseFromMoveType` | `(MoveType) -> Phase` | Convert MoveType enum to Phase enum |
+
+### Concepts
+
+| Concept | Requires | Purpose |
+|---------|----------|---------|
+| `CellQuery` | `isOccupied`, `isEmpty` | Basic occupancy queries without registry |
+| `SemanticQuery` | CellQuery + `cellPhase`, `canDisplace` | Full semantic queries with registry |
+
+Both `VoxelCell` and `MatterState` satisfy `CellQuery` and `SemanticQuery` (verified by `static_assert`). All accessors have MatterState overloads.
 
 ### Anti-patterns
 
-- Direct `cell.materialId` comparison outside CellAccessors.hh
+- Direct field access on VoxelCell outside CellAccessors.hh (use accessors)
 - `registry.get(id).moveType` or `.density` in simulation code (use `cellPhase`/`canDisplace`)
 - Adding new cell field reads without a corresponding accessor
+- Using raw `cell.essenceIdx` for material identity (use `cellMaterialId`)
 
 ## VoxelStats
 
@@ -476,15 +500,14 @@ perf(meshing): parallel chunk meshing via JobScheduler
 
 - Greedy meshing is the primary near-path production path. Preserve it first.
 - SnapMC is optional and experimental behind the pluggable mesher boundary.
-- The active short-term program is the **strong-hybrid MatterState migration** (strangler-fig pattern), which wraps legacy material-first assumptions behind narrow accessors, then swaps the cell layout behind those accessors.
-- Wave 1 (accessor quarantine and boundary cleanup) is complete and in review as PR #81.
-- Waves 2 through 6 continue through mesh/LOD abstraction, type definitions, the live cell layout swap, consumer migration, and GPU pipeline updates.
+- The strong-hybrid MatterState migration (strangler-fig pattern) has completed Waves 1 through 4: accessor quarantine, mesh/LOD abstraction, type definitions, and the live cell layout swap to essence-first MatterState storage. VoxelCell now stores essenceIdx, displacementRank, phaseAndFlags, and spare instead of materialId.
+- Remaining migration work: Wave 5 (consumer migration to MatterState-native APIs) and Wave 6 (GPU pipeline updates for essence-first vertex data).
 - Meshing optimization (greedy instrumentation, packed-vertex cleanup, semantic adapter) is sequenced within this migration, not as a separate track.
 - Other near-term work should keep improving engine and game separation plus multi-project readiness without destabilizing the shipped voxel-first path.
 
 ## Programming model
 
-Fabric is migrating toward an effect-like programming model. The target architecture has three pillars: ops-as-values, phantom type-state, and centralized execution. These are not yet implemented end-to-end, though `fabric::fx::WorldContext`, `recurse::world::FunctionContracts`, and `recurse::simulation::VoxelSemanticView` already act as scaffolding toward that direction. This section describes the target so new code aligns with it and avoids introducing patterns that conflict.
+Fabric is migrating toward an effect-like programming model. The target architecture has three pillars: ops-as-values, phantom type-state, and centralized execution. These are not yet implemented end-to-end, though `fabric::fx::WorldContext`, `recurse::world::FunctionContracts`, and `recurse::simulation::MaterialSemanticRegistry` already act as scaffolding toward that direction. This section describes the target so new code aligns with it and avoids introducing patterns that conflict.
 
 Reference: `~/.atlas/integrator/reports/fabric/effect-cpp-proposal-2026-03-02.md`
 
@@ -578,14 +601,14 @@ The Zig comptime mental model applies: if the information exists at compile time
 Fabric is the engine; Recurse is one game. Someone's (a Pokemon platform) will be a second game on Fabric. All engine code must be game-agnostic.
 
 Current violations to address:
-- `K_CHUNK_SIZE` defined in engine headers but semantically game-specific
 - Voxel-specific types in `fabric::` that belong in `recurse::`
-- `fabric/core/` contains 27 headers spanning unrelated domains (ECS, cameras, audio, physics)
+- `fabric/core/` contains 16 headers spanning app lifecycle, ECS base types, spatial/temporal primitives, state machines, and runtime state
 
 Resolved violations:
 - `ChunkCoord` 4-way duplication unified to single `fabric::ChunkCoord{x,y,z}` in Wave 1b (2026-03-13)
 - `visibleChunks`/`totalChunks`/`meshQueueSize` moved from `fabric::RuntimeState` to `recurse::VoxelStats` in Wave 1 (2026-03-20)
 - `ChunkedGrid` default template parameter `= 32` removed; all 43 instantiation sites now explicit (2026-03-20)
+- `K_CHUNK_SIZE` moved to `recurse::` (`include/recurse/simulation/VoxelConstants.hh`); all engine template instantiations now use explicit size parameters (2026-03-20)
 
 The `fabric::`/`recurse::` boundary must be a clean API surface that a second game can depend on without importing Recurse-specific types. Near-term work should keep removing game-specific assumptions from `fabric::` while preserving the current Greedy-first production path in `recurse::`.
 

@@ -1,5 +1,5 @@
 # Procedural World Generation System - RECURSE
-*Reality Composition Through Function-Based World Manipulation*
+> **Not yet implemented.** Design placeholder for a confirmed game feature. The current codebase has WorldGenerator (FastNoise2) and ChunkPipelineSystem for terrain generation and streaming, but the function-based reality manipulation system described here has no corresponding code.
 
 ## Core Philosophy
 
@@ -575,4 +575,3 @@ void onFunctionDetected(NPCBehavior& npc, GameFunction& function, Vector3 locati
 }
 ```
 
-This procedural world system creates a living, responsive environment where player actions have lasting consequences and reality itself becomes a malleable medium for creative problem-solving and emergent storytelling.

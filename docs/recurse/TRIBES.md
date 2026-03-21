@@ -1,5 +1,7 @@
 # Faction Interaction Matrix
 
+> **Not yet implemented.** Design placeholder for a confirmed game feature.
+
 | Faction | vs Player | vs Order | vs Chaos | vs Life  |
 |---------|-----------|----------|----------|----------|
 | Player  | ALLIED    | -        | -        | -        |

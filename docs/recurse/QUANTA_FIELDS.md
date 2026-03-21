@@ -1,6 +1,8 @@
 # Quanta Field Definitions
 
-*The invisible grid-based data layer that drives all game logic.*
+> **Not yet implemented.** Design placeholder for a confirmed game feature. The essence concept carried forward as `essenceIdx` in the current MatterState cell layout; the quanta field system as described here has no corresponding code.
+
+The invisible grid-based data layer that drives all game logic.
 
 ## Field 1: `DENSITY` (float, 0.0 to 1.0)
 - **Purpose:** Defines solidity of a point in space.
@@ -18,4 +20,4 @@
 - **`[0,0,0]`**: Static.
 - **`[x,y,z]`**: Moving.
 - **Primary Functions:** `TIME_DILATION`, `ATTRACT_QUANTA`.
-- **Note:** Defer this. Can be faked for the jam if needed.
+- **Note:** Deferred. Could be approximated for the jam if needed.
