@@ -27,3 +27,27 @@ ignoredReturnValue:include/fabric/utils/CoordinatedGraphLocking.hh
 // bgfx instance buffer pattern: reinterpret_cast<float*>(data) on void*.
 // Standard graphics API usage. memcpy alternative exists but unnecessary.
 invalidPointerCast:src/recurse/render/ParticleSystem.cc
+
+// cppcheck parser bug: can't handle enum class with uint8_t base and bitshift
+syntaxError:include/recurse/simulation/ChunkFinalization.hh
+
+// Null-check pattern: chunks_ is conditionally checked in different code paths.
+// The dereference at line 352 is guarded by an earlier return; cppcheck can't
+// trace the control flow across the function.
+nullPointerRedundantCheck:src/recurse/systems/DebugOverlaySystem.cc
+
+// Constructor initialization order: these assignments have side effects or
+// dependencies that make member-init-list conversion non-trivial.
+useInitializationList:src/fabric/resource/ResourceHub.cc
+useInitializationList:src/fabric/ui/font/FontFace.cc
+useInitializationList:src/fabric/ui/font/FontFaceHandleHarfBuzz.cc
+useInitializationList:src/fabric/ui/font/FontFaceLayer.cc
+useInitializationList:src/recurse/persistence/SqliteChunkStore.cc
+
+// Ops structs are small (< 64 bytes) and passed by value intentionally
+// for move semantics in the submit() call chain.
+passedByValue:include/recurse/simulation/ChunkState.hh
+passedByValue:src/recurse/persistence/WorldSession.cc
+
+// Callback signature: parameter type is dictated by the caller interface.
+passedByValueCallback:src/recurse/simulation/ChangeVelocityTracker.cc
