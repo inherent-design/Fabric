@@ -154,12 +154,12 @@ TEST_F(VoxelMeshingSystemTest, GreedySelectionPreservesPaletteContractAndShaderA
     EXPECT_FLOAT_EQ(result.palette[0][3], expected[3]);
 
     for (const auto& vertex : result.vertices) {
-        EXPECT_EQ(vertex.getMaterialId(), 0u);
+        EXPECT_EQ(vertex.getEssenceIdx(), 0u);
         EXPECT_EQ(vertex.getAO(), recurse::SmoothVoxelVertex::K_SHADER_DEFAULT_AO);
     }
 
     for (const auto& vertex : result.voxelVertices) {
-        EXPECT_EQ(vertex.paletteIndex(), 0u);
+        EXPECT_EQ(vertex.essenceIndex(), 0u);
         EXPECT_EQ(vertex.aoLevel(), 3u);
     }
 }

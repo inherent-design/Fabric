@@ -180,7 +180,7 @@ TEST_F(SnapMCMesherTest, MaterialsAreValid) {
 
     EXPECT_GT(mesh.vertices.size(), 0u);
     for (const auto& v : mesh.vertices) {
-        EXPECT_NE(v.material, 0u);
-        EXPECT_EQ(v.getMaterialId(), 42);
+        EXPECT_NE(v.appearance, 0u);
+        EXPECT_EQ(v.getEssenceIdx(), 42);
     }
 }

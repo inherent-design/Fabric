@@ -47,20 +47,20 @@ bool isSolidVoxel(const recurse::simulation::VoxelCell& cell) {
     return recurse::simulation::isOccupied(cell);
 }
 
-uint16_t unpackMaterialId(uint32_t packedMaterial) {
-    return static_cast<uint16_t>(packedMaterial & 0xFFFFu);
+uint16_t unpackEssenceIdx(uint32_t packedAppearance) {
+    return static_cast<uint16_t>(packedAppearance & 0xFFFFu);
 }
 
-uint8_t unpackAO(uint32_t packedMaterial) {
-    return static_cast<uint8_t>((packedMaterial >> 16) & 0xFFu);
+uint8_t unpackAO(uint32_t packedAppearance) {
+    return static_cast<uint8_t>((packedAppearance >> 16) & 0xFFu);
 }
 
-uint8_t unpackFlags(uint32_t packedMaterial) {
-    return static_cast<uint8_t>((packedMaterial >> 24) & 0xFFu);
+uint8_t unpackFlags(uint32_t packedAppearance) {
+    return static_cast<uint8_t>((packedAppearance >> 24) & 0xFFu);
 }
 
-uint8_t normalizeShaderAO(uint32_t packedMaterial) {
-    const uint8_t ao = unpackAO(packedMaterial);
+uint8_t normalizeShaderAO(uint32_t packedAppearance) {
+    const uint8_t ao = unpackAO(packedAppearance);
     if (ao <= 15)
         return ao;
     return recurse::SmoothVoxelVertex::K_SHADER_DEFAULT_AO;
@@ -97,7 +97,7 @@ recurse::simulation::VoxelCell readGreedyCell(const MeshingChunkContext& ctx, in
 }
 
 void appendGreedyVertex(recurse::SmoothChunkMeshData& output, float px, float py, float pz, float nx, float ny,
-                        float nz, uint16_t materialId) {
+                        float nz, uint16_t essenceIdx) {
     recurse::SmoothVoxelVertex vertex{};
     vertex.px = px;
     vertex.py = py;
@@ -105,14 +105,14 @@ void appendGreedyVertex(recurse::SmoothChunkMeshData& output, float px, float py
     vertex.nx = nx;
     vertex.ny = ny;
     vertex.nz = nz;
-    vertex.material =
-        recurse::SmoothVoxelVertex::packMaterial(materialId, recurse::SmoothVoxelVertex::K_SHADER_DEFAULT_AO);
+    vertex.appearance =
+        recurse::SmoothVoxelVertex::packAppearance(essenceIdx, recurse::SmoothVoxelVertex::K_SHADER_DEFAULT_AO);
     vertex.padding = 0;
     output.vertices.push_back(vertex);
 }
 
 void emitGreedyQuad(recurse::SmoothChunkMeshData& output, int axis, bool positive, int slice, int row, int col,
-                    int width, int height, uint16_t materialId) {
+                    int width, int height, uint16_t essenceIdx) {
     const float plane = static_cast<float>(positive ? slice + 1 : slice);
     const float u0 = static_cast<float>(row);
     const float u1 = static_cast<float>(row + height);
@@ -125,41 +125,41 @@ void emitGreedyQuad(recurse::SmoothChunkMeshData& output, int axis, bool positiv
     if (axis == 0) {
         nx = positive ? 1.0f : -1.0f;
         if (positive) {
-            appendGreedyVertex(output, plane, u0, v0, nx, ny, nz, materialId);
-            appendGreedyVertex(output, plane, u1, v0, nx, ny, nz, materialId);
-            appendGreedyVertex(output, plane, u1, v1, nx, ny, nz, materialId);
-            appendGreedyVertex(output, plane, u0, v1, nx, ny, nz, materialId);
+            appendGreedyVertex(output, plane, u0, v0, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, plane, u1, v0, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, plane, u1, v1, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, plane, u0, v1, nx, ny, nz, essenceIdx);
         } else {
-            appendGreedyVertex(output, plane, u0, v0, nx, ny, nz, materialId);
-            appendGreedyVertex(output, plane, u0, v1, nx, ny, nz, materialId);
-            appendGreedyVertex(output, plane, u1, v1, nx, ny, nz, materialId);
-            appendGreedyVertex(output, plane, u1, v0, nx, ny, nz, materialId);
+            appendGreedyVertex(output, plane, u0, v0, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, plane, u0, v1, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, plane, u1, v1, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, plane, u1, v0, nx, ny, nz, essenceIdx);
         }
     } else if (axis == 1) {
         ny = positive ? 1.0f : -1.0f;
         if (positive) {
-            appendGreedyVertex(output, u0, plane, v0, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u0, plane, v1, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u1, plane, v1, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u1, plane, v0, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u0, plane, v0, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u0, plane, v1, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u1, plane, v1, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u1, plane, v0, nx, ny, nz, essenceIdx);
         } else {
-            appendGreedyVertex(output, u0, plane, v0, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u1, plane, v0, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u1, plane, v1, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u0, plane, v1, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u0, plane, v0, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u1, plane, v0, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u1, plane, v1, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u0, plane, v1, nx, ny, nz, essenceIdx);
         }
     } else {
         nz = positive ? 1.0f : -1.0f;
         if (positive) {
-            appendGreedyVertex(output, u0, v0, plane, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u1, v0, plane, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u1, v1, plane, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u0, v1, plane, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u0, v0, plane, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u1, v0, plane, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u1, v1, plane, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u0, v1, plane, nx, ny, nz, essenceIdx);
         } else {
-            appendGreedyVertex(output, u0, v0, plane, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u0, v1, plane, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u1, v1, plane, nx, ny, nz, materialId);
-            appendGreedyVertex(output, u1, v0, plane, nx, ny, nz, materialId);
+            appendGreedyVertex(output, u0, v0, plane, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u0, v1, plane, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u1, v1, plane, nx, ny, nz, essenceIdx);
+            appendGreedyVertex(output, u1, v0, plane, nx, ny, nz, essenceIdx);
         }
     }
 
@@ -177,14 +177,14 @@ recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
     using recurse::simulation::MergeKey;
 
     std::array<MergeKey, K_CHUNK_SIZE * K_CHUNK_SIZE> mask{};
-    std::array<uint16_t, K_CHUNK_SIZE * K_CHUNK_SIZE> materialIds{};
+    std::array<uint16_t, K_CHUNK_SIZE * K_CHUNK_SIZE> essenceIndices{};
     std::array<bool, K_CHUNK_SIZE * K_CHUNK_SIZE> consumed{};
 
     for (int axis = 0; axis < K_FACE_AXIS_COUNT; ++axis) {
         for (bool positive : {false, true}) {
             for (int slice = 0; slice < K_CHUNK_SIZE; ++slice) {
                 mask.fill(K_MERGE_KEY_EMPTY);
-                materialIds.fill(0);
+                essenceIndices.fill(0);
                 consumed.fill(false);
 
                 for (int row = 0; row < K_CHUNK_SIZE; ++row) {
@@ -199,7 +199,7 @@ recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
 
                         const size_t maskIdx = static_cast<size_t>(row * K_CHUNK_SIZE + col);
                         mask[maskIdx] = recurse::simulation::mergeKey(cell);
-                        materialIds[maskIdx] = recurse::simulation::cellMaterialId(cell);
+                        essenceIndices[maskIdx] = recurse::simulation::cellMaterialId(cell);
                     }
                 }
 
@@ -238,7 +238,8 @@ recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
                             }
                         }
 
-                        emitGreedyQuad(output, axis, positive, slice, row, col, width, height, materialIds[startIdx]);
+                        emitGreedyQuad(output, axis, positive, slice, row, col, width, height,
+                                       essenceIndices[startIdx]);
                     }
                 }
             }
@@ -266,7 +267,7 @@ recurse::VoxelVertex packGreedyVoxelVertex(const recurse::SmoothVoxelVertex& ver
 
     const uint8_t ao = std::min<uint8_t>(vertex.getAO(), 3u);
     return recurse::VoxelVertex::pack(quantize(vertex.px), quantize(vertex.py), quantize(vertex.pz),
-                                      greedyNormalIndex(vertex), ao, vertex.getMaterialId());
+                                      greedyNormalIndex(vertex), ao, vertex.getEssenceIdx());
 }
 
 } // namespace
@@ -556,16 +557,16 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
     // MaterialDef::baseColor truth as distant LOD sections. Chunk-local essence
     // remains available for simulation and debug inspection, but does not drive
     // this terrain palette.
-    std::set<uint16_t> uniqueMaterials;
+    std::set<uint16_t> uniqueEssences;
     for (const auto& v : meshData.vertices)
-        uniqueMaterials.insert(unpackMaterialId(v.material));
+        uniqueEssences.insert(unpackEssenceIdx(v.appearance));
 
     std::unordered_map<uint16_t, uint16_t> paletteLookup;
-    result.palette.reserve(uniqueMaterials.size());
-    for (uint16_t matId : uniqueMaterials) {
-        paletteLookup[matId] = static_cast<uint16_t>(result.palette.size());
+    result.palette.reserve(uniqueEssences.size());
+    for (uint16_t idx : uniqueEssences) {
+        paletteLookup[idx] = static_cast<uint16_t>(result.palette.size());
         if (materials_) {
-            result.palette.push_back(materials_->terrainAppearanceColor(matId));
+            result.palette.push_back(materials_->terrainAppearanceColor(idx));
         } else {
             result.palette.push_back({0.0f, 0.0f, 0.0f, 0.0f});
         }
@@ -574,8 +575,8 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
     result.vertices.reserve(meshData.vertices.size());
     for (const auto& v : meshData.vertices) {
         recurse::SmoothVoxelVertex vertex = v;
-        vertex.material = recurse::SmoothVoxelVertex::packShaderMaterial(
-            paletteLookup[unpackMaterialId(v.material)], normalizeShaderAO(v.material), unpackFlags(v.material));
+        vertex.appearance = recurse::SmoothVoxelVertex::packShaderAppearance(
+            paletteLookup[unpackEssenceIdx(v.appearance)], normalizeShaderAO(v.appearance), unpackFlags(v.appearance));
         result.vertices.push_back(vertex);
     }
 
