@@ -187,9 +187,10 @@ TEST(ProjectionAccessorTest, MergeKeyEmptyReturnsEmpty) {
     EXPECT_EQ(mergeKey(cell), K_MERGE_KEY_EMPTY);
 }
 
-TEST(ProjectionAccessorTest, MergeKeyReturnsEssenceIdx) {
+TEST(ProjectionAccessorTest, MergeKeyReturnsVisualHash) {
     auto cell = makeCell(static_cast<uint8_t>(material_ids::WATER), Phase::Liquid);
-    EXPECT_EQ(mergeKey(cell), static_cast<MergeKey>(material_ids::WATER));
+    // Water: essenceIdx=4, phase=Liquid(3). Hash = (4 << 3) | 3 = 35
+    EXPECT_EQ(mergeKey(cell), static_cast<MergeKey>((material_ids::WATER << 3) | static_cast<uint16_t>(Phase::Liquid)));
 }
 
 TEST(ProjectionAccessorTest, SemanticPrioritySandReturns4) {
