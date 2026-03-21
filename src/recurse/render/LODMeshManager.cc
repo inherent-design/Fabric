@@ -32,13 +32,13 @@ uint8_t lodFaceNormalIndex(int face) {
     }
 }
 
-void appendPackedQuad(LODMeshManager::MeshResult& result, int face, int x, int y, int z, uint16_t paletteIndex) {
+void appendPackedQuad(LODMeshManager::MeshResult& result, int face, int x, int y, int z, uint16_t essenceIdx) {
     const uint32_t base = static_cast<uint32_t>(result.vertices.size());
     const uint8_t normalIdx = lodFaceNormalIndex(face);
 
     auto push = [&](int px, int py, int pz) {
         result.vertices.push_back(VoxelVertex::pack(clampPackedCoord(px), clampPackedCoord(py), clampPackedCoord(pz),
-                                                    normalIdx, K_LOD_SHADER_AO, paletteIndex));
+                                                    normalIdx, K_LOD_SHADER_AO, essenceIdx));
     };
 
     switch (face) {

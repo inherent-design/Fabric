@@ -186,7 +186,7 @@ SmoothChunkMeshData SnapMCMesher::meshChunk(const ChunkDensityCache& density, co
                         vert.nx = normal.x;
                         vert.ny = normal.y;
                         vert.nz = normal.z;
-                        vert.material = SmoothVoxelVertex::packMaterial(mat);
+                        vert.appearance = SmoothVoxelVertex::packAppearance(mat);
                         vert.padding = 0;
 
                         edgeVerts[edgeIdx] = static_cast<uint32_t>(output.vertices.size());

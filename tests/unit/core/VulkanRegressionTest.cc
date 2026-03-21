@@ -122,7 +122,7 @@ TEST(VulkanRegression, VoxelVertexPackRoundTrip) {
     EXPECT_EQ(v.posZ(), 8);
     EXPECT_EQ(v.normalIndex(), 5);
     EXPECT_EQ(v.aoLevel(), 3);
-    EXPECT_EQ(v.paletteIndex(), 512);
+    EXPECT_EQ(v.essenceIndex(), 512);
 }
 
 TEST(VulkanRegression, VoxelVertexRawBytesContainPositionValues) {

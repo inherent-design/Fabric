@@ -23,5 +23,5 @@ void main() {
 
     v_worldPos = worldPos;
     v_normal = normalize(mul(u_model[0], vec4(decodeAxisNormal(packedMeta), 0.0)).xyz);
-    v_material = vec4(a_texcoord1.xy, ao / 255.0, 0.0);
+    v_material = vec4(a_texcoord1.xy, ao / 255.0, 0.0); // xy = essence palette index
 }

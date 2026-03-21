@@ -492,7 +492,7 @@ TEST(LODMeshManager, MeshSection_UsesTerrainAppearanceContract) {
     ASSERT_GE(mesh.palette.size(), 2u);
 
     for (const auto& vertex : mesh.vertices) {
-        EXPECT_EQ(vertex.paletteIndex(), 1u);
+        EXPECT_EQ(vertex.essenceIndex(), 1u);
         EXPECT_EQ(vertex.aoLevel(), 3u);
     }
 

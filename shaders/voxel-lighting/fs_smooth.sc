@@ -8,14 +8,14 @@ uniform vec4 u_litColor;      // warm gold: (0.95, 0.85, 0.55, 1.0)
 uniform vec4 u_shadowColor;   // cool purple-gray: (0.45, 0.35, 0.55, 1.0)
 uniform vec4 u_rimParams;     // x = power (3.0), y = strength (0.15) - view-dependent, keep low
 uniform vec4 u_oceanParams;   // x = power (16.0), y = strength (0.2) - view-dependent, keep low
-uniform vec4 u_palette[128];  // material colors (128 max; bgfx shaderc stores array count as uint8_t)
+uniform vec4 u_palette[128];  // essence appearance colors (128 max; bgfx shaderc stores array count as uint8_t)
 
 void main() {
     vec3 N = normalize(v_normal);
     vec3 L = normalize(u_lightDir.xyz);
     vec3 V = normalize(u_viewPos.xyz - v_worldPos.xyz);
 
-    // Material color from palette
+    // Appearance color from essence palette
     vec4 matData = v_material * 255.0;
     int palIdx = int(min(matData.x + matData.y * 256.0, 127.0));
     float ao = matData.z / 15.0;

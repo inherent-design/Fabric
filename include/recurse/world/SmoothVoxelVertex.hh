@@ -11,10 +11,10 @@ namespace recurse {
 /// to VoxelVertex before upload. This format remains the higher-fidelity
 /// interchange for optional smooth meshers and comparison paths.
 struct SmoothVoxelVertex {
-    float px, py, pz;  // 12 bytes: chunk-local sub-voxel position
-    float nx, ny, nz;  // 12 bytes: analytic normal from density gradient
-    uint32_t material; // 4 bytes: packed material payload + AO + flags (see helpers below)
-    uint32_t padding;  // 4 bytes: alignment to 32 bytes
+    float px, py, pz;    // 12 bytes: chunk-local sub-voxel position
+    float nx, ny, nz;    // 12 bytes: analytic normal from density gradient
+    uint32_t appearance; // 4 bytes: packed essence index + AO + flags (see helpers below)
+    uint32_t padding;    // 4 bytes: alignment to 32 bytes
 
     static constexpr uint8_t K_SHADER_DEFAULT_AO = 3;
 
@@ -26,7 +26,7 @@ struct SmoothVoxelVertex {
             s_layout.begin()
                 .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
                 .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
-                .add(bgfx::Attrib::TexCoord0, 4, bgfx::AttribType::Uint8, true) // material packed
+                .add(bgfx::Attrib::TexCoord0, 4, bgfx::AttribType::Uint8, true) // appearance packed
                 .add(bgfx::Attrib::TexCoord1, 4, bgfx::AttribType::Uint8, true) // padding/reserved
                 .end();
             s_initialized = true;
@@ -34,24 +34,24 @@ struct SmoothVoxelVertex {
         return s_layout;
     }
 
-    /// Pack a raw material payload plus AO and flags into the material field.
-    /// Mesh extractors use this for intermediate material IDs before the
+    /// Pack an essence index plus AO and flags into the appearance field.
+    /// Mesh extractors use this for intermediate essence indices before the
     /// render path repacks them to shader palette indices.
-    static uint32_t packMaterial(uint16_t materialId, uint8_t ao = 255, uint8_t flags = 0) {
-        return static_cast<uint32_t>(materialId) | (static_cast<uint32_t>(ao) << 16) |
+    static uint32_t packAppearance(uint16_t essenceIdx, uint8_t ao = 255, uint8_t flags = 0) {
+        return static_cast<uint32_t>(essenceIdx) | (static_cast<uint32_t>(ao) << 16) |
                (static_cast<uint32_t>(flags) << 24);
     }
 
     /// Pack a smooth-terrain shader payload.
-    /// The low 16 bits are a palette index into u_palette, and AO must be in
-    /// the 0..15 range consumed by fs_smooth.sc.
-    static uint32_t packShaderMaterial(uint16_t paletteIndex, uint8_t ao = K_SHADER_DEFAULT_AO, uint8_t flags = 0) {
-        return packMaterial(paletteIndex, ao, flags);
+    /// The low 16 bits are a palette index derived from essenceIdx, and AO
+    /// must be in the 0..15 range consumed by fs_smooth.sc.
+    static uint32_t packShaderAppearance(uint16_t essenceIdx, uint8_t ao = K_SHADER_DEFAULT_AO, uint8_t flags = 0) {
+        return packAppearance(essenceIdx, ao, flags);
     }
 
-    uint16_t getMaterialId() const { return static_cast<uint16_t>(material & 0xFFFF); }
-    uint8_t getAO() const { return static_cast<uint8_t>((material >> 16) & 0xFF); }
-    uint8_t getFlags() const { return static_cast<uint8_t>((material >> 24) & 0xFF); }
+    uint16_t getEssenceIdx() const { return static_cast<uint16_t>(appearance & 0xFFFF); }
+    uint8_t getAO() const { return static_cast<uint8_t>((appearance >> 16) & 0xFF); }
+    uint8_t getFlags() const { return static_cast<uint8_t>((appearance >> 24) & 0xFF); }
 };
 static_assert(sizeof(SmoothVoxelVertex) == 32, "SmoothVoxelVertex must be 32 bytes");
 
