@@ -13,6 +13,7 @@
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/LODGrid.hh"
 #include "recurse/render/LODMeshManager.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
@@ -62,8 +63,8 @@ void fillLODSectionTask(const LODGenTask& task, recurse::simulation::SimulationG
                 int wy = section->origin.y + ly;
                 int wz = section->origin.z + lz;
 
-                uint16_t matId =
-                    task.useWorldGen ? gen->sampleMaterial(wx, wy, wz) : grid->readCell(wx, wy, wz).materialId;
+                uint16_t matId = task.useWorldGen ? gen->sampleMaterial(wx, wy, wz)
+                                                  : simulation::cellMaterialId(grid->readCell(wx, wy, wz));
 
                 uint16_t palIdx = 0;
                 auto it = std::find(section->palette.begin(), section->palette.end(), matId);

@@ -31,6 +31,32 @@ inline bool canDisplace(const MaterialRegistry& registry, VoxelCell mover, Voxel
     return moverDef.density > targetDef.density;
 }
 
+/// Extract the raw material id from a cell. Quarantines direct field access
+/// so the LOD and debug paths route through a single point that changes
+/// when Wave 4 swaps the cell layout.
+constexpr MaterialId cellMaterialId(VoxelCell cell) {
+    return cell.materialId;
+}
+
+/// Semantic priority for LOD material reduction. Higher values win tiebreaks
+/// during 2x2x2 downsampling. The body stays as-is; quarantined here so
+/// consumers do not switch on raw materialId constants directly.
+inline int materialSemanticPriority(uint16_t materialId) {
+    switch (materialId) {
+        case material_ids::SAND:
+        case material_ids::GRAVEL:
+            return 4;
+        case material_ids::WATER:
+            return 3;
+        case material_ids::DIRT:
+            return 2;
+        case material_ids::STONE:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
 /// Merge key for greedy meshing. Adjacent faces with equal keys are merged
 /// into a single quad. Initially maps to materialId; Wave 4 swaps to a
 /// visual-equivalence hash derived from MatterState fields.
