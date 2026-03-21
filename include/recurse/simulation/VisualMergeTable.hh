@@ -3,6 +3,7 @@
 #include "recurse/simulation/VoxelMaterial.hh"
 
 #include <array>
+#include <cassert>
 #include <cstdint>
 #include <vector>
 
@@ -35,22 +36,17 @@ constexpr VisualSignature visualSignatureOf(VoxelCell cell) {
     return {cell.essenceIdx, cell.phase()};
 }
 
-/// Indexed hash table for visual-equivalence merge decisions.
+/// Registers visual signatures for merge key derivation.
 ///
 /// Maps a 16-bit visual hash to either:
 ///  - an empty slot (no entry registered)
 ///  - a single-item slot (one VisualSignature)
 ///  - a multi-entry slot (two or more signatures that collided)
 ///
-/// The table answers "can these two hashes merge?" by checking whether
-/// they resolve to the same VisualSignature. On hash collision (two
-/// different signatures mapping to the same hash), the slot is promoted
-/// from single to multi-entry with a ref-counted array.
-///
-/// For the current material set (6 materials, 5 phases) collisions are
-/// impossible because visualHash is injective for 256 essences * 8 phases.
-/// The collision path exists for future essence spaces that exceed the
-/// hash's discrimination power.
+/// canMerge() relies on hash injectivity for the current essence set
+/// (6 materials, 8 phases, zero collisions possible). Collision
+/// promotion path exists but is not consulted until the hash becomes
+/// non-injective.
 class VisualMergeTable {
   public:
     /// Table capacity. 2048 = 256 essences * 8 phase slots.
@@ -76,6 +72,7 @@ class VisualMergeTable {
             // Hash collision: promote to multi-entry.
             VisualSignature existing = slot.single;
             slot.state = SlotState::Multi;
+            assert(overflowEntries_.size() <= UINT16_MAX && "overflow entry count exceeds uint16_t capacity");
             slot.multiIdx = static_cast<uint16_t>(overflowEntries_.size());
             slot.multiCount = 2;
             overflowEntries_.push_back(existing);
@@ -96,9 +93,11 @@ class VisualMergeTable {
         } else {
             // Non-contiguous: relocate the block to the tail.
             const size_t newBase = overflowEntries_.size();
+            overflowEntries_.reserve(overflowEntries_.size() + slot.multiCount + 1);
             for (uint16_t i = 0; i < slot.multiCount; ++i)
                 overflowEntries_.push_back(overflowEntries_[base + i]);
             overflowEntries_.push_back(sig);
+            assert(newBase <= UINT16_MAX && "overflow entry count exceeds uint16_t capacity");
             slot.multiIdx = static_cast<uint16_t>(newBase);
         }
         ++slot.multiCount;
