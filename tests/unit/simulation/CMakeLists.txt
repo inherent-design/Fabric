@@ -14,4 +14,5 @@ target_sources(UnitTests
   ParallelSimulationTest.cc
   ChangeVelocityTrackerTest.cc
   BoundaryDrainTest.cc
+  MatterStateTest.cc
 )

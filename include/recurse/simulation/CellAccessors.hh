@@ -1,7 +1,10 @@
 #pragma once
 
 #include "recurse/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/MatterState.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+
+#include <concepts>
 
 namespace recurse::simulation {
 
@@ -30,6 +33,66 @@ inline bool canDisplace(const MaterialRegistry& registry, VoxelCell mover, Voxel
     const auto& moverDef = registry.get(mover.materialId);
     return moverDef.density > targetDef.density;
 }
+
+// -- MatterState overloads --------------------------------------------------
+
+/// True when the MatterState cell is occupied (not Empty phase).
+constexpr bool isOccupied(MatterState cell) {
+    return cell.phase() != Phase::Empty;
+}
+
+/// True when the MatterState cell is empty.
+constexpr bool isEmpty(MatterState cell) {
+    return cell.phase() == Phase::Empty;
+}
+
+/// Returns the cell phase from MatterState directly. Registry parameter is
+/// accepted for concept satisfaction but unused; MatterState carries its phase.
+inline MoveType cellPhase(const MaterialRegistry& /*registry*/, MatterState cell) {
+    switch (cell.phase()) {
+        case Phase::Solid:
+            return MoveType::Static;
+        case Phase::Powder:
+            return MoveType::Powder;
+        case Phase::Liquid:
+        case Phase::Gas:
+            return MoveType::Liquid; // Gas placeholder until MoveType::Gas exists
+        default:
+            return MoveType::Static;
+    }
+}
+
+/// Displacement check for MatterState cells. Uses displacementRank directly.
+inline bool canDisplace(const MaterialRegistry& /*registry*/, MatterState mover, MatterState target) {
+    if (isEmpty(target))
+        return true;
+    if (target.phase() == Phase::Solid)
+        return false;
+    return mover.displacementRank > target.displacementRank;
+}
+
+// -- Cell concepts ----------------------------------------------------------
+
+/// A cell type that supports occupancy queries without external context.
+template <typename T>
+concept CellQuery = requires(T cell) {
+    { isOccupied(cell) } -> std::convertible_to<bool>;
+    { isEmpty(cell) } -> std::convertible_to<bool>;
+};
+
+/// A cell type that supports semantic queries requiring registry context.
+template <typename T>
+concept SemanticQuery = CellQuery<T> && requires(const MaterialRegistry& reg, T cell, T other) {
+    { cellPhase(reg, cell) } -> std::convertible_to<MoveType>;
+    { canDisplace(reg, cell, other) } -> std::convertible_to<bool>;
+};
+
+static_assert(CellQuery<VoxelCell>, "VoxelCell must satisfy CellQuery");
+static_assert(CellQuery<MatterState>, "MatterState must satisfy CellQuery");
+static_assert(SemanticQuery<VoxelCell>, "VoxelCell must satisfy SemanticQuery");
+static_assert(SemanticQuery<MatterState>, "MatterState must satisfy SemanticQuery");
+
+// ---------------------------------------------------------------------------
 
 /// Extract the raw material id from a cell. Quarantines direct field access
 /// so the LOD and debug paths route through a single point that changes
