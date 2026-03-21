@@ -15,4 +15,5 @@ target_sources(UnitTests
   ChangeVelocityTrackerTest.cc
   BoundaryDrainTest.cc
   MatterStateTest.cc
+  ProjectionRuleTableTest.cc
 )
