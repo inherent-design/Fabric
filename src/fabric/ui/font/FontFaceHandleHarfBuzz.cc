@@ -683,11 +683,15 @@ void FontFaceHandleHarfBuzz::ConfigureTextShapingBuffer(hb_buffer_t* shaping_buf
 
     int buffer_flags = HB_BUFFER_FLAG_DEFAULT | HB_BUFFER_FLAG_BOT | HB_BUFFER_FLAG_EOT;
 
-#if HB_VERSION_ATLEAST(5, 1, 0)
+#if defined(HB_VERSION_MAJOR) && defined(HB_VERSION_MINOR) && defined(HB_VERSION_MICRO) &&                             \
+    ((HB_VERSION_MAJOR > 5) ||                                                                                         \
+     (HB_VERSION_MAJOR == 5 && (HB_VERSION_MINOR > 1 || (HB_VERSION_MINOR == 1 && HB_VERSION_MICRO >= 0))))
     if (script == HB_SCRIPT_ARABIC)
         buffer_flags |= HB_BUFFER_FLAG_PRODUCE_SAFE_TO_INSERT_TATWEEL;
 #endif
-#if defined(RMLUI_DEBUG) && HB_VERSION_ATLEAST(3, 4, 0)
+#if defined(RMLUI_DEBUG) && defined(HB_VERSION_MAJOR) && defined(HB_VERSION_MINOR) && defined(HB_VERSION_MICRO) &&     \
+    ((HB_VERSION_MAJOR > 3) ||                                                                                         \
+     (HB_VERSION_MAJOR == 3 && (HB_VERSION_MINOR > 4 || (HB_VERSION_MINOR == 4 && HB_VERSION_MICRO >= 0))))
     buffer_flags |= HB_BUFFER_FLAG_VERIFY;
 #endif
 

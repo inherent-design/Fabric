@@ -11,6 +11,9 @@ namespace fabric::test {
 class BgfxNoopEnvironment : public ::testing::Environment {
   public:
     void SetUp() override {
+        if (initialized_)
+            return;
+
         bgfx::renderFrame();
 
         bgfx::Init init;

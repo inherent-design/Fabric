@@ -134,6 +134,9 @@ bool FallingSandSystem::simulateLiquid(ChunkCoord pos, SimulationGrid& grid, con
 
     return sweepChunk(reverseDir, [&](int lx, int ly, int lz) -> bool {
         VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
+        if (isEmpty(cell))
+            return false;
+
         const auto phase = cellPhase(registry_, cell);
         if (phase != MoveType::Liquid)
             return false;

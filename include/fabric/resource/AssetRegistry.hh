@@ -1,8 +1,8 @@
 #pragma once
 
+#include "fabric/log/Log.hh"
 #include "fabric/resource/AssetLoader.hh"
 #include "fabric/resource/Handle.hh"
-#include "fabric/log/Log.hh"
 
 #include <algorithm>
 #include <any>

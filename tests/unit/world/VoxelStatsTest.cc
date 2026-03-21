@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "recurse/world/VoxelStats.hh"
-#include <climits>
+#include <cstdint>
 
 namespace recurse {
 
