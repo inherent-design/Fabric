@@ -31,4 +31,22 @@ inline bool canDisplace(const MaterialRegistry& registry, VoxelCell mover, Voxel
     return moverDef.density > targetDef.density;
 }
 
+/// Merge key for greedy meshing. Adjacent faces with equal keys are merged
+/// into a single quad. Initially maps to materialId; Wave 4 swaps to a
+/// visual-equivalence hash derived from MatterState fields.
+using MergeKey = uint16_t;
+
+/// Sentinel value indicating an empty (unmergeable) face slot in the mask.
+inline constexpr MergeKey K_MERGE_KEY_EMPTY = static_cast<MergeKey>(material_ids::AIR);
+
+/// Extract the merge key from a cell for the greedy mesher mask array.
+inline MergeKey mergeKey(VoxelCell cell) {
+    return cell.materialId;
+}
+
+/// True when two adjacent face slots can be merged into a single greedy quad.
+inline bool canMergeQuads(MergeKey a, MergeKey b) {
+    return a == b;
+}
+
 } // namespace recurse::simulation
