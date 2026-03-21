@@ -3,6 +3,7 @@
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/MatterState.hh"
 #include "recurse/simulation/ProjectionRuleTable.hh"
+#include "recurse/simulation/VisualMergeTable.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 
 #include <concepts>
@@ -207,8 +208,10 @@ using MergeKey = uint16_t;
 inline constexpr MergeKey K_MERGE_KEY_EMPTY = static_cast<MergeKey>(material_ids::AIR);
 
 /// Extract the merge key from a cell for the greedy mesher mask array.
+/// Uses visual-equivalence hash: encodes essenceIdx and phase so that
+/// cells differing only in non-visual fields (displacement, flags) merge.
 inline MergeKey mergeKey(VoxelCell cell) {
-    return static_cast<MergeKey>(cell.essenceIdx);
+    return static_cast<MergeKey>(visualHash(visualSignatureOf(cell)));
 }
 
 /// True when two adjacent face slots can be merged into a single greedy quad.
@@ -224,9 +227,14 @@ constexpr MaterialId cellMaterialId(MatterState cell) {
     return static_cast<MaterialId>(cell.essenceIdx);
 }
 
-/// Merge key for MatterState. Uses essenceIdx as visual identity proxy.
+/// Extract VisualSignature from a MatterState cell.
+inline VisualSignature visualSignatureOf(MatterState cell) {
+    return {cell.essenceIdx, cell.phase()};
+}
+
+/// Merge key for MatterState. Uses visual-equivalence hash.
 inline MergeKey mergeKey(MatterState cell) {
-    return static_cast<MergeKey>(cell.essenceIdx);
+    return static_cast<MergeKey>(visualHash(visualSignatureOf(cell)));
 }
 
 /// Semantic priority for LOD reduction from MatterState.

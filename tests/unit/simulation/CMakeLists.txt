@@ -17,4 +17,5 @@ target_sources(UnitTests
   MatterStateTest.cc
   ProjectionRuleTableTest.cc
   CellFactoryTest.cc
+  VisualMergeTableTest.cc
 )
