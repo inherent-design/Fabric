@@ -43,7 +43,8 @@ struct FchkDeltaDecoded {
 struct FchkCodec {
     /// Encode raw cell data into FCHK v1 blob.
     /// Each cell is 4 bytes: [essenceIdx, displacementRank, phaseAndFlags, spare].
-    /// spare (byte 3) must be zero on encode.
+    /// spare (byte 3): reserved for runtime use (e.g. palette index via EssenceAssigner);
+    /// persisted as-is by encode().
     /// When paletteData is non-null and paletteEntryCount > 0, palette is appended after the
     /// voxel payload. Compression wraps bytes 10-EOF (payload + palette).
     static ChunkBlob encode(const void* cells, size_t cellsByteCount, uint8_t compression = 0, int level = 1,

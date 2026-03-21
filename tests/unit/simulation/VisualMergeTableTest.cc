@@ -130,16 +130,10 @@ TEST(VisualMergeTableTest, RegisterDuplicateIsIdempotent) {
     EXPECT_EQ(table.overflowSize(), 0);
 }
 
-TEST(VisualMergeTableTest, CollisionPromotesToMultiEntry) {
+TEST(VisualMergeTableTest, SingleEntrySlotRemainsOnDistinctHash) {
     VisualMergeTable table;
-    // Force a collision by using signatures that hash to the same value.
-    // With the current hash (essenceIdx << 3 | phase), collisions require
-    // a modified hash function. For testing, we directly construct entries
-    // and verify the promotion logic.
-    //
-    // Since the v1 hash is injective for all valid inputs, we test the
-    // multi-entry path by manually registering two different signatures
-    // that happen to get different hashes (verifying they remain single).
+    // The v1 hash is injective for all valid inputs, so two different
+    // signatures always land in separate slots. Verify both remain single.
     VisualSignature a{1, Phase::Solid};
     VisualSignature b{2, Phase::Solid};
     table.registerSignature(a);
