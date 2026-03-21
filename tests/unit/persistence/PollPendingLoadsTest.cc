@@ -1,4 +1,5 @@
 #include "recurse/persistence/WorldSession.hh"
+#include "recurse/simulation/CellAccessors.hh"
 
 #include "fabric/core/AppContext.hh"
 #include "fabric/core/SystemRegistry.hh"
@@ -23,6 +24,7 @@
 namespace fs = std::filesystem;
 
 using namespace recurse::systems;
+using recurse::simulation::cellForMaterial;
 using recurse::simulation::VoxelCell;
 using recurse::simulation::material_ids::STONE;
 
@@ -86,7 +88,7 @@ class PollPendingLoadsTest : public ::testing::Test {
         auto absent = addChunkRef(reg, cx, cy, cz);
         auto generating = transition<Absent, Generating>(absent, reg);
         grid.materializeChunk(cx, cy, cz);
-        grid.writeCell(cx * 32 + 4, cy * 32 + 4, cz * 32 + 4, VoxelCell{STONE});
+        grid.writeCell(cx * 32 + 4, cy * 32 + 4, cz * 32 + 4, cellForMaterial(STONE));
         grid.syncChunkBuffers(cx, cy, cz);
         transition<Generating, Active>(generating, reg);
     }
@@ -155,7 +157,9 @@ TEST_F(PollPendingLoadsTest, PersistPendingChunkReloadsBeforeDbCommit) {
     auto completions = session_->pollPendingLoads();
     ASSERT_EQ(completions.size(), 1u);
     EXPECT_TRUE(completions[0].success);
-    EXPECT_EQ(voxelSim_->simulationGrid().readCell(K_CX * 32 + 4, K_CY * 32 + 4, K_CZ * 32 + 4).materialId, STONE);
+    EXPECT_EQ(recurse::simulation::cellMaterialId(
+                  voxelSim_->simulationGrid().readCell(K_CX * 32 + 4, K_CY * 32 + 4, K_CZ * 32 + 4)),
+              STONE);
 
     EXPECT_TRUE(saveService->hasPersistPending(K_CX, K_CY, K_CZ));
 

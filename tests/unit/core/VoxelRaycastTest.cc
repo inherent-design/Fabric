@@ -1,4 +1,5 @@
 #include "recurse/world/VoxelRaycast.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <gtest/gtest.h>
@@ -95,7 +96,7 @@ TEST_F(VoxelRaycastSimGridTest, RayHitsSolidVoxelInSimGrid) {
     grid.fillChunk(0, 0, 0, VoxelCell{});
 
     VoxelCell stoneCell{};
-    stoneCell.materialId = material_ids::STONE;
+    stoneCell = cellForMaterial(material_ids::STONE);
     grid.writeCell(5, 5, 5, stoneCell);
     grid.advanceEpoch();
 
@@ -121,7 +122,7 @@ TEST_F(VoxelRaycastSimGridTest, CastRayAllSimGridReturnsMultipleHits) {
     grid.fillChunk(0, 0, 0, VoxelCell{});
 
     VoxelCell stoneCell{};
-    stoneCell.materialId = material_ids::STONE;
+    stoneCell = cellForMaterial(material_ids::STONE);
     grid.writeCell(5, 5, 3, stoneCell);
     grid.writeCell(5, 5, 6, stoneCell);
     grid.writeCell(5, 5, 9, stoneCell);

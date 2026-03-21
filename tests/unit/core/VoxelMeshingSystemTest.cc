@@ -1,5 +1,6 @@
 #define private public
 #include "recurse/systems/VoxelMeshingSystem.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #undef private
 
 #include "fabric/world/ChunkedGrid.hh"
@@ -19,6 +20,8 @@ using recurse::simulation::K_CHUNK_SIZE;
 using recurse::simulation::SimulationGrid;
 using recurse::simulation::VoxelCell;
 namespace MaterialIds = recurse::simulation::material_ids;
+using recurse::simulation::cellForMaterial;
+using recurse::simulation::cellMaterialId;
 using recurse::systems::VoxelMeshingSystem;
 
 class VoxelMeshingSystemTest : public ::testing::Test {
@@ -38,8 +41,7 @@ class VoxelMeshingSystemTest : public ::testing::Test {
     }
 
     void fillChunkSolid(const ChunkCoord& coord) {
-        VoxelCell solid;
-        solid.materialId = MaterialIds::STONE;
+        VoxelCell solid = cellForMaterial(MaterialIds::STONE);
         simGrid.fillChunk(coord.x, coord.y, coord.z, solid);
     }
 };
@@ -131,9 +133,7 @@ TEST_F(VoxelMeshingSystemTest, GreedySelectionLeavesSingleExposedFaceAsOneQuad) 
 
 TEST_F(VoxelMeshingSystemTest, GreedySelectionPreservesPaletteContractAndShaderAOPacking) {
     ChunkCoord coord{0, 0, 0};
-    VoxelCell sand;
-    sand.materialId = MaterialIds::SAND;
-    sand.essenceIdx = 0;
+    VoxelCell sand = cellForMaterial(MaterialIds::SAND);
     simGrid.fillChunk(coord.x, coord.y, coord.z, sand);
 
     auto* palette = simGrid.chunkPalette(coord.x, coord.y, coord.z);
@@ -301,8 +301,7 @@ TEST_F(VoxelMeshingSystemTest, MeshUpdateReplacesOld) {
 
 TEST_F(VoxelMeshingSystemTest, KnownVoxelFieldMesh) {
     ChunkCoord coord{0, 0, 0};
-    VoxelCell solid;
-    solid.materialId = MaterialIds::STONE;
+    VoxelCell solid = cellForMaterial(MaterialIds::STONE);
 
     // Fill bottom half (y < 16) with stone, top half remains air
     for (int z = 0; z < K_CHUNK_SIZE; ++z)
@@ -345,9 +344,7 @@ TEST_F(VoxelMeshingSystemTest, DebugCountersTrackMeshLifecycleWithoutRescans) {
 
 TEST_F(VoxelMeshingSystemTest, FullResPaletteUsesMaterialAppearanceContractNotChunkEssence) {
     ChunkCoord coord{0, 0, 0};
-    VoxelCell sand;
-    sand.materialId = MaterialIds::SAND;
-    sand.essenceIdx = 0;
+    VoxelCell sand = cellForMaterial(MaterialIds::SAND);
     simGrid.fillChunk(coord.x, coord.y, coord.z, sand);
 
     auto* palette = simGrid.chunkPalette(coord.x, coord.y, coord.z);
