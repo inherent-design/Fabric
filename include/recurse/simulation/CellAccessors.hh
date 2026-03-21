@@ -55,8 +55,9 @@ inline MoveType cellPhase(const MaterialRegistry& /*registry*/, MatterState cell
         case Phase::Powder:
             return MoveType::Powder;
         case Phase::Liquid:
+            return MoveType::Liquid;
         case Phase::Gas:
-            return MoveType::Liquid; // Gas placeholder until MoveType::Gas exists
+            return MoveType::Gas;
         default:
             return MoveType::Static;
     }

@@ -116,9 +116,8 @@ TEST(MatterStateTest, CellPhaseMapping) {
     cell.setPhase(Phase::Liquid);
     EXPECT_EQ(cellPhase(registry, cell), MoveType::Liquid);
 
-    // Gas maps to Liquid as placeholder
     cell.setPhase(Phase::Gas);
-    EXPECT_EQ(cellPhase(registry, cell), MoveType::Liquid);
+    EXPECT_EQ(cellPhase(registry, cell), MoveType::Gas);
 
     cell.setPhase(Phase::Empty);
     EXPECT_EQ(cellPhase(registry, cell), MoveType::Static);
