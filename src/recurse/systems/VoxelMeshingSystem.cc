@@ -177,12 +177,14 @@ recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
     using recurse::simulation::MergeKey;
 
     std::array<MergeKey, K_CHUNK_SIZE * K_CHUNK_SIZE> mask{};
+    std::array<uint16_t, K_CHUNK_SIZE * K_CHUNK_SIZE> materialIds{};
     std::array<bool, K_CHUNK_SIZE * K_CHUNK_SIZE> consumed{};
 
     for (int axis = 0; axis < K_FACE_AXIS_COUNT; ++axis) {
         for (bool positive : {false, true}) {
             for (int slice = 0; slice < K_CHUNK_SIZE; ++slice) {
                 mask.fill(K_MERGE_KEY_EMPTY);
+                materialIds.fill(0);
                 consumed.fill(false);
 
                 for (int row = 0; row < K_CHUNK_SIZE; ++row) {
@@ -195,7 +197,9 @@ recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
                         if (isSolidVoxel(neighbor))
                             continue;
 
-                        mask[static_cast<size_t>(row * K_CHUNK_SIZE + col)] = recurse::simulation::mergeKey(cell);
+                        const size_t maskIdx = static_cast<size_t>(row * K_CHUNK_SIZE + col);
+                        mask[maskIdx] = recurse::simulation::mergeKey(cell);
+                        materialIds[maskIdx] = recurse::simulation::cellMaterialId(cell);
                     }
                 }
 
@@ -234,7 +238,7 @@ recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
                             }
                         }
 
-                        emitGreedyQuad(output, axis, positive, slice, row, col, width, height, key);
+                        emitGreedyQuad(output, axis, positive, slice, row, col, width, height, materialIds[startIdx]);
                     }
                 }
             }
@@ -530,7 +534,7 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
                         const auto cell = meshCtx.readLocal(lx, ly, lz, simGrid_);
                         const float density = recurse::simulation::isEmpty(cell) ? 0.0f : 1.0f;
                         densityGrid.set(baseX + lx, baseY + ly, baseZ + lz, density);
-                        materialGrid.set(baseX + lx, baseY + ly, baseZ + lz, recurse::simulation::mergeKey(cell));
+                        materialGrid.set(baseX + lx, baseY + ly, baseZ + lz, recurse::simulation::cellMaterialId(cell));
                     }
                 }
             }
