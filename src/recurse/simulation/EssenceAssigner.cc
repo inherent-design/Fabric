@@ -149,6 +149,11 @@ void assignEssence(VoxelCell* buffer, int cx, int cy, int cz, const MaterialRegi
                 int qw = quantStep(spatialHash(wx, wy, wz, 3, seed) * K_NOISE_AMPLITUDE);
 
                 int noiseIdx = qx + qy * K + qz * K * K + qw * K * K * K;
+                // Write palette index to cell.spare, NOT cell.essenceIdx. During
+                // migration, essenceIdx holds material identity (cellMaterialId()
+                // casts it). Overwriting it with a palette index would break material
+                // resolution for all consumers. This field split collapses when the
+                // essenceIdx === materialId invariant breaks (feat/essence-decoupling).
                 cell.spare = paletteLUT[matIdx * entriesPerMat + noiseIdx];
             }
         }

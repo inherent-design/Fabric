@@ -453,7 +453,12 @@ FchkDeltaDecoded FchkCodec::decodeDelta(const ChunkBlob& blob) {
     }
     cursor += entriesBytes;
 
-    // Apply runtime flags mask to cell data (v4 layout: phaseAndFlags in byte 2)
+    // Apply runtime flags mask to cell data (v4 layout: phaseAndFlags in byte 2).
+    // Note: All v3 delta files in existence use the v4 (MatterState) cell layout
+    // because v3 delta format was introduced alongside the MatterState migration.
+    // No pre-MatterState v3 deltas exist. The v4 runtime flags mask is correct
+    // for all real v3 files. This version branching will be eliminated by the
+    // persistence format collapse (feat/persistence-collapse).
     constexpr uint8_t kRuntimeFlagsMask = static_cast<uint8_t>(~(0x08 | 0x10));
     for (auto& e : result.entries) {
         auto* bytes = reinterpret_cast<uint8_t*>(&e.cellData);

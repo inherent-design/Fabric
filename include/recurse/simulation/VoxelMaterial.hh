@@ -44,7 +44,10 @@ inline constexpr uint8_t FREE_FALL = 1 << 1; // Bit 1 of 5-bit flags field
 /// 4-byte voxel cell. Fits 32768 cells per 32^3 chunk = 128 KB.
 /// Post Wave-4: essence-first layout matching MatterState Shape C.
 struct VoxelCell {
-    uint8_t essenceIdx{0};       ///< Palette index into per-chunk EssencePalette.
+    /// Material/essence identity index. During migration, holds MaterialId directly
+    /// (cellMaterialId() casts this to MaterialId). Will become a true essence
+    /// palette index when the essenceIdx === materialId invariant is broken.
+    uint8_t essenceIdx{0};
     uint8_t displacementRank{0}; ///< CA displacement ordering (0-255).
     uint8_t phaseAndFlags{0};    ///< Low 3 bits = Phase, high 5 bits = flags.
     uint8_t spare{0};            ///< Reserved, must be 0 in v1.
