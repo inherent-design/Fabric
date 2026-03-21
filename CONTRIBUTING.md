@@ -77,8 +77,8 @@ The current targets are:
 
 - `FabricLib`: reusable engine static library
 - `RecurseGame`: game object library
-- `Recurse`: application executable
-- `UnitTests` and `E2ETests`
+- `Recurse`: application executable (links mimalloc when `FABRIC_USE_MIMALLOC` is enabled)
+- `UnitTests` and `E2ETests` (do not link mimalloc; share `tests/TestMain.cc` which initializes Quill logging and bgfx Noop environment)
 
 ## Repository boundaries
 
@@ -111,15 +111,21 @@ Contributors should preserve the current production posture:
 - SnapMC is optional and experimental behind the pluggable mesher boundary
 - the shipped visual target is visibly voxel terrain, not smooth-surface replacement
 
-The active short-term sequence combines Goal #4 with the meshing checkpoints:
+The active program is the **strong-hybrid MatterState migration**, which replaces `VoxelCell`'s `materialId`-first layout with essence-first `MatterState` storage. The migration follows a strangler-fig pattern: wrap legacy field access behind accessors first (Waves 1-2), define new types (Wave 3), swap the layout (Wave 4), then migrate consumers and GPU pipeline (Waves 5-6).
 
-1. instrument the Greedy production path
-2. remove the smooth-intermediate repack cost
-3. add a read-only mesh semantic and query adapter
-4. replace blind neighbor invalidation with semantic boundary decisions
-5. move LOD policy onto the same semantic authority
+New code touching cell data should use the accessors in `CellAccessors.hh` rather than reading `VoxelCell` fields directly. This keeps the migration blast radius contained.
 
 Other near-term work continues to tighten engine and game separation, benchmark automation, and multi-project readiness without destabilizing the Greedy-first shipped path.
+
+## CI checks
+
+Pull requests run these checks automatically:
+
+- `clang-format` on `include/` and `src/`
+- `cppcheck` static analysis (suppressions in `.cppcheck-suppressions`)
+- ASan + UBSan sanitizer builds
+
+All checks must pass before merge. Pre-existing suppressions are documented in `.cppcheck-suppressions` with comments explaining each entry.
 
 ## Long-term direction
 
