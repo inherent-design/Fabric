@@ -591,14 +591,14 @@ TEST_F(BehaviorAITest, GetEntitiesInRangeEmptyWhenNoneClose) {
 }
 
 TEST_F(BehaviorAITest, HasLineOfSightClearPath) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     Vec3f from(0.0f, 0.0f, 0.0f);
     Vec3f to(5.0f, 0.0f, 0.0f);
     EXPECT_TRUE(BehaviorAI::hasLineOfSight(grid, from, to));
 }
 
 TEST_F(BehaviorAITest, HasLineOfSightBlockedByDensity) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     grid.set(3, 0, 0, 1.0f);
 
     Vec3f from(0.0f, 0.0f, 0.0f);
@@ -607,7 +607,7 @@ TEST_F(BehaviorAITest, HasLineOfSightBlockedByDensity) {
 }
 
 TEST_F(BehaviorAITest, HasLineOfSightSamePoint) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     Vec3f pos(3.0f, 3.0f, 3.0f);
     EXPECT_TRUE(BehaviorAI::hasLineOfSight(grid, pos, pos));
 }

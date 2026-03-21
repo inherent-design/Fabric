@@ -39,10 +39,10 @@ class Pathfinding {
     void init();
     void shutdown();
 
-    PathResult findPath(const ChunkedGrid<float>& grid, int sx, int sy, int sz, int gx, int gy, int gz,
+    PathResult findPath(const ChunkedGrid<float, 32>& grid, int sx, int sy, int sz, int gx, int gy, int gz,
                         float threshold = 0.5f, int maxNodes = 4096);
 
-    static bool isWalkable(const ChunkedGrid<float>& grid, int x, int y, int z, float threshold = 0.5f);
+    static bool isWalkable(const ChunkedGrid<float, 32>& grid, int x, int y, int z, float threshold = 0.5f);
 
     static Vec3f seek(const Vec3f& current, const Vec3f& target, float maxSpeed);
     static Vec3f arrive(const Vec3f& current, const Vec3f& target, float maxSpeed, float slowRadius);

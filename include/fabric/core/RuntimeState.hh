@@ -7,9 +7,9 @@ namespace fabric {
 
 /// Transient runtime state shared across systems for the current process.
 ///
-/// This data is not persisted and is not configured via TOML. Some counters
-/// remain Recurse-specific transitional fields while engine and game telemetry
-/// continue to separate for multi-project readiness.
+/// This data is not persisted and is not configured via TOML. Game-specific
+/// telemetry (voxel chunk counters, etc.) belongs in game-side structs such
+/// as recurse::VoxelStats, not here.
 struct RuntimeState {
     // Window (written by resize handler)
     uint32_t pixelWidth = 0;
@@ -36,9 +36,6 @@ struct RuntimeState {
     // Subsystem counts (written by respective systems)
     int physicsBodyCount = 0;
     int audioVoiceCount = 0;
-    int visibleChunks = 0;
-    int totalChunks = 0;
-    int meshQueueSize = 0;
     float vramUsageMB = 0.0f;
 };
 

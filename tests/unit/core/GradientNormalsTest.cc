@@ -7,7 +7,7 @@ using namespace recurse;
 class GradientNormalsTest : public ::testing::Test {
   protected:
     ChunkDensityCache cache;
-    ChunkedGrid<float> density;
+    ChunkedGrid<float, 32> density;
 
     void fillCache() { cache.build(0, 0, 0, density); }
 };

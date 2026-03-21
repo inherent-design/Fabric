@@ -84,7 +84,7 @@ TEST_F(CameraControllerTest, SpringArmShortensOnCollision) {
     ctrl.setPitch(0.0f);
 
     // Build a grid with a wall 3 units behind the player
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     // Forward is +Z at yaw=0, so "behind" is -Z
     // Fill a wall at z=-3
     for (int x = -5; x <= 5; ++x) {
@@ -113,7 +113,7 @@ TEST_F(CameraControllerTest, SpringArmReturnsToFullDistance) {
     ctrl.setPitch(0.0f);
 
     // First: update with a wall nearby (simulate collision)
-    ChunkedGrid<float> gridWithWall;
+    ChunkedGrid<float, 32> gridWithWall;
     for (int x = -5; x <= 5; ++x) {
         for (int y = -5; y <= 15; ++y) {
             gridWithWall.set(x, y, -2, 1.0f);
@@ -216,7 +216,7 @@ TEST_F(CameraControllerTest, NullGridSkipsCollision) {
     Vector3<float, Space::World> target(0.0f, 0.0f, 0.0f);
     // Should not crash with nullptr grid
     for (int i = 0; i < 50; ++i)
-        ctrl.update(target, 0.016f, static_cast<const ChunkedGrid<float>*>(nullptr));
+        ctrl.update(target, 0.016f, static_cast<const ChunkedGrid<float, 32>*>(nullptr));
 
     auto pos = ctrl.position();
     // Camera should approach full orbit distance

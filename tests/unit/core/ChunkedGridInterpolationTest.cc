@@ -5,7 +5,7 @@ using namespace fabric;
 
 class ChunkedGridInterpolationTest : public ::testing::Test {
   protected:
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
 };
 
 TEST_F(ChunkedGridInterpolationTest, IntegerCoordinatesReturnExactValues) {

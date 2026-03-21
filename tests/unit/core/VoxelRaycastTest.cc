@@ -7,7 +7,7 @@ using namespace recurse;
 
 class VoxelRaycastTest : public ::testing::Test {
   protected:
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
 };
 
 TEST_F(VoxelRaycastTest, RayHitsSingleVoxel) {

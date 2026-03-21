@@ -22,7 +22,7 @@ void Pathfinding::init() {}
 
 void Pathfinding::shutdown() {}
 
-bool Pathfinding::isWalkable(const ChunkedGrid<float>& grid, int x, int y, int z, float threshold) {
+bool Pathfinding::isWalkable(const ChunkedGrid<float, 32>& grid, int x, int y, int z, float threshold) {
     return grid.get(x, y, z) < threshold;
 }
 
@@ -34,7 +34,7 @@ float Pathfinding::heuristic(int x, int y, int z, int gx, int gy, int gz) {
     return static_cast<float>(std::abs(x - gx) + std::abs(y - gy) + std::abs(z - gz));
 }
 
-PathResult Pathfinding::findPath(const ChunkedGrid<float>& grid, int sx, int sy, int sz, int gx, int gy, int gz,
+PathResult Pathfinding::findPath(const ChunkedGrid<float, 32>& grid, int sx, int sy, int sz, int gx, int gy, int gz,
                                  float threshold, int maxNodes) {
     PathResult result;
 

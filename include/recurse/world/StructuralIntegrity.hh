@@ -46,14 +46,14 @@ class StructuralIntegrity {
     StructuralIntegrity();
     ~StructuralIntegrity() = default;
 
-    void update(const ChunkedGrid<float>& grid, float dt);
+    void update(const ChunkedGrid<float, 32>& grid, float dt);
     void setDebrisCallback(DebrisCallback cb);
     void setPerFrameBudgetMs(float budgetMs);
     float getPerFrameBudgetMs() const;
     uint64_t getProcessedCells() const;
 
   private:
-    bool globalFloodFill(const ChunkedGrid<float>& grid);
+    bool globalFloodFill(const ChunkedGrid<float, 32>& grid);
 
     float perFrameBudgetMs_ = 1.0f;
     DebrisCallback debrisCallback_;

@@ -44,16 +44,10 @@ TEST(RuntimeStateTest, SubsystemCounters) {
 
     state.physicsBodyCount = 128;
     state.audioVoiceCount = 8;
-    state.visibleChunks = 50;
-    state.totalChunks = 200;
-    state.meshQueueSize = 12;
     state.vramUsageMB = 256.5f;
 
     EXPECT_EQ(state.physicsBodyCount, 128);
     EXPECT_EQ(state.audioVoiceCount, 8);
-    EXPECT_EQ(state.visibleChunks, 50);
-    EXPECT_EQ(state.totalChunks, 200);
-    EXPECT_EQ(state.meshQueueSize, 12);
     EXPECT_FLOAT_EQ(state.vramUsageMB, 256.5f);
 }
 
@@ -90,13 +84,9 @@ TEST(RuntimeStateTest, NegativePerformanceCounters) {
 TEST(RuntimeStateTest, LargeSubsystemCounters) {
     RuntimeState state;
     state.physicsBodyCount = INT32_MAX;
-    state.totalChunks = INT32_MAX;
-    state.meshQueueSize = INT32_MAX;
     state.vramUsageMB = 16384.0f; // 16 GB
 
     EXPECT_EQ(state.physicsBodyCount, INT32_MAX);
-    EXPECT_EQ(state.totalChunks, INT32_MAX);
-    EXPECT_EQ(state.meshQueueSize, INT32_MAX);
     EXPECT_FLOAT_EQ(state.vramUsageMB, 16384.0f);
 }
 
@@ -112,9 +102,6 @@ TEST(RuntimeStateTest, AllDefaultFieldsCovered) {
     EXPECT_FLOAT_EQ(state.gpuTimeMs, 0.0f);
     EXPECT_EQ(state.physicsBodyCount, 0);
     EXPECT_EQ(state.audioVoiceCount, 0);
-    EXPECT_EQ(state.visibleChunks, 0);
-    EXPECT_EQ(state.totalChunks, 0);
-    EXPECT_EQ(state.meshQueueSize, 0);
     EXPECT_FLOAT_EQ(state.vramUsageMB, 0.0f);
 }
 

@@ -24,7 +24,7 @@ uint64_t StructuralIntegrity::getProcessedCells() const {
     return floodFillState_.processedCells;
 }
 
-void StructuralIntegrity::update(const ChunkedGrid<float>& grid, float dt) {
+void StructuralIntegrity::update(const ChunkedGrid<float, 32>& grid, float dt) {
     (void)dt;
 
     if (perFrameBudgetMs_ <= 0.0f || !debrisCallback_) {
@@ -41,7 +41,7 @@ void StructuralIntegrity::update(const ChunkedGrid<float>& grid, float dt) {
     globalFloodFill(grid);
 }
 
-bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float>& grid) {
+bool StructuralIntegrity::globalFloodFill(const ChunkedGrid<float, 32>& grid) {
     constexpr float K_DENSITY_THRESHOLD = 0.5f;
     constexpr int K_BUDGET_CHECK_INTERVAL = 256;
 

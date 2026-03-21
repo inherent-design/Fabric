@@ -60,7 +60,7 @@ DDAState initDDA(float ox, float oy, float oz, float dx, float dy, float dz) {
 
 } // namespace
 
-std::optional<VoxelHit> castRay(const ChunkedGrid<float>& grid, float ox, float oy, float oz, float dx, float dy,
+std::optional<VoxelHit> castRay(const ChunkedGrid<float, 32>& grid, float ox, float oy, float oz, float dx, float dy,
                                 float dz, float maxDistance, float threshold) {
     FABRIC_ZONE_SCOPED_N("castRay");
 
@@ -112,7 +112,7 @@ std::optional<VoxelHit> castRay(const ChunkedGrid<float>& grid, float ox, float 
     return std::nullopt;
 }
 
-std::vector<VoxelHit> castRayAll(const ChunkedGrid<float>& grid, float ox, float oy, float oz, float dx, float dy,
+std::vector<VoxelHit> castRayAll(const ChunkedGrid<float, 32>& grid, float ox, float oy, float oz, float dx, float dy,
                                  float dz, float maxDistance, float threshold) {
     FABRIC_ZONE_SCOPED_N("castRayAll");
 

@@ -52,9 +52,9 @@ class CameraController {
 
     void processMouseInput(float deltaX, float deltaY);
 
-    void update(const Vector3<float, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid = nullptr,
+    void update(const Vector3<float, Space::World>& targetPos, float dt, const ChunkedGrid<float, 32>* grid = nullptr,
                 float densityThreshold = 0.5f);
-    void update(const Vector3<double, Space::World>& targetPos, float dt, const ChunkedGrid<float>* grid = nullptr,
+    void update(const Vector3<double, Space::World>& targetPos, float dt, const ChunkedGrid<float, 32>* grid = nullptr,
                 float densityThreshold = 0.5f);
 
     void update(const Vector3<float, Space::World>& targetPos, float dt,

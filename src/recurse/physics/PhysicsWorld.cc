@@ -343,7 +343,7 @@ void PhysicsWorld::registerChunkBodies(const ChunkCoord& key, std::vector<TileSh
         chunkBodies_.erase(key);
 }
 
-void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float>& grid, int cx, int cy, int cz,
+void PhysicsWorld::rebuildChunkCollision(const ChunkedGrid<float, 32>& grid, int cx, int cy, int cz,
                                          float densityThreshold) {
     if (!initialized_) {
         FABRIC_LOG_WARN("rebuildChunkCollision: PhysicsWorld not initialized");
@@ -738,8 +738,8 @@ void PhysicsWorld::removeConstraint(ConstraintHandle handle) {
 }
 
 // CCD: grid-based projectile raycast using DDA
-std::optional<VoxelHit> PhysicsWorld::castProjectileRay(const ChunkedGrid<float>& grid, float ox, float oy, float oz,
-                                                        float dx, float dy, float dz, float maxDistance,
+std::optional<VoxelHit> PhysicsWorld::castProjectileRay(const ChunkedGrid<float, 32>& grid, float ox, float oy,
+                                                        float oz, float dx, float dy, float dz, float maxDistance,
                                                         float densityThreshold) {
     FABRIC_ZONE_SCOPED_N("castProjectileRay");
     return castRay(grid, ox, oy, oz, dx, dy, dz, maxDistance, densityThreshold);

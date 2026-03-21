@@ -8,7 +8,7 @@ using namespace recurse;
 namespace {
 
 void fillCache(ChunkDensityCache& cache, auto fn) {
-    ChunkedGrid<float> grid;
+    ChunkedGrid<float, 32> grid;
     for (int wz = -1; wz < 33; ++wz)
         for (int wy = -1; wy < 33; ++wy)
             for (int wx = -1; wx < 33; ++wx)
@@ -17,7 +17,7 @@ void fillCache(ChunkDensityCache& cache, auto fn) {
 }
 
 void fillMaterialCache(ChunkMaterialCache& matCache, auto fn) {
-    ChunkedGrid<uint16_t> grid;
+    ChunkedGrid<uint16_t, 32> grid;
     for (int wz = -1; wz < 33; ++wz)
         for (int wy = -1; wy < 33; ++wy)
             for (int wx = -1; wx < 33; ++wx)

@@ -7,7 +7,7 @@ namespace recurse {
 
 // -- ChunkDensityCache --------------------------------------------------------
 
-void ChunkDensityCache::build(int cx, int cy, int cz, const ChunkedGrid<float>& density) {
+void ChunkDensityCache::build(int cx, int cy, int cz, const ChunkedGrid<float, 32>& density) {
     int baseX = cx * K_CHUNK_SIZE;
     int baseY = cy * K_CHUNK_SIZE;
     int baseZ = cz * K_CHUNK_SIZE;
@@ -84,7 +84,7 @@ float* ChunkDensityCache::data() {
 
 // -- ChunkMaterialCache -------------------------------------------------------
 
-void ChunkMaterialCache::build(int cx, int cy, int cz, const ChunkedGrid<uint16_t>& materialGrid) {
+void ChunkMaterialCache::build(int cx, int cy, int cz, const ChunkedGrid<uint16_t, 32>& materialGrid) {
     int baseX = cx * K_CHUNK_SIZE;
     int baseY = cy * K_CHUNK_SIZE;
     int baseZ = cz * K_CHUNK_SIZE;
