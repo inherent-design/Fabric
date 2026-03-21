@@ -63,6 +63,12 @@ For ResourceHub tests, prefer:
 3. Wrapping operations in try/catch to ensure cleanup on failure
 4. Testing one thing at a time
 
+### bgfx test lifecycle
+
+`BgfxNoopEnvironment` in `tests/fixtures/BgfxNoopFixture.hh` initializes bgfx with the Noop renderer exactly once per process via `::testing::AddGlobalTestEnvironment()` in `tests/TestMain.cc`. Test suites that need bgfx inherit from `BgfxNoopFixture`, which skips if init failed.
+
+Do not call `bgfx::init()` or `bgfx::shutdown()` in test fixtures. bgfx is a process-global singleton; multiple init/shutdown cycles cause fatal assertions.
+
 ## Code style
 
 - `.hh` for headers, `.cc` for source files
@@ -392,6 +398,31 @@ The per-tick phase pipeline separates structural modification from data access:
 
 `GenSingle2D` and `GenUniformGrid2D` (FastNoise2) differ by 1 ULP at FMA boundaries due to different coordinate computation paths. At density thresholds (`> 0.0f`, `> 3.0f`) this can flip material selection, producing LOD seams. Use `std::fma()` for coordinate replication in `sampleMaterial()` to match batch behavior.
 
+## Cell accessors
+
+`recurse::simulation::CellAccessors.hh` provides free-function accessors that quarantine direct `VoxelCell` field access. All simulation and consumer code should use these instead of reading `cell.materialId`, `registry.get(id).moveType`, or `registry.get(id).density` directly.
+
+| Accessor | Signature | Replaces |
+|----------|-----------|----------|
+| `isOccupied` | `(VoxelCell cell) -> bool` | `cell.materialId != material_ids::AIR` |
+| `isEmpty` | `(VoxelCell cell) -> bool` | `cell.materialId == material_ids::AIR` |
+| `cellPhase` | `(const MaterialRegistry&, VoxelCell) -> MoveType` | `registry.get(id).moveType` |
+| `canDisplace` | `(const MaterialRegistry&, VoxelCell, VoxelCell) -> bool` | `registry.get(src).density > registry.get(tgt).density` |
+
+These accessors exist to contain the blast radius of the MatterState migration. When Wave 4 swaps the cell layout, only the accessor bodies change, not the consumer call sites.
+
+### Anti-patterns
+
+- Direct `cell.materialId` comparison outside CellAccessors.hh
+- `registry.get(id).moveType` or `.density` in simulation code (use `cellPhase`/`canDisplace`)
+- Adding new cell field reads without a corresponding accessor
+
+## VoxelStats
+
+`recurse::VoxelStats` (in `include/recurse/world/VoxelStats.hh`) holds game-specific runtime counters that were previously in `fabric::RuntimeState`. Engine code must not reference `VoxelStats`; it lives in `recurse::` because the counters are voxel-game-specific.
+
+Fields: `visibleChunks`, `totalChunks`, `meshQueueSize`.
+
 ## Development workflow
 
 ### Commits
@@ -415,6 +446,10 @@ perf(meshing): parallel chunk meshing via JobScheduler
 4. Lint (git-dirty files only): `mise run lint:changed`
 5. If header/source files moved: check `.cppcheck-suppressions` paths
 6. If code affects documented behavior: update `docs/` in the same commit
+
+### cppcheck suppressions
+
+`.cppcheck-suppressions` lists known pre-existing findings. When cppcheck flags a new finding, either fix it or add a suppression with a comment explaining why. The script (`tasks/cppcheck.sh`) uses `--error-exitcode=1`, so any unsuppressed finding fails CI.
 
 ### Documentation
 
@@ -441,7 +476,10 @@ perf(meshing): parallel chunk meshing via JobScheduler
 
 - Greedy meshing is the primary near-path production path. Preserve it first.
 - SnapMC is optional and experimental behind the pluggable mesher boundary.
-- The active short-term sequence combines Goal #4 with meshing checkpoints 0 through 4: Greedy instrumentation, packed-vertex cleanup, read-only semantic adapter introduction, semantic invalidation, and LOD semantic alignment.
+- The active short-term program is the **strong-hybrid MatterState migration** (strangler-fig pattern), which wraps legacy material-first assumptions behind narrow accessors, then swaps the cell layout behind those accessors.
+- Wave 1 (accessor quarantine and boundary cleanup) is complete and in review as PR #81.
+- Waves 2 through 6 continue through mesh/LOD abstraction, type definitions, the live cell layout swap, consumer migration, and GPU pipeline updates.
+- Meshing optimization (greedy instrumentation, packed-vertex cleanup, semantic adapter) is sequenced within this migration, not as a separate track.
 - Other near-term work should keep improving engine and game separation plus multi-project readiness without destabilizing the shipped voxel-first path.
 
 ## Programming model
@@ -546,6 +584,8 @@ Current violations to address:
 
 Resolved violations:
 - `ChunkCoord` 4-way duplication unified to single `fabric::ChunkCoord{x,y,z}` in Wave 1b (2026-03-13)
+- `visibleChunks`/`totalChunks`/`meshQueueSize` moved from `fabric::RuntimeState` to `recurse::VoxelStats` in Wave 1 (2026-03-20)
+- `ChunkedGrid` default template parameter `= 32` removed; all 43 instantiation sites now explicit (2026-03-20)
 
 The `fabric::`/`recurse::` boundary must be a clean API surface that a second game can depend on without importing Recurse-specific types. Near-term work should keep removing game-specific assumptions from `fabric::` while preserving the current Greedy-first production path in `recurse::`.
 
