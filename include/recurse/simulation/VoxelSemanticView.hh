@@ -148,6 +148,14 @@ class MaterialSemanticRegistry {
     }
 
     /// Resolve semantics for a voxel cell and optional essence palette.
+    //
+    // Migration contract: cell.essenceIdx holds materialId identity (used by
+    // cellMaterialId() and ProjectionRuleTable). cell.spare holds the palette
+    // index written by EssenceAssigner. resolve() reads cell.essenceIdx as
+    // a palette key, which during migration equals materialId. When no palette
+    // is loaded, resolve() falls back to intrinsic essence derivation from
+    // materialId, which produces the same result. This dual-path is intentional
+    // and collapses when the essenceIdx === materialId invariant breaks.
     ResolvedVoxelSemantics resolve(const VoxelCell& cell, const recurse::EssencePalette* palette = nullptr) const {
         ResolvedVoxelSemantics result{};
         result.material = view(cellMaterialId(cell));
