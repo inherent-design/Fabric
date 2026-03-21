@@ -11,7 +11,6 @@ TEST(RuntimeStateTest, DefaultValues) {
     EXPECT_FLOAT_EQ(state.dpiScale, 1.0f);
     EXPECT_FALSE(state.fullscreen);
     EXPECT_FALSE(state.debugOverlay);
-    EXPECT_FALSE(state.wireframe);
     EXPECT_EQ(state.resetFlags, 0u);
     EXPECT_EQ(state.currentMode, "Game");
     EXPECT_FALSE(state.simulationPaused);

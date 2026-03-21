@@ -19,7 +19,6 @@ struct RuntimeState {
 
     // Renderer (written by bgfx callbacks / debug toggles)
     bool debugOverlay = false;
-    bool wireframe = false;
     uint32_t resetFlags = 0;
 
     // App mode (written by AppModeManager observer)

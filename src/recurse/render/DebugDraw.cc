@@ -72,8 +72,6 @@ bool DebugDraw::isWireframeEnabled() const {
     return hasFlag(DebugDrawFlags::Wireframe);
 }
 
-void DebugDraw::applyDebugFlags() {}
-
 void DebugDraw::begin(uint16_t viewId) {
     if (!initialized_ || !encoder_) {
         return;

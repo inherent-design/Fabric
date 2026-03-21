@@ -41,7 +41,9 @@ struct ChunkMesh {
 
     fabric::BgfxHandle<bgfx::VertexBufferHandle> vbh;
     fabric::BgfxHandle<bgfx::IndexBufferHandle> ibh;
+    fabric::BgfxHandle<bgfx::IndexBufferHandle> wireIbh;
     uint32_t indexCount = 0;
+    uint32_t wireIndexCount = 0;
     std::vector<std::array<float, 4>> palette;
     VertexFormat vertexFormat = VertexFormat::Voxel;
     uint32_t vertexStrideBytes = vertexStrideForFormat(VertexFormat::Voxel);

@@ -418,6 +418,19 @@ void LODSystem::uploadSection(LODSectionKey key, const recurse::LODMeshManager::
         bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t))),
         BGFX_BUFFER_INDEX32));
 
+    // Build wireframe line-list index buffer from triangle indices
+    uint32_t triCount = static_cast<uint32_t>(mesh.indices.size());
+    uint32_t lineCount = bgfx::topologyConvert(bgfx::TopologyConvert::TriListToLineList, nullptr, 0,
+                                               mesh.indices.data(), triCount, true);
+    if (lineCount > 0) {
+        std::vector<uint32_t> lineIndices(lineCount);
+        bgfx::topologyConvert(bgfx::TopologyConvert::TriListToLineList, lineIndices.data(),
+                              lineCount * sizeof(uint32_t), mesh.indices.data(), triCount, true);
+        gpu.mesh.wireIbh.reset(
+            bgfx::createIndexBuffer(bgfx::copy(lineIndices.data(), lineCount * sizeof(uint32_t)), BGFX_BUFFER_INDEX32));
+        gpu.mesh.wireIndexCount = lineCount;
+    }
+
     gpu.vertexCount = static_cast<uint32_t>(mesh.vertices.size());
     gpu.mesh.indexCount = static_cast<uint32_t>(mesh.indices.size());
     gpu.mesh.palette = mesh.palette;

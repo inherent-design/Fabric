@@ -133,7 +133,11 @@ void VoxelRenderer::render(bgfx::ViewId view, const ChunkMesh& mesh, float offse
     }
 
     bgfx::setVertexBuffer(0, mesh.vbh.get());
-    bgfx::setIndexBuffer(mesh.ibh.get());
+    if (wireframeEnabled_ && mesh.wireIbh.isValid()) {
+        bgfx::setIndexBuffer(mesh.wireIbh.get());
+    } else {
+        bgfx::setIndexBuffer(mesh.ibh.get());
+    }
 
     bgfx::setState(renderState());
     bgfx::setUniform(uniformLightDir_.get(), lightDir_);
@@ -178,7 +182,11 @@ bool VoxelRenderer::mdiSupported() const {
 uint64_t VoxelRenderer::renderState() const {
     uint64_t state =
         BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_MSAA;
-    state |= BGFX_STATE_CULL_CCW;
+    if (wireframeEnabled_) {
+        state |= BGFX_STATE_PT_LINES;
+    } else {
+        state |= BGFX_STATE_CULL_CCW;
+    }
     return state;
 }
 
@@ -293,7 +301,11 @@ void VoxelRenderer::renderIndirect(bgfx::ViewId view, const ChunkRenderInfo* chu
             bgfx::setTransform(mtx);
 
             bgfx::setVertexBuffer(0, ci.mesh->vbh.get());
-            bgfx::setIndexBuffer(ci.mesh->ibh.get());
+            if (wireframeEnabled_ && ci.mesh->wireIbh.isValid()) {
+                bgfx::setIndexBuffer(ci.mesh->wireIbh.get());
+            } else {
+                bgfx::setIndexBuffer(ci.mesh->ibh.get());
+            }
 
             bool last = (j + 1 == group.indices.size());
             bgfx::submit(view, program, 0, last ? BGFX_DISCARD_ALL : K_GROUP_DISCARD);

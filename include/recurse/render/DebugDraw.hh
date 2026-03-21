@@ -66,10 +66,6 @@ class DebugDraw {
     void toggleWireframe();
     bool isWireframeEnabled() const;
 
-    /// Legacy compatibility hook.
-    /// Voxel wireframe is now applied around chunk submits instead of globally.
-    void applyDebugFlags();
-
     /// Begin a debug draw pass on the given view.
     void begin(uint16_t viewId);
 

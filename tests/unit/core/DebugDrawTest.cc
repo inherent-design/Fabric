@@ -129,9 +129,3 @@ TEST(DebugDrawTest, BeginEndWithoutInitAreNoOps) {
     dd.begin(0); // should not crash
     dd.end();    // should not crash
 }
-
-TEST(DebugDrawTest, ApplyDebugFlagsWithoutInitIsNoOp) {
-    DebugDraw dd;
-    dd.setFlag(DebugDrawFlags::Wireframe, true);
-    dd.applyDebugFlags(); // should not crash without bgfx
-}
