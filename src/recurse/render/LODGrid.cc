@@ -1,6 +1,7 @@
 #include "recurse/render/LODGrid.hh"
 
 #include "fabric/log/Log.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <algorithm>
 #include <array>
@@ -16,22 +17,6 @@ struct MaterialTally {
     int weightedScore = 0;
     int sampleCount = 0;
 };
-
-int materialSemanticPriority(uint16_t materialId) {
-    switch (materialId) {
-        case simulation::material_ids::SAND:
-        case simulation::material_ids::GRAVEL:
-            return 4;
-        case simulation::material_ids::WATER:
-            return 3;
-        case simulation::material_ids::DIRT:
-            return 2;
-        case simulation::material_ids::STONE:
-            return 1;
-        default:
-            return 0;
-    }
-}
 
 void accumulateMaterialTally(std::array<MaterialTally, 8>& tallies, int& tallyCount, uint16_t materialId, int weight) {
     for (int i = 0; i < tallyCount; ++i) {
@@ -79,7 +64,7 @@ uint16_t reduceMaterialGroup(const LODSection& child, int clx, int cly, int clz)
     int bestPriority = -1;
     for (int i = 0; i < tallyCount; ++i) {
         const auto& tally = tallies[static_cast<size_t>(i)];
-        const int priority = materialSemanticPriority(tally.materialId);
+        const int priority = simulation::materialSemanticPriority(tally.materialId);
         const bool isBetter =
             tally.weightedScore > bestScore || (tally.weightedScore == bestScore && tally.sampleCount > bestCount) ||
             (tally.weightedScore == bestScore && tally.sampleCount == bestCount && priority > bestPriority) ||
