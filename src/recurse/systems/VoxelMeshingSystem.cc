@@ -173,13 +173,16 @@ recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
     output.vertices.reserve(1024);
     output.indices.reserve(1536);
 
-    std::array<uint16_t, K_CHUNK_SIZE * K_CHUNK_SIZE> mask{};
+    using recurse::simulation::K_MERGE_KEY_EMPTY;
+    using recurse::simulation::MergeKey;
+
+    std::array<MergeKey, K_CHUNK_SIZE * K_CHUNK_SIZE> mask{};
     std::array<bool, K_CHUNK_SIZE * K_CHUNK_SIZE> consumed{};
 
     for (int axis = 0; axis < K_FACE_AXIS_COUNT; ++axis) {
         for (bool positive : {false, true}) {
             for (int slice = 0; slice < K_CHUNK_SIZE; ++slice) {
-                mask.fill(recurse::simulation::material_ids::AIR);
+                mask.fill(K_MERGE_KEY_EMPTY);
                 consumed.fill(false);
 
                 for (int row = 0; row < K_CHUNK_SIZE; ++row) {
@@ -192,21 +195,21 @@ recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
                         if (isSolidVoxel(neighbor))
                             continue;
 
-                        mask[static_cast<size_t>(row * K_CHUNK_SIZE + col)] = cell.materialId;
+                        mask[static_cast<size_t>(row * K_CHUNK_SIZE + col)] = recurse::simulation::mergeKey(cell);
                     }
                 }
 
                 for (int row = 0; row < K_CHUNK_SIZE; ++row) {
                     for (int col = 0; col < K_CHUNK_SIZE; ++col) {
                         const size_t startIdx = static_cast<size_t>(row * K_CHUNK_SIZE + col);
-                        const uint16_t materialId = mask[startIdx];
-                        if (materialId == recurse::simulation::material_ids::AIR || consumed[startIdx])
+                        const MergeKey key = mask[startIdx];
+                        if (key == K_MERGE_KEY_EMPTY || consumed[startIdx])
                             continue;
 
                         int width = 1;
                         while (col + width < K_CHUNK_SIZE) {
                             const size_t idx = static_cast<size_t>(row * K_CHUNK_SIZE + col + width);
-                            if (mask[idx] != materialId || consumed[idx])
+                            if (!recurse::simulation::canMergeQuads(mask[idx], key) || consumed[idx])
                                 break;
                             ++width;
                         }
@@ -216,7 +219,7 @@ recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
                         while (row + height < K_CHUNK_SIZE && canGrow) {
                             for (int offset = 0; offset < width; ++offset) {
                                 const size_t idx = static_cast<size_t>((row + height) * K_CHUNK_SIZE + col + offset);
-                                if (mask[idx] != materialId || consumed[idx]) {
+                                if (!recurse::simulation::canMergeQuads(mask[idx], key) || consumed[idx]) {
                                     canGrow = false;
                                     break;
                                 }
@@ -231,7 +234,7 @@ recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
                             }
                         }
 
-                        emitGreedyQuad(output, axis, positive, slice, row, col, width, height, materialId);
+                        emitGreedyQuad(output, axis, positive, slice, row, col, width, height, key);
                     }
                 }
             }
@@ -527,7 +530,7 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
                         const auto cell = meshCtx.readLocal(lx, ly, lz, simGrid_);
                         const float density = recurse::simulation::isEmpty(cell) ? 0.0f : 1.0f;
                         densityGrid.set(baseX + lx, baseY + ly, baseZ + lz, density);
-                        materialGrid.set(baseX + lx, baseY + ly, baseZ + lz, cell.materialId);
+                        materialGrid.set(baseX + lx, baseY + ly, baseZ + lz, recurse::simulation::mergeKey(cell));
                     }
                 }
             }
