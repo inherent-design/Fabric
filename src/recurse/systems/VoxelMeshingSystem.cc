@@ -9,6 +9,7 @@
 #include "fabric/platform/JobScheduler.hh"
 #include "fabric/utils/Profiler.hh"
 #include "fabric/world/ChunkedGrid.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
@@ -43,7 +44,7 @@ constexpr std::string_view K_NEAR_CHUNK_MESHER_CONFIG_KEY = "voxel_meshing.near_
 constexpr int K_FACE_AXIS_COUNT = 3;
 
 bool isSolidVoxel(const recurse::simulation::VoxelCell& cell) {
-    return cell.materialId != recurse::simulation::material_ids::AIR;
+    return recurse::simulation::isOccupied(cell);
 }
 
 uint16_t unpackMaterialId(uint32_t packedMaterial) {
@@ -524,7 +525,7 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
                 for (int ly = -K_SAMPLE_MARGIN; ly <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++ly) {
                     for (int lx = -K_SAMPLE_MARGIN; lx <= K_CHUNK_SIZE + K_SAMPLE_MARGIN; ++lx) {
                         const auto cell = meshCtx.readLocal(lx, ly, lz, simGrid_);
-                        const float density = (cell.materialId == recurse::simulation::material_ids::AIR) ? 0.0f : 1.0f;
+                        const float density = recurse::simulation::isEmpty(cell) ? 0.0f : 1.0f;
                         densityGrid.set(baseX + lx, baseY + ly, baseZ + lz, density);
                         materialGrid.set(baseX + lx, baseY + ly, baseZ + lz, cell.materialId);
                     }

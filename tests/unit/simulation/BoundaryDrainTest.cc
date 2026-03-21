@@ -1,3 +1,4 @@
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include <gtest/gtest.h>
 
@@ -31,7 +32,7 @@ class BoundaryDrainTest : public ::testing::Test {
         for (int lz = 0; lz < K_CHUNK_SIZE; ++lz)
             for (int ly = 0; ly < K_CHUNK_SIZE; ++ly)
                 for (int lx = 0; lx < K_CHUNK_SIZE; ++lx)
-                    if (grid.readCell(bx + lx, by + ly, bz + lz).materialId != material_ids::AIR)
+                    if (isOccupied(grid.readCell(bx + lx, by + ly, bz + lz)))
                         ++count;
         return count;
     }

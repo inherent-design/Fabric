@@ -1,4 +1,5 @@
 #include "recurse/world/TestWorldGenerator.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <gtest/gtest.h>
@@ -333,7 +334,7 @@ TEST(TestWorldGenerator, BatchGeneration_EmptyChunksAboveGround) {
         ASSERT_NE(buf, nullptr);
         bool allAir = true;
         for (size_t i = 0; i < K_CHUNK_VOLUME; ++i) {
-            if ((*buf)[i].materialId != material_ids::AIR) {
+            if (isOccupied((*buf)[i])) {
                 allAir = false;
                 break;
             }

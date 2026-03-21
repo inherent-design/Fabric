@@ -1,4 +1,5 @@
 #include "recurse/simulation/FallingSandSystem.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include <algorithm>
 #include <bit>
@@ -44,16 +45,6 @@ VoxelCell FallingSandSystem::readCell(ChunkCoord pos, int lx, int ly, int lz, co
         return grid.readFromWriteBuffer(wx, wy, wz);
     }
     return ghosts.readGhost(pos, lx, ly, lz);
-}
-
-bool FallingSandSystem::canDisplace(VoxelCell mover, VoxelCell target) const {
-    if (target.materialId == material_ids::AIR)
-        return true;
-    const auto& targetDef = registry_.get(target.materialId);
-    if (targetDef.moveType == MoveType::Static)
-        return false;
-    const auto& moverDef = registry_.get(mover.materialId);
-    return moverDef.density > targetDef.density;
 }
 
 void FallingSandSystem::writeSwap(ChunkCoord pos, int srcLx, int srcLy, int srcLz, int dstLx, int dstLy, int dstLz,
@@ -102,22 +93,22 @@ bool FallingSandSystem::simulateGravity(ChunkCoord pos, SimulationGrid& grid, co
 
     return sweepChunk(reverseDir, [&](int lx, int ly, int lz) -> bool {
         VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
-        if (cell.materialId == material_ids::AIR)
+        if (isEmpty(cell))
             return false;
 
-        const auto& def = registry_.get(cell.materialId);
-        if (def.moveType == MoveType::Static || def.moveType == MoveType::Liquid)
+        const auto phase = cellPhase(registry_, cell);
+        if (phase == MoveType::Static || phase == MoveType::Liquid)
             return false;
 
         // Try direct fall (down = ly-1)
         VoxelCell below = readCell(pos, lx, ly - 1, lz, grid, ghosts);
-        if (canDisplace(cell, below)) {
+        if (canDisplace(registry_, cell, below)) {
             writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, grid, tracker, boundaryWrites, cellSwaps);
             return true;
         }
 
         // Powder diagonal cascade
-        if (def.moveType == MoveType::Powder) {
+        if (phase == MoveType::Powder) {
             struct Offset {
                 int dx, dy, dz;
             };
@@ -126,7 +117,7 @@ bool FallingSandSystem::simulateGravity(ChunkCoord pos, SimulationGrid& grid, co
 
             for (const auto& [dx, dy, dz] : diags) {
                 VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
-                if (canDisplace(cell, target)) {
+                if (canDisplace(registry_, cell, target)) {
                     writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker, boundaryWrites,
                               cellSwaps);
                     return true;
@@ -143,13 +134,13 @@ bool FallingSandSystem::simulateLiquid(ChunkCoord pos, SimulationGrid& grid, con
 
     return sweepChunk(reverseDir, [&](int lx, int ly, int lz) -> bool {
         VoxelCell cell = readCell(pos, lx, ly, lz, grid, ghosts);
-        const auto& def = registry_.get(cell.materialId);
-        if (def.moveType != MoveType::Liquid)
+        const auto phase = cellPhase(registry_, cell);
+        if (phase != MoveType::Liquid)
             return false;
 
         // 1. Gravity (same as powder)
         VoxelCell below = readCell(pos, lx, ly - 1, lz, grid, ghosts);
-        if (canDisplace(cell, below)) {
+        if (canDisplace(registry_, cell, below)) {
             writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, grid, tracker, boundaryWrites, cellSwaps);
             return true;
         }
@@ -163,7 +154,7 @@ bool FallingSandSystem::simulateLiquid(ChunkCoord pos, SimulationGrid& grid, con
 
         for (const auto& [dx, dy, dz] : diags) {
             VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
-            if (canDisplace(cell, target)) {
+            if (canDisplace(registry_, cell, target)) {
                 writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker, boundaryWrites,
                           cellSwaps);
                 return true;
@@ -176,7 +167,7 @@ bool FallingSandSystem::simulateLiquid(ChunkCoord pos, SimulationGrid& grid, con
 
         for (const auto& [dx, dy, dz] : horiz) {
             VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz, grid, ghosts);
-            if (target.materialId == material_ids::AIR) {
+            if (isEmpty(target)) {
                 writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, grid, tracker, boundaryWrites,
                           cellSwaps);
                 return true;

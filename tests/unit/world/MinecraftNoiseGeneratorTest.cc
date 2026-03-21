@@ -1,4 +1,5 @@
 #include "recurse/world/MinecraftNoiseGenerator.hh"
+#include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include <array>
@@ -38,7 +39,7 @@ class MinecraftNoiseGenTest : public ::testing::Test {
                 for (int ly = 0; ly < K_CHUNK; ++ly) {
                     for (int lx = 0; lx < K_CHUNK; ++lx) {
                         const int idx = lx + ly * K_CHUNK + lz * K_CHUNK * K_CHUNK;
-                        if (buffer[idx].materialId == material_ids::AIR)
+                        if (isEmpty(buffer[idx]))
                             continue;
                         actual = std::max(actual, baseY + ly);
                     }
