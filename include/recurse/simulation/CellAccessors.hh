@@ -6,12 +6,12 @@
 namespace recurse::simulation {
 
 /// True when the cell contains a non-AIR material.
-inline constexpr bool isOccupied(VoxelCell cell) {
+constexpr bool isOccupied(VoxelCell cell) {
     return cell.materialId != material_ids::AIR;
 }
 
 /// True when the cell is AIR (empty).
-inline constexpr bool isEmpty(VoxelCell cell) {
+constexpr bool isEmpty(VoxelCell cell) {
     return cell.materialId == material_ids::AIR;
 }
 
@@ -24,9 +24,9 @@ inline MoveType cellPhase(const MaterialRegistry& registry, VoxelCell cell) {
 inline bool canDisplace(const MaterialRegistry& registry, VoxelCell mover, VoxelCell target) {
     if (isEmpty(target))
         return true;
-    if (cellPhase(registry, target) == MoveType::Static)
-        return false;
     const auto& targetDef = registry.get(target.materialId);
+    if (targetDef.moveType == MoveType::Static)
+        return false;
     const auto& moverDef = registry.get(mover.materialId);
     return moverDef.density > targetDef.density;
 }
