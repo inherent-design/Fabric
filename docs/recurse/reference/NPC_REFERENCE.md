@@ -1,19 +1,9 @@
 # NPC Reference Guide - RECURSE
-*Complete Character Database with Stats, Behaviors, and Faction Details*
+> **Not yet implemented.** Design placeholder for a confirmed game feature. No NPC behavior, faction, or dialogue systems exist in the current codebase.
 
-## NPC Stat System Overview
+## Stat Model
 
-**Core Stats** (All values -1.0 to 1.0 except where noted):
-- **Fear/Courage**: Combat willingness and threat response
-- **Empathy/Apathy**: Cooperation and altruism levels  
-- **Health/Damage**: Current condition (0.0 to 1.0)
-- **Meta-Capability**: Function usage ability (0.0 to 1.0)
-
-**Derived Properties**:
-- **Threat Assessment**: How dangerous they perceive the player
-- **Faction Loyalty**: Strength of tribal bonds
-- **Aggression Level**: Likelihood to initiate combat
-- **Cooperation Chance**: Willingness to help others
+Core stats and behavioral state machine are defined in `systems/NPC_SYSTEM_DESIGN.md`. This document lists per-NPC stat values, equipment, and behavioral patterns.
 
 ---
 
@@ -542,4 +532,3 @@ KAREN_COLLECTIVE ++   +    -    0    -   +++
 - **Homeless-Civilian Alliance**: Forms against Karen harassment
 - **Multi-Faction Response**: Extreme player actions unite normally opposing factions
 
-This NPC system creates a living social ecosystem where player actions have cascading consequences across multiple interconnected communities.

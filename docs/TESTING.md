@@ -4,7 +4,7 @@
 
 Fabric uses GoogleTest for both unit and end-to-end coverage. The current tree contains:
 
-- `tests/unit/` with 147 `.cc` files spread across `core`, `fx`, `persistence`, `platform`, `simulation`, `ui`, `utils`, and `world`
+- `tests/unit/` with 151 `.cc` files spread across `core`, `fx`, `persistence`, `platform`, `simulation`, `ui`, `utils`, and `world`
 - `tests/e2e/FabricE2ETest.cc` for broad application validation
 - `tests/fixtures/` for reusable test fixtures such as `BgfxNoopFixture.hh` and `SDLFixture.hh`
 
@@ -97,13 +97,4 @@ As the combined Goal #4 plus meshing checkpoints land, testing should focus on:
 
 Benchmark automation should continue to get targeted startup and control-path tests because it is part of the real workflow, not a one-off tool.
 
-## Long-term testing direction
-
-As the repository moves toward ops-as-values, type-state, and centralized execution, the suite should increasingly add:
-
-- operation contract tests
-- executor and session boundary tests
-- engine and game boundary tests for multi-project readiness
-- narrow regression tests around reusable `fabric::` surfaces
-
-Until then, keep the tests grounded in the current implementation rather than documenting purely aspirational architecture.
+For architectural direction and how it shapes future testing, see [ARCHITECTURE.md](ARCHITECTURE.md).

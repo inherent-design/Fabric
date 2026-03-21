@@ -1,6 +1,8 @@
 # Game Loop: C-C-R-E
 
-*One continuous world. Levels are defined by spawning specific NPCs and environmental setups in the VOID.*
+> **Not yet implemented.** Design placeholder for a confirmed game feature.
+
+One continuous world. Levels are defined by spawning specific NPCs and environmental setups in the VOID.
 
 - **MENU:** Player is in the VOID. A single "Shatter" function starts the game.
 

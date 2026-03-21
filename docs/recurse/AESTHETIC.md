@@ -1,4 +1,6 @@
-# Aesthetic & Visual Language
+# Aesthetic and Visual Language
+
+> **Not yet implemented.** Design placeholder for a confirmed game feature.
 
 ## Quanta Field Rendering
 - **`DENSITY` Field:**
@@ -10,8 +12,8 @@
   - `ORDER` -> Cool Blues, Greys. Geometric, sharp-edged voxels.
   - `CHAOS` -> Reds, Purples. Jagged, unstable-looking voxels.
   - `LIFE` -> Greens, Browns. Organic, slightly rounded voxels.
-  - `DECAY` -> Dark browns, sickly yellows. "Crumbling" voxel effect.
+  - `DECAY` -> Dark browns, sickly yellows. Crumbling voxel effect.
 
 ## VFX
 - **Function Casting:** Player's hands emit colored light corresponding to the `BLOCKS` being used.
-- **Transformation:** Target NPC dissolves into colored `ESSENCE` particles, which then reform into the new shape over ~1.5 seconds.
+- **Transformation:** Target NPC dissolves into colored `ESSENCE` particles, which then reform into the new shape over approximately 1.5 seconds.

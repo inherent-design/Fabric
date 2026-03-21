@@ -71,38 +71,8 @@ A few Recurse headers are especially relevant to the active roadmap:
 
 - `recurse/world/MesherInterface.hh`
 - `recurse/world/FunctionContracts.hh`
-- `recurse/simulation/VoxelSemanticView.hh`
+- `recurse/simulation/` semantic surface: `MaterialSemanticRegistry`, `MaterialSemanticView`
 
 These are evolving rollout surfaces for the combined Goal #4 plus meshing checkpoint sequence. They should be treated as important, but not frozen.
 
-## Current production posture
-
-API decisions should preserve the current shipped stance:
-
-- Greedy meshing is the primary near-path production contract
-- SnapMC is optional and experimental behind the pluggable mesher boundary
-- the visual direction remains visibly voxel, not a forced smooth-surface conversion
-
-## Near-term API direction
-
-In the short term, expect the API surface to shift in ways that support:
-
-1. Greedy-path instrumentation and output cleanup
-2. semantic-query adapter introduction without behavior drift
-3. semantic boundary-change invalidation
-4. LOD policy alignment with the same semantic authority
-5. continued cleanup of engine versus game ownership
-
-The goal is not to churn public seams for style reasons. It is to make current production paths clearer and safer while the engine boundary improves.
-
-## Long-term direction
-
-Over the longer term, the repository aims for:
-
-- a cleaner `fabric::` API that another game can consume directly
-- ops-as-values and centralized execution for world access
-- type-state at important boundaries
-- a stronger distinction between reusable engine API and Recurse-only gameplay API
-- generated API docs later, once the curated surface is stable enough to publish
-
-That work is part of the larger multi-project readiness push: `fabric::` should become a clean engine boundary that additional games can adopt without inheriting Recurse-specific world or meshing assumptions.
+For architectural direction and production posture, see [ARCHITECTURE.md](ARCHITECTURE.md).

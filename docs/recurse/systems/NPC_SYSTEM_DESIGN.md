@@ -1,5 +1,5 @@
 # NPC System Design - RECURSE
-*Emergent Social Dynamics & Behavioral AI*
+> **Not yet implemented.** Design placeholder for a confirmed game feature. No NPC behavior, faction, memory, or social dynamics systems exist in the current codebase.
 
 ## Core Philosophy
 
@@ -365,4 +365,3 @@ void onEnvironmentalChange(Vector3 location, ChangeType change) {
 }
 ```
 
-This NPC system creates a living, breathing world where agents have genuine agency and create emergent narratives through their interactions with each other and the player. The behavior emerges from simple rules but creates complex, unpredictable social dynamics.

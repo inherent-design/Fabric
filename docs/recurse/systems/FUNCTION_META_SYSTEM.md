@@ -1,5 +1,5 @@
 # Function-Based Meta-Manipulation System - RECURSE
-*Reality Composition Through Procedural Generation Functions*
+> **Not yet implemented.** Design placeholder for a confirmed game feature. The function composition and execution engine described here has no corresponding code in the current codebase.
 
 ## Core Philosophy
 
@@ -670,4 +670,84 @@ private:
 };
 ```
 
-This function meta-system creates a deep, explorable space where players can discover emergent combinations and develop their own problem-solving approaches through systematic experimentation with reality manipulation.
+---
+
+# Mastery and Progression
+
+## Power Level Classification
+
+Functions are classified by power level:
+
+| Range | Tier | Description |
+|-------|------|-------------|
+| 0.1 to 0.3 | Basic | Single primitives, low cost |
+| 0.4 to 0.6 | Intermediate | Simple composites, moderate cost |
+| 0.7 to 0.9 | Advanced | Complex composites, high cost and stability requirement |
+| 1.0+ | Reality-Breaking | Meta-functions that violate conservation laws |
+
+## Function Mastery Levels
+
+Each function tracks a mastery value from 0.0 to 1.0, gained through successful use:
+
+| Level | Range | Effect |
+|-------|-------|--------|
+| Novice | 0.0 to 0.25 | Base costs, standard effects |
+| Apprentice | 0.25 to 0.50 | 10% cost reduction, minor effect improvements |
+| Adept | 0.50 to 0.75 | 20% cost reduction, moderate effect improvements |
+| Expert | 0.75 to 0.90 | 30% cost reduction, major effect improvements |
+| Master | 0.90 to 1.0 | 40% cost reduction, unique mastery effects |
+
+### Mastery Unlock Examples
+
+- **create_matter Mastery**: Exotic materials, complex shapes
+- **dilate_time Mastery**: Larger areas, time loops
+- **memory_probe Mastery**: Suppressed memories, false memory implanting
+- **system_override Mastery**: Temporary control of sentient entities
+
+## Function Discovery
+
+Functions are discovered through four channels:
+
+1. **Environmental Scanning**: Using data_sense on anomalous phenomena
+2. **Memory Archaeology**: Using memory_probe on significant locations
+3. **Experimental Combination**: Successfully combining functions in novel ways (tracked by `FunctionDiscovery::combination_knowledge`; unlocks at `UNLOCK_THRESHOLD` uses)
+4. **NPC Interaction**: Learning from other reality manipulators
+
+## Learning Progression
+
+The intended unlock sequence follows the function categories:
+
+1. **Basic Functions** (primitives 1 to 5): Learn individual capabilities
+2. **Simple Composites** (composites 6 to 9): Understand chaining
+3. **Complex Composites** (composites 10 to 12): Master parallel and recursive execution
+4. **Meta Functions** (13 to 15): Reality manipulation mastery
+
+---
+
+# Resource Management
+
+## Energy System
+
+- **Base Pool**: 100 energy points
+- **Regeneration**: 2.0 energy per second (base rate)
+- **Overcharge Penalty**: Using functions above energy capacity causes health damage
+- **Efficiency Scaling**: Higher mastery reduces energy costs
+
+## Stability Management
+
+- **Local Stability**: Each area has independent stability (0.0 to 1.0)
+- **Stability Regeneration**: 0.02 per second when no functions are active
+- **Cascade Failure**: Low stability areas can trigger chain reactions
+- **Anchor Points**: Some locations provide stability bonuses
+
+## NPC Response Scaling
+
+NPC reactions scale with observed function power level:
+
+| Player Power Level | NPC Response |
+|--------------------|-------------|
+| 0.1 to 0.3 | Minimal reaction |
+| 0.4 to 0.6 | Increased caution; some NPCs flee |
+| 0.7 to 0.8 | FBI investigation triggered |
+| 0.9+ | Terry spawn; reality enforcement response |
+
