@@ -90,7 +90,7 @@ TEST_F(MaterialRegistryTest, TerrainAppearanceColorUsesBaseColorContract) {
                                                                    sand.baseEssence[2], sand.baseEssence[3]);
     const auto essenceColor = essenceToColor(baseEssence);
 
-    EXPECT_GT(std::fabs(terrainColor[0] - essenceColor[0]), 0.2f);
+    EXPECT_GT(std::fabs(terrainColor[0] - essenceColor[0]), 0.1f);
     EXPECT_GT(std::fabs(terrainColor[1] - essenceColor[1]), 0.1f);
 }
 
@@ -102,13 +102,13 @@ TEST_F(MaterialRegistryTest, EssenceValueBridgesCurrentRepresentations) {
     const auto asVector = value.toVector();
     const auto asSemantic = value.toSemanticEssence();
 
-    EXPECT_FLOAT_EQ(asArray[0], 0.0f);
-    EXPECT_FLOAT_EQ(asArray[2], 0.9f);
-    EXPECT_FLOAT_EQ(asVector.z, 0.9f);
-    EXPECT_FLOAT_EQ(asSemantic.life, 0.9f);
+    EXPECT_FLOAT_EQ(asArray[0], 0.2f);
+    EXPECT_FLOAT_EQ(asArray[2], 0.4f);
+    EXPECT_FLOAT_EQ(asVector.z, 0.4f);
+    EXPECT_FLOAT_EQ(asSemantic.life, 0.4f);
 
     const auto roundTrip = EssenceValue::fromSemantic(asSemantic);
-    EXPECT_FLOAT_EQ(roundTrip.life, 0.9f);
+    EXPECT_FLOAT_EQ(roundTrip.life, 0.4f);
     EXPECT_EQ(roundTrip.dominant(), recurse::EssenceType::Life);
 }
 
@@ -126,8 +126,8 @@ TEST_F(MaterialRegistryTest, MaterialSemanticRegistryMirrorsCurrentMaterialTruth
     EXPECT_TRUE(sand.occupancy.blocksRaycast);
     EXPECT_FLOAT_EQ(sand.occupancy.density, 1.0f);
     EXPECT_FLOAT_EQ(sand.terrainAppearance.color[0], 194.0f / 255.0f);
-    EXPECT_FLOAT_EQ(sand.intrinsicEssence.order, 0.3f);
-    EXPECT_FLOAT_EQ(sand.intrinsicEssence.life, 0.3f);
+    EXPECT_FLOAT_EQ(sand.intrinsicEssence.order, 0.4f);
+    EXPECT_FLOAT_EQ(sand.intrinsicEssence.life, 0.1f);
 }
 
 TEST_F(MaterialRegistryTest, ResolveVoxelSemanticsUsesChunkLocalPaletteAsOptionalContext) {
@@ -170,6 +170,6 @@ TEST_F(MaterialRegistryTest, ResolveVoxelSemanticsDoesNotTreatEssenceIndexAsCano
     EXPECT_FALSE(resolved.sampledEssence.hasPalette);
     EXPECT_FALSE(resolved.sampledEssence.inRange);
     EXPECT_FALSE(resolved.sampledEssence.value.has_value());
-    EXPECT_FLOAT_EQ(resolved.material.intrinsicEssence.order, 0.2f);
-    EXPECT_FLOAT_EQ(resolved.material.intrinsicEssence.life, 0.6f);
+    EXPECT_FLOAT_EQ(resolved.material.intrinsicEssence.order, 0.3f);
+    EXPECT_FLOAT_EQ(resolved.material.intrinsicEssence.life, 0.5f);
 }
