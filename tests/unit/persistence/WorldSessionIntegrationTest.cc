@@ -749,6 +749,18 @@ TEST_F(WorldSessionPersistedDeltaReopenTest, ReopenDistinguishesResidentPersiste
     EXPECT_EQ(loadedMaterial(K_FAR_CX, K_FAR_CY, K_FAR_CZ), recurse::simulation::material_ids::STONE);
 }
 
+TEST_F(WorldSessionPersistedDeltaReopenTest, DetectsWorldgenVersionMismatchOnOpen) {
+    EXPECT_FALSE(session_->worldgenVersionMismatch());
+
+    session_.reset();
+    voxelSim_->resetWorld();
+    voxelSim_->setWorldSeed(1337);
+    terrain_->setWorldGenerator(std::make_unique<recurse::FlatWorldGenerator>(2));
+    openSession();
+
+    EXPECT_TRUE(session_->worldgenVersionMismatch());
+}
+
 TEST_F(WorldSessionPersistedDeltaReopenTest, ReopenFallsBackWhenGeneratorFingerprintChanges) {
     constexpr int K_CX = 1;
     constexpr int K_CY = 0;

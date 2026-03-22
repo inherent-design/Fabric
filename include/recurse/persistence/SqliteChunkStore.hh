@@ -58,6 +58,12 @@ class SqliteChunkStore : public ChunkStore {
     /// Set worldgen version for delta persistence. Bound to parameter 6 on save.
     void setWorldgenVersion(uint32_t version);
 
+    /// Store a uint32 value in the world_metadata table (writer connection, no mutex).
+    void setMetadata(const std::string& key, uint32_t value);
+
+    /// Read a uint32 value from the world_metadata table (reader connection, guarded by readerMutex_).
+    std::optional<uint32_t> getMetadataInt(const std::string& key) const;
+
   private:
     void openConnections(const std::string& dbPath);
     void configurePragmas(sqlite3* db);
@@ -84,6 +90,10 @@ class SqliteChunkStore : public ChunkStore {
     sqlite3_stmt* stmtHas_ = nullptr;
     sqlite3_stmt* stmtLoad_ = nullptr;
     sqlite3_stmt* stmtSize_ = nullptr;
+
+    // Metadata prepared statements
+    sqlite3_stmt* stmtSetMeta_ = nullptr; // writer (single-thread)
+    sqlite3_stmt* stmtGetMeta_ = nullptr; // reader (guarded by readerMutex_)
 
     // Exact set of saved chunk coordinates. Populated at open time from DB,
     // expanded after each successful COMMIT. Guarded by shared_mutex for

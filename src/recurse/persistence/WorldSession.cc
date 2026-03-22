@@ -98,8 +98,16 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
         worldgenVersion_ = worldGen_->worldgenFingerprint();
     }
 
-    if (worldgenVersion_ != 0)
+    if (worldgenVersion_ != 0) {
         store_->setWorldgenVersion(worldgenVersion_);
+
+        auto storedVersion = store_->getMetadataInt("worldgen_version");
+        if (storedVersion && *storedVersion != worldgenVersion_) {
+            worldgenVersionMismatch_ = true;
+            FABRIC_LOG_WARN("worldgen version mismatch: stored={} current={}", *storedVersion, worldgenVersion_);
+        }
+        store_->setMetadata("worldgen_version", worldgenVersion_);
+    }
 
     auto provider = [this](int cx, int cy, int cz) -> ChunkBlob {
         return encodeChunkBlob(cx, cy, cz);
@@ -205,10 +213,24 @@ WorldSession::~WorldSession() {
     // re-enabling eager generation dirty tracking.
     enqueueResidentChunksForShutdown();
 
-    // Step 3: Flush save service
+    // Step 3: Flush save service (with single retry on failure)
     if (saveService_) {
         FABRIC_ZONE_SCOPED_N("WorldSession::shutdownFlushSaveService");
-        saveService_->flush();
+        try {
+            saveService_->flush();
+        } catch (const std::exception& e) {
+            FABRIC_LOG_WARN("~WorldSession flush failed: {}; retrying once", e.what());
+            try {
+                saveService_->flush();
+            } catch (const std::exception& e2) {
+                FABRIC_LOG_ERROR("~WorldSession flush retry failed: {}", e2.what());
+            }
+        }
+
+        size_t remaining = saveService_->pendingCount();
+        if (remaining > 0) {
+            FABRIC_LOG_CRITICAL("~WorldSession: {} chunks remain unsaved after flush", remaining);
+        }
     }
 
     // Step 4: Flush transaction store (currently no-op)
@@ -314,11 +336,11 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
     if (!store_ || !simSystem_)
         return false;
 
-    std::optional<ChunkBlob> persistPendingBlob;
+    std::optional<ChunkSaveService::VersionedBlob> persistPending;
     if (saveService_)
-        persistPendingBlob = saveService_->copyPersistPendingBlob(cx, cy, cz);
+        persistPending = saveService_->copyPersistPendingBlob(cx, cy, cz);
 
-    if (!persistPendingBlob && !store_->hasChunk(cx, cy, cz)) {
+    if (!persistPending && !store_->hasChunk(cx, cy, cz)) {
         ++stats_.loadsDbMiss;
         return false;
     }
@@ -341,6 +363,10 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
     auto* worldGen = worldGen_;
     const auto* materials = simSystem_ ? &simSystem_->materials() : nullptr;
     const uint32_t currentWorldgenVersion = worldgenVersion_;
+
+    std::optional<ChunkBlob> persistPendingBlob;
+    if (persistPending)
+        persistPendingBlob = std::move(persistPending->blob);
 
     auto future = scheduler_.submit([storePtr, blob = std::move(persistPendingBlob), cx, cy, cz, buf, worldGen,
                                      materials, currentWorldgenVersion]() mutable -> AsyncLoadResult {
@@ -366,7 +392,7 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
 
                 auto delta = FchkCodec::decodeDelta(*blob);
                 if (currentWorldgenVersion != 0 && delta.worldgenVersion != currentWorldgenVersion) {
-                    FABRIC_LOG_WARN(
+                    FABRIC_LOG_ERROR(
                         "asyncLoad({},{},{}): delta worldgenVersion mismatch stored={} current={}; using fresh "
                         "reference fallback",
                         cx, cy, cz, delta.worldgenVersion, currentWorldgenVersion);
@@ -394,7 +420,7 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
         return r;
     });
 
-    PendingLoadMeta meta{bufIdx, generating};
+    PendingLoadMeta meta{bufIdx, generating, persistPending ? persistPending->version : 0};
     fabric::ChunkCoord coord{cx, cy, cz};
     if (!pendingLoads_.submit(coord, std::move(future), meta)) {
         simulation::cancelAndRemove(generating, registry);
@@ -429,6 +455,20 @@ std::vector<ops::CompletedLoad> WorldSession::pollPendingLoads() {
         }
 
         if (entry.result.success) {
+            if (meta.persistPendingVersion > 0 && saveService_) {
+                auto current = saveService_->copyPersistPendingBlob(cx, cy, cz);
+                if (current && current->version != meta.persistPendingVersion) {
+                    ++stats_.loadsStaleRedispatch;
+                    FABRIC_LOG_WARN("pollPendingLoads({},{},{}): stale prepared blob v{} != v{}, re-dispatching", cx,
+                                    cy, cz, meta.persistPendingVersion, current->version);
+                    auto& registry = simSystem_->simulationGrid().registry();
+                    simulation::cancelAndRemove(meta.generating, registry);
+                    simSystem_->activityTracker().remove(entry.key);
+                    dispatchAsyncLoad(cx, cy, cz);
+                    continue;
+                }
+            }
+
             ++stats_.loadsOk;
             auto& grid = simSystem_->simulationGrid();
             auto& registry = grid.registry();
@@ -781,18 +821,18 @@ void WorldSession::submit(ops::Tick op) {
 
     if (++stats_.ticks >= K_STATS_INTERVAL) {
         bool any = stats_.encodes > 0 || stats_.loadsDispatched > 0 || stats_.loadsDbMiss > 0 || stats_.loadsOk > 0 ||
-                   stats_.loadsFail > 0 || status.saveActivity.dirtyChunks > 0 ||
+                   stats_.loadsFail > 0 || stats_.loadsStaleRedispatch > 0 || status.saveActivity.dirtyChunks > 0 ||
                    status.saveActivity.savingChunks > 0 || status.saveActivity.preparedChunks > 0 ||
                    status.saveActivity.hasError;
         if (any) {
             const char* errorText = status.saveActivity.hasError ? status.saveActivity.lastError.c_str() : "none";
-            FABRIC_LOG_INFO("persistence: dir='{}' encodes={} ({}B, {}zeroDiff) loads={} ({}ok {}fail {}miss {}cancel) "
-                            "pendingLoads={} save(dirty={} saving={} prepared={} lastOk={} error={})",
-                            worldDir_, stats_.encodes, stats_.encodeBytes, stats_.zeroDiffEncodes,
-                            stats_.loadsDispatched, stats_.loadsOk, stats_.loadsFail, stats_.loadsDbMiss,
-                            stats_.loadsCancel, status.pendingLoads, status.saveActivity.dirtyChunks,
-                            status.saveActivity.savingChunks, status.saveActivity.preparedChunks,
-                            status.saveActivity.lastSuccessfulSerial, errorText);
+            FABRIC_LOG_INFO(
+                "persistence: dir='{}' encodes={} ({}B, {}zeroDiff) loads={} ({}ok {}fail {}miss {}cancel {}stale) "
+                "pendingLoads={} save(dirty={} saving={} prepared={} lastOk={} error={})",
+                worldDir_, stats_.encodes, stats_.encodeBytes, stats_.zeroDiffEncodes, stats_.loadsDispatched,
+                stats_.loadsOk, stats_.loadsFail, stats_.loadsDbMiss, stats_.loadsCancel, stats_.loadsStaleRedispatch,
+                status.pendingLoads, status.saveActivity.dirtyChunks, status.saveActivity.savingChunks,
+                status.saveActivity.preparedChunks, status.saveActivity.lastSuccessfulSerial, errorText);
         }
         stats_ = {};
     }

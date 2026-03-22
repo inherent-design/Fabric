@@ -61,8 +61,13 @@ class ChunkSaveService {
     /// Returns true if a chunk has unload-time persistence pending or in flight.
     bool hasPersistPending(int cx, int cy, int cz) const;
 
-    /// Returns a copy of the pending unload-time blob, if present.
-    std::optional<ChunkBlob> copyPersistPendingBlob(int cx, int cy, int cz) const;
+    struct VersionedBlob {
+        ChunkBlob blob;
+        uint64_t version;
+    };
+
+    /// Returns a copy of the pending unload-time blob with its version, if present.
+    std::optional<VersionedBlob> copyPersistPendingBlob(int cx, int cy, int cz) const;
 
     /// Number of chunks currently awaiting save.
     size_t pendingCount() const;
@@ -91,6 +96,7 @@ class ChunkSaveService {
         ChunkBlob blob;
         bool saving{false};
         bool resaveRequested{false};
+        uint64_t version{0};
     };
 
     using ChunkKey = int64_t;
@@ -106,6 +112,7 @@ class ChunkSaveService {
     mutable std::mutex mutex_;
     std::unordered_map<ChunkKey, DirtyEntry> dirty_;
     std::unordered_map<ChunkKey, PreparedEntry> prepared_;
+    uint64_t nextPreparedVersion_{1};
     uint64_t nextBatchSerial_ = 0;
     uint64_t lastStartedSerial_ = 0;
     uint64_t lastCompletedSerial_ = 0;

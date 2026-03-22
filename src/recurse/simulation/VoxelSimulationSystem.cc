@@ -86,7 +86,7 @@ void VoxelSimulationSystem::tick() {
             } else {
                 auto* slot = grid_.registry().find(pos.x, pos.y, pos.z);
                 if (slot)
-                    slot->copyCountdown = ChunkBuffers::K_COUNT - 1;
+                    slot->copyCountdown.store(ChunkBuffers::K_COUNT - 1, std::memory_order_relaxed);
             }
         });
     }

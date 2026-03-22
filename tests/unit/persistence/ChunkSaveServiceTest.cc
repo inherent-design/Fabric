@@ -1,8 +1,10 @@
 #include "recurse/persistence/ChunkSaveService.hh"
 
 #include "fabric/platform/WriterQueue.hh"
+#include "recurse/persistence/ChunkStore.hh"
 #include "recurse/persistence/FchkCodec.hh"
 #include "recurse/persistence/SqliteChunkStore.hh"
+#include <atomic>
 #include <filesystem>
 #include <future>
 #include <gtest/gtest.h>
@@ -315,6 +317,38 @@ TEST_F(ChunkSaveServiceTest, DebounceCoalescesDirtyChunksIntoOneBatchCadence) {
     EXPECT_EQ(snapshot.lastSuccessfulSerial, 1u);
 }
 
+TEST_F(ChunkSaveServiceTest, PreparedVersionIncrementsOnOverwrite) {
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
+
+    svc.enqueuePrepared(1, 2, 3, makeFakeBlob(0x11));
+    auto v1 = svc.copyPersistPendingBlob(1, 2, 3);
+    ASSERT_TRUE(v1.has_value());
+    EXPECT_GT(v1->version, 0u);
+
+    svc.enqueuePrepared(1, 2, 3, makeFakeBlob(0x22));
+    auto v2 = svc.copyPersistPendingBlob(1, 2, 3);
+    ASSERT_TRUE(v2.has_value());
+    EXPECT_GT(v2->version, v1->version);
+
+    svc.enqueuePrepared(4, 5, 6, makeFakeBlob(0x33));
+    auto v3 = svc.copyPersistPendingBlob(4, 5, 6);
+    ASSERT_TRUE(v3.has_value());
+    EXPECT_GT(v3->version, v2->version);
+}
+
+TEST_F(ChunkSaveServiceTest, CopyPersistPendingBlobReturnsVersionedBlob) {
+    recurse::ChunkSaveService svc(*store_, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
+
+    auto empty = svc.copyPersistPendingBlob(0, 0, 0);
+    EXPECT_FALSE(empty.has_value());
+
+    svc.enqueuePrepared(0, 0, 0, makeFakeBlob(0x42));
+    auto result = svc.copyPersistPendingBlob(0, 0, 0);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_FALSE(result->blob.empty());
+    EXPECT_GT(result->version, 0u);
+}
+
 TEST_F(ChunkSaveServiceTest, ActivitySnapshotRetainsFailureAndRequeuesPreparedBlobs) {
     recurse::ChunkSaveService svc(
         *store_, writerQueue_, [&](int, int, int) -> recurse::ChunkBlob { throw std::runtime_error("save failed"); });
@@ -339,4 +373,91 @@ TEST_F(ChunkSaveServiceTest, ActivitySnapshotRetainsFailureAndRequeuesPreparedBl
     EXPECT_TRUE(snapshot.hasError);
     EXPECT_EQ(snapshot.lastError, "save failed");
     EXPECT_FALSE(store_->hasChunk(1, 2, 3));
+}
+
+// ---------------------------------------------------------------------------
+// Throwing store for retry tests
+// ---------------------------------------------------------------------------
+
+namespace {
+
+class ThrowingChunkStore : public recurse::ChunkStore {
+  public:
+    explicit ThrowingChunkStore(recurse::ChunkStore& delegate) : delegate_(delegate) {}
+
+    std::atomic<int> failCount{0}; // saveBatch throws until failCount reaches 0
+
+    bool hasChunk(int cx, int cy, int cz) const override { return delegate_.hasChunk(cx, cy, cz); }
+    std::optional<recurse::ChunkBlob> loadChunk(int cx, int cy, int cz) const override {
+        return delegate_.loadChunk(cx, cy, cz);
+    }
+    void saveChunk(int cx, int cy, int cz, const recurse::ChunkBlob& data) override {
+        delegate_.saveChunk(cx, cy, cz, data);
+    }
+    size_t chunkSize(int cx, int cy, int cz) const override { return delegate_.chunkSize(cx, cy, cz); }
+    std::vector<std::pair<fabric::ChunkCoord, recurse::ChunkBlob>>
+    loadBatch(const std::vector<fabric::ChunkCoord>& coords) const override {
+        return delegate_.loadBatch(coords);
+    }
+    void saveBatch(const std::vector<std::pair<fabric::ChunkCoord, recurse::ChunkBlob>>& entries) override {
+        int prev = failCount.fetch_sub(1);
+        if (prev > 0)
+            throw std::runtime_error("transient disk error");
+        delegate_.saveBatch(entries);
+    }
+
+  private:
+    recurse::ChunkStore& delegate_;
+};
+
+} // namespace
+
+// ---------------------------------------------------------------------------
+// Retry tests
+// ---------------------------------------------------------------------------
+
+TEST_F(ChunkSaveServiceTest, FlushRetriesOnTransientFailure) {
+    ThrowingChunkStore throwing(*store_);
+    recurse::ChunkSaveService svc(throwing, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
+
+    svc.markDirty(0, 0, 0);
+
+    // First saveBatch call throws, retry succeeds
+    throwing.failCount = 1;
+    EXPECT_NO_THROW(svc.flush());
+
+    EXPECT_EQ(svc.pendingCount(), 0u);
+    EXPECT_TRUE(store_->hasChunk(0, 0, 0));
+}
+
+TEST_F(ChunkSaveServiceTest, FlushThrowsAfterRetryExhausted) {
+    ThrowingChunkStore throwing(*store_);
+    recurse::ChunkSaveService svc(throwing, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
+
+    svc.markDirty(0, 0, 0);
+
+    // Both attempts fail (2 failures = first + retry both throw)
+    throwing.failCount = 2;
+    EXPECT_THROW(svc.flush(), std::runtime_error);
+
+    // Data still pending since both attempts failed
+    EXPECT_GT(svc.pendingCount(), 0u);
+    EXPECT_FALSE(store_->hasChunk(0, 0, 0));
+
+    auto snapshot = svc.activitySnapshot();
+    EXPECT_TRUE(snapshot.hasError);
+}
+
+TEST_F(ChunkSaveServiceTest, FlushRetryAlsoWorksPreparedEntries) {
+    ThrowingChunkStore throwing(*store_);
+    recurse::ChunkSaveService svc(throwing, writerQueue_, [&](int, int, int) { return makeFakeBlob(); });
+
+    svc.enqueuePrepared(2, 3, 4, makeFakeBlob(0xBB));
+
+    // First attempt fails, retry succeeds
+    throwing.failCount = 1;
+    EXPECT_NO_THROW(svc.flush());
+
+    EXPECT_EQ(svc.pendingCount(), 0u);
+    EXPECT_TRUE(store_->hasChunk(2, 3, 4));
 }

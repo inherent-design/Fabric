@@ -90,6 +90,7 @@ void ChunkSaveService::enqueuePrepared(int cx, int cy, int cz, ChunkBlob blob) {
     auto [it, inserted] = prepared_.try_emplace(key, PreparedEntry{fabric::ChunkCoord{cx, cy, cz}, {}, false, false});
     it->second.coord = fabric::ChunkCoord{cx, cy, cz};
     it->second.blob = std::move(blob);
+    it->second.version = nextPreparedVersion_++;
     if (inserted || !it->second.saving) {
         it->second.saving = false;
         it->second.resaveRequested = false;
@@ -106,12 +107,12 @@ bool ChunkSaveService::hasPersistPending(int cx, int cy, int cz) const {
     return prepared_.contains(makeKey(cx, cy, cz));
 }
 
-std::optional<ChunkBlob> ChunkSaveService::copyPersistPendingBlob(int cx, int cy, int cz) const {
+std::optional<ChunkSaveService::VersionedBlob> ChunkSaveService::copyPersistPendingBlob(int cx, int cy, int cz) const {
     std::lock_guard lock(mutex_);
     auto it = prepared_.find(makeKey(cx, cy, cz));
     if (it == prepared_.end())
         return std::nullopt;
-    return it->second.blob;
+    return VersionedBlob{it->second.blob, it->second.version};
 }
 
 void ChunkSaveService::flush() {
@@ -162,7 +163,13 @@ void ChunkSaveService::flush() {
             entries.push_back(entry);
 
         if (!entries.empty()) {
-            store_.saveBatch(entries);
+            try {
+                store_.saveBatch(entries);
+            } catch (const std::exception& firstEx) {
+                FABRIC_LOG_WARN("ChunkSaveService: flush batch failed serial={}: {}; retrying once", batchSerial,
+                                firstEx.what());
+                store_.saveBatch(entries); // retry; throws on second failure
+            }
         }
 
         std::lock_guard lock(mutex_);
@@ -178,11 +185,13 @@ void ChunkSaveService::flush() {
         lastCompletedSerial_ = batchSerial;
         lastError_ = ex.what();
         FABRIC_LOG_ERROR("ChunkSaveService: flush failed serial={}: {}", batchSerial, ex.what());
+        throw;
     } catch (...) {
         std::lock_guard lock(mutex_);
         lastCompletedSerial_ = batchSerial;
         lastError_ = "unknown error";
         FABRIC_LOG_ERROR("ChunkSaveService: flush failed serial={} with unknown error", batchSerial);
+        throw;
     }
 }
 

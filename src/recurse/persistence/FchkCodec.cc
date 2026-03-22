@@ -21,6 +21,11 @@ ChunkBlob FchkCodec::encode(const void* cells, size_t cellsByteCount, uint8_t co
     // Build uncompressed post-header region: voxel payload + paletteCount + palette entries
     ChunkBlob postHeader(postHeaderSize);
     std::memcpy(postHeader.data_ptr(), cells, cellsByteCount);
+
+    constexpr uint8_t K_RUNTIME_FLAGS_MASK = static_cast<uint8_t>(~(0x08 | 0x10));
+    for (size_t i = 2; i < cellsByteCount; i += 4)
+        postHeader.data_ptr()[i] &= K_RUNTIME_FLAGS_MASK;
+
     std::memcpy(postHeader.data_ptr() + cellsByteCount, &paletteEntryCount, sizeof(uint16_t));
     if (paletteByteCount > 0) {
         std::memcpy(postHeader.data_ptr() + cellsByteCount + sizeof(uint16_t), paletteData, paletteByteCount);
@@ -144,9 +149,9 @@ FchkDecoded FchkCodec::decode(const ChunkBlob& blob) {
     result.cells.assign(postHeader, postHeader + cellsByteCount);
 
     // Clear runtime flags: bits 3-4 of phaseAndFlags (byte 2 of each cell)
-    constexpr uint8_t kRuntimeFlagsMask = static_cast<uint8_t>(~(0x08 | 0x10));
+    constexpr uint8_t K_RUNTIME_FLAGS_MASK = static_cast<uint8_t>(~(0x08 | 0x10));
     for (size_t i = 2; i < result.cells.size(); i += 4)
-        result.cells[i] &= kRuntimeFlagsMask;
+        result.cells[i] &= K_RUNTIME_FLAGS_MASK;
 
     // Parse palette section after voxel payload
     const size_t paletteSectionOffset = cellsByteCount;
@@ -185,12 +190,12 @@ ChunkBlob FchkCodec::encodeDelta(const void* currentCells, const void* reference
     // phaseAndFlags in byte 2 (LE). Runtime flags occupy bits 3-4 of that byte
     // (bits 19-20 of the uint32_t). Clear them before diffing so simulation-touched
     // cells that are otherwise unchanged produce no false diff.
-    constexpr uint32_t kPersistMask = 0xFF'E7'FF'FF;
+    constexpr uint32_t K_PERSIST_MASK = 0xFF'E7'FF'FF;
 
     std::vector<FchkDeltaEntry> diffs;
     for (size_t i = 0; i < cellCount; ++i) {
-        uint32_t c = cur[i] & kPersistMask;
-        uint32_t r = ref[i] & kPersistMask;
+        uint32_t c = cur[i] & K_PERSIST_MASK;
+        uint32_t r = ref[i] & K_PERSIST_MASK;
         if (c != r) {
             diffs.push_back({static_cast<uint32_t>(i), c});
         }
@@ -361,10 +366,10 @@ FchkDeltaDecoded FchkCodec::decodeDelta(const ChunkBlob& blob) {
     cursor += entriesBytes;
 
     // Clear runtime flags: bits 3-4 of phaseAndFlags (byte 2 of each cell)
-    constexpr uint8_t kRuntimeFlagsMask = static_cast<uint8_t>(~(0x08 | 0x10));
+    constexpr uint8_t K_RUNTIME_FLAGS_MASK = static_cast<uint8_t>(~(0x08 | 0x10));
     for (auto& e : result.entries) {
         auto* bytes = reinterpret_cast<uint8_t*>(&e.cellData);
-        bytes[2] &= kRuntimeFlagsMask;
+        bytes[2] &= K_RUNTIME_FLAGS_MASK;
     }
 
     // Parse palette section
@@ -402,9 +407,9 @@ FchkDecoded FchkCodec::decodeAny(const ChunkBlob& blob, const void* refCells) {
     std::memcpy(result.cells.data(), refCells, cellsByteCount);
 
     // Clear runtime flags on reference cells (phaseAndFlags in byte 2)
-    constexpr uint8_t kRuntimeFlagsMask = static_cast<uint8_t>(~(0x08 | 0x10));
+    constexpr uint8_t K_RUNTIME_FLAGS_MASK = static_cast<uint8_t>(~(0x08 | 0x10));
     for (size_t i = 2; i < result.cells.size(); i += 4)
-        result.cells[i] &= kRuntimeFlagsMask;
+        result.cells[i] &= K_RUNTIME_FLAGS_MASK;
 
     // Apply delta entries (already have runtime flags cleared from decodeDelta)
     for (const auto& e : delta.entries) {

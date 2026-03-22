@@ -5,6 +5,7 @@
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/EssencePalette.hh"
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <tuple>
@@ -47,7 +48,7 @@ struct ChunkSlot {
     /// boundary drain, voxel interaction), set to K_COUNT-1. advanceEpoch
     /// copies write->next_write_target and decrements. After K_COUNT-1 clean
     /// epochs, all buffers converge and no further copies occur.
-    uint8_t copyCountdown{0};
+    std::atomic<uint8_t> copyCountdown{0};
 
     void materialize() { simBuffers.materialize(); }
     bool isMaterialized() const { return simBuffers.isMaterialized(); }

@@ -184,6 +184,8 @@ void SqliteChunkStore::prepareStatements() {
     stmtSize_ = prepareOne(readerDb_, "SELECT length(data) FROM chunk_state WHERE cx=?1 AND cy=?2 AND cz=?3");
     stmtSave_ = prepareOne(writerDb_, "INSERT OR REPLACE INTO chunk_state (cx, cy, cz, data, updated_at, "
                                       "worldgen_version) VALUES (?1, ?2, ?3, ?4, ?5, ?6)");
+    stmtSetMeta_ = prepareOne(writerDb_, "INSERT OR REPLACE INTO world_metadata (key, value_int) VALUES (?1, ?2)");
+    stmtGetMeta_ = prepareOne(readerDb_, "SELECT value_int FROM world_metadata WHERE key = ?1");
 }
 
 void SqliteChunkStore::finalizeStatements() {
@@ -202,6 +204,14 @@ void SqliteChunkStore::finalizeStatements() {
     if (stmtSave_) {
         sqlite3_finalize(stmtSave_);
         stmtSave_ = nullptr;
+    }
+    if (stmtSetMeta_) {
+        sqlite3_finalize(stmtSetMeta_);
+        stmtSetMeta_ = nullptr;
+    }
+    if (stmtGetMeta_) {
+        sqlite3_finalize(stmtGetMeta_);
+        stmtGetMeta_ = nullptr;
     }
 }
 
@@ -258,6 +268,30 @@ bool SqliteChunkStore::isInSavedRegion(int cx, int cy, int cz) const {
 
 void SqliteChunkStore::setWorldgenVersion(uint32_t version) {
     worldgenVersion_ = version;
+}
+
+void SqliteChunkStore::setMetadata(const std::string& key, uint32_t value) {
+    sqlite3_bind_text(stmtSetMeta_, 1, key.c_str(), static_cast<int>(key.size()), SQLITE_STATIC);
+    sqlite3_bind_int(stmtSetMeta_, 2, static_cast<int>(value));
+
+    int rc = sqlite3_step(stmtSetMeta_);
+    resetStmt(stmtSetMeta_);
+
+    if (rc != SQLITE_DONE) {
+        FABRIC_LOG_ERROR("setMetadata('{}', {}) failed: {}", key, value, sqlite3_errmsg(writerDb_));
+    }
+}
+
+std::optional<uint32_t> SqliteChunkStore::getMetadataInt(const std::string& key) const {
+    std::lock_guard lock(readerMutex_);
+    sqlite3_bind_text(stmtGetMeta_, 1, key.c_str(), static_cast<int>(key.size()), SQLITE_STATIC);
+
+    std::optional<uint32_t> result;
+    if (sqlite3_step(stmtGetMeta_) == SQLITE_ROW) {
+        result = static_cast<uint32_t>(sqlite3_column_int(stmtGetMeta_, 0));
+    }
+    resetStmt(stmtGetMeta_);
+    return result;
 }
 
 void SqliteChunkStore::expandBounds(int cx, int cy, int cz) {
@@ -321,7 +355,10 @@ void SqliteChunkStore::saveChunk(int cx, int cy, int cz, const ChunkBlob& data) 
     resetStmt(stmtSave_);
 
     if (rc != SQLITE_DONE) {
-        FABRIC_LOG_ERROR("saveChunk({},{},{}) failed: {}", cx, cy, cz, sqlite3_errmsg(writerDb_));
+        std::string msg = "saveChunk(" + std::to_string(cx) + "," + std::to_string(cy) + "," + std::to_string(cz) +
+                          ") failed: " + sqlite3_errmsg(writerDb_);
+        FABRIC_LOG_ERROR("{}", msg);
+        fabric::throwError(msg);
     } else {
         expandBounds(cx, cy, cz);
     }
@@ -384,10 +421,11 @@ void SqliteChunkStore::saveBatch(const std::vector<std::pair<fabric::ChunkCoord,
         resetStmt(stmtSave_);
 
         if (rc != SQLITE_DONE) {
-            FABRIC_LOG_ERROR("saveBatch: chunk ({},{},{}) failed: {}", coord.x, coord.y, coord.z,
-                             sqlite3_errmsg(writerDb_));
+            std::string msg = "saveBatch: chunk (" + std::to_string(coord.x) + "," + std::to_string(coord.y) + "," +
+                              std::to_string(coord.z) + ") failed: " + sqlite3_errmsg(writerDb_);
             sqlite3_exec(writerDb_, "ROLLBACK", nullptr, nullptr, nullptr);
-            return;
+            FABRIC_LOG_ERROR("{}", msg);
+            fabric::throwError(msg);
         }
     }
 

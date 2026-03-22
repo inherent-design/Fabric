@@ -69,6 +69,7 @@ TEST_F(SqliteChunkStoreTest, SchemaCreation) {
     EXPECT_TRUE(tableExists("change_log"));
     EXPECT_TRUE(tableExists("chunk_snapshot"));
     EXPECT_TRUE(tableExists("schema_version"));
+    EXPECT_TRUE(tableExists("world_metadata"));
 
     // Verify 3 indexes exist.
     auto indexExists = [&](const char* name) -> bool {
@@ -273,6 +274,40 @@ TEST_F(SqliteChunkStoreTest, SchemaDowngradeRefused) {
         threwException = true;
     }
     EXPECT_TRUE(threwException) << "SqliteChunkStore should throw when schema version is newer than supported";
+}
+
+TEST_F(SqliteChunkStoreTest, MigrationCreatesWorldMetadataTable) {
+    { recurse::SqliteChunkStore store(worldDir()); }
+
+    std::string dbPath = worldDir() + "/world.db";
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open(dbPath.c_str(), &db), SQLITE_OK);
+
+    sqlite3_stmt* s = nullptr;
+    sqlite3_prepare_v2(db, "SELECT 1 FROM sqlite_master WHERE type='table' AND name='world_metadata'", -1, &s, nullptr);
+    bool found = (sqlite3_step(s) == SQLITE_ROW);
+    sqlite3_finalize(s);
+    sqlite3_close(db);
+
+    EXPECT_TRUE(found);
+}
+
+TEST_F(SqliteChunkStoreTest, WorldgenVersionPersistedInMetadata) {
+    {
+        recurse::SqliteChunkStore store(worldDir());
+        store.setMetadata("worldgen_version", 12345);
+    }
+
+    recurse::SqliteChunkStore store2(worldDir());
+    auto value = store2.getMetadataInt("worldgen_version");
+    ASSERT_TRUE(value.has_value());
+    EXPECT_EQ(*value, 12345u);
+}
+
+TEST_F(SqliteChunkStoreTest, GetMetadataIntReturnsNulloptForMissingKey) {
+    recurse::SqliteChunkStore store(worldDir());
+    auto value = store.getMetadataInt("nonexistent_key");
+    EXPECT_FALSE(value.has_value());
 }
 
 TEST_F(SqliteChunkStoreTest, NegativeCoordinates) {

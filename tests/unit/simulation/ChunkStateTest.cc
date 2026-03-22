@@ -131,5 +131,5 @@ TEST_F(ChunkStateTest, ActiveRefCanMarkDirty) {
     // copyCountdown should be K_COUNT - 1 = 2
     auto* slot = registry.find(0, 0, 0);
     ASSERT_NE(slot, nullptr);
-    EXPECT_EQ(slot->copyCountdown, ChunkBuffers::K_COUNT - 1);
+    EXPECT_EQ(slot->copyCountdown.load(std::memory_order_relaxed), ChunkBuffers::K_COUNT - 1);
 }

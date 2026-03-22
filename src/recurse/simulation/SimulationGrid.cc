@@ -46,7 +46,7 @@ void SimulationGrid::writeCell(int wx, int wy, int wz, VoxelCell cell) {
         slot.materialize();
     int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
     (*slot.simBuffers.buffers[writeIndex()])[idx] = cell;
-    slot.copyCountdown = ChunkBuffers::K_COUNT - 1;
+    slot.copyCountdown.store(ChunkBuffers::K_COUNT - 1, std::memory_order_relaxed);
 }
 
 bool SimulationGrid::writeCellIfExists(int wx, int wy, int wz, VoxelCell cell) {
@@ -59,7 +59,7 @@ bool SimulationGrid::writeCellIfExists(int wx, int wy, int wz, VoxelCell cell) {
         return false;
     int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
     (*slot->simBuffers.buffers[writeIndex()])[idx] = cell;
-    slot->copyCountdown = ChunkBuffers::K_COUNT - 1;
+    slot->copyCountdown.store(ChunkBuffers::K_COUNT - 1, std::memory_order_relaxed);
     return true;
 }
 
@@ -86,7 +86,7 @@ void SimulationGrid::syncChunkBuffersFrom(int cx, int cy, int cz, int srcBufferI
         if (i != srcBufferIndex)
             *slot->simBuffers.buffers[i] = *slot->simBuffers.buffers[srcBufferIndex];
     }
-    slot->copyCountdown = 0;
+    slot->copyCountdown.store(0, std::memory_order_relaxed);
 }
 
 void SimulationGrid::advanceEpoch() {
@@ -95,10 +95,11 @@ void SimulationGrid::advanceEpoch() {
     int dst = static_cast<int>((epoch_ + 2) % ChunkBuffers::K_COUNT);
     int copyCount = 0;
     registry_.forEachMaterialized([src, dst, &copyCount](ChunkSlot& slot) {
-        if (slot.copyCountdown == 0)
+        auto cd = slot.copyCountdown.load(std::memory_order_relaxed);
+        if (cd == 0)
             return;
         *slot.simBuffers.buffers[dst] = *slot.simBuffers.buffers[src];
-        --slot.copyCountdown;
+        slot.copyCountdown.store(cd - 1, std::memory_order_relaxed);
         ++copyCount;
     });
     FABRIC_ZONE_VALUE(static_cast<int64_t>(copyCount));

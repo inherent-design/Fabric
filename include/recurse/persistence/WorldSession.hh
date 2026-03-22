@@ -88,6 +88,7 @@ class WorldSession {
     struct PendingLoadMeta {
         int bufferIndex = 0;
         simulation::ChunkRef<simulation::Generating> generating;
+        uint64_t persistPendingVersion{0};
     };
 
     struct RuntimeStatusSnapshot {
@@ -123,6 +124,7 @@ class WorldSession {
     persistence::ReplayExecutor* replayExecutor() const;
     RuntimeStatusSnapshot runtimeStatusSnapshot() const;
     const std::string& worldDir() const { return worldDir_; }
+    bool worldgenVersionMismatch() const { return worldgenVersionMismatch_; }
 
     auto& chunkEntities() { return chunkEntities_; }
     const auto& chunkEntities() const { return chunkEntities_; }
@@ -248,6 +250,7 @@ class WorldSession {
     // Delta persistence (v3 codec)
     WorldGenerator* worldGen_ = nullptr;
     uint32_t worldgenVersion_{0};
+    bool worldgenVersionMismatch_{false};
 
     // Accumulated diagnostics (emitted periodically in submit(Tick))
     struct PersistenceStats {
@@ -259,6 +262,7 @@ class WorldSession {
         int loadsOk = 0;
         int loadsFail = 0;
         int loadsCancel = 0;
+        int loadsStaleRedispatch = 0;
         int ticks = 0;
     };
     PersistenceStats stats_{};

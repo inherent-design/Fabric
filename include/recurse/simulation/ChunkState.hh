@@ -132,7 +132,7 @@ template <typename State> class ChunkRef {
     void markDirty()
         requires std::is_same_v<State, Active>
     {
-        slot_->copyCountdown = ChunkBuffers::K_COUNT - 1;
+        slot_->copyCountdown.store(ChunkBuffers::K_COUNT - 1, std::memory_order_relaxed);
     }
 
     // -- Draining: coord-only (no additional API) --
