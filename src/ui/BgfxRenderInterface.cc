@@ -9,6 +9,8 @@
 
 #include <bx/math.h>
 
+#include <cstring>
+
 // Compiled SPIR-V shader bytecode generated at build time from .sc sources.
 #include "spv/fs_rmlui.sc.bin.h"
 #include "spv/vs_rmlui.sc.bin.h"
@@ -88,19 +90,18 @@ Rml::CompiledGeometryHandle BgfxRenderInterface::CompileGeometry(Rml::Span<const
                                                                  Rml::Span<const int> indices) {
     FABRIC_ZONE_SCOPED;
 
+    auto vbBytes = static_cast<uint32_t>(vertices.size() * sizeof(Rml::Vertex));
+    auto ibBytes = static_cast<uint32_t>(indices.size() * sizeof(int));
+
     CompiledGeom geom;
-    geom.vbh.reset(bgfx::createVertexBuffer(
-        bgfx::copy(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(Rml::Vertex))), layout_));
-    geom.ibh.reset(bgfx::createIndexBuffer(
-        bgfx::copy(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(int))), BGFX_BUFFER_INDEX32));
+    geom.vertexData.resize(vbBytes);
+    std::memcpy(geom.vertexData.data(), vertices.data(), vbBytes);
 
-    if (!geom.vbh.isValid() || !geom.ibh.isValid()) {
-        FABRIC_LOG_RENDER_ERROR("CompileGeometry: buffer creation failed vb={} ib={} (vertices={}, indices={})",
-                                geom.vbh.get().idx, geom.ibh.get().idx, vertices.size(), indices.size());
-        return Rml::CompiledGeometryHandle(0);
-    }
+    geom.indexData.resize(ibBytes);
+    std::memcpy(geom.indexData.data(), indices.data(), ibBytes);
 
-    geom.indexCount = static_cast<uint32_t>(indices.size());
+    geom.numVertices = static_cast<uint32_t>(vertices.size());
+    geom.numIndices = static_cast<uint32_t>(indices.size());
 
     auto handle = nextGeomHandle_++;
     geometries_[handle] = std::move(geom);
@@ -117,10 +118,22 @@ void BgfxRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, R
 
     const auto& geom = it->second;
 
+    // Allocate transient buffers (valid only this frame, zero persistent handle cost)
+    bgfx::TransientVertexBuffer tvb;
+    bgfx::TransientIndexBuffer tib;
+
+    if (!bgfx::allocTransientBuffers(&tvb, layout_, geom.numVertices, &tib, geom.numIndices, true)) {
+        FABRIC_LOG_RENDER_ERROR("RenderGeometry: transient buffer alloc failed (vertices={}, indices={})",
+                                geom.numVertices, geom.numIndices);
+        return;
+    }
+
+    std::memcpy(tvb.data, geom.vertexData.data(), geom.vertexData.size());
+    std::memcpy(tib.data, geom.indexData.data(), geom.indexData.size());
+
     // Build model matrix: combine stored transform with per-call translation
     float model[16];
     if (hasTransform_) {
-        // Start with the stored CSS transform, then apply translation
         float translate[16];
         bx::mtxTranslate(translate, translation.x, translation.y, 0.0f);
         bx::mtxMul(model, transform_, translate);
@@ -129,19 +142,8 @@ void BgfxRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, R
     }
     bgfx::setTransform(model);
 
-    if (!geom.vbh.isValid() || !geom.ibh.isValid()) {
-        FABRIC_LOG_RENDER_ERROR("RenderGeometry: invalid buffer handle vb={} ib={} for geometry {}", geom.vbh.get().idx,
-                                geom.ibh.get().idx, static_cast<uintptr_t>(geometry));
-        return;
-    }
-
-    if (!program_.isValid()) {
-        FABRIC_LOG_RENDER_ERROR("RenderGeometry: invalid program handle");
-        return;
-    }
-
-    bgfx::setVertexBuffer(0, geom.vbh.get());
-    bgfx::setIndexBuffer(geom.ibh.get());
+    bgfx::setVertexBuffer(0, &tvb);
+    bgfx::setIndexBuffer(&tib);
 
     // Bind texture: use white placeholder if no texture provided
     bgfx::TextureHandle tex = whiteTexture_.get();
@@ -152,8 +154,8 @@ void BgfxRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, R
         }
     }
 
-    if (!texUniform_.isValid()) {
-        FABRIC_LOG_RENDER_ERROR("RenderGeometry: invalid texture uniform handle");
+    if (!program_.isValid() || !texUniform_.isValid()) {
+        FABRIC_LOG_RENDER_ERROR("RenderGeometry: invalid program or uniform handle");
         return;
     }
     bgfx::setTexture(0, texUniform_.get(), tex);

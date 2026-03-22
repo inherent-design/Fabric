@@ -8,7 +8,9 @@
 
 #include <bgfx/bgfx.h>
 
+#include <cstdint>
 #include <unordered_map>
+#include <vector>
 
 namespace fabric {
 
@@ -58,9 +60,10 @@ class BgfxRenderInterface : public Rml::RenderInterface {
 
   private:
     struct CompiledGeom {
-        BgfxHandle<bgfx::VertexBufferHandle> vbh;
-        BgfxHandle<bgfx::IndexBufferHandle> ibh;
-        uint32_t indexCount;
+        std::vector<uint8_t> vertexData;
+        std::vector<uint8_t> indexData;
+        uint32_t numVertices{0};
+        uint32_t numIndices{0};
     };
 
     static constexpr bgfx::ViewId K_DEFAULT_VIEW_ID = render::view::K_UI;
