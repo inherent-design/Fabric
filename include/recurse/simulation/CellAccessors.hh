@@ -46,6 +46,16 @@ inline bool canDisplace(const MaterialRegistry& /*registry*/, VoxelCell mover, V
     return mover.displacementRank > target.displacementRank;
 }
 
+/// Read temperature from the spare byte.
+inline auto cellTemperature(VoxelCell cell) -> uint8_t {
+    return cell.spare;
+}
+
+/// Write temperature to the spare byte.
+inline void setCellTemperature(VoxelCell& cell, uint8_t temperature) {
+    cell.spare = temperature;
+}
+
 // -- MatterState overloads --------------------------------------------------
 
 /// True when the MatterState cell is occupied (not Empty phase).
@@ -82,6 +92,16 @@ inline bool canDisplace(const MaterialRegistry& /*registry*/, MatterState mover,
     if (target.phase() == Phase::Solid)
         return false;
     return mover.displacementRank > target.displacementRank;
+}
+
+/// Read temperature from MatterState spare byte.
+inline auto cellTemperature(MatterState cell) -> uint8_t {
+    return cell.spare;
+}
+
+/// Write temperature to MatterState spare byte.
+inline void setCellTemperature(MatterState& cell, uint8_t temperature) {
+    cell.spare = temperature;
 }
 
 // -- Cell factory functions ---------------------------------------------------
@@ -133,21 +153,36 @@ inline VoxelCell makeCellFromMaterial(MaterialId id, const MaterialRegistry& reg
 /// material properties. Avoids requiring a MaterialRegistry instance.
 /// Only valid during migration when essenceIdx == materialId.
 inline VoxelCell cellForMaterial(MaterialId id) {
+    VoxelCell cell;
     switch (id) {
         case material_ids::AIR:
-            return VoxelCell{};
+            cell = VoxelCell{};
+            cell.spare = 128;
+            return cell;
         case material_ids::STONE:
-            return makeCell(1, Phase::Solid, 200);
+            cell = makeCell(1, Phase::Solid, 200);
+            cell.spare = 128;
+            return cell;
         case material_ids::DIRT:
-            return makeCell(2, Phase::Solid, 150);
+            cell = makeCell(2, Phase::Solid, 150);
+            cell.spare = 128;
+            return cell;
         case material_ids::SAND:
-            return makeCell(3, Phase::Powder, 130);
+            cell = makeCell(3, Phase::Powder, 130);
+            cell.spare = 128;
+            return cell;
         case material_ids::WATER:
-            return makeCell(4, Phase::Liquid, 100);
+            cell = makeCell(4, Phase::Liquid, 100);
+            cell.spare = 110; // above freeze point (91), comfortably liquid
+            return cell;
         case material_ids::GRAVEL:
-            return makeCell(5, Phase::Powder, 170);
+            cell = makeCell(5, Phase::Powder, 170);
+            cell.spare = 128;
+            return cell;
         default:
-            return makeCell(static_cast<uint8_t>(id), Phase::Solid, 128);
+            cell = makeCell(static_cast<uint8_t>(id), Phase::Solid, 128);
+            cell.spare = 128;
+            return cell;
     }
 }
 
