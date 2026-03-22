@@ -93,6 +93,13 @@ Rml::CompiledGeometryHandle BgfxRenderInterface::CompileGeometry(Rml::Span<const
         bgfx::copy(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(Rml::Vertex))), layout_));
     geom.ibh.reset(bgfx::createIndexBuffer(
         bgfx::copy(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(int))), BGFX_BUFFER_INDEX32));
+
+    if (!geom.vbh.isValid() || !geom.ibh.isValid()) {
+        FABRIC_LOG_RENDER_ERROR("CompileGeometry: buffer creation failed vb={} ib={} (vertices={}, indices={})",
+                                geom.vbh.get().idx, geom.ibh.get().idx, vertices.size(), indices.size());
+        return Rml::CompiledGeometryHandle(0);
+    }
+
     geom.indexCount = static_cast<uint32_t>(indices.size());
 
     auto handle = nextGeomHandle_++;
@@ -122,6 +129,17 @@ void BgfxRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, R
     }
     bgfx::setTransform(model);
 
+    if (!geom.vbh.isValid() || !geom.ibh.isValid()) {
+        FABRIC_LOG_RENDER_ERROR("RenderGeometry: invalid buffer handle vb={} ib={} for geometry {}", geom.vbh.get().idx,
+                                geom.ibh.get().idx, static_cast<uintptr_t>(geometry));
+        return;
+    }
+
+    if (!program_.isValid()) {
+        FABRIC_LOG_RENDER_ERROR("RenderGeometry: invalid program handle");
+        return;
+    }
+
     bgfx::setVertexBuffer(0, geom.vbh.get());
     bgfx::setIndexBuffer(geom.ibh.get());
 
@@ -132,6 +150,11 @@ void BgfxRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, R
         if (bgfx::isValid(texHandle)) {
             tex = texHandle;
         }
+    }
+
+    if (!texUniform_.isValid()) {
+        FABRIC_LOG_RENDER_ERROR("RenderGeometry: invalid texture uniform handle");
+        return;
     }
     bgfx::setTexture(0, texUniform_.get(), tex);
 

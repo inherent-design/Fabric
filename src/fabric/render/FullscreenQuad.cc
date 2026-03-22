@@ -2,17 +2,25 @@
 
 namespace fabric::render {
 
+static bgfx::VertexBufferHandle s_fullscreenVB = BGFX_INVALID_HANDLE;
+
 bgfx::VertexBufferHandle fullscreenTriangleVB() {
-    static bgfx::VertexBufferHandle s_vb = BGFX_INVALID_HANDLE;
-    if (!bgfx::isValid(s_vb)) {
+    if (!bgfx::isValid(s_fullscreenVB)) {
         static const float vertices[] = {
             -1.0f, -1.0f, 0.0f, 3.0f, -1.0f, 0.0f, -1.0f, 3.0f, 0.0f,
         };
         bgfx::VertexLayout layout;
         layout.begin().add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float).end();
-        s_vb = bgfx::createVertexBuffer(bgfx::makeRef(vertices, sizeof(vertices)), layout);
+        s_fullscreenVB = bgfx::createVertexBuffer(bgfx::makeRef(vertices, sizeof(vertices)), layout);
     }
-    return s_vb;
+    return s_fullscreenVB;
+}
+
+void destroyFullscreenTriangleVB() {
+    if (bgfx::isValid(s_fullscreenVB)) {
+        bgfx::destroy(s_fullscreenVB);
+        s_fullscreenVB = BGFX_INVALID_HANDLE;
+    }
 }
 
 } // namespace fabric::render

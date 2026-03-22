@@ -15,6 +15,7 @@
 #include "fabric/platform/WindowDesc.hh"
 #include "fabric/render/BgfxCallback.hh"
 #include "fabric/render/Camera.hh"
+#include "fabric/render/FullscreenQuad.hh"
 #include "fabric/render/RenderCaps.hh"
 #include "fabric/render/SceneView.hh"
 #include "fabric/resource/AssetRegistry.hh"
@@ -288,6 +289,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
         if (!desc.headless) {
             Rml::Shutdown();
             rmlRenderer.shutdown();
+            render::destroyFullscreenTriangleVB();
             bgfx::shutdown();
             SDL_DestroyWindow(window);
             SDL_Quit();
@@ -467,6 +469,7 @@ int FabricApp::run(int argc, char** argv, FabricAppDesc desc) {
 
         Rml::Shutdown();
         rmlRenderer.shutdown();
+        render::destroyFullscreenTriangleVB();
         bgfx::shutdown();
         SDL_DestroyWindow(window);
         SDL_Quit();

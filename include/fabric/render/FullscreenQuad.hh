@@ -9,4 +9,7 @@ namespace fabric::render {
 /// Position-only float3 layout. Lazy-initialized on first call.
 bgfx::VertexBufferHandle fullscreenTriangleVB();
 
+/// Destroy the shared fullscreen triangle VB. Call before bgfx::shutdown().
+void destroyFullscreenTriangleVB();
+
 } // namespace fabric::render
