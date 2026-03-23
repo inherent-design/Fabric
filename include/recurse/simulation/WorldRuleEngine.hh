@@ -9,6 +9,11 @@ namespace recurse::simulation {
 /// Flat 14-byte rule for world simulation behaviors.
 /// Locked design: Decision 2 (2026-03-22). No nested types.
 /// Tag is plain uint8_t for debugging (0=Thermal, 1=Contact, 2=Gravity).
+///
+/// Sentinel conventions for result fields:
+///   resultEssenceA/B = 255: leave essence unchanged
+///   resultPhaseA/B = Phase::Unchanged: leave phase unchanged
+///   resultTempA/B = 0: leave temperature unchanged (temp cannot be set to literal zero)
 struct WorldRule {
     uint8_t essenceIdxA; // self (255 = wildcard)
     uint8_t essenceIdxB; // neighbor (255 = self-transform)

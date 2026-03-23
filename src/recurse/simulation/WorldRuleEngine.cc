@@ -114,8 +114,8 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultEssenceB = 1,
                       .resultPhaseA = Phase::Solid,
                       .resultPhaseB = Phase::Solid,
-                      .resultTempA = 0,
-                      .resultTempB = 0,
+                      .resultTempA = 150,
+                      .resultTempB = 150,
                       .probability = 255,
                       .priority = 220,
                       .tag = 1});

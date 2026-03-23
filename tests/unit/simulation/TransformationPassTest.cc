@@ -297,7 +297,40 @@ TEST_F(TransformationPassTest, Probability255AlwaysFires) {
     EXPECT_EQ(fires, trials) << "probability=255 must fire 256/256 times (100%)";
 }
 
-// 9. ProjectionRuleTable contains projected appearances for ice, glass, magma.
+// 9. R7 quench sets temperature below R5 melt threshold, preventing intra-tick re-melt.
+TEST_F(TransformationPassTest, R7QuenchCoolsBelowMeltThreshold) {
+    // Water at (16,16,16), magma neighbor at (17,16,16) with temp >= 196
+    VoxelCell water = makeCell(4, Phase::Liquid, 100);
+    setCellTemperature(water, 100);
+    VoxelCell magma = makeCell(11, Phase::Liquid, 200);
+    setCellTemperature(magma, 210);
+
+    sim.grid().writeCell(16, 16, 16, water);
+    sim.grid().writeCell(17, 16, 16, magma);
+    sim.grid().advanceEpoch();
+    syncGhostsForOrigin();
+
+    TransformationPass pass(sim.ruleEngine(), sim.materials(), sim.grid(), sim.ghostCellManager(),
+                            sim.activityTracker());
+    std::mt19937 rng(42);
+    pass.executeChunk(ChunkCoord{0, 0, 0}, rng);
+
+    // Both cells should be stone (essenceIdx=1, Phase::Solid)
+    VoxelCell resultA = sim.grid().readFromWriteBuffer(16, 16, 16);
+    VoxelCell resultB = sim.grid().readFromWriteBuffer(17, 16, 16);
+    EXPECT_EQ(resultA.essenceIdx, 1) << "Water cell should become stone after R7";
+    EXPECT_EQ(resultA.phase(), Phase::Solid);
+    EXPECT_EQ(resultB.essenceIdx, 1) << "Magma cell should become stone after R7";
+    EXPECT_EQ(resultB.phase(), Phase::Solid);
+
+    // Both cells should have temperature 150, safely below R5 melt threshold (196)
+    EXPECT_EQ(cellTemperature(resultA), 150) << "Quenched water-side stone must be cooled to 150";
+    EXPECT_EQ(cellTemperature(resultB), 150) << "Quenched magma-side stone must be cooled to 150";
+    EXPECT_LT(cellTemperature(resultA), 196) << "Must be below R5 melt threshold";
+    EXPECT_LT(cellTemperature(resultB), 196) << "Must be below R5 melt threshold";
+}
+
+// 10. ProjectionRuleTable contains projected appearances for ice, glass, magma.
 TEST_F(TransformationPassTest, ProjectionTablePopulated) {
     const auto& table = sim.projectionTable();
 
