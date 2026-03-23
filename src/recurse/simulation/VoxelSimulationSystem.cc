@@ -1,5 +1,6 @@
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "fabric/utils/Profiler.hh"
+#include "recurse/simulation/TransformationPass.hh"
 #include <algorithm>
 #include <tuple>
 
@@ -109,6 +110,12 @@ void VoxelSimulationSystem::tick() {
     {
         FABRIC_ZONE_SCOPED_N("phase_3b_boundary_drain");
         drainBoundaryWrites(boundaryQueues);
+    }
+
+    // Phase 3c: Transformation pass (thermal diffusion + rule evaluation)
+    {
+        TransformationPass transform(ruleEngine_, registry_, grid_, ghosts_, tracker_);
+        transform.execute(active, scheduler_, worldSeed_);
     }
 
     // Phase 4: Advance epoch (swap read/write buffers)

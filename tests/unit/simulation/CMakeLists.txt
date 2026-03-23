@@ -17,6 +17,7 @@ target_sources(UnitTests
   MatterStateTest.cc
   ProjectionRuleTableTest.cc
   WorldRuleEngineTest.cc
+  TransformationPassTest.cc
   CellFactoryTest.cc
   VisualMergeTableTest.cc
 )

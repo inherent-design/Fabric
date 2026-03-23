@@ -59,6 +59,37 @@ void ProjectionRuleTable::populateFromRegistry(const MaterialRegistry& registry)
 
         setRule(static_cast<uint8_t>(id), phase, projected);
     }
+
+    // Projected appearances for transformation-produced materials.
+    // These essenceIdx values are outside material_ids::COUNT (6) but referenced
+    // by WorldRuleEngine rules as transformation products.
+
+    // ICE (essenceIdx=6): produced by water freeze rule (R1)
+    setRule(6, Phase::Solid,
+            ProjectedMaterial{.displayName = "ice",
+                              .baseColor = 0xFFD0E8FF,
+                              .soundCategory = 0,
+                              .reductionTiebreak = 110,
+                              .moveType = MoveType::Static,
+                              .density = 90});
+
+    // GLASS (essenceIdx=10): produced by sand vitrify rule (R4)
+    setRule(10, Phase::Solid,
+            ProjectedMaterial{.displayName = "glass",
+                              .baseColor = 0xFFA08040,
+                              .soundCategory = 0,
+                              .reductionTiebreak = 130,
+                              .moveType = MoveType::Static,
+                              .density = 140});
+
+    // MAGMA (essenceIdx=11): produced by stone melt rule (R5)
+    setRule(11, Phase::Liquid,
+            ProjectedMaterial{.displayName = "magma",
+                              .baseColor = 0xFFFF4400,
+                              .soundCategory = 0,
+                              .reductionTiebreak = 200,
+                              .moveType = MoveType::Liquid,
+                              .density = 190});
 }
 
 } // namespace recurse::simulation

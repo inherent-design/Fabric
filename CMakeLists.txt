@@ -323,6 +323,7 @@ set(FABRIC_SIMULATION_SOURCE_FILES
     src/recurse/simulation/ChangeVelocityTracker.cc
     src/recurse/simulation/ProjectionRuleTable.cc
     src/recurse/simulation/WorldRuleEngine.cc
+    src/recurse/simulation/TransformationPass.cc
 )
 
 # Utils library components
