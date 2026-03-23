@@ -17,7 +17,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultEssenceA = 6,
                       .resultEssenceB = 255,
                       .resultPhaseA = Phase::Solid,
-                      .resultPhaseB = Phase::Empty,
+                      .resultPhaseB = Phase::Unchanged,
                       .resultTempA = 0,
                       .resultTempB = 0,
                       .probability = 128,
@@ -33,7 +33,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultEssenceA = 4,
                       .resultEssenceB = 255,
                       .resultPhaseA = Phase::Liquid,
-                      .resultPhaseB = Phase::Empty,
+                      .resultPhaseB = Phase::Unchanged,
                       .resultTempA = 0,
                       .resultTempB = 0,
                       .probability = 192,
@@ -49,7 +49,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultEssenceA = 0,
                       .resultEssenceB = 255,
                       .resultPhaseA = Phase::Empty,
-                      .resultPhaseB = Phase::Empty,
+                      .resultPhaseB = Phase::Unchanged,
                       .resultTempA = 0,
                       .resultTempB = 0,
                       .probability = 64,
@@ -65,7 +65,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultEssenceA = 10,
                       .resultEssenceB = 255,
                       .resultPhaseA = Phase::Solid,
-                      .resultPhaseB = Phase::Empty,
+                      .resultPhaseB = Phase::Unchanged,
                       .resultTempA = 0,
                       .resultTempB = 0,
                       .probability = 32,
@@ -81,7 +81,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultEssenceA = 11,
                       .resultEssenceB = 255,
                       .resultPhaseA = Phase::Liquid,
-                      .resultPhaseB = Phase::Empty,
+                      .resultPhaseB = Phase::Unchanged,
                       .resultTempA = 0,
                       .resultTempB = 0,
                       .probability = 16,
@@ -97,7 +97,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultEssenceA = 1,
                       .resultEssenceB = 255,
                       .resultPhaseA = Phase::Solid,
-                      .resultPhaseB = Phase::Empty,
+                      .resultPhaseB = Phase::Unchanged,
                       .resultTempA = 0,
                       .resultTempB = 0,
                       .probability = 128,
@@ -129,7 +129,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultEssenceA = 0,
                       .resultEssenceB = 255,
                       .resultPhaseA = Phase::Empty,
-                      .resultPhaseB = Phase::Empty,
+                      .resultPhaseB = Phase::Unchanged,
                       .resultTempA = 0,
                       .resultTempB = 0,
                       .probability = 128,
@@ -146,15 +146,14 @@ void WorldRuleEngine::addRule(WorldRule rule) {
     sortByPriority();
 }
 
-std::span<const WorldRule> WorldRuleEngine::query(uint8_t selfEssence, uint8_t neighborEssence, Phase selfPhase,
-                                                  uint8_t temperature) const {
-    queryResults_.clear();
+void WorldRuleEngine::query(uint8_t selfEssence, uint8_t neighborEssence, Phase selfPhase, uint8_t temperature,
+                            std::vector<WorldRule>& results) const {
+    results.clear();
     for (const auto& rule : rules_) {
         if (matches(rule, selfEssence, neighborEssence, selfPhase, temperature)) {
-            queryResults_.push_back(rule);
+            results.push_back(rule);
         }
     }
-    return queryResults_;
 }
 
 size_t WorldRuleEngine::ruleCount() const {
@@ -174,9 +173,9 @@ bool WorldRuleEngine::matches(const WorldRule& rule, uint8_t selfEssence, uint8_
                               uint8_t temperature) const {
     if (rule.essenceIdxA != selfEssence && rule.essenceIdxA != 255)
         return false;
-    if (rule.essenceIdxB != neighborEssence && rule.essenceIdxB != 255)
+    if (rule.essenceIdxB != neighborEssence)
         return false;
-    if (rule.requiredPhaseA != Phase::Empty && rule.requiredPhaseA != selfPhase)
+    if (rule.requiredPhaseA != Phase::Unchanged && rule.requiredPhaseA != selfPhase)
         return false;
     if (temperature < rule.temperatureMin || temperature > rule.temperatureMax)
         return false;

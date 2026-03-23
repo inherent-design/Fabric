@@ -11,7 +11,7 @@ class MaterialRegistry {
     MaterialRegistry();
 
     const MaterialDef& get(MaterialId id) const {
-        assert(id < material_ids::COUNT && "MaterialId out of range");
+        assert(id < material_ids::REGISTRY_SIZE && "MaterialId out of range");
         return materials_[id];
     }
 
@@ -20,9 +20,10 @@ class MaterialRegistry {
     }
 
     MaterialId count() const { return material_ids::COUNT; }
+    MaterialId registrySize() const { return material_ids::REGISTRY_SIZE; }
 
   private:
-    std::array<MaterialDef, material_ids::COUNT> materials_{};
+    std::array<MaterialDef, material_ids::REGISTRY_SIZE> materials_{};
 };
 
 } // namespace recurse::simulation

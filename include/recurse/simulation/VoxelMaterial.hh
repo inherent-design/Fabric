@@ -14,17 +14,25 @@ inline constexpr MaterialId DIRT = 2;
 inline constexpr MaterialId SAND = 3;
 inline constexpr MaterialId WATER = 4;
 inline constexpr MaterialId GRAVEL = 5;
-inline constexpr MaterialId COUNT = 6;
+inline constexpr MaterialId COUNT = 6; // Base materials (worldgen, meshing)
+
+// Synthetic essences produced by transformation rules
+inline constexpr MaterialId ICE = 6;
+inline constexpr MaterialId GLASS = 10;
+inline constexpr MaterialId MAGMA = 11;
+inline constexpr MaterialId REGISTRY_SIZE = 12; // Must be > max known ID
 } // namespace material_ids
 
 /// Broad matter mode for a voxel cell.
-/// Values 5-7 reserved for future use (Growth, Unstable, etc.).
+/// Values 5-6 reserved for future use (Growth, Unstable, etc.).
+/// Value 7 is the "unchanged" sentinel for WorldRule result fields.
 enum class Phase : uint8_t {
     Empty = 0,
     Solid = 1,
     Powder = 2,
     Liquid = 3,
-    Gas = 4
+    Gas = 4,
+    Unchanged = 7
 };
 
 enum class MoveType : uint8_t {

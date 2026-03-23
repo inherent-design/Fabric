@@ -10,7 +10,7 @@ MaterialRegistry::MaterialRegistry() {
     air.baseColor = 0x00000000;
     air.meltPoint = 0;
     air.boilPoint = 0;
-    air.thermalConductivity = 255; // fast conductor (convection)
+    air.thermalConductivity = 25; // poor conductor (insulator)
 
     // Stone: heavy static block
     auto& stone = materials_[material_ids::STONE];
@@ -82,6 +82,33 @@ MaterialRegistry::MaterialRegistry() {
     gravel.meltPoint = 190;
     gravel.boilPoint = 0;
     gravel.thermalConductivity = 70; // moderate conductor
+
+    // ICE: frozen water, lighter than liquid water
+    auto& ice = materials_[material_ids::ICE];
+    ice.moveType = MoveType::Static;
+    ice.density = 90;
+    ice.baseColor = 0xFFD0E8FF;
+    ice.meltPoint = 91;
+    ice.boilPoint = 0;
+    ice.thermalConductivity = 100;
+
+    // GLASS: vitrified sand, good insulator
+    auto& glass = materials_[material_ids::GLASS];
+    glass.moveType = MoveType::Static;
+    glass.density = 160;
+    glass.baseColor = 0xFFA08040;
+    glass.meltPoint = 179;
+    glass.boilPoint = 0;
+    glass.thermalConductivity = 40;
+
+    // MAGMA: molten stone, heavy liquid
+    auto& magma = materials_[material_ids::MAGMA];
+    magma.moveType = MoveType::Liquid;
+    magma.density = 210;
+    magma.baseColor = 0xFFFF4400;
+    magma.meltPoint = 0;
+    magma.boilPoint = 0;
+    magma.thermalConductivity = 200;
 }
 
 } // namespace recurse::simulation

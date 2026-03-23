@@ -217,7 +217,25 @@ TEST_F(TransformationPassTest, ExecuteIntegration) {
     EXPECT_TRUE(frozen) << "Contained water at temp=50 should freeze via Phase 3c";
 }
 
-// 6. ProjectionRuleTable contains projected appearances for ice, glass, magma.
+// 6. A cell surrounded by empty air retains its temperature.
+TEST_F(TransformationPassTest, ThermalIsolationInAir) {
+    VoxelCell hot = makeCell(1, Phase::Solid, 200);
+    setCellTemperature(hot, 200);
+    sim.grid().writeCell(16, 16, 16, hot);
+    sim.grid().advanceEpoch();
+
+    syncGhostsForOrigin();
+
+    TransformationPass pass(sim.ruleEngine(), sim.materials(), sim.grid(), sim.ghostCellManager(),
+                            sim.activityTracker());
+    std::mt19937 rng(42);
+    pass.executeChunk(ChunkCoord{0, 0, 0}, rng);
+
+    VoxelCell result = sim.grid().readFromWriteBuffer(16, 16, 16);
+    EXPECT_EQ(cellTemperature(result), 200) << "Cell surrounded by empty air should retain temperature";
+}
+
+// 7. ProjectionRuleTable contains projected appearances for ice, glass, magma.
 TEST_F(TransformationPassTest, ProjectionTablePopulated) {
     const auto& table = sim.projectionTable();
 

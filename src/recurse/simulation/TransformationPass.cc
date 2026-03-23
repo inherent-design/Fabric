@@ -8,17 +8,6 @@
 
 namespace recurse::simulation {
 
-namespace {
-// Safe conductivity lookup. EssenceIdx values produced by transformation rules
-// (ICE=6, GLASS=10, MAGMA=11) exceed material_ids::COUNT. Default to mid-range
-// conductivity for unknown essence indices.
-inline uint8_t safeThermalConductivity(const MaterialRegistry& registry, uint8_t essenceIdx) {
-    if (essenceIdx < material_ids::COUNT)
-        return registry.get(static_cast<MaterialId>(essenceIdx)).thermalConductivity;
-    return 128; // mid-range default for synthetic essences
-}
-} // namespace
-
 TransformationPass::TransformationPass(const WorldRuleEngine& rules, const MaterialRegistry& registry,
                                        SimulationGrid& grid, const GhostCellManager& ghosts,
                                        ChunkActivityTracker& tracker)
@@ -79,7 +68,7 @@ void TransformationPass::thermalKernel(ChunkCoord pos) {
                     continue;
 
                 uint8_t selfTemp = cellTemperature(cell);
-                uint8_t selfCond = safeThermalConductivity(registry_, cell.essenceIdx);
+                uint8_t selfCond = registry_.get(static_cast<MaterialId>(cell.essenceIdx)).thermalConductivity;
 
                 // Read 6 face-neighbor temperatures and conductivities
                 float neighborTempSum = 0.0f;
@@ -89,21 +78,20 @@ void TransformationPass::thermalKernel(ChunkCoord pos) {
 
                 for (const auto& off : offsets) {
                     VoxelCell neighbor = readCell(pos, lx + off[0], ly + off[1], lz + off[2]);
+                    if (isEmpty(neighbor))
+                        continue; // Air gaps are thermal insulators
+
                     uint8_t nTemp = cellTemperature(neighbor);
                     if (nTemp != selfTemp)
                         allEqual = false;
                     neighborTempSum += static_cast<float>(nTemp);
-
-                    if (!isEmpty(neighbor)) {
-                        neighborCondSum += static_cast<float>(safeThermalConductivity(registry_, neighbor.essenceIdx));
-                    } else {
-                        neighborCondSum += static_cast<float>(safeThermalConductivity(registry_, 0));
-                    }
+                    neighborCondSum += static_cast<float>(
+                        registry_.get(static_cast<MaterialId>(neighbor.essenceIdx)).thermalConductivity);
                     ++neighborCount;
                 }
 
-                // Skip thermally stable cells (threshold = 0, exact equality)
-                if (allEqual)
+                // Skip if isolated in air or thermally stable
+                if (neighborCount == 0 || allEqual)
                     continue;
 
                 float neighborAvgTemp = neighborTempSum / static_cast<float>(neighborCount);
@@ -131,6 +119,7 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
     FABRIC_ZONE_SCOPED_N("ruleEvaluation");
 
     int transformCount = 0;
+    std::vector<WorldRule> matchBuffer;
 
     for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
         for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
@@ -150,20 +139,20 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                 bool transformed = false;
 
                 // Self-transform rules (neighborEssence = 255)
-                auto selfRules = rules_.query(cell.essenceIdx, 255, cell.phase(), temp);
-                for (const auto& rule : selfRules) {
+                rules_.query(cell.essenceIdx, 255, cell.phase(), temp, matchBuffer);
+                for (const auto& rule : matchBuffer) {
                     if (transformed)
                         break;
                     uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
                     if (roll < rule.probability) {
                         if (rule.resultEssenceA != 255)
                             cell.essenceIdx = rule.resultEssenceA;
-                        if (rule.resultPhaseA != Phase::Empty)
+                        if (rule.resultPhaseA != Phase::Unchanged)
                             cell.setPhase(rule.resultPhaseA);
                         if (rule.resultTempA != 0)
                             setCellTemperature(cell, rule.resultTempA);
                         // Update displacement rank from registry for new essence
-                        if (rule.resultEssenceA != 255 && rule.resultEssenceA < material_ids::COUNT) {
+                        if (rule.resultEssenceA != 255) {
                             cell.displacementRank = registry_.get(static_cast<MaterialId>(rule.resultEssenceA)).density;
                         }
                         grid_.writeCell(wx, wy, wz, cell);
@@ -190,8 +179,8 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                     if (isEmpty(neighbor))
                         continue;
 
-                    auto contactRules = rules_.query(cell.essenceIdx, neighbor.essenceIdx, cell.phase(), temp);
-                    for (const auto& rule : contactRules) {
+                    rules_.query(cell.essenceIdx, neighbor.essenceIdx, cell.phase(), temp, matchBuffer);
+                    for (const auto& rule : matchBuffer) {
                         if (transformed)
                             break;
                         uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
@@ -199,11 +188,11 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                             // Apply to self
                             if (rule.resultEssenceA != 255)
                                 cell.essenceIdx = rule.resultEssenceA;
-                            if (rule.resultPhaseA != Phase::Empty)
+                            if (rule.resultPhaseA != Phase::Unchanged)
                                 cell.setPhase(rule.resultPhaseA);
                             if (rule.resultTempA != 0)
                                 setCellTemperature(cell, rule.resultTempA);
-                            if (rule.resultEssenceA != 255 && rule.resultEssenceA < material_ids::COUNT) {
+                            if (rule.resultEssenceA != 255) {
                                 cell.displacementRank =
                                     registry_.get(static_cast<MaterialId>(rule.resultEssenceA)).density;
                             }
@@ -212,19 +201,19 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                             // Apply to neighbor (skip cross-chunk writes)
                             bool neighborInBounds = nlx >= 0 && nlx < K_CHUNK_SIZE && nly >= 0 && nly < K_CHUNK_SIZE &&
                                                     nlz >= 0 && nlz < K_CHUNK_SIZE;
-                            if (neighborInBounds && (rule.resultEssenceB != 255 || rule.resultPhaseB != Phase::Empty ||
-                                                     rule.resultTempB != 0)) {
+                            if (neighborInBounds && (rule.resultEssenceB != 255 ||
+                                                     rule.resultPhaseB != Phase::Unchanged || rule.resultTempB != 0)) {
                                 int nwx = pos.x * K_CHUNK_SIZE + nlx;
                                 int nwy = pos.y * K_CHUNK_SIZE + nly;
                                 int nwz = pos.z * K_CHUNK_SIZE + nlz;
                                 VoxelCell nCell = grid_.readFromWriteBuffer(nwx, nwy, nwz);
                                 if (rule.resultEssenceB != 255)
                                     nCell.essenceIdx = rule.resultEssenceB;
-                                if (rule.resultPhaseB != Phase::Empty)
+                                if (rule.resultPhaseB != Phase::Unchanged)
                                     nCell.setPhase(rule.resultPhaseB);
                                 if (rule.resultTempB != 0)
                                     setCellTemperature(nCell, rule.resultTempB);
-                                if (rule.resultEssenceB != 255 && rule.resultEssenceB < material_ids::COUNT) {
+                                if (rule.resultEssenceB != 255) {
                                     nCell.displacementRank =
                                         registry_.get(static_cast<MaterialId>(rule.resultEssenceB)).density;
                                 }
