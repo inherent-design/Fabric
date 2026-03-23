@@ -30,7 +30,8 @@ class TransformationPass {
                        const GhostCellManager& ghosts, ChunkActivityTracker& tracker);
 
     /// Execute Phase 3c across all active chunks.
-    void execute(const std::vector<ActiveChunkEntry>& active, fabric::JobScheduler& scheduler, int64_t worldSeed);
+    void execute(const std::vector<ActiveChunkEntry>& active, fabric::JobScheduler& scheduler, int64_t worldSeed,
+                 uint64_t frameIndex);
 
     /// Per-chunk execution (single-threaded; flushes activations to tracker directly).
     void executeChunk(ChunkCoord pos, std::mt19937& rng);

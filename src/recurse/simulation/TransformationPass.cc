@@ -17,7 +17,7 @@ TransformationPass::TransformationPass(const WorldRuleEngine& rules, const Mater
 }
 
 void TransformationPass::execute(const std::vector<ActiveChunkEntry>& active, fabric::JobScheduler& scheduler,
-                                 int64_t worldSeed) {
+                                 int64_t worldSeed, uint64_t frameIndex) {
     FABRIC_ZONE_SCOPED_N("phase_3c_transform");
     totalTransforms_.store(0, std::memory_order_relaxed);
 
@@ -26,7 +26,7 @@ void TransformationPass::execute(const std::vector<ActiveChunkEntry>& active, fa
 
     scheduler.parallelFor(active.size(), "phase_3c_transform", [&](size_t jobIdx, size_t workerIdx) {
         const auto& pos = active[jobIdx].pos;
-        std::mt19937 rng(static_cast<uint32_t>(worldSeed ^ spatialHash(pos)));
+        std::mt19937 rng(static_cast<uint32_t>(worldSeed ^ spatialHash(pos) ^ static_cast<uint64_t>(frameIndex)));
         executeChunk(pos, rng, activationsPerWorker[workerIdx]);
     });
 

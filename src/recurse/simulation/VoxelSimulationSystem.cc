@@ -113,7 +113,7 @@ void VoxelSimulationSystem::tick() {
     }
 
     // Phase 3c: Transformation pass (thermal diffusion + rule evaluation)
-    { transformPass_.execute(active, scheduler_, worldSeed_); }
+    { transformPass_.execute(active, scheduler_, worldSeed_, frameIndex_); }
 
     // Phase 4: Advance epoch (swap read/write buffers)
     {

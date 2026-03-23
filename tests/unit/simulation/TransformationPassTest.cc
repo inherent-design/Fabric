@@ -330,7 +330,44 @@ TEST_F(TransformationPassTest, R7QuenchCoolsBelowMeltThreshold) {
     EXPECT_LT(cellTemperature(resultB), 196) << "Must be below R5 melt threshold";
 }
 
-// 10. ProjectionRuleTable contains projected appearances for ice, glass, magma.
+// 10. Different frame indices produce different stochastic outcomes for the same chunk.
+TEST_F(TransformationPassTest, DifferentFrameIndicesProduceDifferentOutcomes) {
+    // Place water at temp=80 (below freeze threshold 90, R1 probability=50%)
+    VoxelCell water = makeCell(4, Phase::Liquid, 100);
+    setCellTemperature(water, 80);
+
+    const int64_t worldSeed = 12345;
+    ChunkCoord pos{0, 0, 0};
+    uint64_t hash = spatialHash(pos);
+
+    // Simulate what execute() does internally for different frame indices:
+    // seed = worldSeed ^ spatialHash(pos) ^ frameIndex
+    int frozenCount = 0;
+    int unfrozenCount = 0;
+    constexpr int K_FRAMES = 64;
+
+    for (uint64_t frame = 0; frame < K_FRAMES; ++frame) {
+        sim.grid().writeCell(16, 16, 16, water);
+
+        TransformationPass pass(sim.ruleEngine(), sim.materials(), sim.grid(), sim.ghostCellManager(),
+                                sim.activityTracker());
+        std::mt19937 rng(static_cast<uint32_t>(worldSeed ^ hash ^ frame));
+        pass.executeChunk(pos, rng);
+
+        VoxelCell result = sim.grid().readFromWriteBuffer(16, 16, 16);
+        if (result.essenceIdx == 6 && result.phase() == Phase::Solid) {
+            ++frozenCount;
+        } else {
+            ++unfrozenCount;
+        }
+    }
+
+    // With 50% probability over 64 frames, both outcomes must occur
+    EXPECT_GT(frozenCount, 0) << "Some frames should freeze water (50% probability)";
+    EXPECT_GT(unfrozenCount, 0) << "Some frames should not freeze water (50% probability)";
+}
+
+// 11. ProjectionRuleTable contains projected appearances for ice, glass, magma.
 TEST_F(TransformationPassTest, ProjectionTablePopulated) {
     const auto& table = sim.projectionTable();
 
