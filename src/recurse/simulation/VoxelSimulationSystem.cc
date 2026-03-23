@@ -1,12 +1,12 @@
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "fabric/utils/Profiler.hh"
-#include "recurse/simulation/TransformationPass.hh"
 #include <algorithm>
 #include <tuple>
 
 namespace recurse::simulation {
 
-VoxelSimulationSystem::VoxelSimulationSystem() : sandSystem_(registry_) {
+VoxelSimulationSystem::VoxelSimulationSystem()
+    : sandSystem_(registry_), transformPass_(ruleEngine_, registry_, grid_, ghosts_, tracker_) {
     projectionTable_.populateFromRegistry(registry_);
 }
 
@@ -113,10 +113,7 @@ void VoxelSimulationSystem::tick() {
     }
 
     // Phase 3c: Transformation pass (thermal diffusion + rule evaluation)
-    {
-        TransformationPass transform(ruleEngine_, registry_, grid_, ghosts_, tracker_);
-        transform.execute(active, scheduler_, worldSeed_);
-    }
+    { transformPass_.execute(active, scheduler_, worldSeed_); }
 
     // Phase 4: Advance epoch (swap read/write buffers)
     {

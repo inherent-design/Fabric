@@ -8,6 +8,7 @@
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/ProjectionRuleTable.hh"
 #include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/TransformationPass.hh"
 #include "recurse/simulation/WorldRuleEngine.hh"
 #include <bit>
 #include <cstdint>
@@ -71,6 +72,7 @@ class VoxelSimulationSystem {
     GhostCellManager ghosts_;
     FallingSandSystem sandSystem_;
     WorldRuleEngine ruleEngine_;
+    TransformationPass transformPass_;
     fabric::JobScheduler scheduler_;
     uint64_t frameIndex_ = 0;
     int64_t worldSeed_ = 0;
@@ -89,6 +91,8 @@ class VoxelSimulationSystem {
     const GhostCellManager& ghostCellManager() const { return ghosts_; }
     WorldRuleEngine& ruleEngine() { return ruleEngine_; }
     const WorldRuleEngine& ruleEngine() const { return ruleEngine_; }
+    TransformationPass& transformPass() { return transformPass_; }
+    const TransformationPass& transformPass() const { return transformPass_; }
     int64_t worldSeed() const { return worldSeed_; }
 
     ChangeVelocityTracker& velocityTracker();

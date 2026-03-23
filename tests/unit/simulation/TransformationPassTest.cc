@@ -265,7 +265,39 @@ TEST_F(TransformationPassTest, ThawActivatesSubRegion) {
     EXPECT_TRUE(thawed) << "Ice at temp=130 should thaw (75% probability per tick)";
 }
 
-// 8. ProjectionRuleTable contains projected appearances for ice, glass, magma.
+// 8. A rule with probability=255 fires 100% of the time (sentinel: always fire).
+TEST_F(TransformationPassTest, Probability255AlwaysFires) {
+    // R7: water + magma contact has probability=255 (must fire every time).
+    // Place water at (16,16,16) and magma neighbor at (17,16,16).
+    VoxelCell water = makeCell(4, Phase::Liquid, 100);
+    setCellTemperature(water, 100);
+    VoxelCell magma = makeCell(11, Phase::Liquid, 200);
+    setCellTemperature(magma, 200);
+
+    int fires = 0;
+    int trials = 256;
+    for (int seed = 0; seed < trials; ++seed) {
+        // Reset cells each trial
+        sim.grid().writeCell(16, 16, 16, water);
+        sim.grid().writeCell(17, 16, 16, magma);
+        sim.grid().advanceEpoch();
+        syncGhostsForOrigin();
+
+        TransformationPass pass(sim.ruleEngine(), sim.materials(), sim.grid(), sim.ghostCellManager(),
+                                sim.activityTracker());
+        std::mt19937 rng(static_cast<uint32_t>(seed));
+        pass.executeChunk(ChunkCoord{0, 0, 0}, rng);
+
+        VoxelCell result = sim.grid().readFromWriteBuffer(16, 16, 16);
+        // R7 transforms water(4) -> stone(1) Solid
+        if (result.essenceIdx == 1 && result.phase() == Phase::Solid) {
+            ++fires;
+        }
+    }
+    EXPECT_EQ(fires, trials) << "probability=255 must fire 256/256 times (100%)";
+}
+
+// 9. ProjectionRuleTable contains projected appearances for ice, glass, magma.
 TEST_F(TransformationPassTest, ProjectionTablePopulated) {
     const auto& table = sim.projectionTable();
 

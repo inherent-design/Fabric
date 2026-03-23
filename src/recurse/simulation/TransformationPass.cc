@@ -21,11 +21,21 @@ void TransformationPass::execute(const std::vector<ActiveChunkEntry>& active, fa
     FABRIC_ZONE_SCOPED_N("phase_3c_transform");
     totalTransforms_.store(0, std::memory_order_relaxed);
 
-    scheduler.parallelFor(active.size(), "phase_3c_transform", [&](size_t jobIdx, size_t /*workerIdx*/) {
+    size_t workerSlots = scheduler.workerCount() + 1;
+    std::vector<std::vector<SubRegionActivation>> activationsPerWorker(workerSlots);
+
+    scheduler.parallelFor(active.size(), "phase_3c_transform", [&](size_t jobIdx, size_t workerIdx) {
         const auto& pos = active[jobIdx].pos;
         std::mt19937 rng(static_cast<uint32_t>(worldSeed ^ spatialHash(pos)));
-        executeChunk(pos, rng);
+        executeChunk(pos, rng, activationsPerWorker[workerIdx]);
     });
+
+    // Flush collected activations to tracker on main thread
+    for (auto& workerActivations : activationsPerWorker) {
+        for (const auto& act : workerActivations) {
+            tracker_.markSubRegionActive(act.pos, act.lx, act.ly, act.lz);
+        }
+    }
 
     int transforms = totalTransforms_.load(std::memory_order_relaxed);
     if (transforms > 0) {
@@ -34,8 +44,17 @@ void TransformationPass::execute(const std::vector<ActiveChunkEntry>& active, fa
 }
 
 void TransformationPass::executeChunk(ChunkCoord pos, std::mt19937& rng) {
+    std::vector<SubRegionActivation> activations;
+    executeChunk(pos, rng, activations);
+    for (const auto& act : activations) {
+        tracker_.markSubRegionActive(act.pos, act.lx, act.ly, act.lz);
+    }
+}
+
+void TransformationPass::executeChunk(ChunkCoord pos, std::mt19937& rng,
+                                      std::vector<SubRegionActivation>& activations) {
     thermalKernel(pos);
-    int count = ruleEvaluation(pos, rng);
+    int count = ruleEvaluation(pos, rng, activations);
     if (count > 0) {
         totalTransforms_.fetch_add(count, std::memory_order_relaxed);
     }
@@ -115,7 +134,8 @@ void TransformationPass::thermalKernel(ChunkCoord pos) {
     }
 }
 
-int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
+int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng,
+                                       std::vector<SubRegionActivation>& activations) {
     FABRIC_ZONE_SCOPED_N("ruleEvaluation");
 
     int transformCount = 0;
@@ -144,7 +164,7 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                     if (transformed)
                         break;
                     uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
-                    if (roll < rule.probability) {
+                    if (rule.probability == 255 || roll < rule.probability) {
                         if (rule.resultEssenceA != 255)
                             cell.essenceIdx = rule.resultEssenceA;
                         if (rule.resultPhaseA != Phase::Unchanged)
@@ -157,7 +177,7 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                         }
                         grid_.writeCell(wx, wy, wz, cell);
                         if (cell.phase() == Phase::Liquid || cell.phase() == Phase::Powder)
-                            tracker_.markSubRegionActive(pos, lx, ly, lz);
+                            activations.push_back({pos, lx, ly, lz});
                         ++transformCount;
                         transformed = true;
                     }
@@ -186,7 +206,7 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                         if (transformed)
                             break;
                         uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
-                        if (roll < rule.probability) {
+                        if (rule.probability == 255 || roll < rule.probability) {
                             // Apply to self
                             if (rule.resultEssenceA != 255)
                                 cell.essenceIdx = rule.resultEssenceA;
@@ -200,13 +220,16 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                             }
                             grid_.writeCell(wx, wy, wz, cell);
                             if (cell.phase() == Phase::Liquid || cell.phase() == Phase::Powder)
-                                tracker_.markSubRegionActive(pos, lx, ly, lz);
+                                activations.push_back({pos, lx, ly, lz});
 
                             // Apply to neighbor (skip cross-chunk writes)
                             bool neighborInBounds = nlx >= 0 && nlx < K_CHUNK_SIZE && nly >= 0 && nly < K_CHUNK_SIZE &&
                                                     nlz >= 0 && nlz < K_CHUNK_SIZE;
-                            if (neighborInBounds && (rule.resultEssenceB != 255 ||
-                                                     rule.resultPhaseB != Phase::Unchanged || rule.resultTempB != 0)) {
+                            if (!neighborInBounds) {
+                                FABRIC_LOG_DEBUG("cross-chunk contact skip: ({},{},{}) -> neighbor out of bounds",
+                                                 pos.x, pos.y, pos.z);
+                            } else if (rule.resultEssenceB != 255 || rule.resultPhaseB != Phase::Unchanged ||
+                                       rule.resultTempB != 0) {
                                 int nwx = pos.x * K_CHUNK_SIZE + nlx;
                                 int nwy = pos.y * K_CHUNK_SIZE + nly;
                                 int nwz = pos.z * K_CHUNK_SIZE + nlz;
@@ -223,7 +246,7 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                                 }
                                 grid_.writeCell(nwx, nwy, nwz, nCell);
                                 if (nCell.phase() == Phase::Liquid || nCell.phase() == Phase::Powder)
-                                    tracker_.markSubRegionActive(pos, nlx, nly, nlz);
+                                    activations.push_back({pos, nlx, nly, nlz});
                             }
 
                             ++transformCount;

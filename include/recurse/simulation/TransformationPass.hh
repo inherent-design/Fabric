@@ -14,6 +14,11 @@ namespace recurse::simulation {
 
 struct ActiveChunkEntry; // forward declare
 
+struct SubRegionActivation {
+    ChunkCoord pos;
+    int lx, ly, lz;
+};
+
 class TransformationPass {
   public:
     struct Config {
@@ -27,7 +32,7 @@ class TransformationPass {
     /// Execute Phase 3c across all active chunks.
     void execute(const std::vector<ActiveChunkEntry>& active, fabric::JobScheduler& scheduler, int64_t worldSeed);
 
-    /// Per-chunk execution (called from parallelFor worker).
+    /// Per-chunk execution (single-threaded; flushes activations to tracker directly).
     void executeChunk(ChunkCoord pos, std::mt19937& rng);
 
     Config& config() { return config_; }
@@ -45,7 +50,8 @@ class TransformationPass {
     std::atomic<int> totalTransforms_{0};
 
     void thermalKernel(ChunkCoord pos);
-    int ruleEvaluation(ChunkCoord pos, std::mt19937& rng);
+    void executeChunk(ChunkCoord pos, std::mt19937& rng, std::vector<SubRegionActivation>& activations);
+    int ruleEvaluation(ChunkCoord pos, std::mt19937& rng, std::vector<SubRegionActivation>& activations);
     VoxelCell readCell(ChunkCoord pos, int lx, int ly, int lz) const;
 };
 
