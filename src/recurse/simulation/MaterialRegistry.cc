@@ -10,7 +10,7 @@ MaterialRegistry::MaterialRegistry() {
     air.baseColor = 0x00000000;
     air.meltPoint = 0;
     air.boilPoint = 0;
-    air.thermalConductivity = 5; // 0.02 scaled to uint8
+    air.thermalConductivity = 255; // fast conductor (convection)
 
     // Stone: heavy static block
     auto& stone = materials_[material_ids::STONE];
@@ -21,9 +21,9 @@ MaterialRegistry::MaterialRegistry() {
     stone.baseEssence[1] = 0.1f; // Chaos
     stone.baseEssence[2] = 0.0f; // Life
     stone.baseEssence[3] = 0.1f; // Decay
-    stone.meltPoint = 200;
-    stone.boilPoint = 255;
-    stone.thermalConductivity = 102; // 0.4 scaled to uint8
+    stone.meltPoint = 195;
+    stone.boilPoint = 0;
+    stone.thermalConductivity = 80; // moderate conductor
 
     // Dirt: medium static block
     auto& dirt = materials_[material_ids::DIRT];
@@ -34,9 +34,9 @@ MaterialRegistry::MaterialRegistry() {
     dirt.baseEssence[1] = 0.1f; // Chaos
     dirt.baseEssence[2] = 0.5f; // Life
     dirt.baseEssence[3] = 0.1f; // Decay
-    dirt.meltPoint = 180;
-    dirt.boilPoint = 240;
-    dirt.thermalConductivity = 38; // 0.15 scaled to uint8
+    dirt.meltPoint = 0;
+    dirt.boilPoint = 0;
+    dirt.thermalConductivity = 30; // poor conductor (insulator)
 
     // Sand: powder, falls and cascades
     auto& sand = materials_[material_ids::SAND];
@@ -49,9 +49,9 @@ MaterialRegistry::MaterialRegistry() {
     sand.baseEssence[1] = 0.3f; // Chaos
     sand.baseEssence[2] = 0.1f; // Life
     sand.baseEssence[3] = 0.2f; // Decay
-    sand.meltPoint = 220;
-    sand.boilPoint = 255;
-    sand.thermalConductivity = 64; // 0.25 scaled to uint8
+    sand.meltPoint = 179;
+    sand.boilPoint = 0;
+    sand.thermalConductivity = 50; // low conductor
 
     // Water: liquid, flows horizontally
     auto& water = materials_[material_ids::WATER];
@@ -66,7 +66,7 @@ MaterialRegistry::MaterialRegistry() {
     water.baseEssence[3] = 0.2f; // Decay
     water.meltPoint = 91;
     water.boilPoint = 124;
-    water.thermalConductivity = 153; // 0.6 scaled to uint8
+    water.thermalConductivity = 150; // good conductor
 
     // Gravel: powder, heavier than sand
     auto& gravel = materials_[material_ids::GRAVEL];
@@ -80,8 +80,8 @@ MaterialRegistry::MaterialRegistry() {
     gravel.baseEssence[2] = 0.0f; // Life
     gravel.baseEssence[3] = 0.3f; // Decay
     gravel.meltPoint = 190;
-    gravel.boilPoint = 250;
-    gravel.thermalConductivity = 77; // 0.3 scaled to uint8
+    gravel.boilPoint = 0;
+    gravel.thermalConductivity = 70; // moderate conductor
 }
 
 } // namespace recurse::simulation
