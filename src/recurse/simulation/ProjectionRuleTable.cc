@@ -21,7 +21,7 @@ void ProjectionRuleTable::setRule(uint8_t essenceIdx, Phase phase, const Project
 
 void ProjectionRuleTable::populateFromRegistry(const MaterialRegistry& registry) {
     // During migration, MaterialId maps 1:1 to essenceIdx for registered materials.
-    const MaterialId limit = std::min(registry.count(), static_cast<MaterialId>(K_MAX_ESSENCE));
+    const MaterialId limit = std::min(registry.registrySize(), static_cast<MaterialId>(K_MAX_ESSENCE));
     for (MaterialId id = 0; id < limit; ++id) {
         const auto& def = registry.get(id);
 
@@ -59,6 +59,19 @@ void ProjectionRuleTable::populateFromRegistry(const MaterialRegistry& registry)
 
         setRule(static_cast<uint8_t>(id), phase, projected);
     }
+
+    // Display-only overrides for synthetic essences.
+    // density, baseColor, and moveType are already set by the loop above.
+    // Only displayName and reductionTiebreak need manual values.
+    auto applyDisplayOverride = [&](uint8_t essenceIdx, Phase phase, std::string_view name, uint8_t tiebreak) {
+        size_t idx = index(essenceIdx, phase);
+        table_[idx].displayName = name;
+        table_[idx].reductionTiebreak = tiebreak;
+    };
+
+    applyDisplayOverride(material_ids::ICE, Phase::Solid, "ice", 110);
+    applyDisplayOverride(material_ids::GLASS, Phase::Solid, "glass", 130);
+    applyDisplayOverride(material_ids::MAGMA, Phase::Liquid, "magma", 200);
 }
 
 } // namespace recurse::simulation

@@ -5,7 +5,8 @@
 
 namespace recurse::simulation {
 
-VoxelSimulationSystem::VoxelSimulationSystem() : sandSystem_(registry_) {
+VoxelSimulationSystem::VoxelSimulationSystem()
+    : sandSystem_(registry_), transformPass_(ruleEngine_, registry_, grid_, ghosts_, tracker_) {
     projectionTable_.populateFromRegistry(registry_);
 }
 
@@ -110,6 +111,9 @@ void VoxelSimulationSystem::tick() {
         FABRIC_ZONE_SCOPED_N("phase_3b_boundary_drain");
         drainBoundaryWrites(boundaryQueues);
     }
+
+    // Phase 3c: Transformation pass (thermal diffusion + rule evaluation)
+    { transformPass_.execute(active, scheduler_, worldSeed_, frameIndex_); }
 
     // Phase 4: Advance epoch (swap read/write buffers)
     {

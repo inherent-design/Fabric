@@ -173,3 +173,38 @@ TEST_F(MaterialRegistryTest, ResolveVoxelSemanticsDoesNotTreatEssenceIndexAsCano
     EXPECT_FLOAT_EQ(resolved.material.intrinsicEssence.order, 0.3f);
     EXPECT_FLOAT_EQ(resolved.material.intrinsicEssence.life, 0.5f);
 }
+
+TEST_F(MaterialRegistryTest, RegistrySizeCoversAllKnownEssences) {
+    EXPECT_EQ(registry.registrySize(), material_ids::REGISTRY_SIZE);
+    EXPECT_GE(registry.registrySize(), 12u);
+}
+
+TEST_F(MaterialRegistryTest, IceProperties) {
+    const auto& ice = registry.get(material_ids::ICE);
+    EXPECT_EQ(ice.moveType, MoveType::Static);
+    EXPECT_EQ(ice.density, 90);
+    EXPECT_EQ(ice.thermalConductivity, 100);
+    EXPECT_EQ(ice.baseColor, 0xFFD0E8FFu);
+    EXPECT_EQ(ice.meltPoint, 91);
+}
+
+TEST_F(MaterialRegistryTest, GlassProperties) {
+    const auto& glass = registry.get(material_ids::GLASS);
+    EXPECT_EQ(glass.moveType, MoveType::Static);
+    EXPECT_EQ(glass.density, 160);
+    EXPECT_EQ(glass.thermalConductivity, 40);
+    EXPECT_EQ(glass.baseColor, 0xFFA08040u);
+    EXPECT_EQ(glass.meltPoint, 179);
+}
+
+TEST_F(MaterialRegistryTest, MagmaProperties) {
+    const auto& magma = registry.get(material_ids::MAGMA);
+    EXPECT_EQ(magma.moveType, MoveType::Liquid);
+    EXPECT_EQ(magma.density, 210);
+    EXPECT_EQ(magma.thermalConductivity, 200);
+    EXPECT_EQ(magma.baseColor, 0xFFFF4400u);
+}
+
+TEST_F(MaterialRegistryTest, AirConductivityIsLow) {
+    EXPECT_EQ(registry.get(material_ids::AIR).thermalConductivity, 25) << "AIR should be a poor thermal conductor";
+}

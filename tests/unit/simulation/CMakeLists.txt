@@ -16,6 +16,8 @@ target_sources(UnitTests
   BoundaryDrainTest.cc
   MatterStateTest.cc
   ProjectionRuleTableTest.cc
+  WorldRuleEngineTest.cc
+  TransformationPassTest.cc
   CellFactoryTest.cc
   VisualMergeTableTest.cc
 )
