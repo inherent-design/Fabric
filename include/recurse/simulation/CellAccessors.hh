@@ -157,31 +157,31 @@ inline VoxelCell cellForMaterial(MaterialId id) {
     switch (id) {
         case material_ids::AIR:
             cell = VoxelCell{};
-            cell.spare = 128;
+            cell.spare = 100;
             return cell;
         case material_ids::STONE:
             cell = makeCell(1, Phase::Solid, 200);
-            cell.spare = 128;
+            cell.spare = 100;
             return cell;
         case material_ids::DIRT:
             cell = makeCell(2, Phase::Solid, 150);
-            cell.spare = 128;
+            cell.spare = 100;
             return cell;
         case material_ids::SAND:
             cell = makeCell(3, Phase::Powder, 130);
-            cell.spare = 128;
+            cell.spare = 100;
             return cell;
         case material_ids::WATER:
             cell = makeCell(4, Phase::Liquid, 100);
-            cell.spare = 110; // above freeze point (91), comfortably liquid
+            cell.spare = 100;
             return cell;
         case material_ids::GRAVEL:
             cell = makeCell(5, Phase::Powder, 170);
-            cell.spare = 128;
+            cell.spare = 100;
             return cell;
         default:
             cell = makeCell(static_cast<uint8_t>(id), Phase::Solid, 128);
-            cell.spare = 128;
+            cell.spare = 100;
             return cell;
     }
 }
