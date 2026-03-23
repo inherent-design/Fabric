@@ -166,6 +166,38 @@ TEST(ProjectionRuleTableTest, PopulateFromRegistryAir) {
     EXPECT_EQ(air.density, 0);
 }
 
+// -- Synthetic density matches registry ---------------------------------------
+
+TEST(ProjectionRuleTableTest, SyntheticDensityMatchesRegistry) {
+    MaterialRegistry registry;
+    ProjectionRuleTable table;
+    table.populateFromRegistry(registry);
+
+    // Density must come from the registry, not hardcoded in ProjectionRuleTable
+    EXPECT_EQ(table.lookup(material_ids::ICE, Phase::Solid).density, registry.get(material_ids::ICE).density)
+        << "ICE projection density must match registry";
+    EXPECT_EQ(table.lookup(material_ids::GLASS, Phase::Solid).density, registry.get(material_ids::GLASS).density)
+        << "GLASS projection density must match registry";
+    EXPECT_EQ(table.lookup(material_ids::MAGMA, Phase::Liquid).density, registry.get(material_ids::MAGMA).density)
+        << "MAGMA projection density must match registry";
+}
+
+// -- Synthetic display overrides ----------------------------------------------
+
+TEST(ProjectionRuleTableTest, SyntheticDisplayOverrides) {
+    MaterialRegistry registry;
+    ProjectionRuleTable table;
+    table.populateFromRegistry(registry);
+
+    EXPECT_EQ(table.lookup(material_ids::ICE, Phase::Solid).displayName, "ice");
+    EXPECT_EQ(table.lookup(material_ids::GLASS, Phase::Solid).displayName, "glass");
+    EXPECT_EQ(table.lookup(material_ids::MAGMA, Phase::Liquid).displayName, "magma");
+
+    EXPECT_EQ(table.lookup(material_ids::ICE, Phase::Solid).reductionTiebreak, 110);
+    EXPECT_EQ(table.lookup(material_ids::GLASS, Phase::Solid).reductionTiebreak, 130);
+    EXPECT_EQ(table.lookup(material_ids::MAGMA, Phase::Liquid).reductionTiebreak, 200);
+}
+
 // -- Overwrite after populate -------------------------------------------------
 
 TEST(ProjectionRuleTableTest, SetRuleOverridesPopulated) {

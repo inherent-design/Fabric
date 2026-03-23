@@ -235,7 +235,37 @@ TEST_F(TransformationPassTest, ThermalIsolationInAir) {
     EXPECT_EQ(cellTemperature(result), 200) << "Cell surrounded by empty air should retain temperature";
 }
 
-// 7. ProjectionRuleTable contains projected appearances for ice, glass, magma.
+// 7. Thawing ice activates the sub-region for FallingSand processing.
+TEST_F(TransformationPassTest, ThawActivatesSubRegion) {
+    // Place ice at temp=130 (above thaw threshold of 92, R2 probability=75%)
+    VoxelCell ice = makeCell(6, Phase::Solid, 90);
+    setCellTemperature(ice, 130);
+    sim.grid().advanceEpoch();
+
+    syncGhostsForOrigin();
+
+    // Run until ice thaws (75% probability per attempt)
+    bool thawed = false;
+    for (int attempt = 0; attempt < 50 && !thawed; ++attempt) {
+        sim.grid().writeCell(16, 16, 16, ice);
+        sim.activityTracker().clearSubRegionMask(ChunkCoord{0, 0, 0});
+
+        TransformationPass pass(sim.ruleEngine(), sim.materials(), sim.grid(), sim.ghostCellManager(),
+                                sim.activityTracker());
+        std::mt19937 rng(static_cast<uint32_t>(attempt * 11 + 7));
+        pass.executeChunk(ChunkCoord{0, 0, 0}, rng);
+
+        VoxelCell result = sim.grid().readFromWriteBuffer(16, 16, 16);
+        if (result.essenceIdx == 4 && result.phase() == Phase::Liquid) {
+            thawed = true;
+            uint64_t mask = sim.activityTracker().getSubRegionMask(ChunkCoord{0, 0, 0});
+            EXPECT_NE(mask, 0u) << "Sub-region must be activated when ice thaws to water";
+        }
+    }
+    EXPECT_TRUE(thawed) << "Ice at temp=130 should thaw (75% probability per tick)";
+}
+
+// 8. ProjectionRuleTable contains projected appearances for ice, glass, magma.
 TEST_F(TransformationPassTest, ProjectionTablePopulated) {
     const auto& table = sim.projectionTable();
 

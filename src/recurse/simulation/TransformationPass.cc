@@ -156,6 +156,8 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                             cell.displacementRank = registry_.get(static_cast<MaterialId>(rule.resultEssenceA)).density;
                         }
                         grid_.writeCell(wx, wy, wz, cell);
+                        if (cell.phase() == Phase::Liquid || cell.phase() == Phase::Powder)
+                            tracker_.markSubRegionActive(pos, lx, ly, lz);
                         ++transformCount;
                         transformed = true;
                     }
@@ -197,6 +199,8 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                                     registry_.get(static_cast<MaterialId>(rule.resultEssenceA)).density;
                             }
                             grid_.writeCell(wx, wy, wz, cell);
+                            if (cell.phase() == Phase::Liquid || cell.phase() == Phase::Powder)
+                                tracker_.markSubRegionActive(pos, lx, ly, lz);
 
                             // Apply to neighbor (skip cross-chunk writes)
                             bool neighborInBounds = nlx >= 0 && nlx < K_CHUNK_SIZE && nly >= 0 && nly < K_CHUNK_SIZE &&
@@ -218,6 +222,8 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng) {
                                         registry_.get(static_cast<MaterialId>(rule.resultEssenceB)).density;
                                 }
                                 grid_.writeCell(nwx, nwy, nwz, nCell);
+                                if (nCell.phase() == Phase::Liquid || nCell.phase() == Phase::Powder)
+                                    tracker_.markSubRegionActive(pos, nlx, nly, nlz);
                             }
 
                             ++transformCount;

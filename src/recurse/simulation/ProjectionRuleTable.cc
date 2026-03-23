@@ -21,7 +21,7 @@ void ProjectionRuleTable::setRule(uint8_t essenceIdx, Phase phase, const Project
 
 void ProjectionRuleTable::populateFromRegistry(const MaterialRegistry& registry) {
     // During migration, MaterialId maps 1:1 to essenceIdx for registered materials.
-    const MaterialId limit = std::min(registry.count(), static_cast<MaterialId>(K_MAX_ESSENCE));
+    const MaterialId limit = std::min(registry.registrySize(), static_cast<MaterialId>(K_MAX_ESSENCE));
     for (MaterialId id = 0; id < limit; ++id) {
         const auto& def = registry.get(id);
 
@@ -60,36 +60,18 @@ void ProjectionRuleTable::populateFromRegistry(const MaterialRegistry& registry)
         setRule(static_cast<uint8_t>(id), phase, projected);
     }
 
-    // Projected appearances for transformation-produced materials.
-    // These essenceIdx values are outside material_ids::COUNT (6) but referenced
-    // by WorldRuleEngine rules as transformation products.
+    // Display-only overrides for synthetic essences.
+    // density, baseColor, and moveType are already set by the loop above.
+    // Only displayName and reductionTiebreak need manual values.
+    auto applyDisplayOverride = [&](uint8_t essenceIdx, Phase phase, std::string_view name, uint8_t tiebreak) {
+        size_t idx = index(essenceIdx, phase);
+        table_[idx].displayName = name;
+        table_[idx].reductionTiebreak = tiebreak;
+    };
 
-    // ICE (essenceIdx=6): produced by water freeze rule (R1)
-    setRule(6, Phase::Solid,
-            ProjectedMaterial{.displayName = "ice",
-                              .baseColor = 0xFFD0E8FF,
-                              .soundCategory = 0,
-                              .reductionTiebreak = 110,
-                              .moveType = MoveType::Static,
-                              .density = 90});
-
-    // GLASS (essenceIdx=10): produced by sand vitrify rule (R4)
-    setRule(10, Phase::Solid,
-            ProjectedMaterial{.displayName = "glass",
-                              .baseColor = 0xFFA08040,
-                              .soundCategory = 0,
-                              .reductionTiebreak = 130,
-                              .moveType = MoveType::Static,
-                              .density = 140});
-
-    // MAGMA (essenceIdx=11): produced by stone melt rule (R5)
-    setRule(11, Phase::Liquid,
-            ProjectedMaterial{.displayName = "magma",
-                              .baseColor = 0xFFFF4400,
-                              .soundCategory = 0,
-                              .reductionTiebreak = 200,
-                              .moveType = MoveType::Liquid,
-                              .density = 190});
+    applyDisplayOverride(material_ids::ICE, Phase::Solid, "ice", 110);
+    applyDisplayOverride(material_ids::GLASS, Phase::Solid, "glass", 130);
+    applyDisplayOverride(material_ids::MAGMA, Phase::Liquid, "magma", 200);
 }
 
 } // namespace recurse::simulation
