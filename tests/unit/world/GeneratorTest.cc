@@ -1,6 +1,7 @@
 #include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/world/EssencePalette.hh"
 #include "recurse/world/FlatGenerator.hh"
 #include "recurse/world/LayeredGenerator.hh"
 #include "recurse/world/SingleMaterialGenerator.hh"
@@ -144,4 +145,17 @@ TEST_F(GeneratorTest, GeneratorName) {
     EXPECT_EQ(flat.name(), "Flat");
     EXPECT_EQ(single.name(), "SingleMaterial");
     EXPECT_EQ(layered.name(), "Layered");
+}
+
+// 11. FlatGeneratorAcceptsPaletteWithoutCrash
+TEST_F(GeneratorTest, FlatGeneratorAcceptsPaletteWithoutCrash) {
+    FlatGenerator gen(16);
+    EssencePalette palette;
+    // Chunk at y=0 spans the surface; palette param must not cause a crash
+    gen.generate(grid, 0, 0, 0, &palette);
+    grid.advanceEpoch();
+
+    // Verify stone below and dirt at surface are still correct
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 0, 0)), material_ids::STONE);
+    EXPECT_EQ(cellMaterialId(grid.readCell(0, 16, 0)), material_ids::DIRT);
 }

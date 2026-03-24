@@ -157,7 +157,7 @@ void VoxelSimulationSystem::generateInitialWorld() {
                 auto generating =
                     recurse::simulation::transition<recurse::simulation::Absent, recurse::simulation::Generating>(
                         absent, registry);
-                gen.generate(grid, cx, cy, cz);
+                gen.generate(grid, cx, cy, cz, grid.chunkPalette(cx, cy, cz));
                 if (grid.isChunkMaterialized(cx, cy, cz)) {
                     auto* buf = grid.writeBuffer(cx, cy, cz);
                     auto* pal = grid.chunkPalette(cx, cy, cz);
@@ -247,7 +247,7 @@ void VoxelSimulationSystem::generateChunk(int cx, int cy, int cz) {
     auto absent = recurse::simulation::addChunkRef(registry, cx, cy, cz);
     auto generating =
         recurse::simulation::transition<recurse::simulation::Absent, recurse::simulation::Generating>(absent, registry);
-    gen.generate(grid, cx, cy, cz);
+    gen.generate(grid, cx, cy, cz, grid.chunkPalette(cx, cy, cz));
     if (grid.isChunkMaterialized(cx, cy, cz)) {
         auto* buf = grid.writeBuffer(cx, cy, cz);
         auto* pal = grid.chunkPalette(cx, cy, cz);
@@ -324,7 +324,7 @@ void VoxelSimulationSystem::generateChunksBatch(const std::vector<std::tuple<int
         FABRIC_ZONE_SCOPED_N("gen_parallel");
         const auto& mats = fabSim_->materials();
         sched.parallelFor(tasks.size(), "generation_batch", [&](size_t idx, size_t /*workerIdx*/) {
-            gen.generateToBuffer(tasks[idx].buffer, tasks[idx].cx, tasks[idx].cy, tasks[idx].cz);
+            gen.generateToBuffer(tasks[idx].buffer, tasks[idx].cx, tasks[idx].cy, tasks[idx].cz, tasks[idx].palette);
             if (tasks[idx].palette) {
                 recurse::simulation::assignEssence(tasks[idx].buffer, tasks[idx].cx, tasks[idx].cy, tasks[idx].cz, mats,
                                                    *tasks[idx].palette, 42);

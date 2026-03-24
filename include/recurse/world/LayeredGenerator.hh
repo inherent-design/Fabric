@@ -15,7 +15,7 @@ struct LayerDef {
 class LayeredGenerator : public WorldGenerator {
   public:
     explicit LayeredGenerator(std::vector<LayerDef> layers);
-    void generate(simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
+    void generate(simulation::SimulationGrid& grid, int cx, int cy, int cz, EssencePalette* palette = nullptr) override;
     std::string name() const override { return "Layered"; }
 
   private:

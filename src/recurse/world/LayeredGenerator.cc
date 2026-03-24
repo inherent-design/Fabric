@@ -8,7 +8,7 @@ using namespace simulation;
 
 LayeredGenerator::LayeredGenerator(std::vector<LayerDef> layers) : layers_(std::move(layers)) {}
 
-void LayeredGenerator::generate(SimulationGrid& grid, int cx, int cy, int cz) {
+void LayeredGenerator::generate(SimulationGrid& grid, int cx, int cy, int cz, EssencePalette* /*palette*/) {
     int baseY = cy * K_CHUNK_SIZE;
 
     grid.fillChunk(cx, cy, cz, VoxelCell{});

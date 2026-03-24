@@ -13,7 +13,8 @@ using simulation::K_CHUNK_SIZE;
 
 FlatWorldGenerator::FlatWorldGenerator(int groundLevel) : groundLevel_(groundLevel) {}
 
-void FlatWorldGenerator::generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) {
+void FlatWorldGenerator::generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz,
+                                  EssencePalette* /*palette*/) {
     using namespace recurse::simulation;
 
     int baseY = cy * K_CHUNK_SIZE;
@@ -62,7 +63,8 @@ std::string FlatWorldGenerator::worldgenFingerprintSource() const {
 LayeredWorldGenerator::LayeredWorldGenerator(int stoneLevel, int sandDepth)
     : stoneLevel_(stoneLevel), sandDepth_(sandDepth) {}
 
-void LayeredWorldGenerator::generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) {
+void LayeredWorldGenerator::generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz,
+                                     EssencePalette* /*palette*/) {
     using namespace recurse::simulation;
 
     int baseY = cy * K_CHUNK_SIZE;

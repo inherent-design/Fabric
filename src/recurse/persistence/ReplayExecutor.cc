@@ -70,9 +70,9 @@ ReplayResult ReplayExecutor::runLoop(const SnapshotSet& snapshot, std::span<cons
         FchkDecoded decoded;
         if (FchkCodec::isDelta(cs.blob) && worldGen_) {
             auto refBuf = std::make_unique<std::array<VoxelCell, K_CHUNK_VOLUME>>();
-            worldGen_->generateToBuffer(refBuf->data(), cs.coord.x, cs.coord.y, cs.coord.z);
+            EssencePalette refPalette;
+            worldGen_->generateToBuffer(refBuf->data(), cs.coord.x, cs.coord.y, cs.coord.z, &refPalette);
             if (materials_) {
-                EssencePalette refPalette;
                 simulation::assignEssence(refBuf->data(), cs.coord.x, cs.coord.y, cs.coord.z, *materials_, refPalette,
                                           42);
             }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fabric/core/Spatial.hh"
 #include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 #include "recurse/world/WorldGenerator.hh"
@@ -23,13 +24,14 @@ struct NoiseGenConfig {
 class MinecraftNoiseGenerator : public WorldGenerator {
   public:
     explicit MinecraftNoiseGenerator(const NoiseGenConfig& config = {});
-    void generate(simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
+    void generate(simulation::SimulationGrid& grid, int cx, int cy, int cz, EssencePalette* palette = nullptr) override;
     std::string name() const override { return "MinecraftNoise"; }
     std::string worldgenFingerprintSource() const override;
 
     uint16_t sampleMaterial(int wx, int wy, int wz) const override;
     int maxSurfaceHeight(int cx, int cz) const override;
-    void generateToBuffer(simulation::VoxelCell* buffer, int cx, int cy, int cz) override;
+    void generateToBuffer(simulation::VoxelCell* buffer, int cx, int cy, int cz,
+                          EssencePalette* palette = nullptr) override;
 
   private:
     struct ColumnSample {
@@ -64,6 +66,9 @@ class MinecraftNoiseGenerator : public WorldGenerator {
     int conservativeVisibleTopY(float surfaceHeight) const;
     simulation::MaterialId selectSurfaceMaterial(const ColumnSample& column) const;
     simulation::MaterialId selectSubsurfaceMaterial(const ColumnSample& column) const;
+
+    fabric::Vector4<float, fabric::Space::World>
+    classifyEssence(const ColumnSample& column, simulation::MaterialId materialId, int wx, int wy, int wz) const;
 };
 
 } // namespace recurse

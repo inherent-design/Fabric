@@ -7,7 +7,7 @@ namespace recurse {
 class FlatGenerator : public WorldGenerator {
   public:
     explicit FlatGenerator(int surfaceHeight = 16);
-    void generate(simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
+    void generate(simulation::SimulationGrid& grid, int cx, int cy, int cz, EssencePalette* palette = nullptr) override;
     std::string name() const override { return "Flat"; }
 
   private:

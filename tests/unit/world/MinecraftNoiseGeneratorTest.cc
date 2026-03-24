@@ -2,6 +2,7 @@
 #include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/world/EssencePalette.hh"
 #include <array>
 #include <chrono>
 #include <gtest/gtest.h>
@@ -534,4 +535,136 @@ TEST_F(MinecraftNoiseGenTest, PerformanceSingleChunk) {
 
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     EXPECT_LT(ms, 10) << "Chunk generation took " << ms << "ms (limit: 10ms)";
+}
+
+// -- Essence palette tests (Wave 4) --
+
+TEST_F(MinecraftNoiseGenTest, GeneratePopulatesPaletteWhenProvided) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator gen(config);
+
+    std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buffer{};
+    EssencePalette palette;
+    gen.generateToBuffer(buffer.data(), 0, 0, 0, &palette);
+
+    EXPECT_GT(palette.paletteSize(), 0u) << "Palette should have entries after generation";
+
+    int nonZeroEssence = 0;
+    for (const auto& cell : buffer) {
+        if (!isEmpty(cell) && cell.essenceIdx != 0)
+            ++nonZeroEssence;
+    }
+    EXPECT_GT(nonZeroEssence, 0) << "Non-air cells should have palette-assigned essenceIdx";
+}
+
+TEST_F(MinecraftNoiseGenTest, GenerateWithNullPalettePreservesExistingBehavior) {
+    NoiseGenConfig config;
+    config.seed = 42;
+
+    MinecraftNoiseGenerator gen1(config);
+    MinecraftNoiseGenerator gen2(config);
+
+    std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buf1{};
+    std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buf2{};
+
+    gen1.generateToBuffer(buf1.data(), 0, 1, 0, nullptr);
+    gen2.generateToBuffer(buf2.data(), 0, 1, 0, nullptr);
+
+    for (int i = 0; i < K_CHUNK * K_CHUNK * K_CHUNK; ++i) {
+        ASSERT_EQ(cellMaterialId(buf1[i]), cellMaterialId(buf2[i])) << "index=" << i;
+        ASSERT_EQ(buf1[i].essenceIdx, buf2[i].essenceIdx) << "essenceIdx differs at index=" << i;
+    }
+}
+
+TEST_F(MinecraftNoiseGenTest, GenerateWithPaletteProducesDifferentEssencePerMaterial) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator gen(config);
+
+    // Chunk at y=0 contains stone, dirt, sand, water near the surface
+    std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buffer{};
+    EssencePalette palette;
+    gen.generateToBuffer(buffer.data(), 0, 0, 0, &palette);
+
+    std::set<uint8_t> uniqueEssence;
+    for (const auto& cell : buffer) {
+        if (!isEmpty(cell))
+            uniqueEssence.insert(cell.essenceIdx);
+    }
+    EXPECT_GT(uniqueEssence.size(), 1u)
+        << "Different materials and terrain contexts should produce multiple essence indices";
+}
+
+TEST_F(MinecraftNoiseGenTest, ClassifyEssenceClampedToUnitRange) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator gen(config);
+
+    // Generate at extreme coordinates to exercise edge terrain values
+    std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buffer{};
+    EssencePalette palette;
+    gen.generateToBuffer(buffer.data(), 1000, 0, 1000, &palette);
+
+    // Verify all palette entries have components in [0, 1]
+    for (uint16_t i = 0; i < static_cast<uint16_t>(palette.paletteSize()); ++i) {
+        auto essence = palette.lookup(i);
+        EXPECT_GE(essence.x, 0.0f) << "Order < 0 at palette index " << i;
+        EXPECT_LE(essence.x, 1.0f) << "Order > 1 at palette index " << i;
+        EXPECT_GE(essence.y, 0.0f) << "Chaos < 0 at palette index " << i;
+        EXPECT_LE(essence.y, 1.0f) << "Chaos > 1 at palette index " << i;
+        EXPECT_GE(essence.z, 0.0f) << "Life < 0 at palette index " << i;
+        EXPECT_LE(essence.z, 1.0f) << "Life > 1 at palette index " << i;
+        EXPECT_GE(essence.w, 0.0f) << "Decay < 0 at palette index " << i;
+        EXPECT_LE(essence.w, 1.0f) << "Decay > 1 at palette index " << i;
+    }
+
+    // Also verify all non-air cells reference valid palette indices.
+    // quantize8 returns uint8_t, so essenceIdx is in [0, 255].
+    // The palette can grow larger than 256, but the 8-bit index must be
+    // within the range that quantize8 actually produced.
+    for (const auto& cell : buffer) {
+        if (!isEmpty(cell)) {
+            EXPECT_LT(static_cast<size_t>(cell.essenceIdx), palette.paletteSize())
+                << "essenceIdx out of palette bounds";
+        }
+    }
+}
+
+TEST_F(MinecraftNoiseGenTest, EssenceVariesSpatiallyForSameMaterial) {
+    NoiseGenConfig config;
+    config.seed = 42;
+    MinecraftNoiseGenerator gen(config);
+
+    // Generate two distant chunks. Deep underground (cy=-2) is all stone.
+    EssencePalette palette;
+    std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buf1{};
+    std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buf2{};
+
+    gen.generateToBuffer(buf1.data(), 0, -2, 0, &palette);
+    gen.generateToBuffer(buf2.data(), 50, -2, 50, &palette);
+
+    // Collect essence indices from stone cells in each chunk
+    std::set<uint8_t> essenceSet1;
+    std::set<uint8_t> essenceSet2;
+    for (const auto& cell : buf1) {
+        if (!isEmpty(cell))
+            essenceSet1.insert(cell.essenceIdx);
+    }
+    for (const auto& cell : buf2) {
+        if (!isEmpty(cell))
+            essenceSet2.insert(cell.essenceIdx);
+    }
+
+    // Distant chunks should have at least some different essence indices
+    // because terrain features (warmth, wetness) vary spatially
+    bool anyDifferent = false;
+    for (auto idx : essenceSet2) {
+        if (essenceSet1.find(idx) == essenceSet1.end()) {
+            anyDifferent = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(anyDifferent || essenceSet1 != essenceSet2)
+        << "Same material at distant locations should produce some variation in essence";
 }
