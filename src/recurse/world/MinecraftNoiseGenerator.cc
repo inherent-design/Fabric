@@ -338,8 +338,8 @@ fabric::Vector4<float, fabric::Space::World> MinecraftNoiseGenerator::classifyEs
     float decayMod = std::min(depthFactor * 0.002f, 0.08f) - column.warmth * 0.03f;
 
     // Spatial hash jitter for per-cell variation (+/-0.02)
-    auto h = static_cast<uint32_t>(wx * 73856093) ^ static_cast<uint32_t>(wy * 19349663) ^
-             static_cast<uint32_t>(wz * 83492791) ^ static_cast<uint32_t>(config_.seed);
+    auto h = (static_cast<uint32_t>(wx) * 73856093u) ^ (static_cast<uint32_t>(wy) * 19349663u) ^
+             (static_cast<uint32_t>(wz) * 83492791u) ^ static_cast<uint32_t>(config_.seed);
     h ^= h >> 16;
     h *= 0x45d9f3b;
     h ^= h >> 16;

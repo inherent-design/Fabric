@@ -311,7 +311,8 @@ ChunkBlob WorldSession::encodeChunkBlob(int cx, int cy, int cz) {
         std::vector<simulation::VoxelCell> refBuf(simulation::K_CHUNK_VOLUME);
         EssencePalette refPalette;
         worldGen_->generateToBuffer(refBuf.data(), cx, cy, cz, &refPalette);
-        simulation::assignEssence(refBuf.data(), cx, cy, cz, simSystem_->materials(), refPalette, 42);
+        if (refPalette.paletteSize() == 0)
+            simulation::assignEssence(refBuf.data(), cx, cy, cz, simSystem_->materials(), refPalette, 42);
         auto blob = FchkCodec::encodeDelta(buf->data(), refBuf.data(), sizeof(*buf), worldgenVersion_, 1, 1, palettePtr,
                                            paletteCount);
         ++stats_.encodes;
@@ -386,7 +387,7 @@ bool WorldSession::dispatchAsyncLoad(int cx, int cy, int cz) {
                 auto refBuf = std::make_unique<std::array<simulation::VoxelCell, simulation::K_CHUNK_VOLUME>>();
                 EssencePalette refPalette;
                 worldGen->generateToBuffer(refBuf->data(), cx, cy, cz, &refPalette);
-                if (materials) {
+                if (materials && refPalette.paletteSize() == 0) {
                     simulation::assignEssence(refBuf->data(), cx, cy, cz, *materials, refPalette, 42);
                 }
 

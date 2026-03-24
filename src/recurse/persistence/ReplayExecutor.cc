@@ -72,7 +72,7 @@ ReplayResult ReplayExecutor::runLoop(const SnapshotSet& snapshot, std::span<cons
             auto refBuf = std::make_unique<std::array<VoxelCell, K_CHUNK_VOLUME>>();
             EssencePalette refPalette;
             worldGen_->generateToBuffer(refBuf->data(), cs.coord.x, cs.coord.y, cs.coord.z, &refPalette);
-            if (materials_) {
+            if (materials_ && refPalette.paletteSize() == 0) {
                 simulation::assignEssence(refBuf->data(), cs.coord.x, cs.coord.y, cs.coord.z, *materials_, refPalette,
                                           42);
             }

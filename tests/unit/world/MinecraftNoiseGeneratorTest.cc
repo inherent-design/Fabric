@@ -658,13 +658,6 @@ TEST_F(MinecraftNoiseGenTest, EssenceVariesSpatiallyForSameMaterial) {
 
     // Distant chunks should have at least some different essence indices
     // because terrain features (warmth, wetness) vary spatially
-    bool anyDifferent = false;
-    for (auto idx : essenceSet2) {
-        if (essenceSet1.find(idx) == essenceSet1.end()) {
-            anyDifferent = true;
-            break;
-        }
-    }
-    EXPECT_TRUE(anyDifferent || essenceSet1 != essenceSet2)
+    EXPECT_NE(essenceSet1, essenceSet2)
         << "Same material at distant locations should produce some variation in essence";
 }
