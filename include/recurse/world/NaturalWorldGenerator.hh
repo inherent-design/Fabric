@@ -10,12 +10,14 @@ class NaturalWorldGenerator : public WorldGenerator {
   public:
     explicit NaturalWorldGenerator(const NoiseGenConfig& config) : noiseGen_(config) {}
 
-    void generate(simulation::SimulationGrid& grid, int cx, int cy, int cz) override {
-        noiseGen_.generate(grid, cx, cy, cz);
+    void generate(simulation::SimulationGrid& grid, int cx, int cy, int cz,
+                  EssencePalette* palette = nullptr) override {
+        noiseGen_.generate(grid, cx, cy, cz, palette);
     }
 
-    void generateToBuffer(simulation::VoxelCell* buffer, int cx, int cy, int cz) override {
-        noiseGen_.generateToBuffer(buffer, cx, cy, cz);
+    void generateToBuffer(simulation::VoxelCell* buffer, int cx, int cy, int cz,
+                          EssencePalette* palette = nullptr) override {
+        noiseGen_.generateToBuffer(buffer, cx, cy, cz, palette);
     }
 
     std::string worldgenFingerprintSource() const override { return noiseGen_.worldgenFingerprintSource(); }

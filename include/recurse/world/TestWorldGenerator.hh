@@ -10,7 +10,8 @@ class FlatWorldGenerator : public WorldGenerator {
   public:
     explicit FlatWorldGenerator(int groundLevel = 32);
 
-    void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
+    void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz,
+                  EssencePalette* palette = nullptr) override;
     uint16_t sampleMaterial(int wx, int wy, int wz) const override;
     int maxSurfaceHeight(int cx, int cz) const override;
     std::string worldgenFingerprintSource() const override;
@@ -26,7 +27,8 @@ class LayeredWorldGenerator : public WorldGenerator {
   public:
     LayeredWorldGenerator(int stoneLevel = 28, int sandDepth = 4);
 
-    void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz) override;
+    void generate(recurse::simulation::SimulationGrid& grid, int cx, int cy, int cz,
+                  EssencePalette* palette = nullptr) override;
     uint16_t sampleMaterial(int wx, int wy, int wz) const override;
     int maxSurfaceHeight(int cx, int cz) const override;
     std::string worldgenFingerprintSource() const override;

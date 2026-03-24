@@ -9,7 +9,7 @@ using namespace simulation;
 
 FlatGenerator::FlatGenerator(int surfaceHeight) : surfaceHeight_(surfaceHeight) {}
 
-void FlatGenerator::generate(SimulationGrid& grid, int cx, int cy, int cz) {
+void FlatGenerator::generate(SimulationGrid& grid, int cx, int cy, int cz, EssencePalette* /*palette*/) {
     int baseY = cy * K_CHUNK_SIZE;
     int topY = baseY + K_CHUNK_SIZE - 1;
 

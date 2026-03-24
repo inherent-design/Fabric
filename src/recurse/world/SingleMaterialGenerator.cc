@@ -7,7 +7,7 @@ using namespace simulation;
 
 SingleMaterialGenerator::SingleMaterialGenerator(VoxelCell cell) : cell_(cell) {}
 
-void SingleMaterialGenerator::generate(SimulationGrid& grid, int cx, int cy, int cz) {
+void SingleMaterialGenerator::generate(SimulationGrid& grid, int cx, int cy, int cz, EssencePalette* /*palette*/) {
     grid.fillChunk(cx, cy, cz, cell_);
 }
 

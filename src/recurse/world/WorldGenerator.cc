@@ -23,11 +23,11 @@ uint32_t hashFNV1a(std::string_view text) {
 
 } // namespace
 
-void WorldGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy, int cz) {
+void WorldGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy, int cz, EssencePalette* palette) {
     // Fallback for generators that do not override: run generate() against a
     // temporary single-chunk grid and copy the result into the caller's buffer.
     simulation::SimulationGrid tmpGrid;
-    generate(tmpGrid, cx, cy, cz);
+    generate(tmpGrid, cx, cy, cz, palette);
 
     if (tmpGrid.isChunkMaterialized(cx, cy, cz)) {
         tmpGrid.syncChunkBuffers(cx, cy, cz);

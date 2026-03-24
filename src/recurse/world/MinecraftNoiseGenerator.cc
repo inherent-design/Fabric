@@ -2,6 +2,7 @@
 #include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
+#include "recurse/world/EssencePalette.hh"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -45,6 +46,31 @@ float saturate(float value) {
 
 float remapUnit(float value) {
     return saturate(value * 0.5f + 0.5f);
+}
+
+// OCLD base essence values for natural materials: {Order, Chaos, Life, Decay}
+const fabric::Vector4<float, fabric::Space::World> K_ESSENCE_STONE{0.8f, 0.1f, 0.0f, 0.1f};
+const fabric::Vector4<float, fabric::Space::World> K_ESSENCE_DIRT{0.3f, 0.1f, 0.5f, 0.1f};
+const fabric::Vector4<float, fabric::Space::World> K_ESSENCE_SAND{0.4f, 0.3f, 0.1f, 0.2f};
+const fabric::Vector4<float, fabric::Space::World> K_ESSENCE_WATER{0.2f, 0.2f, 0.4f, 0.2f};
+const fabric::Vector4<float, fabric::Space::World> K_ESSENCE_GRAVEL{0.5f, 0.2f, 0.0f, 0.3f};
+
+fabric::Vector4<float, fabric::Space::World> baseEssenceFor(simulation::MaterialId id) {
+    using namespace simulation::material_ids;
+    switch (id) {
+        case STONE:
+            return K_ESSENCE_STONE;
+        case DIRT:
+            return K_ESSENCE_DIRT;
+        case SAND:
+            return K_ESSENCE_SAND;
+        case WATER:
+            return K_ESSENCE_WATER;
+        case GRAVEL:
+            return K_ESSENCE_GRAVEL;
+        default:
+            return {};
+    }
 }
 
 } // namespace
@@ -188,15 +214,16 @@ int MinecraftNoiseGenerator::conservativeVisibleTopY(float surfaceHeight) const 
     return static_cast<int>(std::ceil(std::max(surfaceHeight, config_.seaLevel)));
 }
 
-void MinecraftNoiseGenerator::generate(simulation::SimulationGrid& grid, int cx, int cy, int cz) {
+void MinecraftNoiseGenerator::generate(simulation::SimulationGrid& grid, int cx, int cy, int cz,
+                                       EssencePalette* palette) {
     grid.materializeChunk(cx, cy, cz);
     auto* buf = grid.writeBuffer(cx, cy, cz);
     if (!buf)
         return;
-    generateToBuffer(buf->data(), cx, cy, cz);
+    generateToBuffer(buf->data(), cx, cy, cz, palette);
 }
 
-void MinecraftNoiseGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy, int cz) {
+void MinecraftNoiseGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy, int cz, EssencePalette* palette) {
     int baseX = cx * K_SIZE;
     int baseY = cy * K_SIZE;
     int baseZ = cz * K_SIZE;
@@ -246,6 +273,10 @@ void MinecraftNoiseGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy
 
                 VoxelCell cell = cellForMaterial(materialId);
                 int idx = lx + ly * K_SIZE + lz * K_SIZE * K_SIZE;
+                if (palette) {
+                    auto essence = classifyEssence(column, materialId, wx, wy, wz);
+                    cell.essenceIdx = palette->quantize8(essence);
+                }
                 buffer[idx] = cell;
             }
         }
@@ -289,6 +320,37 @@ int MinecraftNoiseGenerator::maxSurfaceHeight(int cx, int cz) const {
 
 uint16_t MinecraftNoiseGenerator::sampleMaterial(int wx, int wy, int wz) const {
     return classifyMaterial(sampleColumn(wx, wz), wy);
+}
+
+fabric::Vector4<float, fabric::Space::World> MinecraftNoiseGenerator::classifyEssence(const ColumnSample& column,
+                                                                                      simulation::MaterialId materialId,
+                                                                                      int wx, int wy, int wz) const {
+    if (materialId == material_ids::AIR)
+        return {};
+
+    auto base = baseEssenceFor(materialId);
+
+    // Terrain feature modulation (small adjustments, +/-0.1 range)
+    float orderMod = column.ruggedness * 0.08f - column.wetness * 0.04f;
+    float chaosMod = column.sediment * 0.06f + column.coastalness * 0.05f;
+    float lifeMod = column.warmth * 0.06f + column.wetness * 0.05f;
+    float depthFactor = std::max(0.0f, column.surfaceHeight - static_cast<float>(wy));
+    float decayMod = std::min(depthFactor * 0.002f, 0.08f) - column.warmth * 0.03f;
+
+    // Spatial hash jitter for per-cell variation (+/-0.02)
+    auto h = static_cast<uint32_t>(wx * 73856093) ^ static_cast<uint32_t>(wy * 19349663) ^
+             static_cast<uint32_t>(wz * 83492791) ^ static_cast<uint32_t>(config_.seed);
+    h ^= h >> 16;
+    h *= 0x45d9f3b;
+    h ^= h >> 16;
+    float jitter = (static_cast<float>(h & 0xFFFF) / 65535.0f - 0.5f) * 0.04f;
+
+    float o = std::clamp(base.x + orderMod + jitter, 0.0f, 1.0f);
+    float c = std::clamp(base.y + chaosMod + jitter * 0.7f, 0.0f, 1.0f);
+    float l = std::clamp(base.z + lifeMod + jitter * 0.5f, 0.0f, 1.0f);
+    float d = std::clamp(base.w + decayMod + jitter * 0.6f, 0.0f, 1.0f);
+
+    return {o, c, l, d};
 }
 
 } // namespace recurse
