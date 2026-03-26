@@ -15,7 +15,7 @@ class WorldTransactionStore;
 
 namespace recurse::simulation {
 class SimulationGrid;
-class FallingSandSystem;
+class TransformationPass;
 class GhostCellManager;
 class ChunkActivityTracker;
 class MaterialRegistry;
@@ -88,7 +88,7 @@ using ReplayObserver = std::function<bool(const ReplayFrame&)>;
 class ReplayExecutor {
   public:
     ReplayExecutor(WorldTransactionStore& txStore, simulation::SimulationGrid& grid,
-                   simulation::FallingSandSystem& sandSystem, simulation::GhostCellManager& ghosts,
+                   simulation::TransformationPass& transformPass, simulation::GhostCellManager& ghosts,
                    simulation::ChunkActivityTracker& tracker, int64_t worldSeed,
                    const simulation::MaterialRegistry* materials = nullptr, WorldGenerator* worldGen = nullptr);
 
@@ -104,7 +104,7 @@ class ReplayExecutor {
 
     WorldTransactionStore& txStore_;
     simulation::SimulationGrid& grid_;
-    simulation::FallingSandSystem& sandSystem_;
+    simulation::TransformationPass& transformPass_;
     simulation::GhostCellManager& ghosts_;
     simulation::ChunkActivityTracker& tracker_;
     int64_t worldSeed_;

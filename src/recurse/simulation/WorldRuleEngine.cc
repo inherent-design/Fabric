@@ -22,7 +22,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultTempB = 0,
                       .probability = 128,
                       .priority = 200,
-                      .tag = 0});
+                      .tag = RuleTag::kThermal});
 
     // R2: Ice thaw (temp >= 92, 75%)
     rules_.push_back({.essenceIdxA = 6,
@@ -38,7 +38,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultTempB = 0,
                       .probability = 192,
                       .priority = 200,
-                      .tag = 0});
+                      .tag = RuleTag::kThermal});
 
     // R3: Water boil (temp >= 125, 25%)
     rules_.push_back({.essenceIdxA = 4,
@@ -54,7 +54,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultTempB = 0,
                       .probability = 64,
                       .priority = 190,
-                      .tag = 0});
+                      .tag = RuleTag::kThermal});
 
     // R4: Sand vitrify (temp >= 180, 12%)
     rules_.push_back({.essenceIdxA = 3,
@@ -70,7 +70,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultTempB = 0,
                       .probability = 32,
                       .priority = 180,
-                      .tag = 0});
+                      .tag = RuleTag::kThermal});
 
     // R5: Stone melt (temp >= 196, 6%)
     rules_.push_back({.essenceIdxA = 1,
@@ -86,7 +86,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultTempB = 0,
                       .probability = 16,
                       .priority = 180,
-                      .tag = 0});
+                      .tag = RuleTag::kThermal});
 
     // R6: Magma cool (temp <= 194, 50%)
     rules_.push_back({.essenceIdxA = 11,
@@ -102,7 +102,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultTempB = 0,
                       .probability = 128,
                       .priority = 200,
-                      .tag = 0});
+                      .tag = RuleTag::kThermal});
 
     // R7: Water + Magma contact (any temp, 100%)
     rules_.push_back({.essenceIdxA = 4,
@@ -118,7 +118,7 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultTempB = 150,
                       .probability = 255,
                       .priority = 220,
-                      .tag = 1});
+                      .tag = RuleTag::kContact});
 
     // R8: Near-heat evaporation (temp >= 141, 50%)
     rules_.push_back({.essenceIdxA = 4,
@@ -134,7 +134,87 @@ WorldRuleEngine::WorldRuleEngine() {
                       .resultTempB = 0,
                       .probability = 128,
                       .priority = 185,
-                      .tag = 1});
+                      .tag = RuleTag::kContact});
+
+    // G1: Powder gravity (any powder falls into empty below)
+    rules_.push_back({.essenceIdxA = 255,
+                      .essenceIdxB = 0,
+                      .requiredPhaseA = Phase::Powder,
+                      .temperatureMin = 0,
+                      .temperatureMax = 255,
+                      .resultEssenceA = 255,
+                      .resultEssenceB = 255,
+                      .resultPhaseA = Phase::Unchanged,
+                      .resultPhaseB = Phase::Unchanged,
+                      .resultTempA = 0,
+                      .resultTempB = 0,
+                      .probability = 255,
+                      .priority = 250,
+                      .tag = RuleTag::kGravity | RuleTag::kSwap});
+
+    // G2: Powder diagonal spread (50%)
+    rules_.push_back({.essenceIdxA = 255,
+                      .essenceIdxB = 0,
+                      .requiredPhaseA = Phase::Powder,
+                      .temperatureMin = 0,
+                      .temperatureMax = 255,
+                      .resultEssenceA = 255,
+                      .resultEssenceB = 255,
+                      .resultPhaseA = Phase::Unchanged,
+                      .resultPhaseB = Phase::Unchanged,
+                      .resultTempA = 0,
+                      .resultTempB = 0,
+                      .probability = 128,
+                      .priority = 240,
+                      .tag = RuleTag::kGravity | RuleTag::kSwap});
+
+    // G3: Liquid gravity (any liquid falls into empty below)
+    rules_.push_back({.essenceIdxA = 255,
+                      .essenceIdxB = 0,
+                      .requiredPhaseA = Phase::Liquid,
+                      .temperatureMin = 0,
+                      .temperatureMax = 255,
+                      .resultEssenceA = 255,
+                      .resultEssenceB = 255,
+                      .resultPhaseA = Phase::Unchanged,
+                      .resultPhaseB = Phase::Unchanged,
+                      .resultTempA = 0,
+                      .resultTempB = 0,
+                      .probability = 255,
+                      .priority = 230,
+                      .tag = RuleTag::kGravity | RuleTag::kSwap});
+
+    // G4: Liquid horizontal spread (78%)
+    rules_.push_back({.essenceIdxA = 255,
+                      .essenceIdxB = 0,
+                      .requiredPhaseA = Phase::Liquid,
+                      .temperatureMin = 0,
+                      .temperatureMax = 255,
+                      .resultEssenceA = 255,
+                      .resultEssenceB = 255,
+                      .resultPhaseA = Phase::Unchanged,
+                      .resultPhaseB = Phase::Unchanged,
+                      .resultTempA = 0,
+                      .resultTempB = 0,
+                      .probability = 200,
+                      .priority = 220,
+                      .tag = RuleTag::kGravity | RuleTag::kSwap});
+
+    // G5: Gas rise (gas moves up into empty above, 78%)
+    rules_.push_back({.essenceIdxA = 255,
+                      .essenceIdxB = 0,
+                      .requiredPhaseA = Phase::Gas,
+                      .temperatureMin = 0,
+                      .temperatureMax = 255,
+                      .resultEssenceA = 255,
+                      .resultEssenceB = 255,
+                      .resultPhaseA = Phase::Unchanged,
+                      .resultPhaseB = Phase::Unchanged,
+                      .resultTempA = 0,
+                      .resultTempB = 0,
+                      .probability = 200,
+                      .priority = 210,
+                      .tag = RuleTag::kGravity | RuleTag::kSwap});
 
     sortByPriority();
 
@@ -150,9 +230,24 @@ void WorldRuleEngine::query(uint8_t selfEssence, uint8_t neighborEssence, Phase 
                             std::vector<WorldRule>& results) const {
     results.clear();
     for (const auto& rule : rules_) {
+        if (rule.isSwap())
+            continue;
         if (matches(rule, selfEssence, neighborEssence, selfPhase, temperature)) {
             results.push_back(rule);
         }
+    }
+}
+
+void WorldRuleEngine::queryGravity(Phase selfPhase, std::vector<WorldRule>& results) const {
+    results.clear();
+    for (const auto& rule : rules_) {
+        if (!rule.isSwap())
+            continue;
+        if (rule.systemTag() != RuleTag::kGravity)
+            continue;
+        if (rule.requiredPhaseA != Phase::Unchanged && rule.requiredPhaseA != selfPhase)
+            continue;
+        results.push_back(rule);
     }
 }
 

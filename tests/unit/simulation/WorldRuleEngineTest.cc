@@ -8,9 +8,9 @@ class WorldRuleEngineTest : public ::testing::Test {
     WorldRuleEngine engine;
 };
 
-// 1. Engine has 8 rules after construction.
+// 1. Engine has 13 rules after construction (8 transformation + 5 gravity).
 TEST_F(WorldRuleEngineTest, DefaultRuleCount) {
-    EXPECT_EQ(engine.ruleCount(), 8u);
+    EXPECT_EQ(engine.ruleCount(), 13u);
 }
 
 // 2. Query with WATER essence, self-transform, Liquid phase, temp=80 returns freeze rule.
@@ -200,4 +200,50 @@ TEST_F(WorldRuleEngineTest, ContactDoesNotMatchSelfTransform) {
 // 12. Verify K_MAX_TRANSFORMS_PER_CHUNK == 64.
 TEST_F(WorldRuleEngineTest, BudgetCapConstant) {
     EXPECT_EQ(K_MAX_TRANSFORMS_PER_CHUNK, 64);
+}
+
+// 13. queryGravity returns only SWAP-tagged gravity rules for the matching phase.
+TEST_F(WorldRuleEngineTest, QueryGravityReturnsSwapRulesOnly) {
+    std::vector<WorldRule> gravityRules;
+    engine.queryGravity(Phase::Powder, gravityRules);
+    ASSERT_FALSE(gravityRules.empty());
+    for (const auto& r : gravityRules) {
+        EXPECT_TRUE(r.isSwap()) << "queryGravity should only return SWAP-tagged rules";
+        EXPECT_EQ(r.systemTag(), 2u) << "queryGravity should only return gravity-tagged rules (tag=2)";
+    }
+
+    // Liquid phase should also return gravity rules
+    engine.queryGravity(Phase::Liquid, gravityRules);
+    ASSERT_FALSE(gravityRules.empty());
+    for (const auto& r : gravityRules) {
+        EXPECT_TRUE(r.isSwap());
+        EXPECT_EQ(r.systemTag(), 2u);
+    }
+
+    // Gas phase should also return gravity rules
+    engine.queryGravity(Phase::Gas, gravityRules);
+    ASSERT_FALSE(gravityRules.empty());
+    for (const auto& r : gravityRules) {
+        EXPECT_TRUE(r.isSwap());
+        EXPECT_EQ(r.systemTag(), 2u);
+    }
+
+    // Solid phase should return nothing (no gravity rules for solid)
+    engine.queryGravity(Phase::Solid, gravityRules);
+    EXPECT_TRUE(gravityRules.empty()) << "No gravity rules should match Solid phase";
+}
+
+// 14. query() does not return SWAP-tagged rules.
+TEST_F(WorldRuleEngineTest, QuerySkipsSwapRules) {
+    // If query returned gravity rules, we'd see more than 8 for some queries.
+    // Verify that SWAP rules are excluded from the transformation query path.
+    for (int ess = 0; ess < 20; ++ess) {
+        for (int phase = 0; phase < 5; ++phase) {
+            std::vector<WorldRule> results;
+            engine.query(static_cast<uint8_t>(ess), 255, static_cast<Phase>(phase), 100, results);
+            for (const auto& r : results) {
+                EXPECT_FALSE(r.isSwap()) << "query() should never return SWAP-tagged rules";
+            }
+        }
+    }
 }

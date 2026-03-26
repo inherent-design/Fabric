@@ -4,6 +4,8 @@
 #include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include <algorithm>
+#include <array>
+#include <bit>
 #include <cmath>
 
 namespace recurse::simulation {
@@ -258,6 +260,233 @@ int TransformationPass::ruleEvaluation(ChunkCoord pos, std::mt19937& rng,
         }
     }
     return transformCount;
+}
+
+void TransformationPass::writeSwap(ChunkCoord pos, int srcLx, int srcLy, int srcLz, int dstLx, int dstLy, int dstLz,
+                                   VoxelCell srcCell, VoxelCell dstCell, BoundaryWriteQueue& boundaryWrites,
+                                   std::vector<CellSwap>& cellSwaps) const {
+    int srcWx = pos.x * K_CHUNK_SIZE + srcLx;
+    int srcWy = pos.y * K_CHUNK_SIZE + srcLy;
+    int srcWz = pos.z * K_CHUNK_SIZE + srcLz;
+    grid_.writeCell(srcWx, srcWy, srcWz, dstCell);
+
+    cellSwaps.push_back(
+        CellSwap{pos, srcLx, srcLy, srcLz, std::bit_cast<uint32_t>(srcCell), std::bit_cast<uint32_t>(dstCell)});
+
+    if (dstLx >= 0 && dstLx < K_CHUNK_SIZE && dstLy >= 0 && dstLy < K_CHUNK_SIZE && dstLz >= 0 &&
+        dstLz < K_CHUNK_SIZE) {
+        int dstWx = pos.x * K_CHUNK_SIZE + dstLx;
+        int dstWy = pos.y * K_CHUNK_SIZE + dstLy;
+        int dstWz = pos.z * K_CHUNK_SIZE + dstLz;
+        grid_.writeCell(dstWx, dstWy, dstWz, srcCell);
+
+        cellSwaps.push_back(
+            CellSwap{pos, dstLx, dstLy, dstLz, std::bit_cast<uint32_t>(dstCell), std::bit_cast<uint32_t>(srcCell)});
+    } else {
+        int dstWx = pos.x * K_CHUNK_SIZE + dstLx;
+        int dstWy = pos.y * K_CHUNK_SIZE + dstLy;
+        int dstWz = pos.z * K_CHUNK_SIZE + dstLz;
+        int ncx = dstWx >> K_CHUNK_SHIFT;
+        int ncy = dstWy >> K_CHUNK_SHIFT;
+        int ncz = dstWz >> K_CHUNK_SHIFT;
+        boundaryWrites.push_back(
+            BoundaryWrite{dstWx, dstWy, dstWz, srcCell, srcWx, srcWy, srcWz, srcCell, ChunkCoord{ncx, ncy, ncz}});
+    }
+}
+
+bool TransformationPass::gravityEvaluation(ChunkCoord pos, std::mt19937& rng, BoundaryWriteQueue& boundaryWrites,
+                                           std::vector<CellSwap>& cellSwaps) {
+    FABRIC_ZONE_SCOPED_N("gravityEvaluation");
+
+    std::vector<WorldRule> matchBuffer;
+    std::vector<uint8_t> moved(K_CHUNK_VOLUME, 0);
+    bool anyChange = false;
+
+    struct Offset {
+        int dx, dy, dz;
+    };
+
+    for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+            for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+                int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
+                if (moved[idx])
+                    continue;
+
+                int wx = pos.x * K_CHUNK_SIZE + lx;
+                int wy = pos.y * K_CHUNK_SIZE + ly;
+                int wz = pos.z * K_CHUNK_SIZE + lz;
+
+                VoxelCell cell = grid_.readFromWriteBuffer(wx, wy, wz);
+                if (isEmpty(cell))
+                    continue;
+
+                Phase phase = cell.phase();
+                if (phase == Phase::Empty || phase == Phase::Solid)
+                    continue;
+
+                rules_.queryGravity(phase, matchBuffer);
+                if (matchBuffer.empty())
+                    continue;
+
+                bool cellMoved = false;
+
+                // Determine direction set based on phase
+                if (phase == Phase::Gas) {
+                    // Gas: rise (0,+1,0)
+                    VoxelCell above = readCell(pos, lx, ly + 1, lz);
+                    if (canDisplace(registry_, cell, above)) {
+                        for (const auto& rule : matchBuffer) {
+                            if (cellMoved)
+                                break;
+                            uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
+                            if (rule.probability == 255 || roll < rule.probability) {
+                                writeSwap(pos, lx, ly, lz, lx, ly + 1, lz, cell, above, boundaryWrites, cellSwaps);
+                                cellMoved = true;
+                                anyChange = true;
+                            }
+                        }
+                    }
+
+                    // Diagonal up for gas (4 dirs)
+                    if (!cellMoved) {
+                        std::array<Offset, 4> diags = {{{-1, 1, 0}, {1, 1, 0}, {0, 1, -1}, {0, 1, 1}}};
+                        std::shuffle(diags.begin(), diags.end(), rng);
+                        for (const auto& [dx, dy, dz] : diags) {
+                            if (cellMoved)
+                                break;
+                            VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz);
+                            if (canDisplace(registry_, cell, target)) {
+                                for (const auto& rule : matchBuffer) {
+                                    if (rule.probability == 255 ||
+                                        (static_cast<uint8_t>(rng() & 0xFF)) < rule.probability) {
+                                        writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target,
+                                                  boundaryWrites, cellSwaps);
+                                        cellMoved = true;
+                                        anyChange = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (phase == Phase::Liquid) {
+                    // Liquid: gravity down (0,-1,0)
+                    VoxelCell below = readCell(pos, lx, ly - 1, lz);
+                    if (canDisplace(registry_, cell, below)) {
+                        for (const auto& rule : matchBuffer) {
+                            if (cellMoved)
+                                break;
+                            uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
+                            if (rule.probability == 255 || roll < rule.probability) {
+                                writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, boundaryWrites, cellSwaps);
+                                cellMoved = true;
+                                anyChange = true;
+                            }
+                        }
+                    }
+
+                    // Diagonal down (4 dirs)
+                    if (!cellMoved) {
+                        std::array<Offset, 4> diags = {{{-1, -1, 0}, {1, -1, 0}, {0, -1, -1}, {0, -1, 1}}};
+                        std::shuffle(diags.begin(), diags.end(), rng);
+                        for (const auto& [dx, dy, dz] : diags) {
+                            if (cellMoved)
+                                break;
+                            VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz);
+                            if (canDisplace(registry_, cell, target)) {
+                                for (const auto& rule : matchBuffer) {
+                                    if (rule.probability == 255 ||
+                                        (static_cast<uint8_t>(rng() & 0xFF)) < rule.probability) {
+                                        writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target,
+                                                  boundaryWrites, cellSwaps);
+                                        cellMoved = true;
+                                        anyChange = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Horizontal flow (4 dirs, 1 cell/tick)
+                    if (!cellMoved) {
+                        std::array<Offset, 4> horiz = {{{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}}};
+                        std::shuffle(horiz.begin(), horiz.end(), rng);
+                        for (const auto& [dx, dy, dz] : horiz) {
+                            if (cellMoved)
+                                break;
+                            VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz);
+                            if (canDisplace(registry_, cell, target)) {
+                                for (const auto& rule : matchBuffer) {
+                                    if (rule.probability == 255 ||
+                                        (static_cast<uint8_t>(rng() & 0xFF)) < rule.probability) {
+                                        writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target,
+                                                  boundaryWrites, cellSwaps);
+                                        cellMoved = true;
+                                        anyChange = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (phase == Phase::Powder) {
+                    // Powder: gravity down (0,-1,0)
+                    VoxelCell below = readCell(pos, lx, ly - 1, lz);
+                    if (canDisplace(registry_, cell, below)) {
+                        for (const auto& rule : matchBuffer) {
+                            if (cellMoved)
+                                break;
+                            uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
+                            if (rule.probability == 255 || roll < rule.probability) {
+                                writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, boundaryWrites, cellSwaps);
+                                cellMoved = true;
+                                anyChange = true;
+                            }
+                        }
+                    }
+
+                    // Diagonal down (4 dirs)
+                    if (!cellMoved) {
+                        std::array<Offset, 4> diags = {{{-1, -1, 0}, {1, -1, 0}, {0, -1, -1}, {0, -1, 1}}};
+                        std::shuffle(diags.begin(), diags.end(), rng);
+                        for (const auto& [dx, dy, dz] : diags) {
+                            if (cellMoved)
+                                break;
+                            VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz);
+                            if (canDisplace(registry_, cell, target)) {
+                                for (const auto& rule : matchBuffer) {
+                                    if (rule.probability == 255 ||
+                                        (static_cast<uint8_t>(rng() & 0xFF)) < rule.probability) {
+                                        writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target,
+                                                  boundaryWrites, cellSwaps);
+                                        cellMoved = true;
+                                        anyChange = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (cellMoved) {
+                    // Mark destination positions as moved to prevent double-move in same tick
+                    // Source is no longer at (lx,ly,lz) so no need to mark it
+                    if (phase == Phase::Powder || phase == Phase::Liquid) {
+                        // Mark below and diagonal positions
+                        moved[idx] = 1;
+                        // For diagonal moves, the destination varies; we rely on the write buffer
+                        // being immediately visible (Gauss-Seidel), so the cell at destination
+                        // will be non-empty when encountered later in linear scan
+                    }
+                }
+            }
+        }
+    }
+
+    return anyChange;
 }
 
 } // namespace recurse::simulation

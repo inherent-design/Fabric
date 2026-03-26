@@ -10,6 +10,7 @@ target_sources(UnitTests
   FallingSandGravityTest.cc
   FallingSandLiquidTest.cc
   FallingSandPhysicsChangeTest.cc
+  GravityRuleEquivalenceTest.cc
   VoxelSimulationSystemTest.cc
   ParallelSimulationTest.cc
   ChangeVelocityTrackerTest.cc

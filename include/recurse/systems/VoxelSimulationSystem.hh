@@ -14,11 +14,11 @@ class JobScheduler;
 
 namespace recurse::simulation {
 class ChunkActivityTracker;
-class FallingSandSystem;
 class GhostCellManager;
 class MaterialRegistry;
 class ProjectionRuleTable;
 class SimulationGrid;
+class TransformationPass;
 class ChangeVelocityTracker;
 class VoxelSimulationSystem;
 } // namespace recurse::simulation
@@ -89,8 +89,8 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     /// Access the underlying JobScheduler (owned by the inner simulation system).
     fabric::JobScheduler& scheduler();
 
-    recurse::simulation::FallingSandSystem& fallingSandSystem();
-    const recurse::simulation::FallingSandSystem& fallingSandSystem() const;
+    recurse::simulation::TransformationPass& transformPass();
+    const recurse::simulation::TransformationPass& transformPass() const;
     recurse::simulation::GhostCellManager& ghostCellManager();
     const recurse::simulation::GhostCellManager& ghostCellManager() const;
     int64_t worldSeed() const;

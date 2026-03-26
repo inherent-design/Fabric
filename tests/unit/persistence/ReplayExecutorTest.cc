@@ -4,10 +4,10 @@
 #include "recurse/persistence/WorldTransactionStore.hh"
 #include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
-#include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/TransformationPass.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "recurse/systems/TerrainSystem.hh"
 #include "recurse/systems/VoxelSimulationSystem.hh"
@@ -65,7 +65,8 @@ class ReplayExecutorTest : public ::testing::Test {
     SimulationGrid grid;
     ChunkActivityTracker tracker;
     GhostCellManager ghosts;
-    FallingSandSystem sandSystem{registry};
+    WorldRuleEngine ruleEngine;
+    TransformationPass transformPass{ruleEngine, registry, grid, ghosts, tracker};
     StubTransactionStore txStore;
     int64_t worldSeed = 12345;
 
@@ -86,7 +87,7 @@ class ReplayExecutorTest : public ::testing::Test {
     VoxelCell makeMaterial(MaterialId id) { return cellForMaterial(id); }
 
     ReplayExecutor makeExecutor() {
-        return ReplayExecutor(txStore, grid, sandSystem, ghosts, tracker, worldSeed, &registry);
+        return ReplayExecutor(txStore, grid, transformPass, ghosts, tracker, worldSeed, &registry);
     }
 
     void runProductionTicks(uint64_t ticks) {
@@ -111,10 +112,9 @@ class ReplayExecutorTest : public ::testing::Test {
             for (const auto& e : active) {
                 uint64_t hash = spatialHash(e.pos);
                 std::mt19937 rng(static_cast<uint32_t>(worldSeed ^ hash));
-                bool reverseDir = (hash & 1) != 0;
                 BoundaryWriteQueue bw;
                 std::vector<CellSwap> cs;
-                sandSystem.simulateChunk(e.pos, grid, ghosts, tracker, reverseDir, rng, bw, cs);
+                transformPass.gravityEvaluation(e.pos, rng, bw, cs);
             }
             grid.advanceEpoch();
         }

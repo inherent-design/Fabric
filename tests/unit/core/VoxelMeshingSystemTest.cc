@@ -224,7 +224,7 @@ TEST_F(VoxelMeshingSystemTest, DirtyChunkConsumed) {
     ChunkCoord coord{0, 0, 0};
     fillChunkSolid(coord);
     // BoundaryDirty: meshing should process and then sleep the chunk.
-    // Active chunks are NOT slept by meshing (FallingSandSystem owns that).
+    // Active chunks are NOT slept by meshing (WorldRuleEngine gravity owns that).
     tracker.setState({coord.x, coord.y, coord.z}, ChunkState::BoundaryDirty);
 
     system.processFrame();

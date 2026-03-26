@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 
 # macOS deployment target must be set before project() for proper propagation
 if(APPLE)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum macOS deployment version")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "26.0" CACHE STRING "Minimum macOS deployment version")
 endif()
 
 # Project definition
@@ -317,7 +317,6 @@ set(FABRIC_SIMULATION_SOURCE_FILES
     src/recurse/simulation/ChunkActivityTracker.cc
     src/recurse/simulation/ChunkFinalization.cc
     src/recurse/simulation/GhostCells.cc
-    src/recurse/simulation/FallingSandSystem.cc
     src/recurse/simulation/VoxelSimulationSystem.cc
     src/recurse/simulation/EssenceAssigner.cc
     src/recurse/simulation/ChangeVelocityTracker.cc
@@ -473,6 +472,14 @@ target_compile_options(FabricLib PRIVATE
 # WebView feature flag
 if(FABRIC_USE_WEBVIEW)
     target_compile_definitions(FabricLib PUBLIC FABRIC_USE_WEBVIEW)
+endif()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "22")
+    set_source_files_properties(
+        src/ui/WebView.cc
+        tests/unit/ui/WebViewTest.cc
+        PROPERTIES COMPILE_FLAGS "-Wno-elaborated-enum-base -Wno-deprecated-enum-enum-conversion"
+    )
 endif()
 
 # Mark engine source files

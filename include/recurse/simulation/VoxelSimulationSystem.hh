@@ -3,14 +3,12 @@
 #include "recurse/simulation/BoundaryWriteQueue.hh"
 #include "recurse/simulation/ChangeVelocityTracker.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
-#include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/ProjectionRuleTable.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/TransformationPass.hh"
 #include "recurse/simulation/WorldRuleEngine.hh"
-#include <bit>
 #include <cstdint>
 #include <vector>
 
@@ -23,7 +21,7 @@ inline uint64_t spatialHash(ChunkCoord pos) {
     return h;
 }
 
-/// Per-cell change record from physics simulation (FallingSand writeSwap).
+/// Per-cell change record from physics simulation (gravity SWAP).
 /// Simulation-layer only; converted to VoxelChangeDetail at system boundary.
 struct CellSwap {
     ChunkCoord chunk;
@@ -39,7 +37,6 @@ class VoxelSimulationSystem {
   public:
     VoxelSimulationSystem();
 
-    /// Run one full simulation epoch.
     void tick();
 
     SimulationGrid& grid();
@@ -52,16 +49,9 @@ class VoxelSimulationSystem {
     const ChunkActivityTracker& activityTracker() const;
     uint64_t frameIndex() const;
 
-    /// Reset all per-world simulation state.
-    /// Clears ghost cells, physics change records, settled list,
-    /// and resets the frame counter. Grid and tracker are left to
-    /// the caller (outer system clears them separately).
     void resetWorldState();
-
     void setWorldSeed(int64_t seed);
 
-    /// Chunks that settled (no movement) during the last tick().
-    /// Used by the outer system to dispatch collision rebuild events.
     const std::vector<ChunkCoord>& settledChunks() const;
 
   private:
@@ -70,7 +60,6 @@ class VoxelSimulationSystem {
     SimulationGrid grid_;
     ChunkActivityTracker tracker_;
     GhostCellManager ghosts_;
-    FallingSandSystem sandSystem_;
     WorldRuleEngine ruleEngine_;
     TransformationPass transformPass_;
     fabric::JobScheduler scheduler_;
@@ -85,8 +74,6 @@ class VoxelSimulationSystem {
   public:
     fabric::JobScheduler& scheduler();
 
-    FallingSandSystem& fallingSandSystem() { return sandSystem_; }
-    const FallingSandSystem& fallingSandSystem() const { return sandSystem_; }
     GhostCellManager& ghostCellManager() { return ghosts_; }
     const GhostCellManager& ghostCellManager() const { return ghosts_; }
     WorldRuleEngine& ruleEngine() { return ruleEngine_; }

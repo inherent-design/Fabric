@@ -55,7 +55,7 @@ class ChunkVelocityRing {
 };
 
 /// Tracks per-chunk change velocity (cell swaps per second) over a sliding
-/// frame window. Fed by FallingSandSystem swap counts after the per-worker
+/// frame window. Fed by gravity rule swap counts after the per-worker
 /// merge in VoxelSimulationSystem::tick().
 ///
 /// Threading model: single-writer on the simulation thread (post-merge,

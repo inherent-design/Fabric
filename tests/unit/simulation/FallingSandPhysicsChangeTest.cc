@@ -1,10 +1,11 @@
 #include "recurse/simulation/CellAccessors.hh"
 #include "recurse/simulation/ChunkActivityTracker.hh"
-#include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/TransformationPass.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
+#include "recurse/simulation/WorldRuleEngine.hh"
 #include <bit>
 #include <gtest/gtest.h>
 #include <random>
@@ -17,7 +18,8 @@ class FallingSandPhysicsChangeTest : public ::testing::Test {
     SimulationGrid grid;
     ChunkActivityTracker tracker;
     GhostCellManager ghosts;
-    FallingSandSystem system{registry};
+    WorldRuleEngine ruleEngine;
+    TransformationPass transformPass{ruleEngine, registry, grid, ghosts, tracker};
     BoundaryWriteQueue boundaryWrites;
     std::vector<CellSwap> cellSwaps;
     std::mt19937 rng{42};
@@ -45,7 +47,7 @@ TEST_F(FallingSandPhysicsChangeTest, SandFallRecordsCellSwaps) {
     placeCellAndAdvance(16, 31, 16, makeMaterial(material_ids::SAND));
 
     ghosts.syncGhostCells(ChunkCoord{0, 0, 0}, grid);
-    system.simulateGravity(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites, cellSwaps);
+    transformPass.gravityEvaluation(ChunkCoord{0, 0, 0}, rng, boundaryWrites, cellSwaps);
 
     // One swap = 2 entries (source cleared, dest filled)
     ASSERT_EQ(cellSwaps.size(), 2u);
@@ -85,7 +87,7 @@ TEST_F(FallingSandPhysicsChangeTest, LiquidFlowRecordsCellSwaps) {
     placeCellAndAdvance(16, 1, 16, makeMaterial(material_ids::WATER));
 
     ghosts.syncGhostCells(ChunkCoord{0, 0, 0}, grid);
-    system.simulateLiquid(ChunkCoord{0, 0, 0}, grid, ghosts, tracker, 0, rng, boundaryWrites, cellSwaps);
+    transformPass.gravityEvaluation(ChunkCoord{0, 0, 0}, rng, boundaryWrites, cellSwaps);
 
     // Water should flow horizontally; at least 2 swap entries (1 movement)
     EXPECT_GE(cellSwaps.size(), 2u);

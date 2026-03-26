@@ -5,8 +5,7 @@
 
 namespace recurse::simulation {
 
-VoxelSimulationSystem::VoxelSimulationSystem()
-    : sandSystem_(registry_), transformPass_(ruleEngine_, registry_, grid_, ghosts_, tracker_) {
+VoxelSimulationSystem::VoxelSimulationSystem() : transformPass_(ruleEngine_, registry_, grid_, ghosts_, tracker_) {
     projectionTable_.populateFromRegistry(registry_);
 }
 
@@ -15,9 +14,6 @@ void VoxelSimulationSystem::tick() {
 
     settledChunks_.clear();
 
-    // 1. Collect active + boundary-dirty chunks, then filter.
-    // BoundaryDirty chunks need remeshing only (not simulation).
-    // Leave them for VoxelMeshingSystem; simulate only Active chunks.
     auto collected = tracker_.collectActiveChunks();
     std::vector<ActiveChunkEntry> active;
     active.reserve(collected.size());
@@ -28,7 +24,6 @@ void VoxelSimulationSystem::tick() {
     FABRIC_ZONE_VALUE(static_cast<int64_t>(active.size()));
 
     if (active.empty()) {
-        // Nothing to simulate; still advance frame
         ++frameIndex_;
         return;
     }
@@ -37,9 +32,6 @@ void VoxelSimulationSystem::tick() {
     {
         FABRIC_ZONE_SCOPED_N("phase_0_dispatch");
         grid_.registry().resolveBufferPointers(grid_.currentEpoch());
-        // Dispatch list not yet consumed by simulation; collectActiveChunks still
-        // drives the work list via ChunkState. Phase 0 wiring prepares for future
-        // migration where dispatchList replaces collectActiveChunks.
         auto dispatchList = grid_.registry().buildDispatchList(ChunkSlotState::Active);
         (void)dispatchList;
     }
@@ -54,8 +46,7 @@ void VoxelSimulationSystem::tick() {
         ghosts_.syncAll(positions, grid_);
     }
 
-    // Phase 2b: Pre-materialize face-neighbor chunks so writeCell cannot
-    // insert into chunks_ during parallel dispatch (ARCH-SIM-RACE fix).
+    // Phase 2b: Pre-materialize face-neighbor chunks
     {
         FABRIC_ZONE_SCOPED_N("phase_2b_pre_materialize");
         const int offsets[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
@@ -69,30 +60,29 @@ void VoxelSimulationSystem::tick() {
         }
     }
 
-    // Phase 3: Simulate chunks via scheduler (parallel or inline)
+    // Phase 3: Gravity evaluation via TransformationPass (parallel)
     size_t workerSlots = scheduler_.workerCount() + 1;
     std::vector<BoundaryWriteQueue> boundaryQueues(workerSlots);
     std::vector<std::vector<ChunkCoord>> settledPerWorker(workerSlots);
     std::vector<std::vector<CellSwap>> cellSwapsPerWorker(workerSlots);
     {
-        FABRIC_ZONE_SCOPED_N("phase_3_simulate");
-        scheduler_.parallelFor(active.size(), "phase_3_simulate", [&](size_t jobIdx, size_t workerIdx) {
+        FABRIC_ZONE_SCOPED_N("phase_3_gravity");
+        scheduler_.parallelFor(active.size(), "phase_3_gravity", [&](size_t jobIdx, size_t workerIdx) {
             const auto& pos = active[jobIdx].pos;
             std::mt19937 rng(static_cast<uint32_t>(worldSeed_ ^ spatialHash(pos)));
-            bool reverseDir = (spatialHash(pos) & 1) != 0;
-            bool settled = sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, reverseDir, rng,
-                                                     boundaryQueues[workerIdx], cellSwapsPerWorker[workerIdx]);
-            if (settled) {
-                settledPerWorker[workerIdx].push_back(pos);
-            } else {
+            bool moved =
+                transformPass_.gravityEvaluation(pos, rng, boundaryQueues[workerIdx], cellSwapsPerWorker[workerIdx]);
+            if (moved) {
                 auto* slot = grid_.registry().find(pos.x, pos.y, pos.z);
                 if (slot)
                     slot->copyCountdown.store(ChunkBuffers::K_COUNT - 1, std::memory_order_relaxed);
+            } else {
+                settledPerWorker[workerIdx].push_back(pos);
             }
         });
     }
 
-    // Merge settled lists and cell swaps (single-threaded)
+    // Merge settled lists and cell swaps
     for (auto& v : settledPerWorker) {
         settledChunks_.insert(settledChunks_.end(), v.begin(), v.end());
     }
@@ -106,7 +96,7 @@ void VoxelSimulationSystem::tick() {
             velocityTracker_.record(pos, count, frameIndex_);
     }
 
-    // Phase 3b: Drain boundary write queues (single-threaded)
+    // Phase 3b: Drain boundary write queues
     {
         FABRIC_ZONE_SCOPED_N("phase_3b_boundary_drain");
         drainBoundaryWrites(boundaryQueues);
@@ -115,7 +105,7 @@ void VoxelSimulationSystem::tick() {
     // Phase 3c: Transformation pass (thermal diffusion + rule evaluation)
     { transformPass_.execute(active, scheduler_, worldSeed_, frameIndex_); }
 
-    // Phase 4: Advance epoch (swap read/write buffers)
+    // Phase 4: Advance epoch
     {
         FABRIC_ZONE_SCOPED_N("phase_4_epoch_advance");
         grid_.advanceEpoch();
@@ -127,7 +117,11 @@ void VoxelSimulationSystem::tick() {
         propagateDirty(active);
     }
 
-    // 6. Increment frame
+    // Phase 6: Put settled chunks (no gravity movement) to sleep
+    for (const auto& pos : settledChunks_) {
+        tracker_.putToSleep(pos);
+    }
+
     ++frameIndex_;
 }
 

@@ -6,10 +6,10 @@
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/ChunkFinalization.hh"
 #include "recurse/simulation/EssenceAssigner.hh"
-#include "recurse/simulation/FallingSandSystem.hh"
 #include "recurse/simulation/GhostCells.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
 #include "recurse/simulation/SimulationGrid.hh"
+#include "recurse/simulation/TransformationPass.hh"
 #include "recurse/simulation/VoxelSimulationSystem.hh"
 #include "recurse/world/EssencePalette.hh"
 #include "recurse/world/WorldGenerator.hh"
@@ -29,12 +29,12 @@ constexpr double K_TICK_DURATION_MS = 1000.0 / 60.0;
 } // namespace
 
 ReplayExecutor::ReplayExecutor(WorldTransactionStore& txStore, simulation::SimulationGrid& grid,
-                               simulation::FallingSandSystem& sandSystem, simulation::GhostCellManager& ghosts,
+                               simulation::TransformationPass& transformPass, simulation::GhostCellManager& ghosts,
                                simulation::ChunkActivityTracker& tracker, int64_t worldSeed,
                                const simulation::MaterialRegistry* materials, WorldGenerator* worldGen)
     : txStore_(txStore),
       grid_(grid),
-      sandSystem_(sandSystem),
+      transformPass_(transformPass),
       ghosts_(ghosts),
       tracker_(tracker),
       worldSeed_(worldSeed),
@@ -207,20 +207,27 @@ ReplayResult ReplayExecutor::runLoop(const SnapshotSet& snapshot, std::span<cons
         // Step 6: Simulate all chunks SEQUENTIALLY (deterministic).
         std::vector<BoundaryWrite> allBoundaryWrites;
         std::vector<CellSwap> discardedSwaps;
+        std::vector<ChunkCoord> settledChunks;
         for (const auto& entry : active) {
             const auto& pos = entry.pos;
             uint64_t hash = spatialHash(pos);
 
             std::mt19937 rng(static_cast<uint32_t>(worldSeed_ ^ hash));
-            bool reverseDir = (hash & 1) != 0;
-
             BoundaryWriteQueue boundaryWrites;
             discardedSwaps.clear();
 
-            sandSystem_.simulateChunk(pos, grid_, ghosts_, tracker_, reverseDir, rng, boundaryWrites, discardedSwaps);
+            bool moved = transformPass_.gravityEvaluation(pos, rng, boundaryWrites, discardedSwaps);
+            if (!moved) {
+                settledChunks.push_back(pos);
+            }
 
             allBoundaryWrites.insert(allBoundaryWrites.end(), boundaryWrites.begin(), boundaryWrites.end());
             affectedSet.insert(pos);
+        }
+
+        // Step 6b: Put settled chunks to sleep (matches production behavior).
+        for (const auto& pos : settledChunks) {
+            tracker_.putToSleep(pos);
         }
 
         // Step 7: Drain boundary writes (sorted, with conflict conservation).

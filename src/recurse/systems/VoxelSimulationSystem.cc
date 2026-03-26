@@ -218,12 +218,12 @@ fabric::JobScheduler& VoxelSimulationSystem::scheduler() {
     return fabSim_->scheduler();
 }
 
-recurse::simulation::FallingSandSystem& VoxelSimulationSystem::fallingSandSystem() {
-    return fabSim_->fallingSandSystem();
+recurse::simulation::TransformationPass& VoxelSimulationSystem::transformPass() {
+    return fabSim_->transformPass();
 }
 
-const recurse::simulation::FallingSandSystem& VoxelSimulationSystem::fallingSandSystem() const {
-    return fabSim_->fallingSandSystem();
+const recurse::simulation::TransformationPass& VoxelSimulationSystem::transformPass() const {
+    return fabSim_->transformPass();
 }
 
 recurse::simulation::GhostCellManager& VoxelSimulationSystem::ghostCellManager() {

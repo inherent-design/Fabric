@@ -119,7 +119,7 @@ WorldSession::WorldSession(const std::string& worldDir, fabric::EventDispatcher&
 
     if (simSystem_) {
         replayExecutor_ = std::make_unique<persistence::ReplayExecutor>(
-            *txStore_, simSystem_->simulationGrid(), simSystem_->fallingSandSystem(), simSystem_->ghostCellManager(),
+            *txStore_, simSystem_->simulationGrid(), simSystem_->transformPass(), simSystem_->ghostCellManager(),
             simSystem_->activityTracker(), simSystem_->worldSeed(), &simSystem_->materials(), worldGen_);
 
         chunkSnapshotProvider_ = std::make_unique<ChunkSnapshotProvider>(
