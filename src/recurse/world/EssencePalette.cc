@@ -25,7 +25,9 @@ uint16_t EssencePalette::quantize(const Vector4<float, Space::World>& essence) {
 }
 
 uint8_t EssencePalette::quantize8(const Vector4<float, Space::World>& essence) {
-    return static_cast<uint8_t>(quantize(essence));
+    uint16_t idx = quantize(essence);
+    assert(idx < 256 && "quantize8: palette index exceeds uint8_t range");
+    return static_cast<uint8_t>(idx);
 }
 
 Vector4<float, Space::World> EssencePalette::lookup(uint16_t index) const {

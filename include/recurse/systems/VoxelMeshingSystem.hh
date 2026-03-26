@@ -5,6 +5,7 @@
 #include "fabric/world/ChunkCoord.hh"
 #include "fabric/world/ChunkedGrid.hh"
 #include "recurse/render/VoxelRenderer.hh"
+#include "recurse/simulation/ProjectionRuleTable.hh"
 #include "recurse/simulation/VoxelConstants.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 
@@ -223,6 +224,7 @@ class VoxelMeshingSystem : public fabric::System<VoxelMeshingSystem> {
     recurse::simulation::SimulationGrid* simGrid_ = nullptr;
     recurse::simulation::ChunkActivityTracker* activityTracker_ = nullptr;
     const recurse::simulation::MaterialRegistry* materials_ = nullptr;
+    const recurse::simulation::ProjectionRuleTable* projectionTable_ = nullptr;
     fabric::JobScheduler* scheduler_ = nullptr;
     std::unique_ptr<recurse::SnapMCMesher> snapMcMesher_;
     NearChunkMesher nearChunkMesher_ = NearChunkMesher::Greedy;

@@ -199,7 +199,7 @@ recurse::SmoothChunkMeshData buildGreedyMesh(const MeshingChunkContext& ctx,
 
                         const size_t maskIdx = static_cast<size_t>(row * K_CHUNK_SIZE + col);
                         mask[maskIdx] = recurse::simulation::mergeKey(cell);
-                        essenceIndices[maskIdx] = recurse::simulation::cellMaterialId(cell);
+                        essenceIndices[maskIdx] = mask[maskIdx];
                     }
                 }
 
@@ -294,6 +294,7 @@ void VoxelMeshingSystem::doInit(fabric::AppContext& ctx) {
         simGrid_ = &simSystem_->simulationGrid();
         activityTracker_ = &simSystem_->activityTracker();
         materials_ = &simSystem_->materials();
+        projectionTable_ = &simSystem_->projectionTable();
         scheduler_ = &simSystem_->scheduler();
     }
     const auto configuredNearChunkMesher =
@@ -326,6 +327,7 @@ void VoxelMeshingSystem::doShutdown() {
     simGrid_ = nullptr;
     activityTracker_ = nullptr;
     materials_ = nullptr;
+    projectionTable_ = nullptr;
     scheduler_ = nullptr;
     gpuUploadEnabled_ = false;
 
@@ -557,20 +559,24 @@ CPUMeshResult VoxelMeshingSystem::generateMeshCPU(const fabric::ChunkCoord& coor
     if (meshData.empty() || meshData.indices.empty())
         return result;
 
-    // Terrain appearance contract: full-res chunk meshes use the same
-    // MaterialDef::baseColor truth as distant LOD sections. Chunk-local essence
-    // remains available for simulation and debug inspection, but does not drive
-    // this terrain palette.
-    std::set<uint16_t> uniqueEssences;
+    // Palette from ProjectionRuleTable: each vertex carries a visual hash
+    // encoding (essenceIdx << 3 | phase) as its palette key. Decode the hash
+    // to look up per-(essenceIdx, phase) color via the projection table.
+    std::set<uint16_t> uniqueKeys;
     for (const auto& v : meshData.vertices)
-        uniqueEssences.insert(unpackEssenceIdx(v.appearance));
+        uniqueKeys.insert(unpackEssenceIdx(v.appearance));
 
     std::unordered_map<uint16_t, uint16_t> paletteLookup;
-    result.palette.reserve(uniqueEssences.size());
-    for (uint16_t idx : uniqueEssences) {
-        paletteLookup[idx] = static_cast<uint16_t>(result.palette.size());
-        if (materials_) {
-            result.palette.push_back(materials_->terrainAppearanceColor(idx));
+    result.palette.reserve(uniqueKeys.size());
+    for (uint16_t key : uniqueKeys) {
+        paletteLookup[key] = static_cast<uint16_t>(result.palette.size());
+        if (projectionTable_) {
+            uint8_t essenceIdx = static_cast<uint8_t>(key >> 3);
+            auto phase = static_cast<recurse::simulation::Phase>(key & 0x07);
+            result.palette.push_back(
+                recurse::simulation::unpackARGBColor(projectionTable_->lookup(essenceIdx, phase).baseColor));
+        } else if (materials_) {
+            result.palette.push_back(materials_->terrainAppearanceColor(key));
         } else {
             result.palette.push_back({0.0f, 0.0f, 0.0f, 0.0f});
         }

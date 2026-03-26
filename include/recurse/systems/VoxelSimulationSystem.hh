@@ -17,6 +17,7 @@ class ChunkActivityTracker;
 class FallingSandSystem;
 class GhostCellManager;
 class MaterialRegistry;
+class ProjectionRuleTable;
 class SimulationGrid;
 class ChangeVelocityTracker;
 class VoxelSimulationSystem;
@@ -54,6 +55,7 @@ class VoxelSimulationSystem : public fabric::System<VoxelSimulationSystem> {
     recurse::simulation::ChunkActivityTracker& activityTracker();
     const recurse::simulation::ChunkActivityTracker& activityTracker() const;
     const recurse::simulation::MaterialRegistry& materials() const;
+    const recurse::simulation::ProjectionRuleTable& projectionTable() const;
 
     /// Generate terrain for a single chunk into the simulation grid.
     /// Called by ChunkPipelineSystem during streaming load.

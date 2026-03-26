@@ -234,6 +234,15 @@ inline int materialSemanticPriority(uint16_t materialId) {
     }
 }
 
+/// Projection-aware semantic priority using reductionTiebreak from the table.
+/// Falls back to materialId-based priority when the table entry is unpopulated.
+inline int materialSemanticPriority(const ProjectionRuleTable& table, VoxelCell cell) {
+    const auto& projected = table.lookup(cell.essenceIdx, cell.phase());
+    if (projected.baseColor != 0)
+        return projected.reductionTiebreak;
+    return materialSemanticPriority(static_cast<uint16_t>(cell.essenceIdx));
+}
+
 /// Merge key for greedy meshing. Adjacent faces with equal keys are merged
 /// into a single quad. Initially maps to materialId; Wave 4 swaps to a
 /// visual-equivalence hash derived from MatterState fields.
@@ -275,6 +284,14 @@ inline MergeKey mergeKey(MatterState cell) {
 /// Semantic priority for LOD reduction from MatterState.
 /// Delegates to the existing materialId-based function via projection.
 inline int materialSemanticPriority(MatterState cell) {
+    return materialSemanticPriority(static_cast<uint16_t>(cell.essenceIdx));
+}
+
+/// Projection-aware semantic priority for MatterState using reductionTiebreak.
+inline int materialSemanticPriority(const ProjectionRuleTable& table, MatterState cell) {
+    const auto& projected = table.lookup(cell.essenceIdx, cell.phase());
+    if (projected.baseColor != 0)
+        return projected.reductionTiebreak;
     return materialSemanticPriority(static_cast<uint16_t>(cell.essenceIdx));
 }
 

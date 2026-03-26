@@ -529,10 +529,11 @@ void WorldSession::updateLODRing(int centerCX, int centerCY, int centerCZ, int s
     if (centerCX == lastLodCX_ && centerCY == lastLodCY_ && centerCZ == lastLodCZ_)
         return;
 
-    int dx = centerCX - lastLodCX_;
-    int dy = centerCY - lastLodCY_;
-    int dz = centerCZ - lastLodCZ_;
-    bool isTeleport = lastLodCX_ == INT_MIN || std::abs(dx) > 1 || std::abs(dy) > 1 || std::abs(dz) > 1;
+    bool isFirst = lastLodCX_ == INT_MIN;
+    int dx = isFirst ? 0 : (centerCX - lastLodCX_);
+    int dy = isFirst ? 0 : (centerCY - lastLodCY_);
+    int dz = isFirst ? 0 : (centerCZ - lastLodCZ_);
+    bool isTeleport = isFirst || std::abs(dx) > 1 || std::abs(dy) > 1 || std::abs(dz) > 1;
 
     lastLodCX_ = centerCX;
     lastLodCY_ = centerCY;

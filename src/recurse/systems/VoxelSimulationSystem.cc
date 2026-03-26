@@ -210,6 +210,10 @@ const recurse::simulation::MaterialRegistry& VoxelSimulationSystem::materials() 
     return fabSim_->materials();
 }
 
+const recurse::simulation::ProjectionRuleTable& VoxelSimulationSystem::projectionTable() const {
+    return fabSim_->projectionTable();
+}
+
 fabric::JobScheduler& VoxelSimulationSystem::scheduler() {
     return fabSim_->scheduler();
 }

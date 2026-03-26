@@ -7,6 +7,7 @@
 #include "recurse/simulation/ChunkActivityTracker.hh"
 #include "recurse/simulation/EssenceColor.hh"
 #include "recurse/simulation/MaterialRegistry.hh"
+#include "recurse/simulation/ProjectionRuleTable.hh"
 #include "recurse/simulation/SimulationGrid.hh"
 #include "recurse/simulation/VoxelMaterial.hh"
 
@@ -30,11 +31,14 @@ class VoxelMeshingSystemTest : public ::testing::Test {
     ChunkActivityTracker tracker;
     VoxelMeshingSystem system;
     recurse::simulation::MaterialRegistry materials;
+    recurse::simulation::ProjectionRuleTable projectionTable;
 
     void SetUp() override {
+        projectionTable.populateFromRegistry(materials);
         system.setSimulationGrid(&simGrid);
         system.setActivityTracker(&tracker);
         system.materials_ = &materials;
+        system.projectionTable_ = &projectionTable;
         tracker.setReferencePoint(0, 0, 0);
         // Unit tests don't set up neighbors; bypass the neighbor check.
         system.setRequireNeighborsForMeshing(false);

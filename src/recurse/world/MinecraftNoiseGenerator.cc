@@ -19,7 +19,7 @@ using simulation::VoxelCell;
 namespace {
 
 constexpr float K_FILLED_DENSITY_THRESHOLD = 0.0f;
-constexpr uint32_t K_TERRAIN_RULE_VERSION = 3;
+constexpr uint32_t K_TERRAIN_RULE_VERSION = 4;
 
 int floorChunkCoord(int worldCoord) {
     int chunk = worldCoord / simulation::K_CHUNK_SIZE;

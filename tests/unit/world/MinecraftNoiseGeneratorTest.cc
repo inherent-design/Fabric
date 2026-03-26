@@ -545,7 +545,7 @@ TEST_F(MinecraftNoiseGenTest, GeneratePopulatesPaletteWhenProvided) {
     MinecraftNoiseGenerator gen(config);
 
     std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buffer{};
-    EssencePalette palette;
+    EssencePalette palette{0.0f, 255};
     gen.generateToBuffer(buffer.data(), 0, 0, 0, &palette);
 
     EXPECT_GT(palette.paletteSize(), 0u) << "Palette should have entries after generation";
@@ -584,7 +584,7 @@ TEST_F(MinecraftNoiseGenTest, GenerateWithPaletteProducesDifferentEssencePerMate
 
     // Chunk at y=0 contains stone, dirt, sand, water near the surface
     std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buffer{};
-    EssencePalette palette;
+    EssencePalette palette{0.0f, 255};
     gen.generateToBuffer(buffer.data(), 0, 0, 0, &palette);
 
     std::set<uint8_t> uniqueEssence;
@@ -603,7 +603,7 @@ TEST_F(MinecraftNoiseGenTest, ClassifyEssenceClampedToUnitRange) {
 
     // Generate at extreme coordinates to exercise edge terrain values
     std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buffer{};
-    EssencePalette palette;
+    EssencePalette palette{0.0f, 255};
     gen.generateToBuffer(buffer.data(), 1000, 0, 1000, &palette);
 
     // Verify all palette entries have components in [0, 1]
@@ -637,7 +637,7 @@ TEST_F(MinecraftNoiseGenTest, EssenceVariesSpatiallyForSameMaterial) {
     MinecraftNoiseGenerator gen(config);
 
     // Generate two distant chunks. Deep underground (cy=-2) is all stone.
-    EssencePalette palette;
+    EssencePalette palette{0.0f, 255};
     std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buf1{};
     std::array<VoxelCell, K_CHUNK * K_CHUNK * K_CHUNK> buf2{};
 
