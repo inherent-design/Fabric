@@ -60,26 +60,35 @@ void VoxelSimulationSystem::tick() {
         }
     }
 
-    // Phase 3: Gravity evaluation via TransformationPass (parallel)
+    // Phase 3: Unified WorldRuleEngine dispatch (gravity + thermal + transformation)
     size_t workerSlots = scheduler_.workerCount() + 1;
     std::vector<BoundaryWriteQueue> boundaryQueues(workerSlots);
     std::vector<std::vector<ChunkCoord>> settledPerWorker(workerSlots);
     std::vector<std::vector<CellSwap>> cellSwapsPerWorker(workerSlots);
+    std::vector<std::vector<SubRegionActivation>> activationsPerWorker(workerSlots);
     {
-        FABRIC_ZONE_SCOPED_N("phase_3_gravity");
-        scheduler_.parallelFor(active.size(), "phase_3_gravity", [&](size_t jobIdx, size_t workerIdx) {
+        FABRIC_ZONE_SCOPED_N("phase_3_unified");
+        scheduler_.parallelFor(active.size(), "phase_3_unified", [&](size_t jobIdx, size_t workerIdx) {
             const auto& pos = active[jobIdx].pos;
-            std::mt19937 rng(static_cast<uint32_t>(worldSeed_ ^ spatialHash(pos)));
-            bool moved =
-                transformPass_.gravityEvaluation(pos, rng, boundaryQueues[workerIdx], cellSwapsPerWorker[workerIdx]);
-            if (moved) {
+            std::mt19937 rng(static_cast<uint32_t>(worldSeed_ ^ spatialHash(pos) ^ static_cast<uint64_t>(frameIndex_)));
+            auto result = transformPass_.evaluateChunk(pos, rng, boundaryQueues[workerIdx],
+                                                       cellSwapsPerWorker[workerIdx], activationsPerWorker[workerIdx]);
+            if (result.anyGravityMovement || result.transformCount > 0) {
                 auto* slot = grid_.registry().find(pos.x, pos.y, pos.z);
                 if (slot)
                     slot->copyCountdown.store(ChunkBuffers::K_COUNT - 1, std::memory_order_relaxed);
-            } else {
+            }
+            if (!result.anyGravityMovement && result.transformCount == 0) {
                 settledPerWorker[workerIdx].push_back(pos);
             }
         });
+    }
+
+    // Flush sub-region activations from parallel dispatch
+    for (auto& workerActivations : activationsPerWorker) {
+        for (const auto& act : workerActivations) {
+            tracker_.markSubRegionActive(act.pos, act.lx, act.ly, act.lz);
+        }
     }
 
     // Merge settled lists and cell swaps
@@ -101,9 +110,6 @@ void VoxelSimulationSystem::tick() {
         FABRIC_ZONE_SCOPED_N("phase_3b_boundary_drain");
         drainBoundaryWrites(boundaryQueues);
     }
-
-    // Phase 3c: Transformation pass (thermal diffusion + rule evaluation)
-    { transformPass_.execute(active, scheduler_, worldSeed_, frameIndex_); }
 
     // Phase 4: Advance epoch
     {

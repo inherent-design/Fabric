@@ -19,6 +19,8 @@ target_sources(UnitTests
   ProjectionRuleTableTest.cc
   WorldRuleEngineTest.cc
   TransformationPassTest.cc
+  FunctionExecutorTest.cc
+  WorldRuleEngineIntegrationTest.cc
   CellFactoryTest.cc
   VisualMergeTableTest.cc
 )

@@ -20,29 +20,348 @@ TransformationPass::TransformationPass(const WorldRuleEngine& rules, const Mater
 
 void TransformationPass::execute(const std::vector<ActiveChunkEntry>& active, fabric::JobScheduler& scheduler,
                                  int64_t worldSeed, uint64_t frameIndex) {
-    FABRIC_ZONE_SCOPED_N("phase_3c_transform");
+    FABRIC_ZONE_SCOPED_N("phase_3_unified");
     totalTransforms_.store(0, std::memory_order_relaxed);
 
     size_t workerSlots = scheduler.workerCount() + 1;
+    std::vector<BoundaryWriteQueue> boundaryQueues(workerSlots);
     std::vector<std::vector<SubRegionActivation>> activationsPerWorker(workerSlots);
 
-    scheduler.parallelFor(active.size(), "phase_3c_transform", [&](size_t jobIdx, size_t workerIdx) {
+    scheduler.parallelFor(active.size(), "phase_3_unified", [&](size_t jobIdx, size_t workerIdx) {
         const auto& pos = active[jobIdx].pos;
         std::mt19937 rng(static_cast<uint32_t>(worldSeed ^ spatialHash(pos) ^ static_cast<uint64_t>(frameIndex)));
-        executeChunk(pos, rng, activationsPerWorker[workerIdx]);
+        std::vector<CellSwap> cellSwaps;
+        evaluateChunk(pos, rng, boundaryQueues[workerIdx], cellSwaps, activationsPerWorker[workerIdx]);
     });
 
-    // Flush collected activations to tracker on main thread
     for (auto& workerActivations : activationsPerWorker) {
         for (const auto& act : workerActivations) {
             tracker_.markSubRegionActive(act.pos, act.lx, act.ly, act.lz);
         }
     }
 
+    // Drain boundary writes from parallel dispatch
+    std::vector<BoundaryWrite> merged;
+    for (auto& queue : boundaryQueues) {
+        merged.insert(merged.end(), queue.begin(), queue.end());
+        queue.clear();
+    }
+    std::sort(merged.begin(), merged.end(), [](const BoundaryWrite& a, const BoundaryWrite& b) {
+        return std::tie(a.dstWx, a.dstWy, a.dstWz, a.srcWx, a.srcWy, a.srcWz) <
+               std::tie(b.dstWx, b.dstWy, b.dstWz, b.srcWx, b.srcWy, b.srcWz);
+    });
+    int lastDstWx = 0, lastDstWy = 0, lastDstWz = 0;
+    bool hasPrev = false;
+    for (const auto& bw : merged) {
+        bool duplicate = hasPrev && bw.dstWx == lastDstWx && bw.dstWy == lastDstWy && bw.dstWz == lastDstWz;
+        if (duplicate) {
+            grid_.writeCell(bw.srcWx, bw.srcWy, bw.srcWz, bw.undoCell);
+            continue;
+        }
+        if (grid_.writeCellIfExists(bw.dstWx, bw.dstWy, bw.dstWz, bw.writeCell)) {
+            tracker_.notifyBoundaryChange(bw.neighborChunk);
+        } else {
+            grid_.writeCell(bw.srcWx, bw.srcWy, bw.srcWz, bw.undoCell);
+        }
+        lastDstWx = bw.dstWx;
+        lastDstWy = bw.dstWy;
+        lastDstWz = bw.dstWz;
+        hasPrev = true;
+    }
+
     int transforms = totalTransforms_.load(std::memory_order_relaxed);
     if (transforms > 0) {
-        FABRIC_LOG_DEBUG("Phase 3c: {} chunks, {} transforms", active.size(), transforms);
+        FABRIC_LOG_DEBUG("Phase 3 unified: {} chunks, {} transforms", active.size(), transforms);
     }
+}
+
+EvaluateChunkResult TransformationPass::evaluateChunk(ChunkCoord pos, std::mt19937& rng,
+                                                      BoundaryWriteQueue& boundaryWrites,
+                                                      std::vector<CellSwap>& cellSwaps,
+                                                      std::vector<SubRegionActivation>& activations) {
+    FABRIC_ZONE_SCOPED_N("evaluateChunk");
+
+    EvaluateChunkResult result;
+
+    // Sub-pass A: Thermal diffusion (fixed-function)
+    thermalKernel(pos);
+
+    // Sub-pass B: Evaluate all rules per cell in single memory-linear pass
+    std::vector<WorldRule> gravityRules;
+    std::vector<WorldRule> matchBuffer;
+    std::vector<uint8_t> moved(K_CHUNK_VOLUME, 0);
+
+    for (int ly = 0; ly < K_CHUNK_SIZE; ++ly) {
+        for (int lz = 0; lz < K_CHUNK_SIZE; ++lz) {
+            for (int lx = 0; lx < K_CHUNK_SIZE; ++lx) {
+                int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
+
+                int wx = pos.x * K_CHUNK_SIZE + lx;
+                int wy = pos.y * K_CHUNK_SIZE + ly;
+                int wz = pos.z * K_CHUNK_SIZE + lz;
+
+                VoxelCell cell = grid_.readFromWriteBuffer(wx, wy, wz);
+                if (isEmpty(cell))
+                    continue;
+
+                Phase phase = cell.phase();
+
+                // Gravity rules (SWAP): check for powder/liquid/gas movement
+                if (phase == Phase::Powder || phase == Phase::Liquid || phase == Phase::Gas) {
+                    if (moved[idx])
+                        continue;
+
+                    rules_.queryGravity(phase, gravityRules);
+                    if (!gravityRules.empty()) {
+                        if (tryGravityMove(pos, lx, ly, lz, phase, cell, rng, gravityRules, moved, boundaryWrites,
+                                           cellSwaps)) {
+                            result.anyGravityMovement = true;
+                            continue;
+                        }
+                    }
+                }
+
+                // Transformation rules (WRITE): self-transform then contact rules
+                if (result.transformCount >= config_.maxTransformsPerChunk)
+                    return result;
+
+                uint8_t temp = cellTemperature(cell);
+                bool transformed = false;
+
+                // Self-transform rules (neighborEssence = 255)
+                rules_.query(cell.essenceIdx, 255, phase, temp, matchBuffer);
+                for (const auto& rule : matchBuffer) {
+                    if (transformed)
+                        break;
+                    uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
+                    if (rule.probability == 255 || roll < rule.probability) {
+                        if (rule.resultEssenceA != 255)
+                            cell.essenceIdx = rule.resultEssenceA;
+                        if (rule.resultPhaseA != Phase::Unchanged)
+                            cell.setPhase(rule.resultPhaseA);
+                        if (rule.resultTempA != 0)
+                            setCellTemperature(cell, rule.resultTempA);
+                        if (rule.resultEssenceA != 255) {
+                            cell.displacementRank = registry_.get(static_cast<MaterialId>(rule.resultEssenceA)).density;
+                        }
+                        grid_.writeCell(wx, wy, wz, cell);
+                        if (cell.phase() == Phase::Liquid || cell.phase() == Phase::Powder)
+                            activations.push_back({pos, lx, ly, lz});
+                        ++result.transformCount;
+                        transformed = true;
+                    }
+                }
+
+                if (transformed)
+                    continue;
+
+                // Contact rules: check 6 face-neighbors
+                static constexpr int offsets[6][3] = {{1, 0, 0},  {-1, 0, 0}, {0, 1, 0},
+                                                      {0, -1, 0}, {0, 0, 1},  {0, 0, -1}};
+                for (const auto& off : offsets) {
+                    if (transformed)
+                        break;
+
+                    int nlx = lx + off[0];
+                    int nly = ly + off[1];
+                    int nlz = lz + off[2];
+
+                    VoxelCell neighbor = readCell(pos, nlx, nly, nlz);
+                    if (isEmpty(neighbor))
+                        continue;
+
+                    rules_.query(cell.essenceIdx, neighbor.essenceIdx, phase, temp, matchBuffer);
+                    for (const auto& rule : matchBuffer) {
+                        if (transformed)
+                            break;
+                        uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
+                        if (rule.probability == 255 || roll < rule.probability) {
+                            if (rule.resultEssenceA != 255)
+                                cell.essenceIdx = rule.resultEssenceA;
+                            if (rule.resultPhaseA != Phase::Unchanged)
+                                cell.setPhase(rule.resultPhaseA);
+                            if (rule.resultTempA != 0)
+                                setCellTemperature(cell, rule.resultTempA);
+                            if (rule.resultEssenceA != 255) {
+                                cell.displacementRank =
+                                    registry_.get(static_cast<MaterialId>(rule.resultEssenceA)).density;
+                            }
+                            grid_.writeCell(wx, wy, wz, cell);
+                            if (cell.phase() == Phase::Liquid || cell.phase() == Phase::Powder)
+                                activations.push_back({pos, lx, ly, lz});
+
+                            bool neighborInBounds = nlx >= 0 && nlx < K_CHUNK_SIZE && nly >= 0 && nly < K_CHUNK_SIZE &&
+                                                    nlz >= 0 && nlz < K_CHUNK_SIZE;
+                            if (!neighborInBounds) {
+                                FABRIC_LOG_DEBUG("cross-chunk contact skip: ({},{},{}) -> neighbor out of bounds",
+                                                 pos.x, pos.y, pos.z);
+                            } else if (rule.resultEssenceB != 255 || rule.resultPhaseB != Phase::Unchanged ||
+                                       rule.resultTempB != 0) {
+                                int nwx = pos.x * K_CHUNK_SIZE + nlx;
+                                int nwy = pos.y * K_CHUNK_SIZE + nly;
+                                int nwz = pos.z * K_CHUNK_SIZE + nlz;
+                                VoxelCell nCell = grid_.readFromWriteBuffer(nwx, nwy, nwz);
+                                if (rule.resultEssenceB != 255)
+                                    nCell.essenceIdx = rule.resultEssenceB;
+                                if (rule.resultPhaseB != Phase::Unchanged)
+                                    nCell.setPhase(rule.resultPhaseB);
+                                if (rule.resultTempB != 0)
+                                    setCellTemperature(nCell, rule.resultTempB);
+                                if (rule.resultEssenceB != 255) {
+                                    nCell.displacementRank =
+                                        registry_.get(static_cast<MaterialId>(rule.resultEssenceB)).density;
+                                }
+                                grid_.writeCell(nwx, nwy, nwz, nCell);
+                                if (nCell.phase() == Phase::Liquid || nCell.phase() == Phase::Powder)
+                                    activations.push_back({pos, nlx, nly, nlz});
+                            }
+
+                            ++result.transformCount;
+                            transformed = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    totalTransforms_.fetch_add(result.transformCount, std::memory_order_relaxed);
+    return result;
+}
+
+bool TransformationPass::tryGravityMove(ChunkCoord pos, int lx, int ly, int lz, Phase phase, VoxelCell cell,
+                                        std::mt19937& rng, const std::vector<WorldRule>& gravityRules,
+                                        std::vector<uint8_t>& moved, BoundaryWriteQueue& boundaryWrites,
+                                        std::vector<CellSwap>& cellSwaps) {
+    struct Offset {
+        int dx, dy, dz;
+    };
+    bool cellMoved = false;
+    int idx = lx + ly * K_CHUNK_SIZE + lz * K_CHUNK_SIZE * K_CHUNK_SIZE;
+
+    if (phase == Phase::Gas) {
+        VoxelCell above = readCell(pos, lx, ly + 1, lz);
+        if (canDisplace(registry_, cell, above)) {
+            for (const auto& rule : gravityRules) {
+                if (cellMoved)
+                    break;
+                uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
+                if (rule.probability == 255 || roll < rule.probability) {
+                    writeSwap(pos, lx, ly, lz, lx, ly + 1, lz, cell, above, boundaryWrites, cellSwaps);
+                    cellMoved = true;
+                }
+            }
+        }
+        if (!cellMoved) {
+            std::array<Offset, 4> diags = {{{-1, 1, 0}, {1, 1, 0}, {0, 1, -1}, {0, 1, 1}}};
+            std::shuffle(diags.begin(), diags.end(), rng);
+            for (const auto& [dx, dy, dz] : diags) {
+                if (cellMoved)
+                    break;
+                VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz);
+                if (canDisplace(registry_, cell, target)) {
+                    for (const auto& rule : gravityRules) {
+                        if (rule.probability == 255 || (static_cast<uint8_t>(rng() & 0xFF)) < rule.probability) {
+                            writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, boundaryWrites,
+                                      cellSwaps);
+                            cellMoved = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    } else if (phase == Phase::Liquid) {
+        VoxelCell below = readCell(pos, lx, ly - 1, lz);
+        if (canDisplace(registry_, cell, below)) {
+            for (const auto& rule : gravityRules) {
+                if (cellMoved)
+                    break;
+                uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
+                if (rule.probability == 255 || roll < rule.probability) {
+                    writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, boundaryWrites, cellSwaps);
+                    cellMoved = true;
+                }
+            }
+        }
+        if (!cellMoved) {
+            std::array<Offset, 4> diags = {{{-1, -1, 0}, {1, -1, 0}, {0, -1, -1}, {0, -1, 1}}};
+            std::shuffle(diags.begin(), diags.end(), rng);
+            for (const auto& [dx, dy, dz] : diags) {
+                if (cellMoved)
+                    break;
+                VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz);
+                if (canDisplace(registry_, cell, target)) {
+                    for (const auto& rule : gravityRules) {
+                        if (rule.probability == 255 || (static_cast<uint8_t>(rng() & 0xFF)) < rule.probability) {
+                            writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, boundaryWrites,
+                                      cellSwaps);
+                            cellMoved = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (!cellMoved) {
+            std::array<Offset, 4> horiz = {{{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}}};
+            std::shuffle(horiz.begin(), horiz.end(), rng);
+            for (const auto& [dx, dy, dz] : horiz) {
+                if (cellMoved)
+                    break;
+                VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz);
+                if (canDisplace(registry_, cell, target)) {
+                    for (const auto& rule : gravityRules) {
+                        if (rule.probability == 255 || (static_cast<uint8_t>(rng() & 0xFF)) < rule.probability) {
+                            writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, boundaryWrites,
+                                      cellSwaps);
+                            cellMoved = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Powder
+        VoxelCell below = readCell(pos, lx, ly - 1, lz);
+        if (canDisplace(registry_, cell, below)) {
+            for (const auto& rule : gravityRules) {
+                if (cellMoved)
+                    break;
+                uint8_t roll = static_cast<uint8_t>(rng() & 0xFF);
+                if (rule.probability == 255 || roll < rule.probability) {
+                    writeSwap(pos, lx, ly, lz, lx, ly - 1, lz, cell, below, boundaryWrites, cellSwaps);
+                    cellMoved = true;
+                }
+            }
+        }
+        if (!cellMoved) {
+            std::array<Offset, 4> diags = {{{-1, -1, 0}, {1, -1, 0}, {0, -1, -1}, {0, -1, 1}}};
+            std::shuffle(diags.begin(), diags.end(), rng);
+            for (const auto& [dx, dy, dz] : diags) {
+                if (cellMoved)
+                    break;
+                VoxelCell target = readCell(pos, lx + dx, ly + dy, lz + dz);
+                if (canDisplace(registry_, cell, target)) {
+                    for (const auto& rule : gravityRules) {
+                        if (rule.probability == 255 || (static_cast<uint8_t>(rng() & 0xFF)) < rule.probability) {
+                            writeSwap(pos, lx, ly, lz, lx + dx, ly + dy, lz + dz, cell, target, boundaryWrites,
+                                      cellSwaps);
+                            cellMoved = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (cellMoved) {
+        moved[idx] = 1;
+    }
+
+    return cellMoved;
 }
 
 void TransformationPass::executeChunk(ChunkCoord pos, std::mt19937& rng) {

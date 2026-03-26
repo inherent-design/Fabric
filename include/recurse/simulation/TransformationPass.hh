@@ -21,6 +21,11 @@ struct SubRegionActivation {
     int lx, ly, lz;
 };
 
+struct EvaluateChunkResult {
+    bool anyGravityMovement = false;
+    int transformCount = 0;
+};
+
 class TransformationPass {
   public:
     struct Config {
@@ -31,12 +36,19 @@ class TransformationPass {
     TransformationPass(const WorldRuleEngine& rules, const MaterialRegistry& registry, SimulationGrid& grid,
                        const GhostCellManager& ghosts, ChunkActivityTracker& tracker);
 
+    /// Unified dispatch: thermal pre-pass then all rules per chunk (parallel across chunks).
     void execute(const std::vector<ActiveChunkEntry>& active, fabric::JobScheduler& scheduler, int64_t worldSeed,
                  uint64_t frameIndex);
 
+    /// Single-chunk evaluation: thermal + gravity (SWAP) + transformation (WRITE).
+    /// Returns gravity movement flag and transform count.
+    EvaluateChunkResult evaluateChunk(ChunkCoord pos, std::mt19937& rng, BoundaryWriteQueue& boundaryWrites,
+                                      std::vector<CellSwap>& cellSwaps, std::vector<SubRegionActivation>& activations);
+
+    /// Legacy single-chunk thermal + transformation (no gravity). Kept for tests.
     void executeChunk(ChunkCoord pos, std::mt19937& rng);
 
-    /// Evaluate gravity rules for one chunk. Returns true if any movement occurred.
+    /// Legacy gravity-only evaluation. Kept for tests and replay.
     bool gravityEvaluation(ChunkCoord pos, std::mt19937& rng, BoundaryWriteQueue& boundaryWrites,
                            std::vector<CellSwap>& cellSwaps);
 
@@ -59,6 +71,10 @@ class TransformationPass {
     VoxelCell readCell(ChunkCoord pos, int lx, int ly, int lz) const;
     void writeSwap(ChunkCoord pos, int srcLx, int srcLy, int srcLz, int dstLx, int dstLy, int dstLz, VoxelCell srcCell,
                    VoxelCell dstCell, BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps) const;
+
+    bool tryGravityMove(ChunkCoord pos, int lx, int ly, int lz, Phase phase, VoxelCell cell, std::mt19937& rng,
+                        const std::vector<WorldRule>& gravityRules, std::vector<uint8_t>& moved,
+                        BoundaryWriteQueue& boundaryWrites, std::vector<CellSwap>& cellSwaps);
 };
 
 } // namespace recurse::simulation

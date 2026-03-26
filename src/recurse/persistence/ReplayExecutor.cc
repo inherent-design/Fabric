@@ -206,18 +206,22 @@ ReplayResult ReplayExecutor::runLoop(const SnapshotSet& snapshot, std::span<cons
 
         // Step 6: Simulate all chunks SEQUENTIALLY (deterministic).
         std::vector<BoundaryWrite> allBoundaryWrites;
-        std::vector<CellSwap> discardedSwaps;
+        std::vector<CellSwap> replayCellSwaps;
         std::vector<ChunkCoord> settledChunks;
         for (const auto& entry : active) {
             const auto& pos = entry.pos;
             uint64_t hash = spatialHash(pos);
 
-            std::mt19937 rng(static_cast<uint32_t>(worldSeed_ ^ hash));
+            std::mt19937 rng(static_cast<uint32_t>(worldSeed_ ^ hash ^ tick));
             BoundaryWriteQueue boundaryWrites;
-            discardedSwaps.clear();
+            replayCellSwaps.clear();
+            std::vector<recurse::simulation::SubRegionActivation> activations;
 
-            bool moved = transformPass_.gravityEvaluation(pos, rng, boundaryWrites, discardedSwaps);
-            if (!moved) {
+            auto result = transformPass_.evaluateChunk(pos, rng, boundaryWrites, replayCellSwaps, activations);
+            for (const auto& act : activations) {
+                tracker_.markSubRegionActive(act.pos, act.lx, act.ly, act.lz);
+            }
+            if (!result.anyGravityMovement && result.transformCount == 0) {
                 settledChunks.push_back(pos);
             }
 
