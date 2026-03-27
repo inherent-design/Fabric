@@ -587,13 +587,15 @@ TEST_F(MinecraftNoiseGenTest, GenerateWithPaletteProducesDifferentEssencePerMate
     EssencePalette palette{0.0f, 255};
     gen.generateToBuffer(buffer.data(), 0, 0, 0, &palette);
 
-    std::set<uint8_t> uniqueEssence;
+    // quantize8 writes palette index to cell.spare. Spatial variation in
+    // terrain features (warmth, wetness) should produce multiple distinct
+    // palette entries for non-air cells.
+    std::set<uint8_t> uniquePalette;
     for (const auto& cell : buffer) {
         if (!isEmpty(cell))
-            uniqueEssence.insert(cell.essenceIdx);
+            uniquePalette.insert(cell.spare);
     }
-    EXPECT_GT(uniqueEssence.size(), 1u)
-        << "Different materials and terrain contexts should produce multiple essence indices";
+    EXPECT_GT(uniquePalette.size(), 1u) << "Spatial variation should produce multiple palette indices";
 }
 
 TEST_F(MinecraftNoiseGenTest, ClassifyEssenceClampedToUnitRange) {
@@ -619,14 +621,12 @@ TEST_F(MinecraftNoiseGenTest, ClassifyEssenceClampedToUnitRange) {
         EXPECT_LE(essence.w, 1.0f) << "Decay > 1 at palette index " << i;
     }
 
-    // Also verify all non-air cells reference valid palette indices.
-    // quantize8 returns uint8_t, so essenceIdx is in [0, 255].
-    // The palette can grow larger than 256, but the 8-bit index must be
-    // within the range that quantize8 actually produced.
+    // Also verify all non-air cells have valid palette indices in spare.
+    // quantize8 writes to cell.spare; essenceIdx holds materialId.
     for (const auto& cell : buffer) {
         if (!isEmpty(cell)) {
-            EXPECT_LT(static_cast<size_t>(cell.essenceIdx), palette.paletteSize())
-                << "essenceIdx out of palette bounds";
+            EXPECT_LT(static_cast<size_t>(cell.spare), palette.paletteSize())
+                << "palette index (spare) out of palette bounds";
         }
     }
 }
@@ -644,20 +644,21 @@ TEST_F(MinecraftNoiseGenTest, EssenceVariesSpatiallyForSameMaterial) {
     gen.generateToBuffer(buf1.data(), 0, -2, 0, &palette);
     gen.generateToBuffer(buf2.data(), 50, -2, 50, &palette);
 
-    // Collect essence indices from stone cells in each chunk
-    std::set<uint8_t> essenceSet1;
-    std::set<uint8_t> essenceSet2;
+    // Collect palette indices from spare field (where quantize8 writes).
+    // Distant chunks should have different essence classifications.
+    std::set<uint8_t> paletteSet1;
+    std::set<uint8_t> paletteSet2;
     for (const auto& cell : buf1) {
         if (!isEmpty(cell))
-            essenceSet1.insert(cell.essenceIdx);
+            paletteSet1.insert(cell.spare);
     }
     for (const auto& cell : buf2) {
         if (!isEmpty(cell))
-            essenceSet2.insert(cell.essenceIdx);
+            paletteSet2.insert(cell.spare);
     }
 
-    // Distant chunks should have at least some different essence indices
+    // Distant chunks should have at least some different palette indices
     // because terrain features (warmth, wetness) vary spatially
-    EXPECT_NE(essenceSet1, essenceSet2)
+    EXPECT_NE(paletteSet1, paletteSet2)
         << "Same material at distant locations should produce some variation in essence";
 }

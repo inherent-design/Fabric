@@ -275,7 +275,7 @@ void MinecraftNoiseGenerator::generateToBuffer(VoxelCell* buffer, int cx, int cy
                 int idx = lx + ly * K_SIZE + lz * K_SIZE * K_SIZE;
                 if (palette) {
                     auto essence = classifyEssence(column, materialId, wx, wy, wz);
-                    cell.essenceIdx = palette->quantize8(essence);
+                    cell.spare = palette->quantize8(essence);
                 }
                 buffer[idx] = cell;
             }
