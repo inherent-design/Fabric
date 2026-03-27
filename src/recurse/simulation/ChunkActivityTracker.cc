@@ -19,8 +19,10 @@ void ChunkActivityTracker::setState(ChunkCoord pos, ChunkState state) {
     const bool nowActive = isActiveState(state);
     if (!wasActive && nowActive) {
         ++activeChunkCount_;
+        info.activeTickCounter = 0;
     } else if (wasActive && !nowActive) {
         --activeChunkCount_;
+        info.activeTickCounter = 0;
     }
     info.state = state;
 }
@@ -52,10 +54,10 @@ void ChunkActivityTracker::clearSubRegionMask(ChunkCoord pos) {
 
 void ChunkActivityTracker::notifyBoundaryChange(ChunkCoord neighborPos) {
     auto& info = chunks_[neighborPos];
-    // Wake sleeping chunks OR mark active chunks for boundary re-mesh
     if (info.state == ChunkState::Sleeping || info.state == ChunkState::Active) {
         if (!isActiveState(info.state)) {
             ++activeChunkCount_;
+            info.activeTickCounter = 0;
         }
         info.state = ChunkState::BoundaryDirty;
     }
@@ -111,10 +113,33 @@ void ChunkActivityTracker::putToSleep(ChunkCoord pos) {
     auto it = chunks_.find(pos);
     if (it != chunks_.end()) {
         if (isActiveState(it->second.state)) {
+            if (it->second.activeTickCounter < K_MIN_ACTIVE_TICKS) {
+                return;
+            }
             --activeChunkCount_;
         }
         it->second.state = ChunkState::Sleeping;
         it->second.subRegionMask = 0;
+        it->second.activeTickCounter = 0;
+    }
+}
+
+void ChunkActivityTracker::forcePutToSleep(ChunkCoord pos) {
+    auto it = chunks_.find(pos);
+    if (it != chunks_.end()) {
+        if (isActiveState(it->second.state)) {
+            --activeChunkCount_;
+        }
+        it->second.state = ChunkState::Sleeping;
+        it->second.subRegionMask = 0;
+        it->second.activeTickCounter = 0;
+    }
+}
+
+void ChunkActivityTracker::incrementActiveTicks(ChunkCoord pos) {
+    auto it = chunks_.find(pos);
+    if (it != chunks_.end() && isActiveState(it->second.state)) {
+        ++it->second.activeTickCounter;
     }
 }
 
@@ -126,8 +151,10 @@ void ChunkActivityTracker::resolveBoundaryDirty(ChunkCoord pos, bool needsSimula
         const bool nowActive = isActiveState(nextState);
         if (!wasActive && nowActive) {
             ++activeChunkCount_;
+            it->second.activeTickCounter = 0;
         } else if (wasActive && !nowActive) {
             --activeChunkCount_;
+            it->second.activeTickCounter = 0;
         }
         it->second.state = nextState;
     }

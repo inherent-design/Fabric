@@ -109,12 +109,15 @@ TEST_F(ChunkActivityTrackerTest, BudgetCapLimits) {
     EXPECT_EQ(active.size(), 5u);
 }
 
-// 11. Sleeping + mask = 0
+// 11. Sleeping + mask = 0 (requires sufficient active ticks)
 TEST_F(ChunkActivityTrackerTest, PutToSleepClearsMask) {
     ChunkCoord pos{0, 0, 0};
     tracker.setState(pos, ChunkState::Active);
     tracker.markSubRegionActive(pos, 4, 4, 4);
     EXPECT_NE(tracker.getSubRegionMask(pos), 0u);
+
+    for (int i = 0; i < ChunkActivityTracker::K_MIN_ACTIVE_TICKS; ++i)
+        tracker.incrementActiveTicks(pos);
 
     tracker.putToSleep(pos);
     EXPECT_EQ(tracker.getState(pos), ChunkState::Sleeping);
@@ -142,6 +145,8 @@ TEST_F(ChunkActivityTrackerTest, ActiveChunkCountTracksStateTransitions) {
     tracker.resolveBoundaryDirty({1, 0, 0}, false);
     EXPECT_EQ(tracker.activeChunkCount(), 1u);
 
+    for (int i = 0; i < ChunkActivityTracker::K_MIN_ACTIVE_TICKS; ++i)
+        tracker.incrementActiveTicks({0, 0, 0});
     tracker.putToSleep({0, 0, 0});
     EXPECT_EQ(tracker.activeChunkCount(), 0u);
 }

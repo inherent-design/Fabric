@@ -144,7 +144,8 @@ TEST_F(FallingSandPhysicsChangeTest, SettledChunkHasZeroVelocity) {
             for (int lx = 0; lx < K_CHUNK_SIZE; lx += 8)
                 sim.activityTracker().markSubRegionActive(ChunkCoord{0, 0, 0}, lx, ly, lz);
 
-    sim.tick();
+    for (int i = 0; i < ChunkActivityTracker::K_MIN_ACTIVE_TICKS + 1; ++i)
+        sim.tick();
 
     EXPECT_FLOAT_EQ(sim.velocityTracker().velocity(ChunkCoord{0, 0, 0}), 0.0f);
     EXPECT_EQ(sim.activityTracker().getState(ChunkCoord{0, 0, 0}), ChunkState::Sleeping);

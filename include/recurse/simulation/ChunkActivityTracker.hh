@@ -40,14 +40,22 @@ class ChunkActivityTracker {
     size_t activeChunkCount() const;
     std::vector<ActiveChunkEntry> collectActiveChunks(int budgetCap = 0) const;
     void putToSleep(ChunkCoord pos);
+    void forcePutToSleep(ChunkCoord pos);
+    void incrementActiveTicks(ChunkCoord pos);
     void resolveBoundaryDirty(ChunkCoord pos, bool needsSimulation);
     void remove(ChunkCoord pos);
     void clear(); // Remove all chunks (for world reset)
+
+    /// Number of consecutive active ticks before putToSleep() is allowed.
+    /// Prevents newly generated chunks from being put to sleep before gravity
+    /// has a chance to settle (at least N simulation ticks).
+    static constexpr int K_MIN_ACTIVE_TICKS = 3;
 
   private:
     struct ChunkInfo {
         ChunkState state = ChunkState::Sleeping;
         uint64_t subRegionMask = 0;
+        int activeTickCounter = 0;
     };
 
     std::unordered_map<ChunkCoord, ChunkInfo, ChunkCoordHash> chunks_;

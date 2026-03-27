@@ -467,7 +467,7 @@ void VoxelMeshingSystem::processFrame() {
     // Activity tracker updates (sequential; D-34)
     for (const auto& entry : activeChunks) {
         if (activityTracker_->getState(entry.pos) != recurse::simulation::ChunkState::Active)
-            activityTracker_->putToSleep(entry.pos);
+            activityTracker_->forcePutToSleep(entry.pos);
     }
 
     pendingMeshCount_ = activityTracker_->activeChunkCount();

@@ -210,7 +210,9 @@ TEST_F(WorldRuleEngineIntegrationTest, AllSolidChunkSettlesImmediately) {
     advance();
 
     sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
-    sim.tick();
+
+    for (int i = 0; i < ChunkActivityTracker::K_MIN_ACTIVE_TICKS + 1; ++i)
+        sim.tick();
 
     EXPECT_EQ(sim.activityTracker().getState(ChunkCoord{0, 0, 0}), ChunkState::Sleeping)
         << "All-solid chunk should settle to Sleeping after unified dispatch";

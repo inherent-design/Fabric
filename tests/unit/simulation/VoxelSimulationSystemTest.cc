@@ -146,15 +146,16 @@ TEST_F(VoxelSimulationSystemTest, SleepingNotSimulated) {
     sim.grid().advanceEpoch();
 
     sim.activityTracker().setState(ChunkCoord{0, 0, 0}, ChunkState::Active);
-    sim.tick();
 
-    // After tick, chunk should be sleeping (no movement happened)
+    // Run enough ticks for the minimum-active-ticks guard
+    for (int i = 0; i < ChunkActivityTracker::K_MIN_ACTIVE_TICKS + 1; ++i)
+        sim.tick();
+
     EXPECT_EQ(sim.activityTracker().getState(ChunkCoord{0, 0, 0}), ChunkState::Sleeping);
 
-    // Second tick: sleeping chunk should not be collected
+    // Additional tick: sleeping chunk should not be collected
     uint64_t frameBefore = sim.frameIndex();
     sim.tick();
-    // Frame still advances
     EXPECT_EQ(sim.frameIndex(), frameBefore + 1);
 }
 
@@ -179,6 +180,10 @@ TEST_F(VoxelSimulationSystemTest, ActiveCountTracking) {
         }
         sim.tick();
     }
+
+    // Run extra ticks without re-activation to allow minimum-active-ticks guard
+    for (int i = 0; i < ChunkActivityTracker::K_MIN_ACTIVE_TICKS + 1; ++i)
+        sim.tick();
 
     // After many ticks with only one sand grain on a floor, chunk should go to sleep
     EXPECT_EQ(sim.activityTracker().getState(ChunkCoord{0, 0, 0}), ChunkState::Sleeping);

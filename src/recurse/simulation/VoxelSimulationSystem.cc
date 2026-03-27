@@ -23,6 +23,13 @@ void VoxelSimulationSystem::tick() {
     }
     FABRIC_ZONE_VALUE(static_cast<int64_t>(active.size()));
 
+    // Increment active tick counters for all active chunks. This enables
+    // the minimum-active-ticks guard in putToSleep() which prevents newly
+    // generated chunks from being put to sleep before gravity settles.
+    for (const auto& entry : collected) {
+        tracker_.incrementActiveTicks(entry.pos);
+    }
+
     if (active.empty()) {
         ++frameIndex_;
         return;
