@@ -4,6 +4,7 @@
 #include "fabric/utils/ErrorHandling.hh"
 #include "fabric/utils/Profiler.hh"
 #include <limits>
+#include <queue>
 
 using namespace fabric;
 
@@ -41,33 +42,45 @@ uint16_t EssencePalette::addEntry(const Vector4<float, Space::World>& essence) {
     float epsSq = epsilon_ * epsilon_;
 
     if (epsilon_ > 0.0f) {
-        // O(1) grid hash lookup for the common case.
+        // O(1) grid hash lookup. The vector stores all indices that hash to
+        // the same grid key; iterate to find an entry within epsilon distance.
         auto key = toGridKey(essence);
         auto it = gridMap_.find(key);
-        if (it != gridMap_.end() && distSq4(entries_[it->second], essence) <= epsSq) {
-            return it->second;
+        if (it != gridMap_.end()) {
+            for (uint16_t idx : it->second) {
+                if (distSq4(entries_[idx], essence) <= epsSq) {
+                    return idx;
+                }
+            }
         }
 
         if (entries_.size() < maxSize_) {
             auto idx = static_cast<uint16_t>(entries_.size());
             entries_.push_back(essence);
-            gridMap_[key] = idx;
+            gridMap_[key].push_back(idx);
             return idx;
         }
 
-        // Overflow: merge closest pair, rebuild grid map, retry.
+        // Overflow: batch-merge K closest pairs, rebuild grid map, retry.
         FABRIC_LOG_DEBUG("EssencePalette merge: {} entries at capacity", maxSize_);
-        mergeClosestPair();
+        uint16_t mergedCount = mergeBatch(K_BATCH_MERGE_K);
+        FABRIC_LOG_TRACE("EssencePalette merge: merged {} pairs, now {} entries", static_cast<int>(mergedCount),
+                         entries_.size());
+        (void)mergedCount;
         rebuildGridMap();
 
         it = gridMap_.find(key);
-        if (it != gridMap_.end() && distSq4(entries_[it->second], essence) <= epsSq) {
-            return it->second;
+        if (it != gridMap_.end()) {
+            for (uint16_t idx : it->second) {
+                if (distSq4(entries_[idx], essence) <= epsSq) {
+                    return idx;
+                }
+            }
         }
 
         auto idx = static_cast<uint16_t>(entries_.size());
         entries_.push_back(essence);
-        gridMap_[key] = idx;
+        gridMap_[key].push_back(idx);
         return idx;
     }
 
@@ -96,7 +109,7 @@ uint16_t EssencePalette::addEntryRaw(const Vector4<float, Space::World>& essence
     auto idx = static_cast<uint16_t>(entries_.size());
     entries_.push_back(essence);
     if (epsilon_ > 0.0f)
-        gridMap_[toGridKey(essence)] = idx;
+        gridMap_[toGridKey(essence)].push_back(idx);
     return idx;
 }
 
@@ -132,6 +145,67 @@ uint16_t EssencePalette::mergeClosestPair() {
     return static_cast<uint16_t>(bestA);
 }
 
+uint16_t EssencePalette::mergeBatch(uint16_t k) {
+    FABRIC_ZONE_SCOPED;
+
+    if (entries_.size() < 2)
+        return 0;
+
+    // Collect up to K closest pairs using a max-heap of size K.
+    // O(n^2) brute force; acceptable because palette sizes are small
+    // and batch merge reduces call frequency from ~559K to near-zero.
+    using Pair = std::tuple<float, size_t, size_t>;
+    std::priority_queue<Pair> heap; // max-heap by distance
+
+    for (size_t i = 0; i < entries_.size(); ++i) {
+        for (size_t j = i + 1; j < entries_.size(); ++j) {
+            float d = distSq4(entries_[i], entries_[j]);
+            if (heap.size() < static_cast<size_t>(k)) {
+                heap.push({d, i, j});
+            } else if (d < std::get<0>(heap.top())) {
+                heap.pop();
+                heap.push({d, i, j});
+            }
+        }
+    }
+
+    // Extract pairs from heap
+    struct MergeOp {
+        size_t survivor;
+        size_t removed;
+        float distSq;
+    };
+    std::vector<MergeOp> merges;
+    merges.reserve(heap.size());
+
+    // Mark which indices are consumed
+    std::vector<bool> consumed(entries_.size(), false);
+
+    while (!heap.empty()) {
+        auto [d, a, b] = heap.top();
+        heap.pop();
+        if (consumed[a] || consumed[b])
+            continue;
+        merges.push_back({a, b, d});
+        consumed[b] = true;
+    }
+
+    // Apply merges. Process in reverse order of b index to avoid
+    // invalidating higher indices during removal.
+    std::sort(merges.begin(), merges.end(), [](const MergeOp& x, const MergeOp& y) { return x.removed > y.removed; });
+
+    for (auto& m : merges) {
+        if (m.removed >= entries_.size())
+            continue;
+        entries_[m.survivor] = (entries_[m.survivor] + entries_[m.removed]) * 0.5f;
+        if (m.removed != entries_.size() - 1)
+            entries_[m.removed] = entries_.back();
+        entries_.pop_back();
+    }
+
+    return static_cast<uint16_t>(merges.size());
+}
+
 EssencePalette::GridKey EssencePalette::toGridKey(const Vector4<float, Space::World>& v) const {
     float inv = 1.0f / epsilon_;
     return {{
@@ -146,7 +220,7 @@ void EssencePalette::rebuildGridMap() {
     gridMap_.clear();
     gridMap_.reserve(entries_.size() * 2);
     for (size_t i = 0; i < entries_.size(); ++i) {
-        gridMap_[toGridKey(entries_[i])] = static_cast<uint16_t>(i);
+        gridMap_[toGridKey(entries_[i])].push_back(static_cast<uint16_t>(i));
     }
 }
 

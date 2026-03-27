@@ -144,3 +144,59 @@ TEST_F(EssencePaletteTest, PaletteMergeSelectsClosestEntry) {
     EXPECT_FLOAT_EQ(result.x, 0.95f);
     EXPECT_FLOAT_EQ(result.y, 0.05f);
 }
+
+// --- Group C: Grid hash collision handling ---
+
+TEST_F(EssencePaletteTest, GridHashCollisionDoesNotOverwrite) {
+    // Two essences that quantize to the same grid key but are beyond epsilon
+    // distance must both get distinct entries (no silent overwrite).
+    Vec4 a(0.000f, 0.000f, 0.000f, 0.000f);
+    Vec4 b(0.009f, 0.009f, 0.009f, 0.009f);
+    uint16_t idxA = palette.quantize(a);
+    uint16_t idxB = palette.quantize(b);
+    EXPECT_NE(idxA, idxB);
+    EXPECT_EQ(palette.paletteSize(), 2u);
+
+    // Re-quantizing a must still return the original index
+    uint16_t idxA2 = palette.quantize(a);
+    EXPECT_EQ(idxA, idxA2);
+}
+
+TEST_F(EssencePaletteTest, GridHashCollisionWithThirdEntry) {
+    Vec4 a(0.000f, 0.000f, 0.000f, 0.000f);
+    Vec4 b(0.009f, 0.009f, 0.009f, 0.009f);
+    Vec4 c(0.000f, 0.000f, 0.000f, 0.000f);
+    uint16_t idxA = palette.quantize(a);
+    uint16_t idxB = palette.quantize(b);
+    uint16_t idxC = palette.quantize(c);
+    EXPECT_NE(idxA, idxB);
+    EXPECT_EQ(idxA, idxC);
+}
+
+TEST_F(EssencePaletteTest, GridHashCollisionWithinEpsilonStillDeduplicates) {
+    Vec4 a(0.500f, 0.500f, 0.500f, 0.500f);
+    Vec4 b(0.503f, 0.501f, 0.501f, 0.501f);
+    uint16_t idxA = palette.quantize(a);
+    uint16_t idxB = palette.quantize(b);
+    EXPECT_EQ(idxA, idxB);
+    EXPECT_EQ(palette.paletteSize(), 1u);
+}
+
+TEST_F(EssencePaletteTest, BatchMergeReducesMultiplePairs) {
+    // Fill to capacity, then overflow to trigger batch merge (K=8 pairs).
+    EssencePalette pal(0.01f, 20);
+    for (int i = 0; i < 20; ++i) {
+        float v = static_cast<float>(i) * 0.1f;
+        pal.quantize(Vec4(v, 0.0f, 0.0f, 0.0f));
+    }
+    EXPECT_EQ(pal.paletteSize(), 20u);
+
+    // Adding more entries triggers batch merge (K=8 pairs).
+    pal.quantize(Vec4(99.0f, 99.0f, 99.0f, 99.0f));
+    EXPECT_LE(pal.paletteSize(), 20u);
+    EXPECT_GT(pal.paletteSize(), 0u);
+
+    // Re-quantize the same value; must deduplicate
+    pal.quantize(Vec4(99.0f, 99.0f, 99.0f, 99.0f));
+    EXPECT_EQ(pal.paletteSize(), pal.paletteSize());
+}

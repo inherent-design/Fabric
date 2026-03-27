@@ -72,10 +72,16 @@ class EssencePalette {
 
     GridKey toGridKey(const Vector4<float, Space::World>& v) const;
     void rebuildGridMap();
-    std::unordered_map<GridKey, uint16_t, GridKeyHash> gridMap_;
+    std::unordered_map<GridKey, std::vector<uint16_t>, GridKeyHash> gridMap_;
 
     /// Merge the two closest entries. Returns the index of the merged entry.
     uint16_t mergeClosestPair();
+
+    /// Merge up to K closest pairs in a single pass. Returns the number of
+    /// pairs actually merged. Rebuilds the grid map once after all merges.
+    uint16_t mergeBatch(uint16_t k);
+
+    static constexpr uint16_t K_BATCH_MERGE_K = 8;
 };
 
 } // namespace recurse
