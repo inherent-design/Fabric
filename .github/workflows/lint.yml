@@ -36,7 +36,7 @@ jobs:
             libdbus-1-dev libudev-dev
 
       - name: Cache CPM dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: cpm-cache
           key: cpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('CMakeLists.txt', 'cmake/modules/*.cmake') }}
