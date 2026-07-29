@@ -95,7 +95,7 @@ jobs:
 
       - name: Setup sccache (Windows)
         if: matrix.compiler_cache == 'sccache'
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Configure
         run: cmake --preset ${{ matrix.preset }}
