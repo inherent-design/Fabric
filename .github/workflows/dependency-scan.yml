@@ -48,6 +48,6 @@ jobs:
           CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm-cache
 
       - name: Run OSV-Scanner
-        uses: google/osv-scanner-action/osv-scanner-action@v2.3.5
+        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
         with:
           scan-args: "--recursive ."
